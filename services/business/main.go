@@ -1,0 +1,53 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"net"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+
+	pb "gochat/gen/business"
+	"gochat/pkg/config"
+	"gochat/pkg/database"
+	"gochat/pkg/logger"
+	"gochat/services/business/server"
+)
+
+func main() {
+	log := logger.New("business-service")
+	defer log.Sync()
+	cfg := config.Load()
+	ctx := context.Background()
+
+	db, err := database.NewPostgres(ctx, cfg.PostgresDSN, log)
+	if err != nil {
+		log.Fatal("failed to connect to database", zap.Error(err))
+	}
+	defer db.Close()
+
+	srv := server.NewBusinessServer(db, log)
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", cfg.GRPCPort))
+	if err != nil {
+		log.Fatal("failed to listen", zap.Error(err))
+	}
+
+	grpcServer := grpc.NewServer()
+	pb.RegisterBusinessServiceServer(grpcServer, srv)
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		log.Info("Business Service started", zap.String("port", cfg.GRPCPort))
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatal("Business Service failed", zap.Error(err))
+		}
+	}()
+	<-quit
+	log.Info("Shutting down Business Service...")
+	grpcServer.GracefulStop()
+}

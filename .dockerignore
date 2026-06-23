@@ -1,0 +1,39 @@
+# Exclude frontend folder from Go build contexts
+frontend/
+
+# Exclude local build artifacts and IDEs
+bin/
+dist/
+*.exe
+.idea/
+.vscode/
+
+# Exclude local environment files
+.env
+.env.example
+.env.local
+
+# Exclude git metadata
+.git/
+.gitignore
+README.md
+walkthrough.md
+task.md
+implementation_plan.md
+feature_audit.md
+
+
+.git
+.github
+.idea
+.vscode
+bin
+dist
+coverage.out
+**/*.log
+frontend
+**/tmp_crypto
+**/build_error*.txt
+**/*.exe
+vendor/
+**/node_modules

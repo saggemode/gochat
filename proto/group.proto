@@ -1,0 +1,245 @@
+syntax = "proto3";
+
+package group;
+
+option go_package = "gochat/gen/group";
+
+service GroupService {
+  rpc UpdateGroupMetadata(UpdateGroupMetadataRequest) returns (UpdateGroupMetadataResponse);
+  rpc GetGroupMetadata(GetGroupMetadataRequest) returns (GetGroupMetadataResponse);
+  rpc GenerateInviteLink(GenerateInviteLinkRequest) returns (GenerateInviteLinkResponse);
+  rpc JoinByInviteCode(JoinByInviteCodeRequest) returns (JoinByInviteCodeResponse);
+  rpc GetPendingApprovals(GetPendingApprovalsRequest) returns (GetPendingApprovalsResponse);
+  rpc ResolvePendingApproval(ResolvePendingApprovalRequest) returns (ResolvePendingApprovalResponse);
+  rpc PromoteMember(PromoteMemberRequest) returns (PromoteMemberResponse);
+  rpc DemoteMember(DemoteMemberRequest) returns (DemoteMemberResponse);
+
+  // Communities
+  rpc CreateCommunity(CreateCommunityRequest) returns (CreateCommunityResponse);
+  rpc AddGroupToCommunity(AddGroupToCommunityRequest) returns (AddGroupToCommunityResponse);
+  rpc RemoveGroupFromCommunity(RemoveGroupFromCommunityRequest) returns (RemoveGroupFromCommunityResponse);
+  rpc GetCommunity(GetCommunityRequest) returns (GetCommunityResponse);
+  rpc ListCommunities(ListCommunitiesRequest) returns (ListCommunitiesResponse);
+
+  // Broadcast Lists
+  rpc CreateBroadcastList(CreateBroadcastListRequest) returns (CreateBroadcastListResponse);
+  rpc DeleteBroadcastList(DeleteBroadcastListRequest) returns (DeleteBroadcastListResponse);
+  rpc AddBroadcastRecipient(AddBroadcastRecipientRequest) returns (AddBroadcastRecipientResponse);
+  rpc RemoveBroadcastRecipient(RemoveBroadcastRecipientRequest) returns (RemoveBroadcastRecipientResponse);
+  rpc GetBroadcastList(GetBroadcastListRequest) returns (GetBroadcastListResponse);
+}
+
+message GroupMetadata {
+  string conversation_id = 1;
+  string description = 2;
+  bool announcements_only = 3;
+  bool admins_only_edit_info = 4;
+  string invite_code = 5;
+  bool join_approval_required = 6;
+}
+
+message UpdateGroupMetadataRequest {
+  string conversation_id = 1;
+  string requester_id = 2;
+  string description = 3;
+  bool announcements_only = 4;
+  bool admins_only_edit_info = 5;
+  bool join_approval_required = 6;
+}
+
+message UpdateGroupMetadataResponse {
+  GroupMetadata metadata = 1;
+}
+
+message GetGroupMetadataRequest {
+  string conversation_id = 1;
+  string requester_id = 2;
+}
+
+message GetGroupMetadataResponse {
+  GroupMetadata metadata = 1;
+}
+
+message GenerateInviteLinkRequest {
+  string conversation_id = 1;
+  string requester_id = 2;
+}
+
+message GenerateInviteLinkResponse {
+  string invite_code = 1;
+}
+
+message JoinByInviteCodeRequest {
+  string invite_code = 1;
+  string user_id = 2;
+}
+
+message JoinByInviteCodeResponse {
+  string conversation_id = 1;
+  string status = 2; // "joined" or "pending_approval"
+}
+
+message GroupJoinApproval {
+  string id = 1;
+  string conversation_id = 2;
+  string user_id = 3;
+  string status = 4;
+  int64 requested_at = 5;
+  string resolved_by = 6;
+  int64 resolved_at = 7;
+  string user_display_name = 8;
+  string user_avatar_url = 9;
+}
+
+message GetPendingApprovalsRequest {
+  string conversation_id = 1;
+  string requester_id = 2;
+}
+
+message GetPendingApprovalsResponse {
+  repeated GroupJoinApproval approvals = 1;
+}
+
+message ResolvePendingApprovalRequest {
+  string approval_id = 1;
+  string resolver_id = 2;
+  bool approve = 3;
+}
+
+message ResolvePendingApprovalResponse {
+  bool success = 1;
+  string conversation_id = 2;
+  string user_id = 3;
+}
+
+message PromoteMemberRequest {
+  string conversation_id = 1;
+  string requester_id = 2;
+  string target_user_id = 3;
+  string role = 4; // e.g. "admin", "moderator"
+}
+
+message PromoteMemberResponse {
+  bool success = 1;
+}
+
+message DemoteMemberRequest {
+  string conversation_id = 1;
+  string requester_id = 2;
+  string target_user_id = 3;
+}
+
+message DemoteMemberResponse {
+  bool success = 1;
+}
+
+message Community {
+  string id                      = 1;
+  string name                    = 2;
+  string description             = 3;
+  string created_by              = 4;
+  int64  created_at              = 5;
+  repeated string group_conversation_ids = 6;
+}
+
+message CreateCommunityRequest {
+  string name        = 1;
+  string description = 2;
+  string creator_id  = 3;
+}
+
+message CreateCommunityResponse {
+  Community community = 1;
+}
+
+message AddGroupToCommunityRequest {
+  string community_id    = 1;
+  string conversation_id = 2;
+  string requester_id    = 3;
+}
+
+message AddGroupToCommunityResponse {
+  bool success = 1;
+}
+
+message RemoveGroupFromCommunityRequest {
+  string community_id    = 1;
+  string conversation_id = 2;
+  string requester_id    = 3;
+}
+
+message RemoveGroupFromCommunityResponse {
+  bool success = 1;
+}
+
+message GetCommunityRequest {
+  string community_id = 1;
+}
+
+message GetCommunityResponse {
+  Community community = 1;
+}
+
+message ListCommunitiesRequest {
+  string user_id = 1; // optional
+}
+
+message ListCommunitiesResponse {
+  repeated Community communities = 1;
+}
+
+message BroadcastList {
+  string id                    = 1;
+  string owner_id              = 2;
+  string name                  = 3;
+  int64  created_at            = 4;
+  repeated string recipient_ids = 5;
+}
+
+message CreateBroadcastListRequest {
+  string owner_id              = 1;
+  string name                  = 2;
+  repeated string recipient_ids = 3;
+}
+
+message CreateBroadcastListResponse {
+  BroadcastList broadcast_list = 1;
+}
+
+message DeleteBroadcastListRequest {
+  string id       = 1;
+  string owner_id = 2;
+}
+
+message DeleteBroadcastListResponse {
+  bool success = 1;
+}
+
+message AddBroadcastRecipientRequest {
+  string broadcast_list_id = 1;
+  string recipient_id      = 2;
+  string owner_id          = 3;
+}
+
+message AddBroadcastRecipientResponse {
+  bool success = 1;
+}
+
+message RemoveBroadcastRecipientRequest {
+  string broadcast_list_id = 1;
+  string recipient_id      = 2;
+  string owner_id          = 3;
+}
+
+message RemoveBroadcastRecipientResponse {
+  bool success = 1;
+}
+
+message GetBroadcastListRequest {
+  string broadcast_list_id = 1;
+  string owner_id          = 2;
+}
+
+message GetBroadcastListResponse {
+  BroadcastList broadcast_list = 1;
+}

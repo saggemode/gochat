@@ -1,0 +1,158 @@
+syntax = "proto3";
+
+package social;
+
+option go_package = "gochat/gen/social";
+
+// ── Social Service ───────────────────────────────────────────────────────────
+
+service SocialService {
+  // Follow system
+  rpc FollowUser(FollowUserRequest) returns (FollowUserResponse);
+  rpc UnfollowUser(UnfollowUserRequest) returns (UnfollowUserResponse);
+  rpc GetFollowers(GetFollowersRequest) returns (GetFollowersResponse);
+  rpc GetFollowing(GetFollowingRequest) returns (GetFollowingResponse);
+
+  // Moments / Social Feed
+  rpc CreateMoment(CreateMomentRequest) returns (CreateMomentResponse);
+  rpc LikeMoment(LikeMomentRequest) returns (LikeMomentResponse);
+  rpc CommentMoment(CommentMomentRequest) returns (CommentMomentResponse);
+  rpc GetMomentsFeed(GetMomentsFeedRequest) returns (GetMomentsFeedResponse);
+  rpc DeleteMoment(DeleteMomentRequest) returns (DeleteMomentResponse);
+
+  // Nearby discovery
+  rpc SetNearbyVisible(SetNearbyVisibleRequest) returns (SetNearbyVisibleResponse);
+  rpc GetNearbyUsers(GetNearbyUsersRequest) returns (GetNearbyUsersResponse);
+
+  // Badges
+  rpc ApplyForBadge(ApplyForBadgeRequest) returns (ApplyForBadgeResponse);
+  rpc GetUserBadges(GetUserBadgesRequest) returns (GetUserBadgesResponse);
+
+  // Audio Rooms
+  rpc CreateAudioRoom(CreateAudioRoomRequest) returns (CreateAudioRoomResponse);
+  rpc JoinAudioRoom(JoinAudioRoomRequest) returns (JoinAudioRoomResponse);
+  rpc LeaveAudioRoom(LeaveAudioRoomRequest) returns (LeaveAudioRoomResponse);
+  rpc ListAudioRooms(ListAudioRoomsRequest) returns (ListAudioRoomsResponse);
+}
+
+// ── Messages ─────────────────────────────────────────────────────────────────
+
+message Moment {
+  string id            = 1;
+  string user_id       = 2;
+  string content       = 3;
+  string media_url     = 4;
+  string media_type    = 5;
+  string visibility    = 6;
+  int32  like_count    = 7;
+  int32  comment_count = 8;
+  int64  created_at    = 9;
+  repeated MomentComment comments = 10;
+}
+
+message MomentComment {
+  string id         = 1;
+  string user_id    = 2;
+  string content    = 3;
+  int64  created_at = 4;
+}
+
+message NearbyUser {
+  string user_id      = 1;
+  string display_name = 2;
+  string avatar_url   = 3;
+  double distance_km  = 4;
+}
+
+message Badge {
+  string badge_type = 1;
+  int64  granted_at = 2;
+  int64  expires_at = 3;
+}
+
+message AudioRoom {
+  string id           = 1;
+  string title        = 2;
+  string created_by   = 3;
+  bool   is_active    = 4;
+  int32  max_speakers = 5;
+  int32  participant_count = 6;
+  int64  created_at   = 7;
+}
+
+// ── Follow ───────────────────────────────────────────────────────────────────
+
+message FollowUserRequest { string user_id = 1; string target_id = 2; }
+message FollowUserResponse { bool success = 1; }
+
+message UnfollowUserRequest { string user_id = 1; string target_id = 2; }
+message UnfollowUserResponse { bool success = 1; }
+
+message GetFollowersRequest { string user_id = 1; int32 limit = 2; int32 offset = 3; }
+message GetFollowersResponse { repeated string follower_ids = 1; int32 total = 2; }
+
+message GetFollowingRequest { string user_id = 1; int32 limit = 2; int32 offset = 3; }
+message GetFollowingResponse { repeated string following_ids = 1; int32 total = 2; }
+
+// ── Moments ──────────────────────────────────────────────────────────────────
+
+message CreateMomentRequest {
+  string user_id    = 1;
+  string content    = 2;
+  string media_url  = 3;
+  string media_type = 4;
+  string visibility = 5;
+}
+message CreateMomentResponse { Moment moment = 1; }
+
+message LikeMomentRequest { string user_id = 1; string moment_id = 2; }
+message LikeMomentResponse { bool success = 1; }
+
+message CommentMomentRequest { string user_id = 1; string moment_id = 2; string content = 3; }
+message CommentMomentResponse { MomentComment comment = 1; }
+
+message GetMomentsFeedRequest { string user_id = 1; int32 limit = 2; int32 offset = 3; }
+message GetMomentsFeedResponse { repeated Moment moments = 1; int32 total = 2; }
+
+message DeleteMomentRequest { string user_id = 1; string moment_id = 2; }
+message DeleteMomentResponse { bool success = 1; }
+
+// ── Nearby ───────────────────────────────────────────────────────────────────
+
+message SetNearbyVisibleRequest {
+  string user_id    = 1;
+  double latitude   = 2;
+  double longitude  = 3;
+  bool   is_visible = 4;
+  int32  radius_km  = 5;
+}
+message SetNearbyVisibleResponse { bool success = 1; }
+
+message GetNearbyUsersRequest { string user_id = 1; int32 radius_km = 2; int32 limit = 3; }
+message GetNearbyUsersResponse { repeated NearbyUser users = 1; }
+
+// ── Badges ───────────────────────────────────────────────────────────────────
+
+message ApplyForBadgeRequest { string user_id = 1; string badge_type = 2; }
+message ApplyForBadgeResponse { bool success = 1; }
+
+message GetUserBadgesRequest { string user_id = 1; }
+message GetUserBadgesResponse { repeated Badge badges = 1; }
+
+// ── Audio Rooms ──────────────────────────────────────────────────────────────
+
+message CreateAudioRoomRequest {
+  string user_id      = 1;
+  string title        = 2;
+  int32  max_speakers = 3;
+}
+message CreateAudioRoomResponse { AudioRoom room = 1; }
+
+message JoinAudioRoomRequest { string user_id = 1; string room_id = 2; string role = 3; }
+message JoinAudioRoomResponse { bool success = 1; }
+
+message LeaveAudioRoomRequest { string user_id = 1; string room_id = 2; }
+message LeaveAudioRoomResponse { bool success = 1; }
+
+message ListAudioRoomsRequest { int32 limit = 1; int32 offset = 2; }
+message ListAudioRoomsResponse { repeated AudioRoom rooms = 1; int32 total = 2; }

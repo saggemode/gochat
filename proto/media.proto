@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package media;
+
+option go_package = "gochat/gen/media";
+
+// ── Media Service ─────────────────────────────────────────────────────────────
+
+service MediaService {
+  // Upload a file — client streams chunks, server responds with URL
+  rpc UploadMedia(stream UploadMediaRequest) returns (UploadMediaResponse);
+
+  // Get a pre-signed download URL for a media object
+  rpc GetMediaURL(GetMediaURLRequest) returns (GetMediaURLResponse);
+
+  // Delete a media object (called on message deletion)
+  rpc DeleteMedia(DeleteMediaRequest) returns (DeleteMediaResponse);
+}
+
+// ── Messages ──────────────────────────────────────────────────────────────────
+
+enum MediaType {
+  MEDIA_IMAGE = 0;
+  MEDIA_VIDEO = 1;
+  MEDIA_AUDIO = 2;
+  MEDIA_VOICE = 3;
+  MEDIA_FILE  = 4;
+}
+
+message MediaMeta {
+  string    object_key   = 1;  // MinIO object key
+  string    url          = 2;  // Publicly accessible URL or pre-signed URL
+  string    mime_type    = 3;
+  int64     size_bytes   = 4;
+  MediaType media_type   = 5;
+  int32     width        = 6;  // for images/video
+  int32     height       = 7;
+  int32     duration_sec = 8;  // for audio/video
+  int64     uploaded_at  = 9;
+}
+
+// First chunk: contains metadata header.
+// Subsequent chunks: raw file data.
+message UploadMediaRequest {
+  oneof data {
+    UploadHeader header = 1;
+    bytes        chunk  = 2;
+  }
+}
+
+message UploadHeader {
+  string    file_name    = 1;
+  string    mime_type    = 2;
+  int64     total_size   = 3;
+  MediaType media_type   = 4;
+  string    uploader_id  = 5;
+}
+
+message UploadMediaResponse {
+  MediaMeta media = 1;
+}
+
+message GetMediaURLRequest {
+  string object_key      = 1;
+  int32  expires_seconds = 2;  // 0 = permanent public URL
+}
+
+message GetMediaURLResponse {
+  string url        = 1;
+  int64  expires_at = 2;  // Unix timestamp, 0 if permanent
+}
+
+message DeleteMediaRequest {
+  string object_key = 1;
+  string user_id    = 2;
+}
+
+message DeleteMediaResponse {
+  bool success = 1;
+}

@@ -1,0 +1,260 @@
+syntax = "proto3";
+
+package auth;
+
+option go_package = "gochat/gen/auth";
+
+// ── Auth Service ─────────────────────────────────────────────────────────────
+
+service AuthService {
+  // Register a new user
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+
+  // Authenticate with email + password
+  rpc Login(LoginRequest) returns (LoginResponse);
+
+  // Exchange a refresh token for a new access token
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+
+  // Validate an access token (called by gateway middleware)
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+
+  // Fetch a user by ID
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+
+  // Update user profile (display name, avatar, status)
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+
+  // Revoke a refresh token (logout)
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+
+  // Batch-fetch users by IDs (for populating conversation member info)
+  rpc GetUsers(GetUsersRequest) returns (GetUsersResponse);
+
+  // Set user online/offline status
+  rpc SetPresence(SetPresenceRequest) returns (SetPresenceResponse);
+
+  // Two-Step Verification (2FA PIN)
+  rpc SetTwoStepPIN(SetTwoStepPINRequest) returns (SetTwoStepPINResponse);
+  rpc VerifyTwoStepPIN(VerifyTwoStepPINRequest) returns (VerifyTwoStepPINResponse);
+
+  // E2EE Key Exchange
+  rpc UploadE2EEKeys(UploadE2EEKeysRequest) returns (UploadE2EEKeysResponse);
+  rpc GetE2EEKeys(GetE2EEKeysRequest) returns (GetE2EEKeysResponse);
+
+  // Contact Blocking
+  rpc BlockUser(BlockUserRequest) returns (BlockUserResponse);
+  rpc UnblockUser(UnblockUserRequest) returns (UnblockUserResponse);
+  rpc GetBlockedUsers(GetBlockedUsersRequest) returns (GetBlockedUsersResponse);
+
+  // Phone OTP Verification
+  rpc RegisterPhone(RegisterPhoneRequest) returns (RegisterPhoneResponse);
+  rpc VerifyPhoneOTP(VerifyPhoneOTPRequest) returns (VerifyPhoneOTPResponse);
+
+  // Push Notifications Subscription
+  rpc SubscribePush(SubscribePushRequest) returns (SubscribePushResponse);
+}
+
+// ── Messages ─────────────────────────────────────────────────────────────────
+
+message User {
+  string id             = 1;
+  string email          = 2;
+  string display_name   = 3;
+  string avatar_url     = 4;
+  string status_text    = 5;
+  bool   is_online      = 6;
+  int64  last_seen      = 7; // Unix timestamp
+  int64  created_at     = 8;
+  string phone          = 9;
+  bool   phone_verified = 10;
+}
+
+message RegisterRequest {
+  string email        = 1;
+  string password     = 2;
+  string display_name = 3;
+}
+
+message RegisterResponse {
+  User   user          = 1;
+  string access_token  = 2;
+  string refresh_token = 3;
+}
+
+message LoginRequest {
+  string email    = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  User   user          = 1;
+  string access_token  = 2;
+  string refresh_token = 3;
+}
+
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message RefreshTokenResponse {
+  string access_token  = 1;
+  string refresh_token = 2;
+}
+
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+message ValidateTokenResponse {
+  bool   valid   = 1;
+  string user_id = 2;
+  string email   = 3;
+}
+
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message GetUserResponse {
+  User user = 1;
+}
+
+message GetUsersRequest {
+  repeated string user_ids = 1;
+}
+
+message GetUsersResponse {
+  repeated User users = 1;
+}
+
+message UpdateUserRequest {
+  string user_id      = 1;
+  string display_name = 2; // optional — empty = no change
+  string avatar_url   = 3;
+  string status_text  = 4;
+}
+
+message UpdateUserResponse {
+  User user = 1;
+}
+
+message LogoutRequest {
+  string refresh_token = 1;
+}
+
+message LogoutResponse {
+  bool success = 1;
+}
+
+message SetPresenceRequest {
+  string user_id   = 1;
+  bool   is_online = 2;
+}
+
+message SetPresenceResponse {
+  bool success = 1;
+}
+
+message SetTwoStepPINRequest {
+  string user_id = 1;
+  string pin     = 2;
+}
+
+message SetTwoStepPINResponse {
+  bool success = 1;
+}
+
+message VerifyTwoStepPINRequest {
+  string user_id = 1;
+  string pin     = 2;
+}
+
+message VerifyTwoStepPINResponse {
+  bool valid = 1;
+}
+
+message EphemeralPreKey {
+  int32  key_id     = 1;
+  string public_key = 2;
+}
+
+message UploadE2EEKeysRequest {
+  string user_id                 = 1;
+  string prekey_identity         = 2;
+  string prekey_signed           = 3;
+  string prekey_signature        = 4;
+  repeated EphemeralPreKey one_time_keys = 5;
+}
+
+message UploadE2EEKeysResponse {
+  bool success = 1;
+}
+
+message GetE2EEKeysRequest {
+  string requester_id   = 1;
+  string target_user_id = 2;
+}
+
+message GetE2EEKeysResponse {
+  string user_id          = 1;
+  string prekey_identity  = 2;
+  string prekey_signed    = 3;
+  string prekey_signature = 4;
+  EphemeralPreKey one_time_key = 5; // one prekey is consumed and returned
+}
+
+message BlockUserRequest {
+  string user_id        = 1;
+  string target_user_id = 2;
+}
+
+message BlockUserResponse {
+  bool success = 1;
+}
+
+message UnblockUserRequest {
+  string user_id        = 1;
+  string target_user_id = 2;
+}
+
+message UnblockUserResponse {
+  bool success = 1;
+}
+
+message GetBlockedUsersRequest {
+  string user_id = 1;
+}
+
+message GetBlockedUsersResponse {
+  repeated string blocked_user_ids = 1;
+}
+
+message RegisterPhoneRequest {
+  string user_id = 1;
+  string phone   = 2;
+}
+
+message RegisterPhoneResponse {
+  bool success = 1;
+}
+
+message VerifyPhoneOTPRequest {
+  string user_id = 1;
+  string phone   = 2;
+  string otp     = 3;
+}
+
+message VerifyPhoneOTPResponse {
+  bool valid = 1;
+}
+
+message SubscribePushRequest {
+  string user_id    = 1;
+  string push_token = 2;
+  string platform   = 3;
+}
+
+message SubscribePushResponse {
+  bool success = 1;
+}

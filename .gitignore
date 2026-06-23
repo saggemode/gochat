@@ -1,0 +1,72 @@
+# Binaries
+bin/
+*.exe
+
+# Go
+go.sum.bak
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+
+# Third-party tools (downloaded locally)
+third_party/
+
+# Docker volumes
+postgres_data/
+redis_data/
+minio_data/
+
+# binaries
+/bin/
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# go
+*.test
+*.out
+/coverage.out
+
+# local env
+.env
+.env.local
+
+# ide
+.idea/
+.vscode/
+
+
+# binaries
+/bin/
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# go
+*.test
+*.out
+/coverage.out
+
+# local env
+.env
+.env.local
+
+# ide
+.idea/
+.vscode/

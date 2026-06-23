@@ -1,0 +1,447 @@
+# version: "3.9"
+
+services:
+  # ─── PostgreSQL ─────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: gochat_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gochat}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gochat_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-gochat}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gochat"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gochat_net
+
+  # ─── PgBouncer Connection Pooler ──────────────────────────────────────────
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: gochat_pgbouncer
+    restart: unless-stopped
+    expose:
+      - "6432"
+    volumes:
+      - ./pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 6432 -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - gochat_net
+
+  # ─── Redis ──────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: gochat_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_secret}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_secret}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gochat_net
+
+  # ─── MinIO (S3-compatible object storage) ───────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: gochat_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin_secret}
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gochat_net
+
+  # ─── Auth Service ────────────────────────────────────────────────────────────
+  auth:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: auth
+    container_name: gochat_auth
+    restart: unless-stopped
+    environment:
+      GRPC_PORT: 50051
+      POSTGRES_DSN: ${AUTH_DB_DSN}
+      AUTH_PORT: ${AUTH_PORT}
+      AUTH_DB_DSN: ${AUTH_DB_DSN}
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
+      JWT_SECRET: ${JWT_SECRET:-super_secret_jwt_key_change_in_prod}
+      JWT_EXPIRY_HOURS: 24
+      JWT_REFRESH_EXPIRY_DAYS: 30
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - gochat_net
+
+  # ─── Authz Service ───────────────────────────────────────────────────────────
+  authz:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: authz
+    container_name: gochat_authz
+    restart: unless-stopped
+    environment:
+      GRPC_PORT: 50054
+      POSTGRES_DSN: ${AUTHZ_DB_DSN}
+      AUTHZ_PORT: ${AUTHZ_PORT}
+      AUTHZ_DB_DSN: ${AUTHZ_DB_DSN}
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - gochat_net
+
+  # ─── Chat Service ────────────────────────────────────────────────────────────
+  chat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: chat
+    container_name: gochat_chat
+    restart: unless-stopped
+    environment:
+      GRPC_PORT: 50052
+      POSTGRES_DSN: ${CHAT_DB_DSN}
+      CHAT_PORT: ${CHAT_PORT}
+      CHAT_DB_DSN: ${CHAT_DB_DSN}
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
+      AUTH_GRPC_ADDR: auth:50051
+      AUTHZ_GRPC_ADDR: authz:50054
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      authz:
+        condition: service_started
+    networks:
+      - gochat_net
+
+  # ─── Media Service ───────────────────────────────────────────────────────────
+  media:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: media
+    container_name: gochat_media
+    restart: unless-stopped
+    environment:
+      GRPC_PORT: 50053
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin_secret}
+      MINIO_BUCKET: gochat-media
+      MINIO_USE_SSL: "false"
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - gochat_net
+
+  # ─── Group Service ───────────────────────────────────────────────────────────
+  group:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: group
+    container_name: gochat_group
+    restart: unless-stopped
+    environment:
+      GRPC_PORT: 50055
+      POSTGRES_DSN: ${GROUP_DB_DSN}
+      GROUP_PORT: ${GROUP_PORT}
+      GROUP_DB_DSN: ${GROUP_DB_DSN}
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+    networks:
+      - gochat_net
+
+  # ─── Story Service ───────────────────────────────────────────────────────────
+  story:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: story
+    container_name: gochat_story
+    restart: unless-stopped
+    environment:
+      GRPC_PORT: 50056
+      POSTGRES_DSN: ${STORY_DB_DSN}
+      STORY_PORT: ${STORY_PORT}
+      STORY_DB_DSN: ${STORY_DB_DSN}
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - gochat_net
+
+  # ─── Call Service ────────────────────────────────────────────────────────────
+  call:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: call
+    container_name: gochat_call
+    restart: unless-stopped
+    environment:
+      GRPC_PORT: 50057
+      POSTGRES_DSN: ${CALL_DB_DSN}
+      CALL_PORT: ${CALL_PORT}
+      CALL_DB_DSN: ${CALL_DB_DSN}
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - gochat_net
+
+  # ─── Channel Service ─────────────────────────────────────────────────────────
+  channel:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: channel
+    container_name: gochat_channel
+    restart: unless-stopped
+    environment:
+      GRPC_PORT: 50058
+      POSTGRES_DSN: ${CHANNEL_DB_DSN}
+      CHANNEL_PORT: ${CHANNEL_PORT}
+      CHANNEL_DB_DSN: ${CHANNEL_DB_DSN}
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+    networks:
+      - gochat_net
+
+  # ─── AI Service ──────────────────────────────────────────────────────────────
+  ai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: ai
+    container_name: gochat_ai
+    restart: unless-stopped
+    environment:
+      GRPC_PORT: 50059
+      POSTGRES_DSN: ${AI_DB_DSN}
+      AI_PORT: ${AI_PORT}
+      AI_DB_DSN: ${AI_DB_DSN}
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+    networks:
+      - gochat_net
+
+  # ─── Payment Service ────────────────────────────────────────────────────────
+  payment:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: payment
+    container_name: gochat_payment
+    restart: unless-stopped
+    environment:
+      GRPC_PORT: 50060
+      POSTGRES_DSN: ${PAYMENT_DB_DSN}
+      PAYMENT_PORT: ${PAYMENT_PORT}
+      PAYMENT_DB_DSN: ${PAYMENT_DB_DSN}
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+    networks:
+      - gochat_net
+
+  # ─── Social Service ─────────────────────────────────────────────────────────
+  social:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: social
+    container_name: gochat_social
+    restart: unless-stopped
+    environment:
+      GRPC_PORT: 50061
+      POSTGRES_DSN: ${SOCIAL_DB_DSN}
+      SOCIAL_PORT: ${SOCIAL_PORT}
+      SOCIAL_DB_DSN: ${SOCIAL_DB_DSN}
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+    networks:
+      - gochat_net
+
+  # ─── MiniApp Service ────────────────────────────────────────────────────────
+  miniapp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: miniapp
+    container_name: gochat_miniapp
+    restart: unless-stopped
+    environment:
+      GRPC_PORT: 50062
+      POSTGRES_DSN: ${MINIAPP_DB_DSN}
+      MINIAPP_PORT: ${MINIAPP_PORT}
+      MINIAPP_DB_DSN: ${MINIAPP_DB_DSN}
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+    networks:
+      - gochat_net
+
+  # ─── Business Service ───────────────────────────────────────────────────────
+  business:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: business
+    container_name: gochat_business
+    restart: unless-stopped
+    environment:
+      GRPC_PORT: 50063
+      POSTGRES_DSN: ${BUSINESS_DB_DSN}
+      BUSINESS_PORT: ${BUSINESS_PORT}
+      BUSINESS_DB_DSN: ${BUSINESS_DB_DSN}
+    depends_on:
+      pgbouncer:
+        condition: service_healthy      
+    networks:
+      - gochat_net
+
+  # ─── API Gateway ─────────────────────────────────────────────────────────────
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: gateway
+    restart: unless-stopped
+    environment:
+      HTTP_PORT: 8080
+      AUTH_GRPC_ADDR: auth:50051
+      CHAT_GRPC_ADDR: chat:50052
+      MEDIA_GRPC_ADDR: media:50053
+      AUTHZ_GRPC_ADDR: authz:50054
+      GROUP_GRPC_ADDR: group:50055
+      STORY_GRPC_ADDR: story:50056
+      CALL_GRPC_ADDR: call:50057
+      CHANNEL_GRPC_ADDR: channel:50058
+      AI_GRPC_ADDR: ai:50059
+      PAYMENT_GRPC_ADDR: payment:50060
+      SOCIAL_GRPC_ADDR: social:50061
+      MINIAPP_GRPC_ADDR: miniapp:50062
+      BUSINESS_GRPC_ADDR: business:50063
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
+      JWT_SECRET: ${JWT_SECRET:-super_secret_jwt_key_change_in_prod}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+    depends_on:
+      - auth
+      - chat
+      - media
+      - authz
+      - group
+      - story
+      - call
+      - channel
+      - ai
+      - payment
+      - social
+      - miniapp
+      - business
+    networks:
+      - gochat_net
+
+  # ─── Nginx Load Balancer ────────────────────────────────────────────────────
+  nginx:
+    image: nginx:stable-alpine
+    container_name: gochat_nginx
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - gateway
+    networks:
+      - gochat_net
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  gochat_net:
+    driver: bridge

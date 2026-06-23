@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package ai;
+
+option go_package = "gochat/gen/ai";
+
+// ── AI Service ───────────────────────────────────────────────────────────────
+
+service AIService {
+  // Summarize unread messages in a conversation
+  rpc SummarizeChat(SummarizeChatRequest) returns (SummarizeChatResponse);
+
+  // Suggest context-aware smart replies
+  rpc SuggestReplies(SuggestRepliesRequest) returns (SuggestRepliesResponse);
+
+  // Translate a message into a target language
+  rpc TranslateMessage(TranslateMessageRequest) returns (TranslateMessageResponse);
+
+  // Rewrite a draft with a different tone
+  rpc AdjustTone(AdjustToneRequest) returns (AdjustToneResponse);
+
+  // Extract action items and meetings from group chat
+  rpc ExtractActionItems(ExtractActionItemsRequest) returns (ExtractActionItemsResponse);
+}
+
+// ── Summarize ────────────────────────────────────────────────────────────────
+
+message SummarizeChatRequest {
+  string user_id         = 1;
+  string conversation_id = 2;
+  int32  message_count   = 3; // number of recent messages to summarize (default 100)
+  string language        = 4; // target language code (default "en")
+}
+
+message SummarizeChatResponse {
+  string summary       = 1;
+  int32  messages_read = 2;
+  repeated string key_topics = 3;
+}
+
+// ── Smart Replies ────────────────────────────────────────────────────────────
+
+message SuggestRepliesRequest {
+  string user_id         = 1;
+  string conversation_id = 2;
+  int32  count           = 3; // number of suggestions (default 3)
+}
+
+message SuggestRepliesResponse {
+  repeated string suggestions = 1;
+}
+
+// ── Translation ──────────────────────────────────────────────────────────────
+
+message TranslateMessageRequest {
+  string user_id         = 1;
+  string text            = 2;
+  string source_language = 3; // auto-detect if empty
+  string target_language = 4;
+}
+
+message TranslateMessageResponse {
+  string translated_text   = 1;
+  string detected_language = 2;
+}
+
+// ── Tone Adjustment ─────────────────────────────────────────────────────────
+
+message AdjustToneRequest {
+  string user_id = 1;
+  string text    = 2;
+  string tone    = 3; // "formal", "casual", "friendly", "professional", "humorous"
+}
+
+message AdjustToneResponse {
+  string adjusted_text = 1;
+  string original_tone = 2;
+}
+
+// ── Action Items ─────────────────────────────────────────────────────────────
+
+message ActionItem {
+  string description = 1;
+  string assignee    = 2; // extracted name/id if found
+  string due_date    = 3; // extracted date if found
+  string priority    = 4; // "high", "medium", "low"
+}
+
+message ExtractActionItemsRequest {
+  string user_id         = 1;
+  string conversation_id = 2;
+  int32  message_count   = 3;
+}
+
+message ExtractActionItemsResponse {
+  repeated ActionItem action_items = 1;
+  repeated string     meetings     = 2; // extracted meeting references
+}

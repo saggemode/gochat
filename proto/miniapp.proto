@@ -1,0 +1,154 @@
+syntax = "proto3";
+
+package miniapp;
+
+option go_package = "gochat/gen/miniapp";
+
+// ── MiniApp Service ──────────────────────────────────────────────────────────
+
+service MiniAppService {
+  // Bots
+  rpc RegisterBot(RegisterBotRequest) returns (RegisterBotResponse);
+  rpc ListBots(ListBotsRequest) returns (ListBotsResponse);
+  rpc SendBotMessage(SendBotMessageRequest) returns (SendBotMessageResponse);
+
+  // Mini-Apps
+  rpc RegisterMiniApp(RegisterMiniAppRequest) returns (RegisterMiniAppResponse);
+  rpc LaunchMiniApp(LaunchMiniAppRequest) returns (LaunchMiniAppResponse);
+  rpc ListMiniApps(ListMiniAppsRequest) returns (ListMiniAppsResponse);
+
+  // Webhooks
+  rpc RegisterWebhook(RegisterWebhookRequest) returns (RegisterWebhookResponse);
+  rpc ListWebhooks(ListWebhooksRequest) returns (ListWebhooksResponse);
+  rpc DeleteWebhook(DeleteWebhookRequest) returns (DeleteWebhookResponse);
+
+  // API Keys
+  rpc CreateAPIKey(CreateAPIKeyRequest) returns (CreateAPIKeyResponse);
+  rpc ListAPIKeys(ListAPIKeysRequest) returns (ListAPIKeysResponse);
+  rpc RevokeAPIKey(RevokeAPIKeyRequest) returns (RevokeAPIKeyResponse);
+}
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+message Bot {
+  string id           = 1;
+  string owner_id     = 2;
+  string username     = 3;
+  string display_name = 4;
+  string description  = 5;
+  string avatar_url   = 6;
+  bool   is_active    = 7;
+  bool   is_verified  = 8;
+  repeated BotCommand commands = 9;
+}
+
+message BotCommand {
+  string command     = 1;
+  string description = 2;
+}
+
+message MiniApp {
+  string id            = 1;
+  string developer_id  = 2;
+  string name          = 3;
+  string description   = 4;
+  string icon_url      = 5;
+  string manifest_url  = 6;
+  string category      = 7;
+  bool   is_approved   = 8;
+  int32  install_count = 9;
+}
+
+message Webhook {
+  string id         = 1;
+  string user_id    = 2;
+  string url        = 3;
+  repeated string events = 4;
+  bool   is_active  = 5;
+  int64  created_at = 6;
+}
+
+message APIKey {
+  string id          = 1;
+  string name        = 2;
+  string key_prefix  = 3; // first 8 chars for identification
+  repeated string permissions = 4;
+  int64  last_used   = 5;
+  int64  expires_at  = 6;
+  bool   is_active   = 7;
+}
+
+// ── Bot Requests ─────────────────────────────────────────────────────────────
+
+message RegisterBotRequest {
+  string owner_id     = 1;
+  string username     = 2;
+  string display_name = 3;
+  string description  = 4;
+  string webhook_url  = 5;
+  repeated BotCommand commands = 6;
+}
+message RegisterBotResponse { Bot bot = 1; }
+
+message ListBotsRequest { int32 limit = 1; int32 offset = 2; string category = 3; }
+message ListBotsResponse { repeated Bot bots = 1; int32 total = 2; }
+
+message SendBotMessageRequest {
+  string bot_id          = 1;
+  string conversation_id = 2;
+  string content         = 3;
+}
+message SendBotMessageResponse { bool success = 1; }
+
+// ── MiniApp Requests ────────────────────────────────────────────────────────
+
+message RegisterMiniAppRequest {
+  string developer_id  = 1;
+  string name          = 2;
+  string description   = 3;
+  string icon_url      = 4;
+  string manifest_url  = 5;
+  string category      = 6;
+}
+message RegisterMiniAppResponse { MiniApp miniapp = 1; }
+
+message LaunchMiniAppRequest {
+  string user_id         = 1;
+  string miniapp_id      = 2;
+  string conversation_id = 3;
+}
+message LaunchMiniAppResponse { string session_id = 1; string manifest_url = 2; }
+
+message ListMiniAppsRequest { int32 limit = 1; int32 offset = 2; string category = 3; }
+message ListMiniAppsResponse { repeated MiniApp miniapps = 1; int32 total = 2; }
+
+// ── Webhook Requests ────────────────────────────────────────────────────────
+
+message RegisterWebhookRequest {
+  string user_id = 1;
+  string url     = 2;
+  repeated string events = 3;
+}
+message RegisterWebhookResponse { Webhook webhook = 1; string secret = 2; }
+
+message ListWebhooksRequest { string user_id = 1; }
+message ListWebhooksResponse { repeated Webhook webhooks = 1; }
+
+message DeleteWebhookRequest { string user_id = 1; string webhook_id = 2; }
+message DeleteWebhookResponse { bool success = 1; }
+
+// ── API Key Requests ────────────────────────────────────────────────────────
+
+message CreateAPIKeyRequest {
+  string user_id = 1;
+  string name    = 2;
+  repeated string permissions = 3;
+  int64  expires_at = 4;
+}
+message CreateAPIKeyResponse { APIKey key = 1; string raw_key = 2; }
+
+message ListAPIKeysRequest { string user_id = 1; }
+message ListAPIKeysResponse { repeated APIKey keys = 1; }
+
+message RevokeAPIKeyRequest { string user_id = 1; string key_id = 2; }
+message RevokeAPIKeyResponse { bool success = 1; }

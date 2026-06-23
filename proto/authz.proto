@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+package authz;
+
+option go_package = "gochat/gen/authz";
+
+// ── Authz Service ─────────────────────────────────────────────────────────────
+
+service AuthzService {
+  // Authorize checks if a user is allowed to perform an action on a resource
+  rpc Authorize(AuthorizeRequest) returns (AuthorizeResponse);
+
+  // RBAC management
+  rpc AssignRole(AssignRoleRequest) returns (AssignRoleResponse);
+  rpc RevokeRole(RevokeRoleRequest) returns (RevokeRoleResponse);
+  rpc GetUserRoles(GetUserRolesRequest) returns (GetUserRolesResponse);
+
+  // ABAC management
+  rpc CreatePolicy(CreatePolicyRequest) returns (CreatePolicyResponse);
+  rpc ListPolicies(ListPoliciesRequest) returns (ListPoliciesResponse);
+}
+
+// ── Messages ─────────────────────────────────────────────────────────────────
+
+message AuthorizeRequest {
+  string user_id = 1;
+  string action = 2;
+  string resource_id = 3;
+  // Dynamic attributes for ABAC rules evaluation (e.g., resource age, size_bytes, membership status)
+  map<string, string> attributes = 4;
+}
+
+message AuthorizeResponse {
+  bool   allowed = 1;
+  string reason  = 2;
+}
+
+message AssignRoleRequest {
+  string user_id = 1;
+  string role    = 2; // e.g. "admin", "moderator", "user"
+}
+
+message AssignRoleResponse {
+  bool success = 1;
+}
+
+message RevokeRoleRequest {
+  string user_id = 1;
+  string role    = 2;
+}
+
+message RevokeRoleResponse {
+  bool success = 1;
+}
+
+message GetUserRolesRequest {
+  string user_id = 1;
+}
+
+message GetUserRolesResponse {
+  repeated string roles = 1;
+}
+
+message Policy {
+  string id          = 1;
+  string action      = 2;
+  string effect      = 3; // "allow" or "deny"
+  string condition   = 4; // e.g. "subject.id == resource.sender_id"
+  string description = 5;
+}
+
+message CreatePolicyRequest {
+  string action      = 1;
+  string effect      = 2;
+  string condition   = 3;
+  string description = 4;
+}
+
+message CreatePolicyResponse {
+  Policy policy = 1;
+}
+
+message ListPoliciesRequest {}
+
+message ListPoliciesResponse {
+  repeated Policy policies = 1;
+}

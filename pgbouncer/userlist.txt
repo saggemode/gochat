@@ -1,0 +1,2 @@
+"postgres" "123"
+"gochat" "gochat_secret"

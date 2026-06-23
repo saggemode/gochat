@@ -1,0 +1,197 @@
+syntax = "proto3";
+
+package business;
+
+option go_package = "gochat/gen/business";
+
+// ── Business Service ─────────────────────────────────────────────────────────
+
+service BusinessService {
+  // Business Profile
+  rpc CreateBusinessProfile(CreateBusinessProfileRequest) returns (CreateBusinessProfileResponse);
+  rpc UpdateBusinessProfile(UpdateBusinessProfileRequest) returns (UpdateBusinessProfileResponse);
+  rpc GetBusinessProfile(GetBusinessProfileRequest) returns (GetBusinessProfileResponse);
+
+  // Product Catalog
+  rpc CreateCatalog(CreateCatalogRequest) returns (CreateCatalogResponse);
+  rpc AddProduct(AddProductRequest) returns (AddProductResponse);
+  rpc UpdateProduct(UpdateProductRequest) returns (UpdateProductResponse);
+  rpc ListProducts(ListProductsRequest) returns (ListProductsResponse);
+
+  // Appointments
+  rpc CreateAppointmentSlot(CreateAppointmentSlotRequest) returns (CreateAppointmentSlotResponse);
+  rpc BookAppointment(BookAppointmentRequest) returns (BookAppointmentResponse);
+  rpc ListAppointments(ListAppointmentsRequest) returns (ListAppointmentsResponse);
+
+  // Auto-Reply
+  rpc SetAutoReply(SetAutoReplyRequest) returns (SetAutoReplyResponse);
+  rpc GetAutoReplies(GetAutoRepliesRequest) returns (GetAutoRepliesResponse);
+
+  // Customer Queue
+  rpc EnqueueCustomer(EnqueueCustomerRequest) returns (EnqueueCustomerResponse);
+  rpc DequeueCustomer(DequeueCustomerRequest) returns (DequeueCustomerResponse);
+  rpc GetQueuePosition(GetQueuePositionRequest) returns (GetQueuePositionResponse);
+}
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+message BusinessProfile {
+  string user_id       = 1;
+  string business_name = 2;
+  string category      = 3;
+  string description   = 4;
+  string address       = 5;
+  string website       = 6;
+  string email         = 7;
+  string phone         = 8;
+  string hours_json    = 9;
+  bool   is_verified   = 10;
+}
+
+message ProductCatalog {
+  string id      = 1;
+  string user_id = 2;
+  string name    = 3;
+  repeated Product products = 4;
+}
+
+message Product {
+  string id          = 1;
+  string catalog_id  = 2;
+  string name        = 3;
+  string description = 4;
+  double price       = 5;
+  string currency    = 6;
+  string image_url   = 7;
+  bool   in_stock    = 8;
+}
+
+message Appointment {
+  string id              = 1;
+  string business_id     = 2;
+  string title           = 3;
+  string description     = 4;
+  int64  start_time      = 5;
+  int64  end_time        = 6;
+  int32  max_bookings    = 7;
+  int32  current_bookings = 8;
+}
+
+message AutoReply {
+  string id            = 1;
+  string trigger_type  = 2;
+  string trigger_value = 3;
+  string reply_text    = 4;
+  bool   is_active     = 5;
+}
+
+message QueueEntry {
+  string customer_id = 1;
+  int32  position    = 2;
+  string status      = 3;
+  int64  joined_at   = 4;
+}
+
+// ── Business Profile Requests ───────────────────────────────────────────────
+
+message CreateBusinessProfileRequest {
+  string user_id       = 1;
+  string business_name = 2;
+  string category      = 3;
+  string description   = 4;
+  string address       = 5;
+  string website       = 6;
+  string email         = 7;
+  string phone         = 8;
+  string hours_json    = 9;
+}
+message CreateBusinessProfileResponse { BusinessProfile profile = 1; }
+
+message UpdateBusinessProfileRequest {
+  string user_id       = 1;
+  string business_name = 2;
+  string category      = 3;
+  string description   = 4;
+  string address       = 5;
+  string website       = 6;
+  string email         = 7;
+  string phone         = 8;
+  string hours_json    = 9;
+}
+message UpdateBusinessProfileResponse { BusinessProfile profile = 1; }
+
+message GetBusinessProfileRequest { string user_id = 1; }
+message GetBusinessProfileResponse { BusinessProfile profile = 1; }
+
+// ── Catalog Requests ────────────────────────────────────────────────────────
+
+message CreateCatalogRequest { string user_id = 1; string name = 2; }
+message CreateCatalogResponse { ProductCatalog catalog = 1; }
+
+message AddProductRequest {
+  string catalog_id  = 1;
+  string name        = 2;
+  string description = 3;
+  double price       = 4;
+  string currency    = 5;
+  string image_url   = 6;
+}
+message AddProductResponse { Product product = 1; }
+
+message UpdateProductRequest {
+  string product_id  = 1;
+  string name        = 2;
+  string description = 3;
+  double price       = 4;
+  bool   in_stock    = 5;
+}
+message UpdateProductResponse { Product product = 1; }
+
+message ListProductsRequest { string catalog_id = 1; int32 limit = 2; int32 offset = 3; }
+message ListProductsResponse { repeated Product products = 1; int32 total = 2; }
+
+// ── Appointment Requests ────────────────────────────────────────────────────
+
+message CreateAppointmentSlotRequest {
+  string business_id  = 1;
+  string title        = 2;
+  string description  = 3;
+  int64  start_time   = 4;
+  int64  end_time     = 5;
+  int32  max_bookings = 6;
+}
+message CreateAppointmentSlotResponse { Appointment appointment = 1; }
+
+message BookAppointmentRequest {
+  string user_id        = 1;
+  string appointment_id = 2;
+  string notes          = 3;
+}
+message BookAppointmentResponse { bool success = 1; }
+
+message ListAppointmentsRequest { string business_id = 1; int32 limit = 2; int32 offset = 3; }
+message ListAppointmentsResponse { repeated Appointment appointments = 1; int32 total = 2; }
+
+// ── Auto-Reply Requests ─────────────────────────────────────────────────────
+
+message SetAutoReplyRequest {
+  string user_id       = 1;
+  string trigger_type  = 2;
+  string trigger_value = 3;
+  string reply_text    = 4;
+}
+message SetAutoReplyResponse { AutoReply rule = 1; }
+
+message GetAutoRepliesRequest { string user_id = 1; }
+message GetAutoRepliesResponse { repeated AutoReply rules = 1; }
+
+// ── Queue Requests ──────────────────────────────────────────────────────────
+
+message EnqueueCustomerRequest { string business_id = 1; string customer_id = 2; }
+message EnqueueCustomerResponse { QueueEntry entry = 1; }
+
+message DequeueCustomerRequest { string business_id = 1; }
+message DequeueCustomerResponse { QueueEntry entry = 1; }
+
+message GetQueuePositionRequest { string business_id = 1; string customer_id = 2; }
+message GetQueuePositionResponse { int32 position = 1; int32 total_in_queue = 2; }

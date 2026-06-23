@@ -1,0 +1,598 @@
+syntax = "proto3";
+
+package chat;
+
+option go_package = "gochat/gen/chat";
+
+// ── Chat Service ─────────────────────────────────────────────────────────────
+
+service ChatService {
+  // Create a new 1:1 or group conversation
+  rpc CreateConversation(CreateConversationRequest) returns (CreateConversationResponse);
+
+  // List all conversations for a user
+  rpc GetConversations(GetConversationsRequest) returns (GetConversationsResponse);
+
+  // Get a single conversation by ID
+  rpc GetConversation(GetConversationRequest) returns (GetConversationResponse);
+
+  // Add a member to a group
+  rpc AddMember(AddMemberRequest) returns (AddMemberResponse);
+
+  // Remove a member from a group
+  rpc RemoveMember(RemoveMemberRequest) returns (RemoveMemberResponse);
+
+  // Send a message (1:1, group, or reply in thread)
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+
+  // Schedule a message for future delivery
+  rpc ScheduleMessage(ScheduleMessageRequest) returns (ScheduleMessageResponse);
+
+  // List messages in a conversation (paginated, newest-first)
+  rpc GetMessages(GetMessagesRequest) returns (GetMessagesResponse);
+
+  // Get threaded replies under a parent message
+  rpc GetThread(GetThreadRequest) returns (GetThreadResponse);
+
+  // Edit a message's text (stores edit history)
+  rpc EditMessage(EditMessageRequest) returns (EditMessageResponse);
+
+  // Soft-delete a message
+  rpc DeleteMessage(DeleteMessageRequest) returns (DeleteMessageResponse);
+
+  // React to a message with an emoji
+  rpc AddReaction(AddReactionRequest) returns (AddReactionResponse);
+
+  // Remove a reaction
+  rpc RemoveReaction(RemoveReactionRequest) returns (RemoveReactionResponse);
+
+  // Mark messages as read (bulk)
+  rpc MarkRead(MarkReadRequest) returns (MarkReadResponse);
+
+  // Pin a message in a conversation
+  rpc PinMessage(PinMessageRequest) returns (PinMessageResponse);
+
+  // Unpin a message
+  rpc UnpinMessage(UnpinMessageRequest) returns (UnpinMessageResponse);
+
+  // Full-text search across messages
+  rpc SearchMessages(SearchMessagesRequest) returns (SearchMessagesResponse);
+
+  // Server-streaming: push new message events to gateway
+  rpc StreamMessages(StreamMessagesRequest) returns (stream MessageEvent);
+
+  // Publish a typing indicator
+  rpc SendTypingIndicator(SendTypingIndicatorRequest) returns (SendTypingIndicatorResponse);
+
+  // Get unread counts per conversation
+  rpc GetUnreadCounts(GetUnreadCountsRequest) returns (GetUnreadCountsResponse);
+
+  // ── Chat Organization ───────────────────────────────────────────────────
+
+  // Chat Folders
+  rpc CreateFolder(CreateFolderRequest) returns (CreateFolderResponse);
+  rpc DeleteFolder(DeleteFolderRequest) returns (DeleteFolderResponse);
+  rpc ListFolders(ListFoldersRequest) returns (ListFoldersResponse);
+  rpc AddToFolder(AddToFolderRequest) returns (AddToFolderResponse);
+  rpc RemoveFromFolder(RemoveFromFolderRequest) returns (RemoveFromFolderResponse);
+
+  // Message Labels
+  rpc AddLabel(AddLabelRequest) returns (AddLabelResponse);
+  rpc RemoveLabel(RemoveLabelRequest) returns (RemoveLabelResponse);
+  rpc ListLabels(ListLabelsRequest) returns (ListLabelsResponse);
+
+  // Chat Analytics
+  rpc GetChatAnalytics(GetChatAnalyticsRequest) returns (GetChatAnalyticsResponse);
+
+  // Notification Profiles
+  rpc SetNotificationProfile(SetNotificationProfileRequest) returns (SetNotificationProfileResponse);
+  rpc GetNotificationProfiles(GetNotificationProfilesRequest) returns (GetNotificationProfilesResponse);
+
+  // Advanced Search
+  rpc AdvancedSearch(AdvancedSearchRequest) returns (AdvancedSearchResponse);
+}
+
+// ── Enums ─────────────────────────────────────────────────────────────────────
+
+enum MessageType {
+  TEXT  = 0;
+  IMAGE = 1;
+  VIDEO = 2;
+  AUDIO = 3;
+  FILE  = 4;
+  VOICE = 5;
+}
+
+enum MessageStatus {
+  PENDING   = 0;
+  SENT      = 1;
+  DELIVERED = 2;
+  READ      = 3;
+  FAILED    = 4;
+  SCHEDULED = 5;
+}
+
+enum ConversationType {
+  DIRECT = 0;
+  GROUP  = 1;
+}
+
+enum EventType {
+  EVENT_NEW_MESSAGE     = 0;
+  EVENT_MESSAGE_EDITED  = 1;
+  EVENT_MESSAGE_DELETED = 2;
+  EVENT_REACTION_ADDED  = 3;
+  EVENT_REACTION_REMOVED= 4;
+  EVENT_TYPING          = 5;
+  EVENT_READ            = 6;
+  EVENT_PINNED          = 7;
+  EVENT_CALL_INITIATED   = 8;
+  EVENT_CALL_ACCEPTED    = 9;
+  EVENT_CALL_REJECTED    = 10;
+  EVENT_CALL_ENDED       = 11;
+  EVENT_CALL_SIGNALING   = 12;
+  EVENT_STORY_CREATED    = 13;
+  EVENT_STORY_DELETED    = 14;
+}
+
+// ── Core Types ────────────────────────────────────────────────────────────────
+
+message Conversation {
+  string           id          = 1;
+  ConversationType type        = 2;
+  string           name        = 3;  // group name (empty for direct)
+  string           avatar_url  = 4;
+  repeated string  member_ids  = 5;
+  Message          last_message= 6;
+  int32            unread_count= 7;
+  int64            created_at  = 8;
+  int64            updated_at  = 9;
+}
+
+message Message {
+  string        id               = 1;
+  string        conversation_id  = 2;
+  string        sender_id        = 3;
+  string        content          = 4;
+  MessageType   type             = 5;
+  MessageStatus status           = 6;
+  string        media_url        = 7;
+  string        media_mime       = 8;
+  int64         media_size       = 9;
+  string        parent_id        = 10; // for threaded replies
+  int32         thread_count     = 11; // number of replies in thread
+  int64         send_at          = 12; // Unix ts for scheduled delivery (0 = now)
+  int64         expires_at       = 13; // Unix ts for self-destruct (0 = never)
+  bool          is_pinned        = 14;
+  bool          is_edited        = 15;
+  bool          is_deleted       = 16;
+  repeated Reaction  reactions   = 17;
+  repeated MessageRead reads     = 18;
+  int64         created_at       = 19;
+  int64         updated_at       = 20;
+}
+
+message Reaction {
+  string user_id  = 1;
+  string emoji    = 2;
+  int64  created_at = 3;
+}
+
+message MessageRead {
+  string user_id  = 1;
+  int64  read_at  = 2;
+}
+
+message EditHistoryEntry {
+  string content    = 1;
+  int64  edited_at  = 2;
+}
+
+// ── Conversation RPCs ─────────────────────────────────────────────────────────
+
+message CreateConversationRequest {
+  ConversationType type       = 1;
+  string           name       = 2;       // required for GROUP
+  repeated string  member_ids = 3;       // user IDs to add
+  string           creator_id = 4;
+}
+
+message CreateConversationResponse {
+  Conversation conversation = 1;
+}
+
+message GetConversationsRequest {
+  string user_id   = 1;
+  int32  page      = 2;
+  int32  page_size = 3;
+}
+
+message GetConversationsResponse {
+  repeated Conversation conversations = 1;
+  int32                 total         = 2;
+}
+
+message GetConversationRequest {
+  string conversation_id = 1;
+  string user_id         = 2;
+}
+
+message GetConversationResponse {
+  Conversation conversation = 1;
+}
+
+message AddMemberRequest {
+  string conversation_id = 1;
+  string requester_id    = 2;
+  string new_member_id   = 3;
+}
+
+message AddMemberResponse {
+  bool success = 1;
+}
+
+message RemoveMemberRequest {
+  string conversation_id = 1;
+  string requester_id    = 2;
+  string member_id       = 3;
+}
+
+message RemoveMemberResponse {
+  bool success = 1;
+}
+
+// ── Message RPCs ──────────────────────────────────────────────────────────────
+
+message SendMessageRequest {
+  string      conversation_id = 1;
+  string      sender_id       = 2;
+  string      content         = 3;
+  MessageType type            = 4;
+  string      media_url       = 5;
+  string      media_mime      = 6;
+  int64       media_size      = 7;
+  string      parent_id       = 8;  // reply to a message (thread)
+  int64       expires_at      = 9;  // self-destruct Unix timestamp
+}
+
+message SendMessageResponse {
+  Message message = 1;
+}
+
+message ScheduleMessageRequest {
+  string      conversation_id = 1;
+  string      sender_id       = 2;
+  string      content         = 3;
+  MessageType type            = 4;
+  string      media_url       = 5;
+  int64       send_at         = 6;  // required: Unix timestamp of delivery
+  int64       expires_at      = 7;
+}
+
+message ScheduleMessageResponse {
+  Message message = 1;
+}
+
+message GetMessagesRequest {
+  string conversation_id = 1;
+  string user_id         = 2;
+  string cursor          = 3;  // message ID to paginate before
+  int32  limit           = 4;
+}
+
+message GetMessagesResponse {
+  repeated Message messages    = 1;
+  string           next_cursor = 2;
+  bool             has_more    = 3;
+}
+
+message GetThreadRequest {
+  string parent_message_id = 1;
+  string cursor            = 2;
+  int32  limit             = 3;
+}
+
+message GetThreadResponse {
+  repeated Message replies     = 1;
+  string           next_cursor = 2;
+  bool             has_more    = 3;
+}
+
+message EditMessageRequest {
+  string message_id = 1;
+  string editor_id  = 2;
+  string content    = 3;
+}
+
+message EditMessageResponse {
+  Message                 message      = 1;
+  repeated EditHistoryEntry edit_history = 2;
+}
+
+message DeleteMessageRequest {
+  string message_id = 1;
+  string deleter_id = 2;
+}
+
+message DeleteMessageResponse {
+  bool success = 1;
+}
+
+message AddReactionRequest {
+  string message_id = 1;
+  string user_id    = 2;
+  string emoji      = 3;
+}
+
+message AddReactionResponse {
+  Reaction reaction = 1;
+}
+
+message RemoveReactionRequest {
+  string message_id = 1;
+  string user_id    = 2;
+  string emoji      = 3;
+}
+
+message RemoveReactionResponse {
+  bool success = 1;
+}
+
+message MarkReadRequest {
+  string          conversation_id = 1;
+  string          user_id         = 2;
+  repeated string message_ids     = 3;
+}
+
+message MarkReadResponse {
+  bool success = 1;
+}
+
+message PinMessageRequest {
+  string message_id      = 1;
+  string conversation_id = 2;
+  string user_id         = 3;
+}
+
+message PinMessageResponse {
+  bool success = 1;
+}
+
+message UnpinMessageRequest {
+  string message_id      = 1;
+  string conversation_id = 2;
+  string user_id         = 3;
+}
+
+message UnpinMessageResponse {
+  bool success = 1;
+}
+
+message SearchMessagesRequest {
+  string user_id         = 1;
+  string query           = 2;
+  string conversation_id = 3;  // optional: scope to one conversation
+  int32  limit           = 4;
+  int32  offset          = 5;
+}
+
+message SearchMessagesResponse {
+  repeated Message messages = 1;
+  int32            total    = 2;
+}
+
+message StreamMessagesRequest {
+  string user_id = 1;
+}
+
+message MessageEvent {
+  EventType event_type = 1;
+  Message   message    = 2;
+  string    actor_id   = 3;  // who triggered the event
+  CallPayload call_payload = 4;
+  StoryPayload story_payload = 5;
+}
+
+message SendTypingIndicatorRequest {
+  string conversation_id = 1;
+  string user_id         = 2;
+  bool   is_typing       = 3;
+}
+
+message SendTypingIndicatorResponse {
+  bool success = 1;
+}
+
+message GetUnreadCountsRequest {
+  string user_id = 1;
+}
+
+message GetUnreadCountsResponse {
+  map<string, int32> counts = 1; // conversation_id -> unread count
+}
+
+message CallPayload {
+  string call_id      = 1;
+  string caller_id    = 2;
+  string receiver_id  = 3;
+  string type         = 4; // "voice" or "video"
+  string status       = 5; // "dialing", "active", "rejected", "missed", "ended", "busy"
+  string sdp          = 6;
+  string candidate    = 7;
+}
+
+message StoryPayload {
+  string story_id     = 1;
+  string user_id      = 2;
+  string media_url    = 3;
+  string type         = 4; // "text", "image", "video"
+  string content      = 5;
+}
+
+// ── Chat Folder Messages ─────────────────────────────────────────────────────
+
+message ChatFolder {
+  string id         = 1;
+  string name       = 2;
+  string icon       = 3;
+  string color      = 4;
+  int32  sort_order = 5;
+  repeated string conversation_ids = 6;
+}
+
+message CreateFolderRequest {
+  string user_id    = 1;
+  string name       = 2;
+  string icon       = 3;
+  string color      = 4;
+  int32  sort_order = 5;
+}
+
+message CreateFolderResponse {
+  ChatFolder folder = 1;
+}
+
+message DeleteFolderRequest {
+  string user_id   = 1;
+  string folder_id = 2;
+}
+
+message DeleteFolderResponse {
+  bool success = 1;
+}
+
+message ListFoldersRequest {
+  string user_id = 1;
+}
+
+message ListFoldersResponse {
+  repeated ChatFolder folders = 1;
+}
+
+message AddToFolderRequest {
+  string user_id         = 1;
+  string folder_id       = 2;
+  string conversation_id = 3;
+}
+
+message AddToFolderResponse {
+  bool success = 1;
+}
+
+message RemoveFromFolderRequest {
+  string user_id         = 1;
+  string folder_id       = 2;
+  string conversation_id = 3;
+}
+
+message RemoveFromFolderResponse {
+  bool success = 1;
+}
+
+// ── Chat Label Messages ──────────────────────────────────────────────────────
+
+message ChatLabel {
+  string id         = 1;
+  string message_id = 2;
+  string label      = 3;
+  string color      = 4;
+  int64  created_at = 5;
+}
+
+message AddLabelRequest {
+  string user_id    = 1;
+  string message_id = 2;
+  string label      = 3;
+  string color      = 4;
+}
+
+message AddLabelResponse {
+  ChatLabel chat_label = 1;
+}
+
+message RemoveLabelRequest {
+  string user_id    = 1;
+  string message_id = 2;
+  string label      = 3;
+}
+
+message RemoveLabelResponse {
+  bool success = 1;
+}
+
+message ListLabelsRequest {
+  string user_id = 1;
+  string label   = 2; // optional: filter by label name
+}
+
+message ListLabelsResponse {
+  repeated ChatLabel labels = 1;
+}
+
+// ── Chat Analytics Messages ─────────────────────────────────────────────────
+
+message ConversationAnalytics {
+  string conversation_id = 1;
+  int32  total_messages   = 2;
+  int64  avg_response_ms  = 3;
+  int64  last_active_at   = 4;
+  int32  busiest_hour     = 5;
+}
+
+message GetChatAnalyticsRequest {
+  string user_id         = 1;
+  string conversation_id = 2; // optional: specific conv, else all
+}
+
+message GetChatAnalyticsResponse {
+  repeated ConversationAnalytics analytics = 1;
+}
+
+// ── Notification Profile Messages ───────────────────────────────────────────
+
+message NotificationProfile {
+  string conversation_id      = 1;
+  bool   muted                = 2;
+  int64  mute_until           = 3;
+  string sound                = 4;
+  bool   vibration            = 5;
+  string priority             = 6;
+  bool   show_preview         = 7;
+  bool   notify_on_mention_only = 8;
+}
+
+message SetNotificationProfileRequest {
+  string user_id = 1;
+  NotificationProfile profile = 2;
+}
+
+message SetNotificationProfileResponse {
+  bool success = 1;
+}
+
+message GetNotificationProfilesRequest {
+  string user_id = 1;
+}
+
+message GetNotificationProfilesResponse {
+  repeated NotificationProfile profiles = 1;
+}
+
+// ── Advanced Search Messages ─────────────────────────────────────────────────
+
+message AdvancedSearchRequest {
+  string user_id         = 1;
+  string query           = 2;
+  string conversation_id = 3; // optional
+  string sender_id       = 4; // optional: filter by sender
+  string media_type      = 5; // optional: "image", "video", "file", etc.
+  int64  date_from       = 6; // optional: Unix timestamp
+  int64  date_to         = 7; // optional: Unix timestamp
+  int32  limit           = 8;
+  int32  offset          = 9;
+}
+
+message AdvancedSearchResponse {
+  repeated Message messages = 1;
+  int32            total    = 2;
+}

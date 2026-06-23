@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+package call;
+
+option go_package = "gochat/gen/call";
+
+service CallService {
+  rpc StartCall(StartCallRequest) returns (StartCallResponse);
+  rpc AcceptCall(AcceptCallRequest) returns (AcceptCallResponse);
+  rpc RejectCall(RejectCallRequest) returns (RejectCallResponse);
+  rpc EndCall(EndCallRequest) returns (EndCallResponse);
+  rpc SendSignalingMessage(SendSignalingMessageRequest) returns (SendSignalingMessageResponse);
+  rpc GetCallHistory(GetCallHistoryRequest) returns (GetCallHistoryResponse);
+}
+
+enum CallType {
+  VOICE = 0;
+  VIDEO = 1;
+}
+
+enum CallStatus {
+  DIALING = 0;
+  ACTIVE = 1;
+  REJECTED = 2;
+  MISSED = 3;
+  ENDED = 4;
+  BUSY = 5;
+}
+
+message CallLog {
+  string id = 1;
+  string caller_id = 2;
+  string caller_name = 3;
+  string caller_avatar_url = 4;
+  string receiver_id = 5;
+  string receiver_name = 6;
+  string receiver_avatar_url = 7;
+  CallType type = 8;
+  CallStatus status = 9;
+  int64 start_time = 10;
+  int64 end_time = 11;
+  int32 duration_sec = 12;
+}
+
+message StartCallRequest {
+  string caller_id = 1;
+  string receiver_id = 2;
+  CallType type = 3;
+}
+
+message StartCallResponse {
+  CallLog call = 1;
+}
+
+message AcceptCallRequest {
+  string call_id = 1;
+  string receiver_id = 2;
+}
+
+message AcceptCallResponse {
+  CallLog call = 1;
+}
+
+message RejectCallRequest {
+  string call_id = 1;
+  string receiver_id = 2;
+  bool is_busy = 3;
+}
+
+message RejectCallResponse {
+  CallLog call = 1;
+}
+
+message EndCallRequest {
+  string call_id = 1;
+  string user_id = 2;
+}
+
+message EndCallResponse {
+  CallLog call = 1;
+}
+
+message SendSignalingMessageRequest {
+  string call_id = 1;
+  string sender_id = 2;
+  string receiver_id = 3;
+  string type = 4; // "offer", "answer", "ice-candidate"
+  string sdp = 5;
+  string candidate = 6;
+}
+
+message SendSignalingMessageResponse {
+  bool success = 1;
+}
+
+message GetCallHistoryRequest {
+  string user_id = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+}
+
+message GetCallHistoryResponse {
+  repeated CallLog calls = 1;
+  int32 total = 2;
+}

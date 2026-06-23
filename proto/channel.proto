@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+package channel;
+
+option go_package = "gochat/gen/channel";
+
+service ChannelService {
+  rpc CreateChannel(CreateChannelRequest) returns (CreateChannelResponse);
+  rpc DeleteChannel(DeleteChannelRequest) returns (DeleteChannelResponse);
+  rpc SubscribeChannel(SubscribeChannelRequest) returns (SubscribeChannelResponse);
+  rpc UnsubscribeChannel(UnsubscribeChannelRequest) returns (UnsubscribeChannelResponse);
+  rpc PublishChannelMessage(PublishChannelMessageRequest) returns (PublishChannelMessageResponse);
+  rpc GetChannelMessages(GetChannelMessagesRequest) returns (GetChannelMessagesResponse);
+  rpc GetChannelMetadata(GetChannelMetadataRequest) returns (GetChannelMetadataResponse);
+  rpc ListChannels(ListChannelsRequest) returns (ListChannelsResponse);
+}
+
+message Channel {
+  string id                = 1;
+  string name              = 2;
+  string description       = 3;
+  string created_by        = 4;
+  int64  created_at        = 5;
+  int32  subscribers_count = 6;
+}
+
+message ChannelMessage {
+  string id         = 1;
+  string channel_id = 2;
+  string sender_id  = 3;
+  string content    = 4;
+  string type       = 5; // e.g. "text", "image", "video", etc.
+  string media_url  = 6;
+  string media_mime = 7;
+  int64  media_size = 8;
+  int64  created_at = 9;
+}
+
+message CreateChannelRequest {
+  string name        = 1;
+  string description = 2;
+  string creator_id  = 3;
+}
+
+message CreateChannelResponse {
+  Channel channel = 1;
+}
+
+message DeleteChannelRequest {
+  string id       = 1;
+  string owner_id = 2;
+}
+
+message DeleteChannelResponse {
+  bool success = 1;
+}
+
+message SubscribeChannelRequest {
+  string channel_id = 1;
+  string user_id    = 2;
+}
+
+message SubscribeChannelResponse {
+  bool success = 1;
+}
+
+message UnsubscribeChannelRequest {
+  string channel_id = 1;
+  string user_id    = 2;
+}
+
+message UnsubscribeChannelResponse {
+  bool success = 1;
+}
+
+message PublishChannelMessageRequest {
+  string channel_id = 1;
+  string sender_id  = 2;
+  string content    = 3;
+  string type       = 4;
+  string media_url  = 5;
+  string media_mime = 6;
+  int64  media_size = 7;
+}
+
+message PublishChannelMessageResponse {
+  ChannelMessage message = 1;
+}
+
+message GetChannelMessagesRequest {
+  string channel_id       = 1;
+  string requester_id     = 2;
+  int32  limit            = 3;
+  int64  before_timestamp = 4;
+}
+
+message GetChannelMessagesResponse {
+  repeated ChannelMessage messages = 1;
+}
+
+message GetChannelMetadataRequest {
+  string channel_id = 1;
+}
+
+message GetChannelMetadataResponse {
+  Channel channel = 1;
+}
+
+message ListChannelsRequest {
+  string user_id = 1;
+}
+
+message ListChannelsResponse {
+  repeated Channel channels = 1;
+}

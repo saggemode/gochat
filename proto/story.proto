@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package story;
+
+option go_package = "gochat/gen/story";
+
+service StoryService {
+  rpc PostStory(PostStoryRequest) returns (PostStoryResponse);
+  rpc DeleteStory(DeleteStoryRequest) returns (DeleteStoryResponse);
+  rpc GetStories(GetStoriesRequest) returns (GetStoriesResponse);
+  rpc ViewStory(ViewStoryRequest) returns (ViewStoryResponse);
+  rpc GetStoryViewerList(GetStoryViewerListRequest) returns (GetStoryViewerListResponse);
+}
+
+message Story {
+  string id = 1;
+  string user_id = 2;
+  string user_display_name = 3;
+  string user_avatar_url = 4;
+  string media_url = 5;
+  string media_type = 6; // "text", "image", "video"
+  string content = 7;
+  string background_color = 8;
+  string font_style = 9;
+  int64 expires_at = 10;
+  int64 created_at = 11;
+  bool viewed = 12;
+}
+
+message PostStoryRequest {
+  string user_id = 1;
+  string media_url = 2;
+  string media_type = 3;
+  string content = 4;
+  string background_color = 5;
+  string font_style = 6;
+}
+
+message PostStoryResponse {
+  Story story = 1;
+}
+
+message DeleteStoryRequest {
+  string story_id = 1;
+  string user_id = 2;
+}
+
+message DeleteStoryResponse {
+  bool success = 1;
+}
+
+message GetStoriesRequest {
+  string user_id = 1;
+}
+
+message UserStories {
+  string user_id = 1;
+  string user_display_name = 2;
+  string user_avatar_url = 3;
+  repeated Story stories = 4;
+}
+
+message GetStoriesResponse {
+  repeated UserStories feed = 1;
+}
+
+message ViewStoryRequest {
+  string story_id = 1;
+  string viewer_id = 2;
+}
+
+message ViewStoryResponse {
+  bool success = 1;
+}
+
+message StoryViewer {
+  string user_id = 1;
+  string display_name = 2;
+  string avatar_url = 3;
+  int64 viewed_at = 4;
+}
+
+message GetStoryViewerListRequest {
+  string story_id = 1;
+  string user_id = 2;
+}
+
+message GetStoryViewerListResponse {
+  repeated StoryViewer viewers = 1;
+}
