@@ -2,19 +2,16 @@ package engine
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/Knetic/govaluate"
 )
 
-// Evaluate parses and evaluates a simple policy condition against attributes.
-// Supported syntax:
-// - "key == value"
-// - "key != value"
-// - "key < value"
-// - "key <= value"
-// - "key > value"
-// - "key >= value"
-// - Combine multiple expressions with " && " or " || " (supports standard logical precedence).
+var varRegex = regexp.MustCompile(`\b(subject|resource|env)\.([a-zA-Z0-9_]+)\b`)
+
+// Evaluate parses and evaluates a policy condition against attributes using govaluate.
 func Evaluate(condition string, attrs map[string]string) (bool, error) {
 	condition = strings.TrimSpace(condition)
 	if condition == "" || condition == "true" {
@@ -24,102 +21,50 @@ func Evaluate(condition string, attrs map[string]string) (bool, error) {
 		return false, nil
 	}
 
-	// Handle OR logic (lowest precedence)
-	orParts := strings.Split(condition, " || ")
-	for _, orPart := range orParts {
-		// Handle AND logic inside each OR block
-		andParts := strings.Split(orPart, " && ")
-		andMatch := true
-		for _, andPart := range andParts {
-			match, err := evaluateSingle(strings.TrimSpace(andPart), attrs)
-			if err != nil {
-				return false, err
-			}
-			if !match {
-				andMatch = false
-				break
-			}
-		}
-		if andMatch {
-			return true, nil
-		}
+	// 1. Sanitize the expression to replace dot notation (e.g. subject.id) with underscores (e.g. subject_id)
+	// because govaluate treats dot notation as nested property access.
+	sanitizedExpr := varRegex.ReplaceAllString(condition, "${1}_${2}")
+
+	// 2. Compile the govaluate expression
+	expr, err := govaluate.NewEvaluableExpression(sanitizedExpr)
+	if err != nil {
+		return false, fmt.Errorf("parsing condition %q: %w", condition, err)
 	}
 
-	return false, nil
+	// 3. Prepare parameters, sanitizing keys in the same way and converting values to proper types
+	parameters := make(map[string]interface{}, len(attrs))
+	for k, v := range attrs {
+		sanitizedKey := varRegex.ReplaceAllString(k, "${1}_${2}")
+		parameters[sanitizedKey] = convertValue(v)
+	}
+
+	// 4. Evaluate expression
+	result, err := expr.Evaluate(parameters)
+	if err != nil {
+		return false, fmt.Errorf("evaluating condition %q: %w", condition, err)
+	}
+
+	// 5. Convert result to boolean
+	boolVal, ok := result.(bool)
+	if !ok {
+		return false, fmt.Errorf("condition evaluated to non-boolean result: %T (%v)", result, result)
+	}
+
+	return boolVal, nil
 }
 
-func evaluateSingle(expr string, attrs map[string]string) (bool, error) {
-	// Order of operators list matches length descending to avoid prefix matching issues (e.g. <= matched as <)
-	operators := []string{"==", "!=", "<=", ">=", "<", ">"}
-	var op string
-	var parts []string
-	for _, candidate := range operators {
-		if idx := strings.Index(expr, candidate); idx != -1 {
-			op = candidate
-			parts = []string{
-				strings.TrimSpace(expr[:idx]),
-				strings.TrimSpace(expr[idx+len(candidate):]),
-			}
-			break
-		}
+func convertValue(v string) interface{} {
+	v = strings.TrimSpace(v)
+	if v == "true" {
+		return true
 	}
-
-	if op == "" || len(parts) != 2 {
-		return false, fmt.Errorf("invalid expression structure: %s", expr)
+	if v == "false" {
+		return false
 	}
-
-	left := resolveVal(parts[0], attrs)
-	right := resolveVal(parts[1], attrs)
-
-	// Handle numeric values
-	leftNum, errLeft := strconv.ParseFloat(left, 64)
-	rightNum, errRight := strconv.ParseFloat(right, 64)
-
-	if errLeft == nil && errRight == nil {
-		switch op {
-		case "==":
-			return leftNum == rightNum, nil
-		case "!=":
-			return leftNum != rightNum, nil
-		case "<":
-			return leftNum < rightNum, nil
-		case "<=":
-			return leftNum <= rightNum, nil
-		case ">":
-			return leftNum > rightNum, nil
-		case ">=":
-			return leftNum >= rightNum, nil
-		}
+	// try numeric
+	if f, err := strconv.ParseFloat(v, 64); err == nil {
+		return f
 	}
-
-	// Remove any literal quotes
-	left = strings.Trim(left, `"'`)
-	right = strings.Trim(right, `"'`)
-
-	switch op {
-	case "==":
-		return left == right, nil
-	case "!=":
-		return left != right, nil
-	case "<":
-		return left < right, nil
-	case "<=":
-		return left <= right, nil
-	case ">":
-		return left > right, nil
-	case ">=":
-		return left >= right, nil
-	}
-
-	return false, fmt.Errorf("unsupported operator: %s", op)
-}
-
-func resolveVal(token string, attrs map[string]string) string {
-	if strings.HasPrefix(token, "subject.") || strings.HasPrefix(token, "resource.") || strings.HasPrefix(token, "env.") {
-		if val, ok := attrs[token]; ok {
-			return val
-		}
-		return ""
-	}
-	return token
+	// default string, strip any quotes
+	return strings.Trim(v, `"'`)
 }

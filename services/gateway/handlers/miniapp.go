@@ -19,7 +19,10 @@ func NewMiniAppHandler(client pb.MiniAppServiceClient, log *zap.Logger) *MiniApp
 }
 
 func (h *MiniAppHandler) RegisterBot(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		Username    string            `json:"username" binding:"required"`
 		DisplayName string            `json:"display_name" binding:"required"`
@@ -57,7 +60,10 @@ func (h *MiniAppHandler) SendBotMessage(c *gin.Context) {
 }
 
 func (h *MiniAppHandler) RegisterMiniApp(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		Name        string `json:"name" binding:"required"`
 		Description string `json:"description"`
@@ -75,7 +81,10 @@ func (h *MiniAppHandler) RegisterMiniApp(c *gin.Context) {
 }
 
 func (h *MiniAppHandler) LaunchMiniApp(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	appID := c.Param("id")
 	var req struct{ ConversationID string `json:"conversation_id"` }
 	c.ShouldBindJSON(&req)
@@ -93,7 +102,10 @@ func (h *MiniAppHandler) ListMiniApps(c *gin.Context) {
 }
 
 func (h *MiniAppHandler) RegisterWebhook(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		URL    string   `json:"url" binding:"required"`
 		Events []string `json:"events" binding:"required"`
@@ -107,14 +119,20 @@ func (h *MiniAppHandler) RegisterWebhook(c *gin.Context) {
 }
 
 func (h *MiniAppHandler) ListWebhooks(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	resp, err := h.client.ListWebhooks(c.Request.Context(), &pb.ListWebhooksRequest{UserId: userID})
 	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return }
 	c.JSON(http.StatusOK, resp)
 }
 
 func (h *MiniAppHandler) DeleteWebhook(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	whID := c.Param("id")
 	resp, err := h.client.DeleteWebhook(c.Request.Context(), &pb.DeleteWebhookRequest{UserId: userID, WebhookId: whID})
 	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return }
@@ -122,7 +140,10 @@ func (h *MiniAppHandler) DeleteWebhook(c *gin.Context) {
 }
 
 func (h *MiniAppHandler) CreateAPIKey(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		Name        string   `json:"name" binding:"required"`
 		Permissions []string `json:"permissions"`
@@ -136,14 +157,20 @@ func (h *MiniAppHandler) CreateAPIKey(c *gin.Context) {
 }
 
 func (h *MiniAppHandler) ListAPIKeys(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	resp, err := h.client.ListAPIKeys(c.Request.Context(), &pb.ListAPIKeysRequest{UserId: userID})
 	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return }
 	c.JSON(http.StatusOK, resp)
 }
 
 func (h *MiniAppHandler) RevokeAPIKey(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	keyID := c.Param("id")
 	resp, err := h.client.RevokeAPIKey(c.Request.Context(), &pb.RevokeAPIKeyRequest{UserId: userID, KeyId: keyID})
 	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return }

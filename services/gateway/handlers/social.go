@@ -19,7 +19,10 @@ func NewSocialHandler(client pb.SocialServiceClient, log *zap.Logger) *SocialHan
 }
 
 func (h *SocialHandler) FollowUser(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	targetID := c.Param("id")
 	resp, err := h.client.FollowUser(c.Request.Context(), &pb.FollowUserRequest{UserId: userID, TargetId: targetID})
 	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return }
@@ -27,7 +30,10 @@ func (h *SocialHandler) FollowUser(c *gin.Context) {
 }
 
 func (h *SocialHandler) UnfollowUser(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	targetID := c.Param("id")
 	resp, err := h.client.UnfollowUser(c.Request.Context(), &pb.UnfollowUserRequest{UserId: userID, TargetId: targetID})
 	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return }
@@ -35,21 +41,30 @@ func (h *SocialHandler) UnfollowUser(c *gin.Context) {
 }
 
 func (h *SocialHandler) GetFollowers(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	resp, err := h.client.GetFollowers(c.Request.Context(), &pb.GetFollowersRequest{UserId: userID, Limit: 50})
 	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return }
 	c.JSON(http.StatusOK, resp)
 }
 
 func (h *SocialHandler) GetFollowing(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	resp, err := h.client.GetFollowing(c.Request.Context(), &pb.GetFollowingRequest{UserId: userID, Limit: 50})
 	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return }
 	c.JSON(http.StatusOK, resp)
 }
 
 func (h *SocialHandler) CreateMoment(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		Content    string `json:"content"`
 		MediaURL   string `json:"media_url"`
@@ -66,7 +81,10 @@ func (h *SocialHandler) CreateMoment(c *gin.Context) {
 }
 
 func (h *SocialHandler) LikeMoment(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	momentID := c.Param("id")
 	resp, err := h.client.LikeMoment(c.Request.Context(), &pb.LikeMomentRequest{UserId: userID, MomentId: momentID})
 	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return }
@@ -74,7 +92,10 @@ func (h *SocialHandler) LikeMoment(c *gin.Context) {
 }
 
 func (h *SocialHandler) CommentMoment(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	momentID := c.Param("id")
 	var req struct{ Content string `json:"content" binding:"required"` }
 	if err := c.ShouldBindJSON(&req); err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()}); return }
@@ -86,14 +107,20 @@ func (h *SocialHandler) CommentMoment(c *gin.Context) {
 }
 
 func (h *SocialHandler) GetMomentsFeed(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	resp, err := h.client.GetMomentsFeed(c.Request.Context(), &pb.GetMomentsFeedRequest{UserId: userID, Limit: 20})
 	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return }
 	c.JSON(http.StatusOK, resp)
 }
 
 func (h *SocialHandler) SetNearbyVisible(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		Latitude  float64 `json:"latitude"`
 		Longitude float64 `json:"longitude"`
@@ -110,14 +137,20 @@ func (h *SocialHandler) SetNearbyVisible(c *gin.Context) {
 }
 
 func (h *SocialHandler) GetNearbyUsers(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	resp, err := h.client.GetNearbyUsers(c.Request.Context(), &pb.GetNearbyUsersRequest{UserId: userID, RadiusKm: 5, Limit: 20})
 	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return }
 	c.JSON(http.StatusOK, resp)
 }
 
 func (h *SocialHandler) ApplyForBadge(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct{ BadgeType string `json:"badge_type" binding:"required"` }
 	if err := c.ShouldBindJSON(&req); err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()}); return }
 	resp, err := h.client.ApplyForBadge(c.Request.Context(), &pb.ApplyForBadgeRequest{UserId: userID, BadgeType: req.BadgeType})
@@ -133,7 +166,10 @@ func (h *SocialHandler) GetUserBadges(c *gin.Context) {
 }
 
 func (h *SocialHandler) CreateAudioRoom(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		Title       string `json:"title" binding:"required"`
 		MaxSpeakers int32  `json:"max_speakers"`
@@ -147,7 +183,10 @@ func (h *SocialHandler) CreateAudioRoom(c *gin.Context) {
 }
 
 func (h *SocialHandler) JoinAudioRoom(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	roomID := c.Param("id")
 	resp, err := h.client.JoinAudioRoom(c.Request.Context(), &pb.JoinAudioRoomRequest{UserId: userID, RoomId: roomID, Role: "listener"})
 	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return }
@@ -155,7 +194,10 @@ func (h *SocialHandler) JoinAudioRoom(c *gin.Context) {
 }
 
 func (h *SocialHandler) LeaveAudioRoom(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	roomID := c.Param("id")
 	resp, err := h.client.LeaveAudioRoom(c.Request.Context(), &pb.LeaveAudioRoomRequest{UserId: userID, RoomId: roomID})
 	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return }

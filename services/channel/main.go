@@ -17,6 +17,7 @@ import (
 	channelpb "gochat/gen/channel"
 	"gochat/pkg/config"
 	"gochat/pkg/database"
+	"gochat/pkg/health"
 	"gochat/pkg/logger"
 	"gochat/services/channel/repository"
 	"gochat/services/channel/server"
@@ -36,6 +37,14 @@ func main() {
 		log.Fatal("failed to connect to postgres", zap.Error(err))
 	}
 	defer db.Close()
+
+	// ── Health Check Server ──────────────────────────────────────────────────
+	healthSrv := health.New("channel-service", cfg.HealthPort, log)
+	healthSrv.AddCheck("postgres", func(ctx context.Context) error {
+		return db.Ping(ctx)
+	})
+	healthSrv.Start()
+	defer healthSrv.Stop()
 
 	// ── Repository ────────────────────────────────────────────────────────────
 	repo := repository.New(db)

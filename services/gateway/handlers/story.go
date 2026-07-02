@@ -21,7 +21,10 @@ func NewStoryHandler(client storypb.StoryServiceClient, log *zap.Logger) *StoryH
 }
 
 func (h *StoryHandler) PostStory(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	var req struct {
 		MediaUrl        string `json:"media_url"`
@@ -40,7 +43,7 @@ func (h *StoryHandler) PostStory(c *gin.Context) {
 	}
 
 	resp, err := h.client.PostStory(c.Request.Context(), &storypb.PostStoryRequest{
-		UserId:          userID.(string),
+		UserId:          userID,
 		MediaUrl:        req.MediaUrl,
 		MediaType:       req.MediaType,
 		Content:         req.Content,
@@ -57,11 +60,14 @@ func (h *StoryHandler) PostStory(c *gin.Context) {
 
 func (h *StoryHandler) DeleteStory(c *gin.Context) {
 	storyID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	resp, err := h.client.DeleteStory(c.Request.Context(), &storypb.DeleteStoryRequest{
 		StoryId: storyID,
-		UserId:  userID.(string),
+		UserId:  userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to delete status story")
@@ -72,10 +78,13 @@ func (h *StoryHandler) DeleteStory(c *gin.Context) {
 }
 
 func (h *StoryHandler) GetStories(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	resp, err := h.client.GetStories(c.Request.Context(), &storypb.GetStoriesRequest{
-		UserId: userID.(string),
+		UserId: userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to retrieve active story feed")
@@ -87,11 +96,14 @@ func (h *StoryHandler) GetStories(c *gin.Context) {
 
 func (h *StoryHandler) ViewStory(c *gin.Context) {
 	storyID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	resp, err := h.client.ViewStory(c.Request.Context(), &storypb.ViewStoryRequest{
 		StoryId:  storyID,
-		ViewerId: userID.(string),
+		ViewerId: userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to register story view")
@@ -103,11 +115,14 @@ func (h *StoryHandler) ViewStory(c *gin.Context) {
 
 func (h *StoryHandler) GetStoryViewerList(c *gin.Context) {
 	storyID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	resp, err := h.client.GetStoryViewerList(c.Request.Context(), &storypb.GetStoryViewerListRequest{
 		StoryId: storyID,
-		UserId:  userID.(string),
+		UserId:  userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to fetch story viewer list")

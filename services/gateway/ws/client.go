@@ -151,12 +151,11 @@ func (c *Client) listenGrpcStream(ctx context.Context, chatClient chatpb.ChatSer
 // ServeWs upgrades HTTP connections to WebSockets and registers the client.
 func ServeWs(hub *Hub, chatClient chatpb.ChatServiceClient, log *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userIDVal, exists := c.Get("user_id")
-		if !exists {
+		userID := c.GetString("user_id")
+		if userID == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorised user in context"})
 			return
 		}
-		userID := userIDVal.(string)
 
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {

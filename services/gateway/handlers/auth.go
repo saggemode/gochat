@@ -137,7 +137,10 @@ func (h *AuthHandler) GetUser(c *gin.Context) {
 
 // UpdateUser modifies details for the currently logged-in user.
 func (h *AuthHandler) UpdateUser(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	var req struct {
 		DisplayName string `json:"display_name"`
@@ -151,7 +154,7 @@ func (h *AuthHandler) UpdateUser(c *gin.Context) {
 	}
 
 	resp, err := h.client.UpdateUser(c.Request.Context(), &authpb.UpdateUserRequest{
-		UserId:      userID.(string),
+		UserId:      userID,
 		DisplayName: req.DisplayName,
 		AvatarUrl:   req.AvatarURL,
 		StatusText:  req.StatusText,
@@ -166,7 +169,10 @@ func (h *AuthHandler) UpdateUser(c *gin.Context) {
 
 // UpdatePresence modifies online presence status.
 func (h *AuthHandler) UpdatePresence(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	var req struct {
 		IsOnline bool `json:"is_online"`
@@ -178,7 +184,7 @@ func (h *AuthHandler) UpdatePresence(c *gin.Context) {
 	}
 
 	resp, err := h.client.SetPresence(c.Request.Context(), &authpb.SetPresenceRequest{
-		UserId:   userID.(string),
+		UserId:   userID,
 		IsOnline: req.IsOnline,
 	})
 	if err != nil {
@@ -218,7 +224,10 @@ func (h *AuthHandler) handleGrpcError(c *gin.Context, err error, actionMsg strin
 
 // SetTwoStepPIN sets or updates a user's 2FA PIN.
 func (h *AuthHandler) SetTwoStepPIN(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	var req struct {
 		Pin string `json:"pin"`
@@ -229,7 +238,7 @@ func (h *AuthHandler) SetTwoStepPIN(c *gin.Context) {
 	}
 
 	resp, err := h.client.SetTwoStepPIN(c.Request.Context(), &authpb.SetTwoStepPINRequest{
-		UserId: userID.(string),
+		UserId: userID,
 		Pin:    req.Pin,
 	})
 	if err != nil {
@@ -242,7 +251,10 @@ func (h *AuthHandler) SetTwoStepPIN(c *gin.Context) {
 
 // VerifyTwoStepPIN verifies a user's 2FA PIN.
 func (h *AuthHandler) VerifyTwoStepPIN(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	var req struct {
 		Pin string `json:"pin" binding:"required"`
@@ -253,7 +265,7 @@ func (h *AuthHandler) VerifyTwoStepPIN(c *gin.Context) {
 	}
 
 	resp, err := h.client.VerifyTwoStepPIN(c.Request.Context(), &authpb.VerifyTwoStepPINRequest{
-		UserId: userID.(string),
+		UserId: userID,
 		Pin:    req.Pin,
 	})
 	if err != nil {
@@ -266,7 +278,10 @@ func (h *AuthHandler) VerifyTwoStepPIN(c *gin.Context) {
 
 // UploadE2EEKeys registers key bundles for end-to-end encryption.
 func (h *AuthHandler) UploadE2EEKeys(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	var req struct {
 		PrekeyIdentity  string `json:"prekey_identity" binding:"required"`
@@ -292,7 +307,7 @@ func (h *AuthHandler) UploadE2EEKeys(c *gin.Context) {
 	}
 
 	resp, err := h.client.UploadE2EEKeys(c.Request.Context(), &authpb.UploadE2EEKeysRequest{
-		UserId:          userID.(string),
+		UserId:          userID,
 		PrekeyIdentity:  req.PrekeyIdentity,
 		PrekeySigned:    req.PrekeySigned,
 		PrekeySignature: req.PrekeySignature,
@@ -308,11 +323,14 @@ func (h *AuthHandler) UploadE2EEKeys(c *gin.Context) {
 
 // GetE2EEKeys retrieves and consumes a prekey bundle for a user.
 func (h *AuthHandler) GetE2EEKeys(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	targetID := c.Param("user_id")
 
 	resp, err := h.client.GetE2EEKeys(c.Request.Context(), &authpb.GetE2EEKeysRequest{
-		RequesterId:  userID.(string),
+		RequesterId:  userID,
 		TargetUserId: targetID,
 	})
 	if err != nil {
@@ -325,11 +343,14 @@ func (h *AuthHandler) GetE2EEKeys(c *gin.Context) {
 
 // BlockUser blocks another user.
 func (h *AuthHandler) BlockUser(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	targetID := c.Param("user_id")
 
 	resp, err := h.client.BlockUser(c.Request.Context(), &authpb.BlockUserRequest{
-		UserId:       userID.(string),
+		UserId:       userID,
 		TargetUserId: targetID,
 	})
 	if err != nil {
@@ -342,11 +363,14 @@ func (h *AuthHandler) BlockUser(c *gin.Context) {
 
 // UnblockUser unblocks a user.
 func (h *AuthHandler) UnblockUser(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	targetID := c.Param("user_id")
 
 	resp, err := h.client.UnblockUser(c.Request.Context(), &authpb.UnblockUserRequest{
-		UserId:       userID.(string),
+		UserId:       userID,
 		TargetUserId: targetID,
 	})
 	if err != nil {
@@ -359,10 +383,13 @@ func (h *AuthHandler) UnblockUser(c *gin.Context) {
 
 // GetBlockedUsers returns the list of blocked users.
 func (h *AuthHandler) GetBlockedUsers(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	resp, err := h.client.GetBlockedUsers(c.Request.Context(), &authpb.GetBlockedUsersRequest{
-		UserId: userID.(string),
+		UserId: userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to get blocked users list")
@@ -374,7 +401,10 @@ func (h *AuthHandler) GetBlockedUsers(c *gin.Context) {
 
 // RegisterPhone registers a user's phone number and initiates OTP dispatch.
 func (h *AuthHandler) RegisterPhone(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		Phone string `json:"phone" binding:"required"`
 	}
@@ -384,7 +414,7 @@ func (h *AuthHandler) RegisterPhone(c *gin.Context) {
 	}
 
 	resp, err := h.client.RegisterPhone(c.Request.Context(), &authpb.RegisterPhoneRequest{
-		UserId: userID.(string),
+		UserId: userID,
 		Phone:  req.Phone,
 	})
 	if err != nil {
@@ -397,7 +427,10 @@ func (h *AuthHandler) RegisterPhone(c *gin.Context) {
 
 // VerifyPhoneOTP verifies the mock OTP sent to the user's phone.
 func (h *AuthHandler) VerifyPhoneOTP(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		Phone string `json:"phone" binding:"required"`
 		Otp   string `json:"otp" binding:"required"`
@@ -408,7 +441,7 @@ func (h *AuthHandler) VerifyPhoneOTP(c *gin.Context) {
 	}
 
 	resp, err := h.client.VerifyPhoneOTP(c.Request.Context(), &authpb.VerifyPhoneOTPRequest{
-		UserId: userID.(string),
+		UserId: userID,
 		Phone:  req.Phone,
 		Otp:    req.Otp,
 	})
@@ -422,7 +455,10 @@ func (h *AuthHandler) VerifyPhoneOTP(c *gin.Context) {
 
 // SubscribePush registers a user's push token.
 func (h *AuthHandler) SubscribePush(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		PushToken string `json:"push_token" binding:"required"`
 		Platform  string `json:"platform" binding:"required"`
@@ -433,7 +469,7 @@ func (h *AuthHandler) SubscribePush(c *gin.Context) {
 	}
 
 	resp, err := h.client.SubscribePush(c.Request.Context(), &authpb.SubscribePushRequest{
-		UserId:    userID.(string),
+		UserId:    userID,
 		PushToken: req.PushToken,
 		Platform:  req.Platform,
 	})

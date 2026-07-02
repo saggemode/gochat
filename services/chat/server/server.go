@@ -484,6 +484,8 @@ func (s *ChatServer) UnpinMessage(ctx context.Context, req *chatpb.UnpinMessageR
 		return nil, status.Error(codes.Internal, "failed to unpin message")
 	}
 
+	s.publishEvent(ctx, "message_unpinned", msgID.String(), convID.String(), "")
+
 	return &chatpb.UnpinMessageResponse{Success: true}, nil
 }
 
@@ -605,7 +607,7 @@ func (s *ChatServer) StreamMessages(req *chatpb.StreamMessagesRequest, stream ch
 			event.EventType = chatpb.EventType_EVENT_TYPING
 		case "read":
 			event.EventType = chatpb.EventType_EVENT_READ
-		case "message_pinned":
+		case "message_pinned", "message_unpinned":
 			event.EventType = chatpb.EventType_EVENT_PINNED
 		case "call_initiated":
 			event.EventType = chatpb.EventType_EVENT_CALL_INITIATED

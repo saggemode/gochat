@@ -26,7 +26,10 @@ func NewMediaHandler(client mediapb.MediaServiceClient, log *zap.Logger) *MediaH
 
 // Upload handles incoming multipart uploads and streams them to the Media gRPC service.
 func (h *MediaHandler) Upload(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
@@ -57,7 +60,7 @@ func (h *MediaHandler) Upload(c *gin.Context) {
 				FileName:   fileName,
 				MimeType:   mimeType,
 				TotalSize:  totalSize,
-				UploaderId: userID.(string),
+				UploaderId: userID,
 				MediaType:  mapMimeToMediaType(mimeType),
 			},
 		},

@@ -3,7 +3,7 @@
 services:
   # ─── PostgreSQL ─────────────────────────────────────────────────────────────
   postgres:
-    image: postgres:16-alpine
+    image: postgis/postgis:16-3.4-alpine
     container_name: gochat_postgres
     restart: unless-stopped
     environment:
@@ -14,9 +14,10 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d
+      - ./migrations/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+      - ./migrations:/migrations:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gochat"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gochat}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -101,6 +102,7 @@ services:
     restart: unless-stopped
     environment:
       GRPC_PORT: 50051
+      HEALTH_PORT: 9090
       POSTGRES_DSN: ${AUTH_DB_DSN}
       AUTH_PORT: ${AUTH_PORT}
       AUTH_DB_DSN: ${AUTH_DB_DSN}
@@ -114,6 +116,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     networks:
       - gochat_net
 
@@ -128,6 +136,7 @@ services:
     restart: unless-stopped
     environment:
       GRPC_PORT: 50054
+      HEALTH_PORT: 9090
       POSTGRES_DSN: ${AUTHZ_DB_DSN}
       AUTHZ_PORT: ${AUTHZ_PORT}
       AUTHZ_DB_DSN: ${AUTHZ_DB_DSN}
@@ -138,6 +147,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     networks:
       - gochat_net
 
@@ -152,6 +167,7 @@ services:
     restart: unless-stopped
     environment:
       GRPC_PORT: 50052
+      HEALTH_PORT: 9090
       POSTGRES_DSN: ${CHAT_DB_DSN}
       CHAT_PORT: ${CHAT_PORT}
       CHAT_DB_DSN: ${CHAT_DB_DSN}
@@ -165,7 +181,13 @@ services:
       redis:
         condition: service_healthy
       authz:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     networks:
       - gochat_net
 
@@ -180,6 +202,7 @@ services:
     restart: unless-stopped
     environment:
       GRPC_PORT: 50053
+      HEALTH_PORT: 9090
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin_secret}
@@ -188,6 +211,12 @@ services:
     depends_on:
       minio:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     networks:
       - gochat_net
 
@@ -202,12 +231,19 @@ services:
     restart: unless-stopped
     environment:
       GRPC_PORT: 50055
+      HEALTH_PORT: 9090
       POSTGRES_DSN: ${GROUP_DB_DSN}
       GROUP_PORT: ${GROUP_PORT}
       GROUP_DB_DSN: ${GROUP_DB_DSN}
     depends_on:
       pgbouncer:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     networks:
       - gochat_net
 
@@ -222,6 +258,7 @@ services:
     restart: unless-stopped
     environment:
       GRPC_PORT: 50056
+      HEALTH_PORT: 9090
       POSTGRES_DSN: ${STORY_DB_DSN}
       STORY_PORT: ${STORY_PORT}
       STORY_DB_DSN: ${STORY_DB_DSN}
@@ -232,6 +269,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     networks:
       - gochat_net
 
@@ -246,6 +289,7 @@ services:
     restart: unless-stopped
     environment:
       GRPC_PORT: 50057
+      HEALTH_PORT: 9090
       POSTGRES_DSN: ${CALL_DB_DSN}
       CALL_PORT: ${CALL_PORT}
       CALL_DB_DSN: ${CALL_DB_DSN}
@@ -256,6 +300,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     networks:
       - gochat_net
 
@@ -270,12 +320,19 @@ services:
     restart: unless-stopped
     environment:
       GRPC_PORT: 50058
+      HEALTH_PORT: 9090
       POSTGRES_DSN: ${CHANNEL_DB_DSN}
       CHANNEL_PORT: ${CHANNEL_PORT}
       CHANNEL_DB_DSN: ${CHANNEL_DB_DSN}
     depends_on:
       pgbouncer:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     networks:
       - gochat_net
 
@@ -290,12 +347,19 @@ services:
     restart: unless-stopped
     environment:
       GRPC_PORT: 50059
+      HEALTH_PORT: 9090
       POSTGRES_DSN: ${AI_DB_DSN}
       AI_PORT: ${AI_PORT}
       AI_DB_DSN: ${AI_DB_DSN}
     depends_on:
       pgbouncer:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     networks:
       - gochat_net
 
@@ -310,12 +374,19 @@ services:
     restart: unless-stopped
     environment:
       GRPC_PORT: 50060
+      HEALTH_PORT: 9090
       POSTGRES_DSN: ${PAYMENT_DB_DSN}
       PAYMENT_PORT: ${PAYMENT_PORT}
       PAYMENT_DB_DSN: ${PAYMENT_DB_DSN}
     depends_on:
       pgbouncer:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     networks:
       - gochat_net
 
@@ -330,12 +401,19 @@ services:
     restart: unless-stopped
     environment:
       GRPC_PORT: 50061
+      HEALTH_PORT: 9090
       POSTGRES_DSN: ${SOCIAL_DB_DSN}
       SOCIAL_PORT: ${SOCIAL_PORT}
       SOCIAL_DB_DSN: ${SOCIAL_DB_DSN}
     depends_on:
       pgbouncer:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     networks:
       - gochat_net
 
@@ -350,12 +428,19 @@ services:
     restart: unless-stopped
     environment:
       GRPC_PORT: 50062
+      HEALTH_PORT: 9090
       POSTGRES_DSN: ${MINIAPP_DB_DSN}
       MINIAPP_PORT: ${MINIAPP_PORT}
       MINIAPP_DB_DSN: ${MINIAPP_DB_DSN}
     depends_on:
       pgbouncer:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     networks:
       - gochat_net
 
@@ -370,12 +455,19 @@ services:
     restart: unless-stopped
     environment:
       GRPC_PORT: 50063
+      HEALTH_PORT: 9090
       POSTGRES_DSN: ${BUSINESS_DB_DSN}
       BUSINESS_PORT: ${BUSINESS_PORT}
       BUSINESS_DB_DSN: ${BUSINESS_DB_DSN}
     depends_on:
       pgbouncer:
         condition: service_healthy      
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     networks:
       - gochat_net
 
@@ -389,6 +481,7 @@ services:
     restart: unless-stopped
     environment:
       HTTP_PORT: 8080
+      HEALTH_PORT: 9090
       AUTH_GRPC_ADDR: auth:50051
       CHAT_GRPC_ADDR: chat:50052
       MEDIA_GRPC_ADDR: media:50053
@@ -407,19 +500,38 @@ services:
       JWT_SECRET: ${JWT_SECRET:-super_secret_jwt_key_change_in_prod}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
     depends_on:
-      - auth
-      - chat
-      - media
-      - authz
-      - group
-      - story
-      - call
-      - channel
-      - ai
-      - payment
-      - social
-      - miniapp
-      - business
+      auth:
+        condition: service_healthy
+      chat:
+        condition: service_healthy
+      media:
+        condition: service_healthy
+      authz:
+        condition: service_healthy
+      group:
+        condition: service_healthy
+      story:
+        condition: service_healthy
+      call:
+        condition: service_healthy
+      channel:
+        condition: service_healthy
+      ai:
+        condition: service_healthy
+      payment:
+        condition: service_healthy
+      social:
+        condition: service_healthy
+      miniapp:
+        condition: service_healthy
+      business:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     networks:
       - gochat_net
 
@@ -433,7 +545,14 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - gateway
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     networks:
       - gochat_net
 

@@ -22,7 +22,10 @@ func NewAIHandler(client aipb.AIServiceClient, log *zap.Logger) *AIHandler {
 
 // SummarizeChat handles POST /api/ai/summarize
 func (h *AIHandler) SummarizeChat(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		ConversationID string `json:"conversation_id" binding:"required"`
 		MessageCount   int32  `json:"message_count"`
@@ -50,7 +53,10 @@ func (h *AIHandler) SummarizeChat(c *gin.Context) {
 
 // SuggestReplies handles POST /api/ai/suggest
 func (h *AIHandler) SuggestReplies(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		ConversationID string `json:"conversation_id" binding:"required"`
 		Count          int32  `json:"count"`
@@ -76,7 +82,10 @@ func (h *AIHandler) SuggestReplies(c *gin.Context) {
 
 // TranslateMessage handles POST /api/ai/translate
 func (h *AIHandler) TranslateMessage(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		Text           string `json:"text" binding:"required"`
 		SourceLanguage string `json:"source_language"`
@@ -104,7 +113,10 @@ func (h *AIHandler) TranslateMessage(c *gin.Context) {
 
 // AdjustTone handles POST /api/ai/tone
 func (h *AIHandler) AdjustTone(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		Text string `json:"text" binding:"required"`
 		Tone string `json:"tone" binding:"required"`
@@ -130,7 +142,10 @@ func (h *AIHandler) AdjustTone(c *gin.Context) {
 
 // ExtractActionItems handles POST /api/ai/actions
 func (h *AIHandler) ExtractActionItems(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		ConversationID string `json:"conversation_id" binding:"required"`
 		MessageCount   int32  `json:"message_count"`

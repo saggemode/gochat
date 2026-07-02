@@ -22,7 +22,10 @@ func NewChannelHandler(client channelpb.ChannelServiceClient, log *zap.Logger) *
 }
 
 func (h *ChannelHandler) CreateChannel(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
@@ -35,7 +38,7 @@ func (h *ChannelHandler) CreateChannel(c *gin.Context) {
 	resp, err := h.client.CreateChannel(c.Request.Context(), &channelpb.CreateChannelRequest{
 		Name:        req.Name,
 		Description: req.Description,
-		CreatorId:   userID.(string),
+		CreatorId:   userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to create channel")
@@ -47,11 +50,14 @@ func (h *ChannelHandler) CreateChannel(c *gin.Context) {
 
 func (h *ChannelHandler) DeleteChannel(c *gin.Context) {
 	channelID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	resp, err := h.client.DeleteChannel(c.Request.Context(), &channelpb.DeleteChannelRequest{
 		Id:      channelID,
-		OwnerId: userID.(string),
+		OwnerId: userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to delete channel")
@@ -63,11 +69,14 @@ func (h *ChannelHandler) DeleteChannel(c *gin.Context) {
 
 func (h *ChannelHandler) SubscribeChannel(c *gin.Context) {
 	channelID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	resp, err := h.client.SubscribeChannel(c.Request.Context(), &channelpb.SubscribeChannelRequest{
 		ChannelId: channelID,
-		UserId:    userID.(string),
+		UserId:    userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to subscribe to channel")
@@ -79,11 +88,14 @@ func (h *ChannelHandler) SubscribeChannel(c *gin.Context) {
 
 func (h *ChannelHandler) UnsubscribeChannel(c *gin.Context) {
 	channelID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	resp, err := h.client.UnsubscribeChannel(c.Request.Context(), &channelpb.UnsubscribeChannelRequest{
 		ChannelId: channelID,
-		UserId:    userID.(string),
+		UserId:    userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to unsubscribe from channel")
@@ -95,7 +107,10 @@ func (h *ChannelHandler) UnsubscribeChannel(c *gin.Context) {
 
 func (h *ChannelHandler) PublishChannelMessage(c *gin.Context) {
 	channelID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	var req struct {
 		Content   string `json:"content"`
@@ -115,7 +130,7 @@ func (h *ChannelHandler) PublishChannelMessage(c *gin.Context) {
 
 	resp, err := h.client.PublishChannelMessage(c.Request.Context(), &channelpb.PublishChannelMessageRequest{
 		ChannelId: channelID,
-		SenderId:  userID.(string),
+		SenderId:  userID,
 		Content:   req.Content,
 		Type:      req.Type,
 		MediaUrl:  req.MediaUrl,
@@ -132,7 +147,10 @@ func (h *ChannelHandler) PublishChannelMessage(c *gin.Context) {
 
 func (h *ChannelHandler) GetChannelMessages(c *gin.Context) {
 	channelID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	limitStr := c.DefaultQuery("limit", "20")
 	limit, _ := strconv.Atoi(limitStr)
@@ -142,7 +160,7 @@ func (h *ChannelHandler) GetChannelMessages(c *gin.Context) {
 
 	resp, err := h.client.GetChannelMessages(c.Request.Context(), &channelpb.GetChannelMessagesRequest{
 		ChannelId:       channelID,
-		RequesterId:     userID.(string),
+		RequesterId:     userID,
 		Limit:           int32(limit),
 		BeforeTimestamp: before,
 	})
@@ -169,12 +187,15 @@ func (h *ChannelHandler) GetChannelMetadata(c *gin.Context) {
 }
 
 func (h *ChannelHandler) ListChannels(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	subscribedOnly := c.Query("subscribed")
 	var filterUserID string
 	if subscribedOnly == "true" {
-		filterUserID = userID.(string)
+		filterUserID = userID
 	}
 
 	resp, err := h.client.ListChannels(c.Request.Context(), &channelpb.ListChannelsRequest{

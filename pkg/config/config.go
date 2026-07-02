@@ -44,6 +44,9 @@ type Config struct {
 	// HTTP port (used by gateway)
 	HTTPPort string
 
+	// Health check HTTP port (used by all services)
+	HealthPort string
+
 	// MinIO (used by media service)
 	MinIOEndpoint  string
 	MinIOAccessKey string
@@ -85,6 +88,7 @@ func Load() *Config {
 
 		GRPCPort: getEnv("GRPC_PORT", "50051"),
 		HTTPPort: getEnv("HTTP_PORT", "8080"),
+		HealthPort: getEnv("HEALTH_PORT", "9090"),
 
 		MinIOEndpoint:  getEnv("MINIO_ENDPOINT", "localhost:9000"),
 		MinIOAccessKey: getEnv("MINIO_ACCESS_KEY", "minioadmin"),

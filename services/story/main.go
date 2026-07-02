@@ -17,6 +17,7 @@ import (
 	storypb "gochat/gen/story"
 	"gochat/pkg/config"
 	"gochat/pkg/database"
+	"gochat/pkg/health"
 	"gochat/pkg/logger"
 	"gochat/services/story/repository"
 	"gochat/services/story/server"
@@ -43,6 +44,17 @@ func main() {
 		log.Fatal("failed to connect to redis", zap.Error(err))
 	}
 	defer redisClient.Close()
+
+	// ── Health Check Server ──────────────────────────────────────────────────
+	healthSrv := health.New("story-service", cfg.HealthPort, log)
+	healthSrv.AddCheck("postgres", func(ctx context.Context) error {
+		return db.Ping(ctx)
+	})
+	healthSrv.AddCheck("redis", func(ctx context.Context) error {
+		return redisClient.Ping(ctx).Err()
+	})
+	healthSrv.Start()
+	defer healthSrv.Stop()
 
 	// ── Repository ────────────────────────────────────────────────────────────
 	repo := repository.New(db)

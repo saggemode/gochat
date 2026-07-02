@@ -14,6 +14,7 @@ import (
 	pb "gochat/gen/social"
 	"gochat/pkg/config"
 	"gochat/pkg/database"
+	"gochat/pkg/health"
 	"gochat/pkg/logger"
 	"gochat/services/social/server"
 )
@@ -29,6 +30,14 @@ func main() {
 		log.Fatal("failed to connect to database", zap.Error(err))
 	}
 	defer db.Close()
+
+	// ── Health Check Server ──────────────────────────────────────────────────
+	healthSrv := health.New("social-service", cfg.HealthPort, log)
+	healthSrv.AddCheck("postgres", func(ctx context.Context) error {
+		return db.Ping(ctx)
+	})
+	healthSrv.Start()
+	defer healthSrv.Stop()
 
 	srv := server.NewSocialServer(db, log)
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", cfg.GRPCPort))

@@ -25,7 +25,10 @@ func NewChatHandler(client chatpb.ChatServiceClient, log *zap.Logger) *ChatHandl
 
 // CreateConversation handles 1:1 and group creation.
 func (h *ChatHandler) CreateConversation(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	var req struct {
 		Type      int32    `json:"type"` // 0 = direct, 1 = group
@@ -39,13 +42,13 @@ func (h *ChatHandler) CreateConversation(c *gin.Context) {
 	}
 
 	// Always ensure the creator is part of the member list
-	req.MemberIds = append(req.MemberIds, userID.(string))
+	req.MemberIds = append(req.MemberIds, userID)
 
 	resp, err := h.client.CreateConversation(c.Request.Context(), &chatpb.CreateConversationRequest{
 		Type:      chatpb.ConversationType(req.Type),
 		Name:      req.Name,
 		MemberIds: req.MemberIds,
-		CreatorId: userID.(string),
+		CreatorId: userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to create conversation")
@@ -57,13 +60,16 @@ func (h *ChatHandler) CreateConversation(c *gin.Context) {
 
 // GetConversations retrieves the conversation list for the active user.
 func (h *ChatHandler) GetConversations(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "30"))
 
 	resp, err := h.client.GetConversations(c.Request.Context(), &chatpb.GetConversationsRequest{
-		UserId:   userID.(string),
+		UserId:   userID,
 		Page:     int32(page),
 		PageSize: int32(pageSize),
 	})
@@ -77,12 +83,15 @@ func (h *ChatHandler) GetConversations(c *gin.Context) {
 
 // GetConversation gets a conversation by its ID.
 func (h *ChatHandler) GetConversation(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	convID := c.Param("id")
 
 	resp, err := h.client.GetConversation(c.Request.Context(), &chatpb.GetConversationRequest{
 		ConversationId: convID,
-		UserId:         userID.(string),
+		UserId:         userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to fetch conversation")
@@ -94,7 +103,10 @@ func (h *ChatHandler) GetConversation(c *gin.Context) {
 
 // AddMember adds a user to a group conversation.
 func (h *ChatHandler) AddMember(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	convID := c.Param("id")
 
 	var req struct {
@@ -107,7 +119,7 @@ func (h *ChatHandler) AddMember(c *gin.Context) {
 
 	resp, err := h.client.AddMember(c.Request.Context(), &chatpb.AddMemberRequest{
 		ConversationId: convID,
-		RequesterId:    userID.(string),
+		RequesterId:    userID,
 		NewMemberId:   req.NewMemberId,
 	})
 	if err != nil {
@@ -120,7 +132,10 @@ func (h *ChatHandler) AddMember(c *gin.Context) {
 
 // RemoveMember removes a user from a group conversation.
 func (h *ChatHandler) RemoveMember(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	convID := c.Param("id")
 
 	var req struct {
@@ -133,7 +148,7 @@ func (h *ChatHandler) RemoveMember(c *gin.Context) {
 
 	resp, err := h.client.RemoveMember(c.Request.Context(), &chatpb.RemoveMemberRequest{
 		ConversationId: convID,
-		RequesterId:    userID.(string),
+		RequesterId:    userID,
 		MemberId:       req.MemberId,
 	})
 	if err != nil {
@@ -146,7 +161,10 @@ func (h *ChatHandler) RemoveMember(c *gin.Context) {
 
 // SendMessage delivers a new real-time message.
 func (h *ChatHandler) SendMessage(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	convID := c.Param("id")
 
 	var req struct {
@@ -166,7 +184,7 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 
 	resp, err := h.client.SendMessage(c.Request.Context(), &chatpb.SendMessageRequest{
 		ConversationId: convID,
-		SenderId:       userID.(string),
+		SenderId:       userID,
 		Content:        req.Content,
 		Type:           chatpb.MessageType(req.Type),
 		MediaUrl:       req.MediaURL,
@@ -185,7 +203,10 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 
 // ScheduleMessage queues a message for delivery in the future.
 func (h *ChatHandler) ScheduleMessage(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	convID := c.Param("id")
 
 	var req struct {
@@ -203,7 +224,7 @@ func (h *ChatHandler) ScheduleMessage(c *gin.Context) {
 
 	resp, err := h.client.ScheduleMessage(c.Request.Context(), &chatpb.ScheduleMessageRequest{
 		ConversationId: convID,
-		SenderId:       userID.(string),
+		SenderId:       userID,
 		Content:        req.Content,
 		Type:           chatpb.MessageType(req.Type),
 		MediaUrl:       req.MediaURL,
@@ -220,14 +241,17 @@ func (h *ChatHandler) ScheduleMessage(c *gin.Context) {
 
 // GetMessages retrieves a conversation's messages, supporting cursor pagination.
 func (h *ChatHandler) GetMessages(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	convID := c.Param("id")
 	cursor := c.Query("cursor")
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 
 	resp, err := h.client.GetMessages(c.Request.Context(), &chatpb.GetMessagesRequest{
 		ConversationId: convID,
-		UserId:         userID.(string),
+		UserId:         userID,
 		Cursor:         cursor,
 		Limit:          int32(limit),
 	})
@@ -260,7 +284,10 @@ func (h *ChatHandler) GetThread(c *gin.Context) {
 
 // EditMessage edits the text of a message.
 func (h *ChatHandler) EditMessage(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	msgID := c.Param("id")
 
 	var req struct {
@@ -273,7 +300,7 @@ func (h *ChatHandler) EditMessage(c *gin.Context) {
 
 	resp, err := h.client.EditMessage(c.Request.Context(), &chatpb.EditMessageRequest{
 		MessageId: msgID,
-		EditorId:  userID.(string),
+		EditorId:  userID,
 		Content:   req.Content,
 	})
 	if err != nil {
@@ -286,12 +313,15 @@ func (h *ChatHandler) EditMessage(c *gin.Context) {
 
 // DeleteMessage performs a soft deletion of a message.
 func (h *ChatHandler) DeleteMessage(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	msgID := c.Param("id")
 
 	resp, err := h.client.DeleteMessage(c.Request.Context(), &chatpb.DeleteMessageRequest{
 		MessageId: msgID,
-		DeleterId: userID.(string),
+		DeleterId: userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to delete message")
@@ -303,7 +333,10 @@ func (h *ChatHandler) DeleteMessage(c *gin.Context) {
 
 // AddReaction adds an emoji reaction to a message.
 func (h *ChatHandler) AddReaction(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	msgID := c.Param("id")
 
 	var req struct {
@@ -316,7 +349,7 @@ func (h *ChatHandler) AddReaction(c *gin.Context) {
 
 	resp, err := h.client.AddReaction(c.Request.Context(), &chatpb.AddReactionRequest{
 		MessageId: msgID,
-		UserId:    userID.(string),
+		UserId:    userID,
 		Emoji:     req.Emoji,
 	})
 	if err != nil {
@@ -329,7 +362,10 @@ func (h *ChatHandler) AddReaction(c *gin.Context) {
 
 // RemoveReaction removes an emoji reaction from a message.
 func (h *ChatHandler) RemoveReaction(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	msgID := c.Param("id")
 
 	var req struct {
@@ -342,7 +378,7 @@ func (h *ChatHandler) RemoveReaction(c *gin.Context) {
 
 	resp, err := h.client.RemoveReaction(c.Request.Context(), &chatpb.RemoveReactionRequest{
 		MessageId: msgID,
-		UserId:    userID.(string),
+		UserId:    userID,
 		Emoji:     req.Emoji,
 	})
 	if err != nil {
@@ -355,7 +391,10 @@ func (h *ChatHandler) RemoveReaction(c *gin.Context) {
 
 // MarkRead handles batch read status confirmation.
 func (h *ChatHandler) MarkRead(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	convID := c.Param("id")
 
 	var req struct {
@@ -368,7 +407,7 @@ func (h *ChatHandler) MarkRead(c *gin.Context) {
 
 	resp, err := h.client.MarkRead(c.Request.Context(), &chatpb.MarkReadRequest{
 		ConversationId: convID,
-		UserId:         userID.(string),
+		UserId:         userID,
 		MessageIds:     req.MessageIds,
 	})
 	if err != nil {
@@ -381,7 +420,10 @@ func (h *ChatHandler) MarkRead(c *gin.Context) {
 
 // PinMessage pins a message inside its conversation.
 func (h *ChatHandler) PinMessage(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	msgID := c.Param("id")
 
 	var req struct {
@@ -395,7 +437,7 @@ func (h *ChatHandler) PinMessage(c *gin.Context) {
 	resp, err := h.client.PinMessage(c.Request.Context(), &chatpb.PinMessageRequest{
 		MessageId:      msgID,
 		ConversationId: req.ConversationId,
-		UserId:         userID.(string),
+		UserId:         userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to pin message")
@@ -407,7 +449,10 @@ func (h *ChatHandler) PinMessage(c *gin.Context) {
 
 // UnpinMessage removes a message from a conversation's pins.
 func (h *ChatHandler) UnpinMessage(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	msgID := c.Param("id")
 
 	var req struct {
@@ -421,7 +466,7 @@ func (h *ChatHandler) UnpinMessage(c *gin.Context) {
 	resp, err := h.client.UnpinMessage(c.Request.Context(), &chatpb.UnpinMessageRequest{
 		MessageId:      msgID,
 		ConversationId: req.ConversationId,
-		UserId:         userID.(string),
+		UserId:         userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to unpin message")
@@ -433,7 +478,10 @@ func (h *ChatHandler) UnpinMessage(c *gin.Context) {
 
 // SearchMessages performs full-text queries across conversation messages.
 func (h *ChatHandler) SearchMessages(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	query := c.Query("query")
 	convID := c.Query("conversation_id")
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
@@ -445,7 +493,7 @@ func (h *ChatHandler) SearchMessages(c *gin.Context) {
 	}
 
 	resp, err := h.client.SearchMessages(c.Request.Context(), &chatpb.SearchMessagesRequest{
-		UserId:         userID.(string),
+		UserId:         userID,
 		Query:          query,
 		ConversationId: convID,
 		Limit:          int32(limit),
@@ -461,10 +509,13 @@ func (h *ChatHandler) SearchMessages(c *gin.Context) {
 
 // GetUnreadCounts gathers unread totals for each conversation.
 func (h *ChatHandler) GetUnreadCounts(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	resp, err := h.client.GetUnreadCounts(c.Request.Context(), &chatpb.GetUnreadCountsRequest{
-		UserId: userID.(string),
+		UserId: userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to fetch unread counts")
@@ -476,7 +527,10 @@ func (h *ChatHandler) GetUnreadCounts(c *gin.Context) {
 
 // SendTypingIndicator alerts typing status in a conversation.
 func (h *ChatHandler) SendTypingIndicator(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	convID := c.Param("id")
 
 	var req struct {
@@ -489,7 +543,7 @@ func (h *ChatHandler) SendTypingIndicator(c *gin.Context) {
 
 	resp, err := h.client.SendTypingIndicator(c.Request.Context(), &chatpb.SendTypingIndicatorRequest{
 		ConversationId: convID,
-		UserId:         userID.(string),
+		UserId:         userID,
 		IsTyping:       req.IsTyping,
 	})
 	if err != nil {

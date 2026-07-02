@@ -19,7 +19,10 @@ func NewBusinessHandler(client pb.BusinessServiceClient, log *zap.Logger) *Busin
 }
 
 func (h *BusinessHandler) CreateBusinessProfile(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		BusinessName string `json:"business_name" binding:"required"`
 		Category     string `json:"category"`
@@ -41,14 +44,20 @@ func (h *BusinessHandler) CreateBusinessProfile(c *gin.Context) {
 }
 
 func (h *BusinessHandler) GetBusinessProfile(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	resp, err := h.client.GetBusinessProfile(c.Request.Context(), &pb.GetBusinessProfileRequest{UserId: userID})
 	if err != nil { c.JSON(http.StatusNotFound, gin.H{"error": err.Error()}); return }
 	c.JSON(http.StatusOK, resp)
 }
 
 func (h *BusinessHandler) CreateCatalog(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct{ Name string `json:"name" binding:"required"` }
 	if err := c.ShouldBindJSON(&req); err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()}); return }
 	resp, err := h.client.CreateCatalog(c.Request.Context(), &pb.CreateCatalogRequest{UserId: userID, Name: req.Name})
@@ -82,7 +91,10 @@ func (h *BusinessHandler) ListProducts(c *gin.Context) {
 }
 
 func (h *BusinessHandler) CreateAppointmentSlot(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		Title       string `json:"title" binding:"required"`
 		Description string `json:"description"`
@@ -100,7 +112,10 @@ func (h *BusinessHandler) CreateAppointmentSlot(c *gin.Context) {
 }
 
 func (h *BusinessHandler) BookAppointment(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	apptID := c.Param("id")
 	var req struct{ Notes string `json:"notes"` }
 	c.ShouldBindJSON(&req)
@@ -112,14 +127,20 @@ func (h *BusinessHandler) BookAppointment(c *gin.Context) {
 }
 
 func (h *BusinessHandler) ListAppointments(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	resp, err := h.client.ListAppointments(c.Request.Context(), &pb.ListAppointmentsRequest{BusinessId: userID, Limit: 50})
 	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return }
 	c.JSON(http.StatusOK, resp)
 }
 
 func (h *BusinessHandler) SetAutoReply(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		TriggerType  string `json:"trigger_type" binding:"required"`
 		TriggerValue string `json:"trigger_value"`
@@ -134,14 +155,20 @@ func (h *BusinessHandler) SetAutoReply(c *gin.Context) {
 }
 
 func (h *BusinessHandler) GetAutoReplies(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	resp, err := h.client.GetAutoReplies(c.Request.Context(), &pb.GetAutoRepliesRequest{UserId: userID})
 	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return }
 	c.JSON(http.StatusOK, resp)
 }
 
 func (h *BusinessHandler) EnqueueCustomer(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct{ CustomerID string `json:"customer_id" binding:"required"` }
 	if err := c.ShouldBindJSON(&req); err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()}); return }
 	resp, err := h.client.EnqueueCustomer(c.Request.Context(), &pb.EnqueueCustomerRequest{BusinessId: userID, CustomerId: req.CustomerID})
@@ -150,14 +177,20 @@ func (h *BusinessHandler) EnqueueCustomer(c *gin.Context) {
 }
 
 func (h *BusinessHandler) DequeueCustomer(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	resp, err := h.client.DequeueCustomer(c.Request.Context(), &pb.DequeueCustomerRequest{BusinessId: userID})
 	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return }
 	c.JSON(http.StatusOK, resp)
 }
 
 func (h *BusinessHandler) GetQueuePosition(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct{ BusinessID string `json:"business_id" binding:"required"` }
 	if err := c.ShouldBindJSON(&req); err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()}); return }
 	resp, err := h.client.GetQueuePosition(c.Request.Context(), &pb.GetQueuePositionRequest{BusinessId: req.BusinessID, CustomerId: userID})

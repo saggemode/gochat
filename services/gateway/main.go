@@ -28,6 +28,7 @@ import (
 	storypb "gochat/gen/story"
 	"gochat/pkg/config"
 	"gochat/pkg/database"
+	"gochat/pkg/health"
 	"gochat/pkg/logger"
 	"gochat/services/gateway/handlers"
 	"gochat/services/gateway/middleware"
@@ -52,6 +53,14 @@ func main() {
 		log.Fatal("failed to connect to redis", zap.Error(err))
 	}
 	defer redisClient.Close()
+
+	// ── Health Check Server ──────────────────────────────────────────────────
+	healthSrv := health.New("api-gateway", cfg.HealthPort, log)
+	healthSrv.AddCheck("redis", func(ctx context.Context) error {
+		return redisClient.Ping(ctx).Err()
+	})
+	healthSrv.Start()
+	defer healthSrv.Stop()
 
 	// ── Dial gRPC Services ────────────────────────────────────────────────────
 	dialOpts := []grpc.DialOption{

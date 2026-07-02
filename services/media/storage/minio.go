@@ -129,6 +129,12 @@ func (s *MinIOStorage) Delete(ctx context.Context, objectKey string) error {
 	return nil
 }
 
+// Ping checks if MinIO is accessible.
+func (s *MinIOStorage) Ping(ctx context.Context) error {
+	_, err := s.client.BucketExists(ctx, s.bucket)
+	return err
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 func (s *MinIOStorage) publicURL(objectKey string) string {

@@ -16,6 +16,7 @@ import (
 
 	mediapb "gochat/gen/media"
 	"gochat/pkg/config"
+	"gochat/pkg/health"
 	"gochat/pkg/logger"
 	"gochat/services/media/server"
 	"gochat/services/media/storage"
@@ -39,6 +40,14 @@ func main() {
 	if err != nil {
 		log.Fatal("failed to connect to MinIO", zap.Error(err))
 	}
+
+	// ── Health Check Server ──────────────────────────────────────────────────
+	healthSrv := health.New("media-service", cfg.HealthPort, log)
+	healthSrv.AddCheck("minio", func(ctx context.Context) error {
+		return store.Ping(ctx)
+	})
+	healthSrv.Start()
+	defer healthSrv.Stop()
 
 	// ── gRPC Server ───────────────────────────────────────────────────────────
 	grpcServer := grpc.NewServer(

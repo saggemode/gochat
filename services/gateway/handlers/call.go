@@ -22,7 +22,10 @@ func NewCallHandler(client callpb.CallServiceClient, log *zap.Logger) *CallHandl
 }
 
 func (h *CallHandler) StartCall(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	var req struct {
 		ReceiverId string `json:"receiver_id"`
@@ -44,7 +47,7 @@ func (h *CallHandler) StartCall(c *gin.Context) {
 	}
 
 	resp, err := h.client.StartCall(c.Request.Context(), &callpb.StartCallRequest{
-		CallerId:   userID.(string),
+		CallerId:   userID,
 		ReceiverId: req.ReceiverId,
 		Type:       callType,
 	})
@@ -58,11 +61,14 @@ func (h *CallHandler) StartCall(c *gin.Context) {
 
 func (h *CallHandler) AcceptCall(c *gin.Context) {
 	callID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	resp, err := h.client.AcceptCall(c.Request.Context(), &callpb.AcceptCallRequest{
 		CallId:     callID,
-		ReceiverId: userID.(string),
+		ReceiverId: userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to accept call")
@@ -74,7 +80,10 @@ func (h *CallHandler) AcceptCall(c *gin.Context) {
 
 func (h *CallHandler) RejectCall(c *gin.Context) {
 	callID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	var req struct {
 		IsBusy bool `json:"is_busy"`
@@ -84,7 +93,7 @@ func (h *CallHandler) RejectCall(c *gin.Context) {
 
 	resp, err := h.client.RejectCall(c.Request.Context(), &callpb.RejectCallRequest{
 		CallId:     callID,
-		ReceiverId: userID.(string),
+		ReceiverId: userID,
 		IsBusy:     req.IsBusy,
 	})
 	if err != nil {
@@ -97,11 +106,14 @@ func (h *CallHandler) RejectCall(c *gin.Context) {
 
 func (h *CallHandler) EndCall(c *gin.Context) {
 	callID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	resp, err := h.client.EndCall(c.Request.Context(), &callpb.EndCallRequest{
 		CallId: callID,
-		UserId: userID.(string),
+		UserId: userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to end call")
@@ -113,7 +125,10 @@ func (h *CallHandler) EndCall(c *gin.Context) {
 
 func (h *CallHandler) SendSignalingMessage(c *gin.Context) {
 	callID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	var req struct {
 		ReceiverId string `json:"receiver_id"`
@@ -133,7 +148,7 @@ func (h *CallHandler) SendSignalingMessage(c *gin.Context) {
 
 	resp, err := h.client.SendSignalingMessage(c.Request.Context(), &callpb.SendSignalingMessageRequest{
 		CallId:     callID,
-		SenderId:   userID.(string),
+		SenderId:   userID,
 		ReceiverId: req.ReceiverId,
 		Type:       req.Type,
 		Sdp:        req.Sdp,
@@ -148,13 +163,16 @@ func (h *CallHandler) SendSignalingMessage(c *gin.Context) {
 }
 
 func (h *CallHandler) GetCallHistory(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
 
 	resp, err := h.client.GetCallHistory(c.Request.Context(), &callpb.GetCallHistoryRequest{
-		UserId:   userID.(string),
+		UserId:   userID,
 		Page:     int32(page),
 		PageSize: int32(pageSize),
 	})

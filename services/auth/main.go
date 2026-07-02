@@ -17,6 +17,7 @@ import (
 	authpb "gochat/gen/auth"
 	"gochat/pkg/config"
 	"gochat/pkg/database"
+	"gochat/pkg/health"
 	"gochat/pkg/jwtutil"
 	"gochat/pkg/logger"
 	"gochat/services/auth/repository"
@@ -44,6 +45,17 @@ func main() {
 		log.Fatal("failed to connect to redis", zap.Error(err))
 	}
 	defer redisClient.Close()
+
+	// ── Health Check Server ──────────────────────────────────────────────────
+	healthSrv := health.New("auth-service", cfg.HealthPort, log)
+	healthSrv.AddCheck("postgres", func(ctx context.Context) error {
+		return db.Ping(ctx)
+	})
+	healthSrv.AddCheck("redis", func(ctx context.Context) error {
+		return redisClient.Ping(ctx).Err()
+	})
+	healthSrv.Start()
+	defer healthSrv.Stop()
 
 	// ── JWT Manager ───────────────────────────────────────────────────────────
 	jwtMgr := jwtutil.NewManager(cfg.JWTSecret, cfg.JWTExpiryDuration, cfg.JWTRefreshExpiry)

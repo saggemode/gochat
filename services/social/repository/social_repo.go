@@ -156,25 +156,45 @@ func (r *SocialRepository) SetNearbyVisible(ctx context.Context, userID string, 
 		radiusKM = 5
 	}
 	_, err := r.db.Exec(ctx,
-		`INSERT INTO nearby_users (user_id, latitude, longitude, is_visible, radius_km)
-		 VALUES ($1, $2, $3, $4, $5)
-		 ON CONFLICT (user_id) DO UPDATE SET latitude=$2, longitude=$3, is_visible=$4, radius_km=$5, updated_at=NOW()`,
+		`INSERT INTO nearby_users (user_id, latitude, longitude, location, is_visible, radius_km)
+		 VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($3, $2), 4326)::geography, $4, $5)
+		 ON CONFLICT (user_id) DO UPDATE SET 
+		     latitude=$2, 
+		     longitude=$3, 
+		     location=ST_SetSRID(ST_MakePoint($3, $2), 4326)::geography, 
+		     is_visible=$4, 
+		     radius_km=$5, 
+		     updated_at=NOW()`,
 		userID, lat, lon, visible, radiusKM)
 	return err
 }
 
 func (r *SocialRepository) GetNearbyUsers(ctx context.Context, userID string, radiusKM, limit int) ([]*NearbyUser, error) {
-	var myLat, myLon float64
+	// First check if this user exists and is visible
+	var exists bool
 	err := r.db.QueryRow(ctx,
-		`SELECT latitude, longitude FROM nearby_users WHERE user_id = $1 AND is_visible = TRUE`, userID).
-		Scan(&myLat, &myLon)
+		`SELECT EXISTS(SELECT 1 FROM nearby_users WHERE user_id = $1 AND is_visible = TRUE)`, userID).
+		Scan(&exists)
 	if err != nil {
-		return nil, fmt.Errorf("user not visible: %w", err)
+		return nil, err
+	}
+	if !exists {
+		return nil, fmt.Errorf("user not visible")
 	}
 
+	// Perform the PostGIS query
 	rows, err := r.db.Query(ctx,
-		`SELECT user_id, latitude, longitude FROM nearby_users
-		 WHERE user_id != $1 AND is_visible = TRUE`, userID)
+		`SELECT 
+			target.user_id, 
+			ST_Distance(me.location, target.location) / 1000.0 AS distance_km
+		 FROM nearby_users me
+		 JOIN nearby_users target ON target.user_id != me.user_id
+		 WHERE me.user_id = $1 
+		   AND target.is_visible = TRUE
+		   AND ST_DWithin(me.location, target.location, $2 * 1000.0)
+		 ORDER BY distance_km ASC
+		 LIMIT $3`, 
+		userID, radiusKM, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -183,27 +203,13 @@ func (r *SocialRepository) GetNearbyUsers(ctx context.Context, userID string, ra
 	var users []*NearbyUser
 	for rows.Next() {
 		var uid string
-		var lat, lon float64
-		rows.Scan(&uid, &lat, &lon)
-		dist := haversine(myLat, myLon, lat, lon)
-		if dist <= float64(radiusKM) {
-			users = append(users, &NearbyUser{UserID: uid, DistanceKM: math.Round(dist*100) / 100})
+		var dist float64
+		if err := rows.Scan(&uid, &dist); err != nil {
+			return nil, err
 		}
-		if len(users) >= limit {
-			break
-		}
+		users = append(users, &NearbyUser{UserID: uid, DistanceKM: math.Round(dist*100) / 100})
 	}
 	return users, nil
-}
-
-func haversine(lat1, lon1, lat2, lon2 float64) float64 {
-	const R = 6371
-	dLat := (lat2 - lat1) * math.Pi / 180
-	dLon := (lon2 - lon1) * math.Pi / 180
-	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
-		math.Cos(lat1*math.Pi/180)*math.Cos(lat2*math.Pi/180)*
-			math.Sin(dLon/2)*math.Sin(dLon/2)
-	return R * 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
 }
 
 // ── Audio Rooms ─────────────────────────────────────────────────────────────

@@ -22,7 +22,10 @@ func NewGroupHandler(client grouppb.GroupServiceClient, log *zap.Logger) *GroupH
 
 func (h *GroupHandler) UpdateGroupMetadata(c *gin.Context) {
 	convID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	var req struct {
 		Description          string `json:"description"`
@@ -37,7 +40,7 @@ func (h *GroupHandler) UpdateGroupMetadata(c *gin.Context) {
 
 	resp, err := h.client.UpdateGroupMetadata(c.Request.Context(), &grouppb.UpdateGroupMetadataRequest{
 		ConversationId:       convID,
-		RequesterId:          userID.(string),
+		RequesterId:          userID,
 		Description:          req.Description,
 		AnnouncementsOnly:    req.AnnouncementsOnly,
 		AdminsOnlyEditInfo:   req.AdminsOnlyEditInfo,
@@ -53,11 +56,14 @@ func (h *GroupHandler) UpdateGroupMetadata(c *gin.Context) {
 
 func (h *GroupHandler) GetGroupMetadata(c *gin.Context) {
 	convID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	resp, err := h.client.GetGroupMetadata(c.Request.Context(), &grouppb.GetGroupMetadataRequest{
 		ConversationId: convID,
-		RequesterId:    userID.(string),
+		RequesterId:    userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to fetch group metadata")
@@ -69,11 +75,14 @@ func (h *GroupHandler) GetGroupMetadata(c *gin.Context) {
 
 func (h *GroupHandler) GenerateInviteLink(c *gin.Context) {
 	convID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	resp, err := h.client.GenerateInviteLink(c.Request.Context(), &grouppb.GenerateInviteLinkRequest{
 		ConversationId: convID,
-		RequesterId:    userID.(string),
+		RequesterId:    userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to generate group invite code")
@@ -84,7 +93,10 @@ func (h *GroupHandler) GenerateInviteLink(c *gin.Context) {
 }
 
 func (h *GroupHandler) JoinByInviteCode(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	var req struct {
 		InviteCode string `json:"invite_code"`
@@ -96,7 +108,7 @@ func (h *GroupHandler) JoinByInviteCode(c *gin.Context) {
 
 	resp, err := h.client.JoinByInviteCode(c.Request.Context(), &grouppb.JoinByInviteCodeRequest{
 		InviteCode: req.InviteCode,
-		UserId:     userID.(string),
+		UserId:     userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to join group via invite link")
@@ -111,11 +123,14 @@ func (h *GroupHandler) JoinByInviteCode(c *gin.Context) {
 
 func (h *GroupHandler) GetPendingApprovals(c *gin.Context) {
 	convID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	resp, err := h.client.GetPendingApprovals(c.Request.Context(), &grouppb.GetPendingApprovalsRequest{
 		ConversationId: convID,
-		RequesterId:    userID.(string),
+		RequesterId:    userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to fetch pending join approvals")
@@ -127,7 +142,10 @@ func (h *GroupHandler) GetPendingApprovals(c *gin.Context) {
 
 func (h *GroupHandler) ResolvePendingApproval(c *gin.Context) {
 	approvalID := c.Param("req_id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	var req struct {
 		Approve bool `json:"approve"`
@@ -139,7 +157,7 @@ func (h *GroupHandler) ResolvePendingApproval(c *gin.Context) {
 
 	resp, err := h.client.ResolvePendingApproval(c.Request.Context(), &grouppb.ResolvePendingApprovalRequest{
 		ApprovalId: approvalID,
-		ResolverId: userID.(string),
+		ResolverId: userID,
 		Approve:    req.Approve,
 	})
 	if err != nil {
@@ -156,7 +174,10 @@ func (h *GroupHandler) ResolvePendingApproval(c *gin.Context) {
 
 func (h *GroupHandler) PromoteMember(c *gin.Context) {
 	convID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	targetID := c.Param("user_id")
 
 	var req struct {
@@ -169,7 +190,7 @@ func (h *GroupHandler) PromoteMember(c *gin.Context) {
 
 	resp, err := h.client.PromoteMember(c.Request.Context(), &grouppb.PromoteMemberRequest{
 		ConversationId: convID,
-		RequesterId:    userID.(string),
+		RequesterId:    userID,
 		TargetUserId:   targetID,
 		Role:           req.Role,
 	})
@@ -183,12 +204,15 @@ func (h *GroupHandler) PromoteMember(c *gin.Context) {
 
 func (h *GroupHandler) DemoteMember(c *gin.Context) {
 	convID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	targetID := c.Param("user_id")
 
 	resp, err := h.client.DemoteMember(c.Request.Context(), &grouppb.DemoteMemberRequest{
 		ConversationId: convID,
-		RequesterId:    userID.(string),
+		RequesterId:    userID,
 		TargetUserId:   targetID,
 	})
 	if err != nil {
@@ -200,7 +224,10 @@ func (h *GroupHandler) DemoteMember(c *gin.Context) {
 }
 
 func (h *GroupHandler) CreateCommunity(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
@@ -213,7 +240,7 @@ func (h *GroupHandler) CreateCommunity(c *gin.Context) {
 	resp, err := h.client.CreateCommunity(c.Request.Context(), &grouppb.CreateCommunityRequest{
 		Name:        req.Name,
 		Description: req.Description,
-		CreatorId:   userID.(string),
+		CreatorId:   userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to create community")
@@ -225,7 +252,10 @@ func (h *GroupHandler) CreateCommunity(c *gin.Context) {
 
 func (h *GroupHandler) AddGroupToCommunity(c *gin.Context) {
 	communityID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		ConversationID string `json:"conversation_id"`
 	}
@@ -237,7 +267,7 @@ func (h *GroupHandler) AddGroupToCommunity(c *gin.Context) {
 	resp, err := h.client.AddGroupToCommunity(c.Request.Context(), &grouppb.AddGroupToCommunityRequest{
 		CommunityId:    communityID,
 		ConversationId: req.ConversationID,
-		RequesterId:    userID.(string),
+		RequesterId:    userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to add group to community")
@@ -250,12 +280,15 @@ func (h *GroupHandler) AddGroupToCommunity(c *gin.Context) {
 func (h *GroupHandler) RemoveGroupFromCommunity(c *gin.Context) {
 	communityID := c.Param("id")
 	convID := c.Param("group_id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	resp, err := h.client.RemoveGroupFromCommunity(c.Request.Context(), &grouppb.RemoveGroupFromCommunityRequest{
 		CommunityId:    communityID,
 		ConversationId: convID,
-		RequesterId:    userID.(string),
+		RequesterId:    userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to remove group from community")
@@ -280,10 +313,13 @@ func (h *GroupHandler) GetCommunity(c *gin.Context) {
 }
 
 func (h *GroupHandler) ListCommunities(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	resp, err := h.client.ListCommunities(c.Request.Context(), &grouppb.ListCommunitiesRequest{
-		UserId: userID.(string),
+		UserId: userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to list communities")
@@ -294,7 +330,10 @@ func (h *GroupHandler) ListCommunities(c *gin.Context) {
 }
 
 func (h *GroupHandler) CreateBroadcastList(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		Name         string   `json:"name"`
 		RecipientIDs []string `json:"recipient_ids"`
@@ -305,7 +344,7 @@ func (h *GroupHandler) CreateBroadcastList(c *gin.Context) {
 	}
 
 	resp, err := h.client.CreateBroadcastList(c.Request.Context(), &grouppb.CreateBroadcastListRequest{
-		OwnerId:      userID.(string),
+		OwnerId:      userID,
 		Name:         req.Name,
 		RecipientIds: req.RecipientIDs,
 	})
@@ -319,11 +358,14 @@ func (h *GroupHandler) CreateBroadcastList(c *gin.Context) {
 
 func (h *GroupHandler) DeleteBroadcastList(c *gin.Context) {
 	listID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	resp, err := h.client.DeleteBroadcastList(c.Request.Context(), &grouppb.DeleteBroadcastListRequest{
 		Id:      listID,
-		OwnerId: userID.(string),
+		OwnerId: userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to delete broadcast list")
@@ -335,7 +377,10 @@ func (h *GroupHandler) DeleteBroadcastList(c *gin.Context) {
 
 func (h *GroupHandler) AddBroadcastRecipient(c *gin.Context) {
 	listID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		RecipientID string `json:"recipient_id"`
 	}
@@ -347,7 +392,7 @@ func (h *GroupHandler) AddBroadcastRecipient(c *gin.Context) {
 	resp, err := h.client.AddBroadcastRecipient(c.Request.Context(), &grouppb.AddBroadcastRecipientRequest{
 		BroadcastListId: listID,
 		RecipientId:      req.RecipientID,
-		OwnerId:          userID.(string),
+		OwnerId:          userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to add broadcast recipient")
@@ -360,12 +405,15 @@ func (h *GroupHandler) AddBroadcastRecipient(c *gin.Context) {
 func (h *GroupHandler) RemoveBroadcastRecipient(c *gin.Context) {
 	listID := c.Param("id")
 	recipientID := c.Param("recipient_id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	resp, err := h.client.RemoveBroadcastRecipient(c.Request.Context(), &grouppb.RemoveBroadcastRecipientRequest{
 		BroadcastListId: listID,
 		RecipientId:      recipientID,
-		OwnerId:          userID.(string),
+		OwnerId:          userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to remove broadcast recipient")
@@ -377,11 +425,14 @@ func (h *GroupHandler) RemoveBroadcastRecipient(c *gin.Context) {
 
 func (h *GroupHandler) GetBroadcastList(c *gin.Context) {
 	listID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 
 	resp, err := h.client.GetBroadcastList(c.Request.Context(), &grouppb.GetBroadcastListRequest{
 		BroadcastListId: listID,
-		OwnerId:          userID.(string),
+		OwnerId:          userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to fetch broadcast list")

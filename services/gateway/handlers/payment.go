@@ -19,7 +19,10 @@ func NewPaymentHandler(client pb.PaymentServiceClient, log *zap.Logger) *Payment
 }
 
 func (h *PaymentHandler) CreateWallet(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct{ Currency string `json:"currency"` }
 	c.ShouldBindJSON(&req)
 	resp, err := h.client.CreateWallet(c.Request.Context(), &pb.CreateWalletRequest{UserId: userID, Currency: req.Currency})
@@ -28,14 +31,20 @@ func (h *PaymentHandler) CreateWallet(c *gin.Context) {
 }
 
 func (h *PaymentHandler) GetWallet(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	resp, err := h.client.GetWallet(c.Request.Context(), &pb.GetWalletRequest{UserId: userID})
 	if err != nil { c.JSON(http.StatusNotFound, gin.H{"error": err.Error()}); return }
 	c.JSON(http.StatusOK, resp)
 }
 
 func (h *PaymentHandler) SendPayment(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		ReceiverID  string  `json:"receiver_id" binding:"required"`
 		Amount      float64 `json:"amount" binding:"required"`
@@ -52,7 +61,10 @@ func (h *PaymentHandler) SendPayment(c *gin.Context) {
 }
 
 func (h *PaymentHandler) RequestPayment(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		PayerID     string  `json:"payer_id" binding:"required"`
 		Amount      float64 `json:"amount" binding:"required"`
@@ -69,7 +81,10 @@ func (h *PaymentHandler) RequestPayment(c *gin.Context) {
 }
 
 func (h *PaymentHandler) CreateExpenseGroup(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	var req struct {
 		ConversationID string `json:"conversation_id" binding:"required"`
 		Name           string `json:"name" binding:"required"`
@@ -84,7 +99,10 @@ func (h *PaymentHandler) CreateExpenseGroup(c *gin.Context) {
 }
 
 func (h *PaymentHandler) AddExpense(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	groupID := c.Param("id")
 	var req struct {
 		Description string   `json:"description" binding:"required"`
@@ -101,7 +119,10 @@ func (h *PaymentHandler) AddExpense(c *gin.Context) {
 }
 
 func (h *PaymentHandler) SettleExpense(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	groupID := c.Param("id")
 	resp, err := h.client.SettleExpense(c.Request.Context(), &pb.SettleExpenseRequest{
 		ExpenseGroupId: groupID, UserId: userID,
@@ -111,7 +132,10 @@ func (h *PaymentHandler) SettleExpense(c *gin.Context) {
 }
 
 func (h *PaymentHandler) GetTransactionHistory(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	resp, err := h.client.GetTransactionHistory(c.Request.Context(), &pb.GetTransactionHistoryRequest{
 		UserId: userID, Limit: 50,
 	})
