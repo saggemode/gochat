@@ -261,6 +261,21 @@ func main() {
 	businessHandler := handlers.NewBusinessHandler(businessClient, log)
 	docsHandler := handlers.NewDocsHandler()
 
+	// ── Root Status & Health Endpoints ──────────────────────────────────────
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"service": "GoChat API Gateway",
+			"status":  "online",
+			"version": "1.0.0",
+			"docs":    "/docs",
+			"swagger": "/swagger",
+			"metrics": "/metrics",
+		})
+	})
+	r.GET("/healthz", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "healthy", "service": "api-gateway"})
+	})
+
 	// ── Interactive API Documentation ─────────────────────────────────────────
 	r.GET("/openapi.json", docsHandler.OpenAPIJSON)
 	r.GET("/docs", docsHandler.SwaggerUI)
