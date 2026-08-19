@@ -13,20 +13,29 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _emailController =
-      TextEditingController(text: 'alexandre@gochat.io');
-  final TextEditingController _passwordController =
-      TextEditingController(text: 'SecretPass123!');
+  bool _isRegister = false;
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
-  String _selectedCountry = 'United States (+1)';
 
-  void _handleLogin() async {
+  void _handleSubmit() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
+    final name = _nameController.text.trim();
+    final phone = _phoneController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your email and password')),
+        const SnackBar(content: Text('Please provide your email and password')),
+      );
+      return;
+    }
+
+    if (_isRegister && name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your full display name')),
       );
       return;
     }
@@ -34,7 +43,12 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await widget.appState.login(email, password);
+      if (_isRegister) {
+        await widget.appState.register(email, password, name, phone: phone);
+      } else {
+        await widget.appState.login(email, password);
+      }
+
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
@@ -45,7 +59,10 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login error: $e')),
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppTheme.dangerRed,
+        ),
       );
     } finally {
       if (mounted) {
@@ -59,131 +76,134 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 30),
-              // Brand Icon & Hero Text
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: AppTheme.primary.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Brand Icon & Header
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: const Icon(Icons.chat_bubble_rounded, size: 36, color: AppTheme.primary),
                 ),
-                child: const Icon(Icons.chat_bubble_rounded, size: 36, color: AppTheme.primary),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Welcome to GoChat',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textLight,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Enter your details to sign in or connect with your phone number.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13.5, color: AppTheme.textMuted),
-              ),
-              const SizedBox(height: 36),
-
-              // Country Dropdown
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.darkCard,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppTheme.darkBorder),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedCountry,
-                    isExpanded: true,
-                    dropdownColor: AppTheme.darkSurface,
-                    items: [
-                      'United States (+1)',
-                      'United Kingdom (+44)',
-                      'Germany (+49)',
-                      'Canada (+1)',
-                      'Nigeria (+234)',
-                      'India (+91)',
-                    ].map((country) {
-                      return DropdownMenuItem(
-                        value: country,
-                        child: Text(country, style: const TextStyle(color: AppTheme.textLight)),
-                      );
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setState(() => _selectedCountry = val);
-                      }
-                    },
+                const SizedBox(height: 16),
+                Text(
+                  _isRegister ? 'Create GoChat Account' : 'Welcome to GoChat',
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textLight,
+                    letterSpacing: -0.5,
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-
-              // Email / Phone Field
-              TextField(
-                controller: _emailController,
-                style: const TextStyle(color: AppTheme.textLight),
-                decoration: const InputDecoration(
-                  labelText: 'Email or Phone Number',
-                  prefixIcon: Icon(Icons.email_outlined, color: AppTheme.iconColor),
+                const SizedBox(height: 6),
+                Text(
+                  _isRegister
+                      ? 'Register to access real-time messaging, stories & calls'
+                      : 'Sign in to sync your active chats and microservices',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 28),
 
-              // Password Field
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                style: const TextStyle(color: AppTheme.textLight),
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: Icon(Icons.lock_outline, color: AppTheme.iconColor),
-                ),
-              ),
-              const SizedBox(height: 28),
-
-              // Submit Button
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                // Register-only Display Name
+                if (_isRegister) ...[
+                  TextField(
+                    controller: _nameController,
+                    style: const TextStyle(color: AppTheme.textLight),
+                    decoration: const InputDecoration(
+                      labelText: 'Display Name',
+                      hintText: 'e.g. Alexandre Sterling',
+                      prefixIcon: Icon(Icons.person_outline, color: AppTheme.iconColor),
+                    ),
                   ),
-                  onPressed: _isLoading ? null : _handleLogin,
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text(
-                          'Continue',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                ),
-              ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    style: const TextStyle(color: AppTheme.textLight),
+                    decoration: const InputDecoration(
+                      labelText: 'Phone Number (Optional)',
+                      hintText: '+1 555 123 4567',
+                      prefixIcon: Icon(Icons.phone_outlined, color: AppTheme.iconColor),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ],
 
-              const SizedBox(height: 24),
-              const Text(
-                'By proceeding, you agree to GoChat Terms of Service & Privacy Policy.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
-              ),
-            ],
+                // Email
+                TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  style: const TextStyle(color: AppTheme.textLight),
+                  decoration: const InputDecoration(
+                    labelText: 'Email Address',
+                    hintText: 'alex@example.com',
+                    prefixIcon: Icon(Icons.email_outlined, color: AppTheme.iconColor),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Password
+                TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  style: const TextStyle(color: AppTheme.textLight),
+                  decoration: const InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: Icon(Icons.lock_outline, color: AppTheme.iconColor),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Submit Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                    ),
+                    onPressed: _isLoading ? null : _handleSubmit,
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : Text(
+                            _isRegister ? 'Sign Up' : 'Log In',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Switch between Log In and Register
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _isRegister = !_isRegister;
+                    });
+                  },
+                  child: Text(
+                    _isRegister
+                        ? 'Already have an account? Log In'
+                        : 'Do not have an account? Sign Up',
+                    style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

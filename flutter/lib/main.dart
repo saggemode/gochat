@@ -20,13 +20,18 @@ class GoChatApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'GoChat',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
-      home: appState.isAuthenticated
-          ? MainNavigationScreen(appState: appState)
-          : LoginScreen(appState: appState),
+    return ListenableBuilder(
+      listenable: appState,
+      builder: (context, _) {
+        return MaterialApp(
+          title: 'GoChat',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.darkTheme,
+          home: appState.isAuthenticated
+              ? MainNavigationScreen(appState: appState)
+              : LoginScreen(appState: appState),
+        );
+      },
     );
   }
 }
