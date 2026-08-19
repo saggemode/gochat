@@ -38,6 +38,10 @@ func main() {
 	}
 	defer db.Close()
 
+	if err := database.AutoMigrate(ctx, db, "story", log); err != nil {
+		log.Warn("boot auto-migration note", zap.Error(err))
+	}
+
 	// ── Redis ─────────────────────────────────────────────────────────────────
 	redisClient, err := database.NewRedis(ctx, cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB, log)
 	if err != nil {

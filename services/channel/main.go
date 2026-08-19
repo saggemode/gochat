@@ -38,6 +38,10 @@ func main() {
 	}
 	defer db.Close()
 
+	if err := database.AutoMigrate(ctx, db, "channel", log); err != nil {
+		log.Warn("boot auto-migration note", zap.Error(err))
+	}
+
 	// ── Health Check Server ──────────────────────────────────────────────────
 	healthSrv := health.New("channel-service", cfg.HealthPort, log)
 	healthSrv.AddCheck("postgres", func(ctx context.Context) error {

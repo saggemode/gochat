@@ -39,6 +39,10 @@ func main() {
 	}
 	defer db.Close()
 
+	if err := database.AutoMigrate(ctx, db, "authz", log); err != nil {
+		log.Warn("boot auto-migration note", zap.Error(err))
+	}
+
 	// ── Health Check Server ──────────────────────────────────────────────────
 	healthSrv := health.New("authz-service", cfg.HealthPort, log)
 	healthSrv.AddCheck("postgres", func(ctx context.Context) error {

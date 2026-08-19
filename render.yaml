@@ -1,0 +1,319 @@
+# ============================================================================
+# render.yaml — Render Infrastructure as Code Blueprint
+# Deploys GoChat on Render with Private Networking, Redis, API Gateway & Frontend.
+# ============================================================================
+
+services:
+  # ─── 1. Next.js Frontend (Public Web Service) ─────────────────────────────
+  - type: web
+    name: gochat-frontend
+    runtime: node
+    plan: starter
+    rootDir: frontend
+    buildCommand: pnpm install && pnpm build
+    startCommand: pnpm start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: gochat-gateway
+          property: url
+
+  # ─── 2. API Gateway (Public Web Service) ──────────────────────────────────
+  - type: web
+    name: gochat-gateway
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerBuildArgs:
+      - key: SERVICE
+        value: gateway
+    envVars:
+      - key: HTTP_PORT
+        value: 10000
+      - key: HEALTH_PORT
+        value: 9090
+      - key: REDIS_ADDR
+        fromService:
+          type: redis
+          name: gochat-redis
+          property: host
+      - key: REDIS_PASSWORD
+        fromService:
+          type: redis
+          name: gochat-redis
+          property: password
+      - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: AUTH_GRPC_ADDR
+        value: gochat-auth:50051
+      - key: CHAT_GRPC_ADDR
+        value: gochat-chat:50052
+      - key: MEDIA_GRPC_ADDR
+        value: gochat-media:50053
+      - key: AUTHZ_GRPC_ADDR
+        value: gochat-authz:50054
+      - key: GROUP_GRPC_ADDR
+        value: gochat-group:50055
+      - key: STORY_GRPC_ADDR
+        value: gochat-story:50056
+      - key: CALL_GRPC_ADDR
+        value: gochat-call:50057
+      - key: CHANNEL_GRPC_ADDR
+        value: gochat-channel:50058
+      - key: SOCIAL_GRPC_ADDR
+        value: gochat-social:50061
+      - key: MINIAPP_GRPC_ADDR
+        value: gochat-miniapp:50062
+      - key: BUSINESS_GRPC_ADDR
+        value: gochat-business:50063
+
+  # ─── 3. Auth Service (Private Service) ────────────────────────────────────
+  - type: pserv
+    name: gochat-auth
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerBuildArgs:
+      - key: SERVICE
+        value: auth
+    envVars:
+      - key: GRPC_PORT
+        value: 50051
+      - key: HEALTH_PORT
+        value: 9090
+      - key: AUTH_DB_DSN
+        sync: false
+      - key: REDIS_ADDR
+        fromService:
+          type: redis
+          name: gochat-redis
+          property: host
+      - key: REDIS_PASSWORD
+        fromService:
+          type: redis
+          name: gochat-redis
+          property: password
+      - key: JWT_SECRET
+        sync: false
+
+  # ─── 4. Chat Service (Private Service) ────────────────────────────────────
+  - type: pserv
+    name: gochat-chat
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerBuildArgs:
+      - key: SERVICE
+        value: chat
+    envVars:
+      - key: GRPC_PORT
+        value: 50052
+      - key: HEALTH_PORT
+        value: 9090
+      - key: CHAT_DB_DSN
+        sync: false
+      - key: REDIS_ADDR
+        fromService:
+          type: redis
+          name: gochat-redis
+          property: host
+      - key: REDIS_PASSWORD
+        fromService:
+          type: redis
+          name: gochat-redis
+          property: password
+      - key: AUTHZ_GRPC_ADDR
+        value: gochat-authz:50054
+
+  # ─── 5. Media Service (Private Service) ───────────────────────────────────
+  - type: pserv
+    name: gochat-media
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerBuildArgs:
+      - key: SERVICE
+        value: media
+    envVars:
+      - key: GRPC_PORT
+        value: 50053
+      - key: HEALTH_PORT
+        value: 9090
+      - key: MINIO_ENDPOINT
+        sync: false
+      - key: MINIO_ACCESS_KEY
+        sync: false
+      - key: MINIO_SECRET_KEY
+        sync: false
+      - key: MINIO_BUCKET
+        value: gochat-media
+      - key: MINIO_USE_SSL
+        value: "true"
+
+  # ─── 6. Authz Service (Private Service) ───────────────────────────────────
+  - type: pserv
+    name: gochat-authz
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerBuildArgs:
+      - key: SERVICE
+        value: authz
+    envVars:
+      - key: GRPC_PORT
+        value: 50054
+      - key: HEALTH_PORT
+        value: 9090
+      - key: AUTHZ_DB_DSN
+        sync: false
+
+  # ─── 7. Group Service (Private Service) ───────────────────────────────────
+  - type: pserv
+    name: gochat-group
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerBuildArgs:
+      - key: SERVICE
+        value: group
+    envVars:
+      - key: GRPC_PORT
+        value: 50055
+      - key: HEALTH_PORT
+        value: 9090
+      - key: GROUP_DB_DSN
+        sync: false
+      - key: AUTHZ_GRPC_ADDR
+        value: gochat-authz:50054
+
+  # ─── 8. Story Service (Private Service) ───────────────────────────────────
+  - type: pserv
+    name: gochat-story
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerBuildArgs:
+      - key: SERVICE
+        value: story
+    envVars:
+      - key: GRPC_PORT
+        value: 50056
+      - key: HEALTH_PORT
+        value: 9090
+      - key: STORY_DB_DSN
+        sync: false
+      - key: REDIS_ADDR
+        fromService:
+          type: redis
+          name: gochat-redis
+          property: host
+      - key: REDIS_PASSWORD
+        fromService:
+          type: redis
+          name: gochat-redis
+          property: password
+
+  # ─── 9. Call Service (Private Service) ────────────────────────────────────
+  - type: pserv
+    name: gochat-call
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerBuildArgs:
+      - key: SERVICE
+        value: call
+    envVars:
+      - key: GRPC_PORT
+        value: 50057
+      - key: HEALTH_PORT
+        value: 9090
+      - key: CALL_DB_DSN
+        sync: false
+      - key: REDIS_ADDR
+        fromService:
+          type: redis
+          name: gochat-redis
+          property: host
+      - key: REDIS_PASSWORD
+        fromService:
+          type: redis
+          name: gochat-redis
+          property: password
+
+  # ─── 10. Channel Service (Private Service) ────────────────────────────────
+  - type: pserv
+    name: gochat-channel
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerBuildArgs:
+      - key: SERVICE
+        value: channel
+    envVars:
+      - key: GRPC_PORT
+        value: 50058
+      - key: HEALTH_PORT
+        value: 9090
+      - key: CHANNEL_DB_DSN
+        sync: false
+
+  # ─── 11. Social Service (Private Service) ─────────────────────────────────
+  - type: pserv
+    name: gochat-social
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerBuildArgs:
+      - key: SERVICE
+        value: social
+    envVars:
+      - key: GRPC_PORT
+        value: 50061
+      - key: HEALTH_PORT
+        value: 9090
+      - key: SOCIAL_DB_DSN
+        sync: false
+
+  # ─── 12. MiniApp Service (Private Service) ────────────────────────────────
+  - type: pserv
+    name: gochat-miniapp
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerBuildArgs:
+      - key: SERVICE
+        value: miniapp
+    envVars:
+      - key: GRPC_PORT
+        value: 50062
+      - key: HEALTH_PORT
+        value: 9090
+      - key: MINIAPP_DB_DSN
+        sync: false
+
+  # ─── 13. Business Service (Private Service) ───────────────────────────────
+  - type: pserv
+    name: gochat-business
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerBuildArgs:
+      - key: SERVICE
+        value: business
+    envVars:
+      - key: GRPC_PORT
+        value: 50063
+      - key: HEALTH_PORT
+        value: 9090
+      - key: BUSINESS_DB_DSN
+        sync: false
+
+# ─── Managed Redis on Render ────────────────────────────────────────────────
+redis:
+  - name: gochat-redis
+    plan: starter
+    maxmemoryPolicy: noeviction
+    ipAllowList: []
