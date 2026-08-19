@@ -31,6 +31,10 @@ func main() {
 	}
 	defer db.Close()
 
+	if err := database.AutoMigrate(ctx, db, "business", log); err != nil {
+		log.Fatal("boot-time auto-migration failed", zap.Error(err))
+	}
+
 	// ── Health Check Server ──────────────────────────────────────────────────
 	healthSrv := health.New("business-service", cfg.HealthPort, log)
 	healthSrv.AddCheck("postgres", func(ctx context.Context) error {

@@ -2,133 +2,128 @@ package server
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgxpool"
-	"fmt"
 	"strings"
-
-	aipb "gochat/gen/ai"
-	chatpb "gochat/gen/chat"
-	"gochat/services/ai/repository"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	aipb "gochat/gen/ai"
+	chatpb "gochat/gen/chat"
 )
 
-// AIServer implements the AIService gRPC server.
+// AIServer implements aipb.AIServiceServer.
 type AIServer struct {
 	aipb.UnimplementedAIServiceServer
-	repo       *repository.AIRepository
 	chatClient chatpb.ChatServiceClient
+	engine     *AIEngine
 	log        *zap.Logger
 }
 
-// NewAIServer constructs the server with its dependencies.
-func NewAIServer(db *pgxpool.Pool, log *zap.Logger) *AIServer {
+// NewAIServer constructs the AI gRPC server.
+func NewAIServer(chatClient chatpb.ChatServiceClient, log *zap.Logger) *AIServer {
 	return &AIServer{
-		repo: repository.NewAIRepository(db),
-		log:  log,
+		chatClient: chatClient,
+		engine:     NewAIEngine(),
+		log:        log,
 	}
 }
 
-// SummarizeChat fetches recent messages and generates a summary.
+// SummarizeChat summarizes the recent messages in a conversation.
 func (s *AIServer) SummarizeChat(ctx context.Context, req *aipb.SummarizeChatRequest) (*aipb.SummarizeChatResponse, error) {
-	if req.UserId == "" || req.ConversationId == "" {
-		return nil, status.Error(codes.InvalidArgument, "user_id and conversation_id required")
+	if req.ConversationId == "" {
+		return nil, status.Error(codes.InvalidArgument, "conversation_id is required")
 	}
 
-	limit := int32(100)
-	if req.MessageCount > 0 {
-		limit = req.MessageCount
+	limit := req.MessageCount
+	if limit <= 0 || limit > 500 {
+		limit = 100
 	}
 
-	lang := "en"
-	if req.Language != "" {
-		lang = req.Language
+	targetLang := req.Language
+	if strings.TrimSpace(targetLang) == "" {
+		targetLang = "en"
 	}
 
-	// Fetch recent messages from chat service
-	resp, err := s.chatClient.GetMessages(ctx, &chatpb.GetMessagesRequest{
-		ConversationId: req.ConversationId,
-		UserId:         req.UserId,
-		Limit:          limit,
-	})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to fetch messages: %v", err)
-	}
-
-	var texts []string
-	for _, m := range resp.Messages {
-		if m.Content != "" && !m.IsDeleted {
-			texts = append(texts, m.Content)
+	var messages []*chatpb.Message
+	if s.chatClient != nil {
+		msgResp, err := s.chatClient.GetMessages(ctx, &chatpb.GetMessagesRequest{
+			ConversationId: req.ConversationId,
+			UserId:         req.UserId,
+			Limit:          limit,
+		})
+		if err == nil && msgResp != nil {
+			// GetMessages returns newest first, so we reverse for chronological order
+			messages = make([]*chatpb.Message, len(msgResp.Messages))
+			for i, m := range msgResp.Messages {
+				messages[len(msgResp.Messages)-1-i] = m
+			}
+		} else {
+			s.log.Warn("could not fetch messages from chat service, summarizing with empty set", zap.Error(err))
 		}
 	}
 
-	summary, topics := repository.GenerateSummary(texts, lang)
-
-	// Cache the summary
-	_, cacheErr := s.repo.SaveSummary(ctx, req.ConversationId, req.UserId, summary, lang, len(texts))
-	if cacheErr != nil {
-		s.log.Warn("failed to cache summary", zap.Error(cacheErr))
+	summary, readCount, topics, err := s.engine.Summarize(ctx, messages, targetLang)
+	if err != nil {
+		s.log.Error("summarization failed", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "failed to summarize chat: %v", err)
 	}
 
 	return &aipb.SummarizeChatResponse{
 		Summary:      summary,
-		MessagesRead: int32(len(texts)),
+		MessagesRead: readCount,
 		KeyTopics:    topics,
 	}, nil
 }
 
-// SuggestReplies generates context-aware smart reply suggestions.
+// SuggestReplies returns context-aware quick response chips.
 func (s *AIServer) SuggestReplies(ctx context.Context, req *aipb.SuggestRepliesRequest) (*aipb.SuggestRepliesResponse, error) {
-	if req.UserId == "" || req.ConversationId == "" {
-		return nil, status.Error(codes.InvalidArgument, "user_id and conversation_id required")
+	if req.ConversationId == "" {
+		return nil, status.Error(codes.InvalidArgument, "conversation_id is required")
 	}
 
-	// Check cache first
-	cached, err := s.repo.GetCachedReplies(ctx, req.ConversationId, req.UserId)
-	if err == nil && len(cached) > 0 {
-		return &aipb.SuggestRepliesResponse{Suggestions: cached}, nil
-	}
-
-	// Fetch last few messages for context
-	resp, err := s.chatClient.GetMessages(ctx, &chatpb.GetMessagesRequest{
-		ConversationId: req.ConversationId,
-		UserId:         req.UserId,
-		Limit:          10,
-	})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to fetch messages: %v", err)
-	}
-
-	var texts []string
-	for _, m := range resp.Messages {
-		if m.Content != "" {
-			texts = append(texts, m.Content)
+	var messages []*chatpb.Message
+	if s.chatClient != nil {
+		msgResp, err := s.chatClient.GetMessages(ctx, &chatpb.GetMessagesRequest{
+			ConversationId: req.ConversationId,
+			UserId:         req.UserId,
+			Limit:          10,
+		})
+		if err == nil && msgResp != nil {
+			messages = msgResp.Messages
 		}
 	}
 
-	count := int(req.Count)
-	if count <= 0 {
-		count = 3
+	replies, err := s.engine.SuggestReplies(ctx, messages)
+	if err != nil {
+		s.log.Error("suggest replies failed", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "failed to suggest replies: %v", err)
 	}
 
-	suggestions := repository.GenerateSmartReplies(texts, count)
+	maxCount := int(req.Count)
+	if maxCount > 0 && len(replies) > maxCount {
+		replies = replies[:maxCount]
+	}
 
-	// Cache suggestions
-	_ = s.repo.SaveSmartReplies(ctx, req.ConversationId, req.UserId, suggestions)
-
-	return &aipb.SuggestRepliesResponse{Suggestions: suggestions}, nil
+	return &aipb.SuggestRepliesResponse{
+		Suggestions: replies,
+	}, nil
 }
 
-// TranslateMessage translates text to the target language.
+// TranslateMessage translates text into a target language.
 func (s *AIServer) TranslateMessage(ctx context.Context, req *aipb.TranslateMessageRequest) (*aipb.TranslateMessageResponse, error) {
-	if req.Text == "" || req.TargetLanguage == "" {
-		return nil, status.Error(codes.InvalidArgument, "text and target_language required")
+	if strings.TrimSpace(req.Text) == "" {
+		return nil, status.Error(codes.InvalidArgument, "text is required")
+	}
+	if strings.TrimSpace(req.TargetLanguage) == "" {
+		return nil, status.Error(codes.InvalidArgument, "target_language is required")
 	}
 
-	translated, detected := repository.TranslateText(req.Text, req.SourceLanguage, req.TargetLanguage)
+	translated, detected, err := s.engine.Translate(ctx, req.Text, req.TargetLanguage, req.SourceLanguage)
+	if err != nil {
+		s.log.Error("translation failed", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "failed to translate message: %v", err)
+	}
 
 	return &aipb.TranslateMessageResponse{
 		TranslatedText:   translated,
@@ -136,70 +131,58 @@ func (s *AIServer) TranslateMessage(ctx context.Context, req *aipb.TranslateMess
 	}, nil
 }
 
-// AdjustTone rewrites text with a different tone.
+// AdjustTone transforms draft text into the requested style.
 func (s *AIServer) AdjustTone(ctx context.Context, req *aipb.AdjustToneRequest) (*aipb.AdjustToneResponse, error) {
-	if req.Text == "" || req.Tone == "" {
-		return nil, status.Error(codes.InvalidArgument, "text and tone required")
+	if strings.TrimSpace(req.Text) == "" {
+		return nil, status.Error(codes.InvalidArgument, "text is required")
+	}
+	if strings.TrimSpace(req.Tone) == "" {
+		return nil, status.Error(codes.InvalidArgument, "tone is required")
 	}
 
-	validTones := map[string]bool{
-		"formal": true, "casual": true, "friendly": true,
-		"professional": true, "humorous": true,
+	adjusted, originalTone, err := s.engine.AdjustTone(ctx, req.Text, req.Tone)
+	if err != nil {
+		s.log.Error("adjust tone failed", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "failed to adjust tone: %v", err)
 	}
-	if !validTones[strings.ToLower(req.Tone)] {
-		return nil, status.Errorf(codes.InvalidArgument,
-			"invalid tone: %s. Valid: formal, casual, friendly, professional, humorous", req.Tone)
-	}
-
-	adjusted, original := repository.AdjustTextTone(req.Text, strings.ToLower(req.Tone))
 
 	return &aipb.AdjustToneResponse{
 		AdjustedText: adjusted,
-		OriginalTone: original,
+		OriginalTone: originalTone,
 	}, nil
 }
 
-// ExtractActionItems finds tasks and meetings in conversation messages.
+// ExtractActionItems extracts actionable items and meetings from a conversation.
 func (s *AIServer) ExtractActionItems(ctx context.Context, req *aipb.ExtractActionItemsRequest) (*aipb.ExtractActionItemsResponse, error) {
-	if req.UserId == "" || req.ConversationId == "" {
-		return nil, status.Error(codes.InvalidArgument, "user_id and conversation_id required")
+	if req.ConversationId == "" {
+		return nil, status.Error(codes.InvalidArgument, "conversation_id is required")
 	}
 
-	limit := int32(50)
-	if req.MessageCount > 0 {
-		limit = req.MessageCount
+	limit := req.MessageCount
+	if limit <= 0 || limit > 200 {
+		limit = 50
 	}
 
-	resp, err := s.chatClient.GetMessages(ctx, &chatpb.GetMessagesRequest{
-		ConversationId: req.ConversationId,
-		UserId:         req.UserId,
-		Limit:          limit,
-	})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to fetch messages: %v", err)
-	}
-
-	var texts []string
-	for _, m := range resp.Messages {
-		if m.Content != "" && !m.IsDeleted {
-			texts = append(texts, fmt.Sprintf("[%s]: %s", m.SenderId, m.Content))
+	var messages []*chatpb.Message
+	if s.chatClient != nil {
+		msgResp, err := s.chatClient.GetMessages(ctx, &chatpb.GetMessagesRequest{
+			ConversationId: req.ConversationId,
+			UserId:         req.UserId,
+			Limit:          limit,
+		})
+		if err == nil && msgResp != nil {
+			messages = msgResp.Messages
 		}
 	}
 
-	items, meetings := repository.ExtractActions(texts)
-
-	var pbItems []*aipb.ActionItem
-	for _, item := range items {
-		pbItems = append(pbItems, &aipb.ActionItem{
-			Description: item.Description,
-			Assignee:    item.Assignee,
-			DueDate:     item.DueDate,
-			Priority:    item.Priority,
-		})
+	actionItems, meetings, err := s.engine.ExtractActionItems(ctx, messages)
+	if err != nil {
+		s.log.Error("extract action items failed", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "failed to extract action items: %v", err)
 	}
 
 	return &aipb.ExtractActionItemsResponse{
-		ActionItems: pbItems,
+		ActionItems: actionItems,
 		Meetings:    meetings,
 	}, nil
 }

@@ -19,18 +19,20 @@ type GroupMetadata struct {
 	AdminsOnlyEditInfo   bool
 	InviteCode           sql.NullString
 	JoinApprovalRequired bool
+	Name                 string
+	AvatarURL            string
 }
 
 type GroupJoinApproval struct {
-	ID               uuid.UUID
-	ConversationID   uuid.UUID
-	UserID           uuid.UUID
-	Status           string
-	RequestedAt      time.Time
-	ResolvedBy       uuid.NullUUID
-	ResolvedAt       *time.Time
-	UserDisplayName  string
-	UserAvatarURL    string
+	ID              uuid.UUID
+	ConversationID  uuid.UUID
+	UserID          uuid.UUID
+	Status          string
+	RequestedAt     time.Time
+	ResolvedBy      uuid.NullUUID
+	ResolvedAt      *time.Time
+	UserDisplayName string
+	UserAvatarURL   string
 }
 
 type Community struct {
@@ -92,7 +94,18 @@ func (r *GroupRepository) UpdateMetadata(ctx context.Context, m *GroupMetadata) 
 			invite_code = EXCLUDED.invite_code,
 			join_approval_required = EXCLUDED.join_approval_required
 	`, m.ConversationID, m.Description, m.AnnouncementsOnly, m.AdminsOnlyEditInfo, m.InviteCode, m.JoinApprovalRequired)
-	return err
+	if err != nil {
+		return err
+	}
+
+	if m.Name != "" {
+		_, _ = r.db.Exec(ctx, `UPDATE chat.conversations SET name = $1 WHERE id = $2`, m.Name, m.ConversationID)
+	}
+	if m.AvatarURL != "" {
+		_, _ = r.db.Exec(ctx, `UPDATE chat.conversations SET avatar_url = $1 WHERE id = $2`, m.AvatarURL, m.ConversationID)
+	}
+
+	return nil
 }
 
 func (r *GroupRepository) GetUserRole(ctx context.Context, convID, userID uuid.UUID) (string, error) {

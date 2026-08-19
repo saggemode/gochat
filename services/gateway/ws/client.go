@@ -10,6 +10,8 @@ import (
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 
+	"strings"
+
 	chatpb "gochat/gen/chat"
 )
 
@@ -26,14 +28,6 @@ const (
 	// Maximum message size allowed from peer.
 	maxMessageSize = 4096
 )
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true // Rely on CORS middleware configuration
-	},
-}
 
 // Client represents a single connected WebSocket client.
 type Client struct {
@@ -114,6 +108,16 @@ func (c *Client) writePump() {
 
 // listenGrpcStream connects to Chat Service gRPC stream and pushes events into client send channel.
 func (c *Client) listenGrpcStream(ctx context.Context, chatClient chatpb.ChatServiceClient) {
+	// Recover from panics so a single bad stream doesn't crash the entire gateway.
+	defer func() {
+		if r := recover(); r != nil {
+			c.log.Error("recovered from panic in gRPC stream listener",
+				zap.Any("panic", r),
+				zap.String("user_id", c.userID),
+			)
+		}
+	}()
+
 	stream, err := chatClient.StreamMessages(ctx, &chatpb.StreamMessagesRequest{UserId: c.userID})
 	if err != nil {
 		c.log.Error("failed to connect to gRPC stream", zap.Error(err), zap.String("user_id", c.userID))
@@ -149,12 +153,32 @@ func (c *Client) listenGrpcStream(ctx context.Context, chatClient chatpb.ChatSer
 }
 
 // ServeWs upgrades HTTP connections to WebSockets and registers the client.
-func ServeWs(hub *Hub, chatClient chatpb.ChatServiceClient, log *zap.Logger) gin.HandlerFunc {
+func ServeWs(hub *Hub, chatClient chatpb.ChatServiceClient, allowedOrigins string, log *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.GetString("user_id")
 		if userID == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorised user in context"})
 			return
+		}
+
+		upgrader := websocket.Upgrader{
+			ReadBufferSize:  1024,
+			WriteBufferSize: 1024,
+			CheckOrigin: func(r *http.Request) bool {
+				origin := r.Header.Get("Origin")
+				if origin == "" {
+					return true // Allow non-browser clients (like curl, desktop apps)
+				}
+				originsList := strings.Split(allowedOrigins, ",")
+				for _, o := range originsList {
+					o = strings.TrimSpace(o)
+					if o == "*" || o == origin {
+						return true
+					}
+				}
+				log.Warn("WebSocket origin not allowed", zap.String("origin", origin))
+				return false
+			},
 		}
 
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)

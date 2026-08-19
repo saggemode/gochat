@@ -13,20 +13,23 @@ import (
 
 	callpb "gochat/gen/call"
 	"gochat/services/call/repository"
+	"gochat/services/call/sfu"
 )
 
 type CallServer struct {
 	callpb.UnimplementedCallServiceServer
-	repo  *repository.CallRepository
-	redis *redis.Client
-	log   *zap.Logger
+	repo       *repository.CallRepository
+	redis      *redis.Client
+	log        *zap.Logger
+	sfuManager *sfu.SFURoomManager
 }
 
 func New(repo *repository.CallRepository, redis *redis.Client, log *zap.Logger) *CallServer {
 	return &CallServer{
-		repo:  repo,
-		redis: redis,
-		log:   log,
+		repo:       repo,
+		redis:      redis,
+		log:        log,
+		sfuManager: sfu.NewSFURoomManager(log),
 	}
 }
 
@@ -46,12 +49,12 @@ func (s *CallServer) StartCall(ctx context.Context, req *callpb.StartCallRequest
 	}
 
 	c := &repository.CallLog{
-		ID:        uuid.New(),
-		CallerID:  callerID,
+		ID:         uuid.New(),
+		CallerID:   callerID,
 		ReceiverID: receiverID,
-		Type:      callType,
-		Status:    "dialing",
-		StartTime: time.Now(),
+		Type:       callType,
+		Status:     "dialing",
+		StartTime:  time.Now(),
 	}
 
 	err = s.repo.Create(ctx, c)
@@ -263,6 +266,67 @@ func (s *CallServer) EndCall(ctx context.Context, req *callpb.EndCallRequest) (*
 }
 
 func (s *CallServer) SendSignalingMessage(ctx context.Context, req *callpb.SendSignalingMessageRequest) (*callpb.SendSignalingMessageResponse, error) {
+	if req.ReceiverId == "sfu" || req.ReceiverId == "sfu-server" {
+		room := s.sfuManager.GetOrCreateRoom(req.CallId, "SFU Voice/Video Room", true)
+
+		if req.Type == "sfu-pub-offer" || req.Type == "offer" {
+			sdpAnswer, err := room.HandlePublisherOffer(req.SenderId, req.Sdp)
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "sfu publisher offer failed: %v", err)
+			}
+
+			// Respond back to sender with SFU publisher SDP Answer
+			cpPayload := map[string]string{
+				"call_id":     req.CallId,
+				"caller_id":   "sfu",
+				"receiver_id": req.SenderId,
+				"status":      "signaling",
+				"sdp":         sdpAnswer,
+				"type":        "sfu-pub-answer",
+			}
+			cpJSON, _ := json.Marshal(cpPayload)
+
+			eventPayload := map[string]string{
+				"event":          "call_signaling",
+				"actor_id":       "sfu",
+				"target_user_id": req.SenderId,
+				"call_payload":   string(cpJSON),
+			}
+			eventJSON, _ := json.Marshal(eventPayload)
+
+			_ = s.redis.Publish(ctx, "chat:calls", string(eventJSON)).Err()
+			return &callpb.SendSignalingMessageResponse{Success: true}, nil
+		}
+
+		if req.Type == "sfu-sub-offer" {
+			sdpAnswer, err := room.HandleSubscriberOffer(req.SenderId, req.Sdp)
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "sfu subscriber offer failed: %v", err)
+			}
+
+			cpPayload := map[string]string{
+				"call_id":     req.CallId,
+				"caller_id":   "sfu",
+				"receiver_id": req.SenderId,
+				"status":      "signaling",
+				"sdp":         sdpAnswer,
+				"type":        "sfu-sub-answer",
+			}
+			cpJSON, _ := json.Marshal(cpPayload)
+
+			eventPayload := map[string]string{
+				"event":          "call_signaling",
+				"actor_id":       "sfu",
+				"target_user_id": req.SenderId,
+				"call_payload":   string(cpJSON),
+			}
+			eventJSON, _ := json.Marshal(eventPayload)
+
+			_ = s.redis.Publish(ctx, "chat:calls", string(eventJSON)).Err()
+			return &callpb.SendSignalingMessageResponse{Success: true}, nil
+		}
+	}
+
 	// Relays WebRTC SDP or ICE candidates to the specific target user
 	cpPayload := map[string]string{
 		"call_id":     req.CallId,

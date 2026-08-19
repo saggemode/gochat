@@ -35,5 +35,4 @@ frontend
 **/tmp_crypto
 **/build_error*.txt
 **/*.exe
-vendor/
 **/node_modules

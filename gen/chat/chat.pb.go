@@ -186,21 +186,22 @@ func (ConversationType) EnumDescriptor() ([]byte, []int) {
 type EventType int32
 
 const (
-	EventType_EVENT_NEW_MESSAGE      EventType = 0
-	EventType_EVENT_MESSAGE_EDITED   EventType = 1
-	EventType_EVENT_MESSAGE_DELETED  EventType = 2
-	EventType_EVENT_REACTION_ADDED   EventType = 3
-	EventType_EVENT_REACTION_REMOVED EventType = 4
-	EventType_EVENT_TYPING           EventType = 5
-	EventType_EVENT_READ             EventType = 6
-	EventType_EVENT_PINNED           EventType = 7
-	EventType_EVENT_CALL_INITIATED   EventType = 8
-	EventType_EVENT_CALL_ACCEPTED    EventType = 9
-	EventType_EVENT_CALL_REJECTED    EventType = 10
-	EventType_EVENT_CALL_ENDED       EventType = 11
-	EventType_EVENT_CALL_SIGNALING   EventType = 12
-	EventType_EVENT_STORY_CREATED    EventType = 13
-	EventType_EVENT_STORY_DELETED    EventType = 14
+	EventType_EVENT_NEW_MESSAGE          EventType = 0
+	EventType_EVENT_MESSAGE_EDITED       EventType = 1
+	EventType_EVENT_MESSAGE_DELETED      EventType = 2
+	EventType_EVENT_REACTION_ADDED       EventType = 3
+	EventType_EVENT_REACTION_REMOVED     EventType = 4
+	EventType_EVENT_TYPING               EventType = 5
+	EventType_EVENT_READ                 EventType = 6
+	EventType_EVENT_PINNED               EventType = 7
+	EventType_EVENT_CALL_INITIATED       EventType = 8
+	EventType_EVENT_CALL_ACCEPTED        EventType = 9
+	EventType_EVENT_CALL_REJECTED        EventType = 10
+	EventType_EVENT_CALL_ENDED           EventType = 11
+	EventType_EVENT_CALL_SIGNALING       EventType = 12
+	EventType_EVENT_STORY_CREATED        EventType = 13
+	EventType_EVENT_STORY_DELETED        EventType = 14
+	EventType_EVENT_CONVERSATION_CREATED EventType = 15
 )
 
 // Enum value maps for EventType.
@@ -221,23 +222,25 @@ var (
 		12: "EVENT_CALL_SIGNALING",
 		13: "EVENT_STORY_CREATED",
 		14: "EVENT_STORY_DELETED",
+		15: "EVENT_CONVERSATION_CREATED",
 	}
 	EventType_value = map[string]int32{
-		"EVENT_NEW_MESSAGE":      0,
-		"EVENT_MESSAGE_EDITED":   1,
-		"EVENT_MESSAGE_DELETED":  2,
-		"EVENT_REACTION_ADDED":   3,
-		"EVENT_REACTION_REMOVED": 4,
-		"EVENT_TYPING":           5,
-		"EVENT_READ":             6,
-		"EVENT_PINNED":           7,
-		"EVENT_CALL_INITIATED":   8,
-		"EVENT_CALL_ACCEPTED":    9,
-		"EVENT_CALL_REJECTED":    10,
-		"EVENT_CALL_ENDED":       11,
-		"EVENT_CALL_SIGNALING":   12,
-		"EVENT_STORY_CREATED":    13,
-		"EVENT_STORY_DELETED":    14,
+		"EVENT_NEW_MESSAGE":          0,
+		"EVENT_MESSAGE_EDITED":       1,
+		"EVENT_MESSAGE_DELETED":      2,
+		"EVENT_REACTION_ADDED":       3,
+		"EVENT_REACTION_REMOVED":     4,
+		"EVENT_TYPING":               5,
+		"EVENT_READ":                 6,
+		"EVENT_PINNED":               7,
+		"EVENT_CALL_INITIATED":       8,
+		"EVENT_CALL_ACCEPTED":        9,
+		"EVENT_CALL_REJECTED":        10,
+		"EVENT_CALL_ENDED":           11,
+		"EVENT_CALL_SIGNALING":       12,
+		"EVENT_STORY_CREATED":        13,
+		"EVENT_STORY_DELETED":        14,
+		"EVENT_CONVERSATION_CREATED": 15,
 	}
 )
 
@@ -377,29 +380,33 @@ func (x *Conversation) GetUpdatedAt() int64 {
 }
 
 type Message struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ConversationId string                 `protobuf:"bytes,2,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
-	SenderId       string                 `protobuf:"bytes,3,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
-	Content        string                 `protobuf:"bytes,4,opt,name=content,proto3" json:"content,omitempty"`
-	Type           MessageType            `protobuf:"varint,5,opt,name=type,proto3,enum=chat.MessageType" json:"type,omitempty"`
-	Status         MessageStatus          `protobuf:"varint,6,opt,name=status,proto3,enum=chat.MessageStatus" json:"status,omitempty"`
-	MediaUrl       string                 `protobuf:"bytes,7,opt,name=media_url,json=mediaUrl,proto3" json:"media_url,omitempty"`
-	MediaMime      string                 `protobuf:"bytes,8,opt,name=media_mime,json=mediaMime,proto3" json:"media_mime,omitempty"`
-	MediaSize      int64                  `protobuf:"varint,9,opt,name=media_size,json=mediaSize,proto3" json:"media_size,omitempty"`
-	ParentId       string                 `protobuf:"bytes,10,opt,name=parent_id,json=parentId,proto3" json:"parent_id,omitempty"`           // for threaded replies
-	ThreadCount    int32                  `protobuf:"varint,11,opt,name=thread_count,json=threadCount,proto3" json:"thread_count,omitempty"` // number of replies in thread
-	SendAt         int64                  `protobuf:"varint,12,opt,name=send_at,json=sendAt,proto3" json:"send_at,omitempty"`                // Unix ts for scheduled delivery (0 = now)
-	ExpiresAt      int64                  `protobuf:"varint,13,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`       // Unix ts for self-destruct (0 = never)
-	IsPinned       bool                   `protobuf:"varint,14,opt,name=is_pinned,json=isPinned,proto3" json:"is_pinned,omitempty"`
-	IsEdited       bool                   `protobuf:"varint,15,opt,name=is_edited,json=isEdited,proto3" json:"is_edited,omitempty"`
-	IsDeleted      bool                   `protobuf:"varint,16,opt,name=is_deleted,json=isDeleted,proto3" json:"is_deleted,omitempty"`
-	Reactions      []*Reaction            `protobuf:"bytes,17,rep,name=reactions,proto3" json:"reactions,omitempty"`
-	Reads          []*MessageRead         `protobuf:"bytes,18,rep,name=reads,proto3" json:"reads,omitempty"`
-	CreatedAt      int64                  `protobuf:"varint,19,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt      int64                  `protobuf:"varint,20,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	Id                  string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ConversationId      string                 `protobuf:"bytes,2,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
+	SenderId            string                 `protobuf:"bytes,3,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
+	Content             string                 `protobuf:"bytes,4,opt,name=content,proto3" json:"content,omitempty"`
+	Type                MessageType            `protobuf:"varint,5,opt,name=type,proto3,enum=chat.MessageType" json:"type,omitempty"`
+	Status              MessageStatus          `protobuf:"varint,6,opt,name=status,proto3,enum=chat.MessageStatus" json:"status,omitempty"`
+	MediaUrl            string                 `protobuf:"bytes,7,opt,name=media_url,json=mediaUrl,proto3" json:"media_url,omitempty"`
+	MediaMime           string                 `protobuf:"bytes,8,opt,name=media_mime,json=mediaMime,proto3" json:"media_mime,omitempty"`
+	MediaSize           int64                  `protobuf:"varint,9,opt,name=media_size,json=mediaSize,proto3" json:"media_size,omitempty"`
+	ParentId            string                 `protobuf:"bytes,10,opt,name=parent_id,json=parentId,proto3" json:"parent_id,omitempty"`           // for threaded replies
+	ThreadCount         int32                  `protobuf:"varint,11,opt,name=thread_count,json=threadCount,proto3" json:"thread_count,omitempty"` // number of replies in thread
+	SendAt              int64                  `protobuf:"varint,12,opt,name=send_at,json=sendAt,proto3" json:"send_at,omitempty"`                // Unix ts for scheduled delivery (0 = now)
+	ExpiresAt           int64                  `protobuf:"varint,13,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`       // Unix ts for self-destruct (0 = never)
+	IsPinned            bool                   `protobuf:"varint,14,opt,name=is_pinned,json=isPinned,proto3" json:"is_pinned,omitempty"`
+	IsEdited            bool                   `protobuf:"varint,15,opt,name=is_edited,json=isEdited,proto3" json:"is_edited,omitempty"`
+	IsDeleted           bool                   `protobuf:"varint,16,opt,name=is_deleted,json=isDeleted,proto3" json:"is_deleted,omitempty"`
+	Reactions           []*Reaction            `protobuf:"bytes,17,rep,name=reactions,proto3" json:"reactions,omitempty"`
+	Reads               []*MessageRead         `protobuf:"bytes,18,rep,name=reads,proto3" json:"reads,omitempty"`
+	CreatedAt           int64                  `protobuf:"varint,19,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt           int64                  `protobuf:"varint,20,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	ForwardedFromId     string                 `protobuf:"bytes,21,opt,name=forwarded_from_id,json=forwardedFromId,proto3" json:"forwarded_from_id,omitempty"`             // original message ID if forwarded
+	ForwardedFromConv   string                 `protobuf:"bytes,22,opt,name=forwarded_from_conv,json=forwardedFromConv,proto3" json:"forwarded_from_conv,omitempty"`       // original conversation ID if forwarded
+	ForwardedFromSender string                 `protobuf:"bytes,23,opt,name=forwarded_from_sender,json=forwardedFromSender,proto3" json:"forwarded_from_sender,omitempty"` // original sender ID if forwarded
+	MentionedUserIds    []string               `protobuf:"bytes,24,rep,name=mentioned_user_ids,json=mentionedUserIds,proto3" json:"mentioned_user_ids,omitempty"`          // users mentioned in this message
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *Message) Reset() {
@@ -570,6 +577,34 @@ func (x *Message) GetUpdatedAt() int64 {
 		return x.UpdatedAt
 	}
 	return 0
+}
+
+func (x *Message) GetForwardedFromId() string {
+	if x != nil {
+		return x.ForwardedFromId
+	}
+	return ""
+}
+
+func (x *Message) GetForwardedFromConv() string {
+	if x != nil {
+		return x.ForwardedFromConv
+	}
+	return ""
+}
+
+func (x *Message) GetForwardedFromSender() string {
+	if x != nil {
+		return x.ForwardedFromSender
+	}
+	return ""
+}
+
+func (x *Message) GetMentionedUserIds() []string {
+	if x != nil {
+		return x.MentionedUserIds
+	}
+	return nil
 }
 
 type Reaction struct {
@@ -1265,18 +1300,19 @@ func (x *RemoveMemberResponse) GetSuccess() bool {
 }
 
 type SendMessageRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	ConversationId string                 `protobuf:"bytes,1,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
-	SenderId       string                 `protobuf:"bytes,2,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
-	Content        string                 `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
-	Type           MessageType            `protobuf:"varint,4,opt,name=type,proto3,enum=chat.MessageType" json:"type,omitempty"`
-	MediaUrl       string                 `protobuf:"bytes,5,opt,name=media_url,json=mediaUrl,proto3" json:"media_url,omitempty"`
-	MediaMime      string                 `protobuf:"bytes,6,opt,name=media_mime,json=mediaMime,proto3" json:"media_mime,omitempty"`
-	MediaSize      int64                  `protobuf:"varint,7,opt,name=media_size,json=mediaSize,proto3" json:"media_size,omitempty"`
-	ParentId       string                 `protobuf:"bytes,8,opt,name=parent_id,json=parentId,proto3" json:"parent_id,omitempty"`     // reply to a message (thread)
-	ExpiresAt      int64                  `protobuf:"varint,9,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"` // self-destruct Unix timestamp
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	ConversationId   string                 `protobuf:"bytes,1,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
+	SenderId         string                 `protobuf:"bytes,2,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
+	Content          string                 `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
+	Type             MessageType            `protobuf:"varint,4,opt,name=type,proto3,enum=chat.MessageType" json:"type,omitempty"`
+	MediaUrl         string                 `protobuf:"bytes,5,opt,name=media_url,json=mediaUrl,proto3" json:"media_url,omitempty"`
+	MediaMime        string                 `protobuf:"bytes,6,opt,name=media_mime,json=mediaMime,proto3" json:"media_mime,omitempty"`
+	MediaSize        int64                  `protobuf:"varint,7,opt,name=media_size,json=mediaSize,proto3" json:"media_size,omitempty"`
+	ParentId         string                 `protobuf:"bytes,8,opt,name=parent_id,json=parentId,proto3" json:"parent_id,omitempty"`                            // reply to a message (thread)
+	ExpiresAt        int64                  `protobuf:"varint,9,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`                        // self-destruct Unix timestamp
+	MentionedUserIds []string               `protobuf:"bytes,10,rep,name=mentioned_user_ids,json=mentionedUserIds,proto3" json:"mentioned_user_ids,omitempty"` // users mentioned in this message
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *SendMessageRequest) Reset() {
@@ -1370,6 +1406,13 @@ func (x *SendMessageRequest) GetExpiresAt() int64 {
 		return x.ExpiresAt
 	}
 	return 0
+}
+
+func (x *SendMessageRequest) GetMentionedUserIds() []string {
+	if x != nil {
+		return x.MentionedUserIds
+	}
+	return nil
 }
 
 type SendMessageResponse struct {
@@ -4736,6 +4779,750 @@ func (x *AdvancedSearchResponse) GetTotal() int32 {
 	return 0
 }
 
+type ForwardMessageRequest struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	MessageId            string                 `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`                                    // original message to forward
+	SenderId             string                 `protobuf:"bytes,2,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`                                       // user forwarding the message
+	TargetConversationId string                 `protobuf:"bytes,3,opt,name=target_conversation_id,json=targetConversationId,proto3" json:"target_conversation_id,omitempty"` // conversation to forward into
+	Content              string                 `protobuf:"bytes,4,opt,name=content,proto3" json:"content,omitempty"`                                                         // optional: override content (empty = use original)
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *ForwardMessageRequest) Reset() {
+	*x = ForwardMessageRequest{}
+	mi := &file_proto_chat_proto_msgTypes[75]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ForwardMessageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ForwardMessageRequest) ProtoMessage() {}
+
+func (x *ForwardMessageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_chat_proto_msgTypes[75]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ForwardMessageRequest.ProtoReflect.Descriptor instead.
+func (*ForwardMessageRequest) Descriptor() ([]byte, []int) {
+	return file_proto_chat_proto_rawDescGZIP(), []int{75}
+}
+
+func (x *ForwardMessageRequest) GetMessageId() string {
+	if x != nil {
+		return x.MessageId
+	}
+	return ""
+}
+
+func (x *ForwardMessageRequest) GetSenderId() string {
+	if x != nil {
+		return x.SenderId
+	}
+	return ""
+}
+
+func (x *ForwardMessageRequest) GetTargetConversationId() string {
+	if x != nil {
+		return x.TargetConversationId
+	}
+	return ""
+}
+
+func (x *ForwardMessageRequest) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+type ForwardMessageResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       *Message               `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ForwardMessageResponse) Reset() {
+	*x = ForwardMessageResponse{}
+	mi := &file_proto_chat_proto_msgTypes[76]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ForwardMessageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ForwardMessageResponse) ProtoMessage() {}
+
+func (x *ForwardMessageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_chat_proto_msgTypes[76]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ForwardMessageResponse.ProtoReflect.Descriptor instead.
+func (*ForwardMessageResponse) Descriptor() ([]byte, []int) {
+	return file_proto_chat_proto_rawDescGZIP(), []int{76}
+}
+
+func (x *ForwardMessageResponse) GetMessage() *Message {
+	if x != nil {
+		return x.Message
+	}
+	return nil
+}
+
+type PollOption struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Text          string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	SortOrder     int32                  `protobuf:"varint,3,opt,name=sort_order,json=sortOrder,proto3" json:"sort_order,omitempty"`
+	VoterUserIds  []string               `protobuf:"bytes,4,rep,name=voter_user_ids,json=voterUserIds,proto3" json:"voter_user_ids,omitempty"` // populated by GetPoll, empty if anonymous
+	VoteCount     int32                  `protobuf:"varint,5,opt,name=vote_count,json=voteCount,proto3" json:"vote_count,omitempty"`           // number of votes for this option
+	Mine          bool                   `protobuf:"varint,6,opt,name=mine,proto3" json:"mine,omitempty"`                                      // did the requester vote for this?
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PollOption) Reset() {
+	*x = PollOption{}
+	mi := &file_proto_chat_proto_msgTypes[77]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PollOption) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PollOption) ProtoMessage() {}
+
+func (x *PollOption) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_chat_proto_msgTypes[77]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PollOption.ProtoReflect.Descriptor instead.
+func (*PollOption) Descriptor() ([]byte, []int) {
+	return file_proto_chat_proto_rawDescGZIP(), []int{77}
+}
+
+func (x *PollOption) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *PollOption) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *PollOption) GetSortOrder() int32 {
+	if x != nil {
+		return x.SortOrder
+	}
+	return 0
+}
+
+func (x *PollOption) GetVoterUserIds() []string {
+	if x != nil {
+		return x.VoterUserIds
+	}
+	return nil
+}
+
+func (x *PollOption) GetVoteCount() int32 {
+	if x != nil {
+		return x.VoteCount
+	}
+	return 0
+}
+
+func (x *PollOption) GetMine() bool {
+	if x != nil {
+		return x.Mine
+	}
+	return false
+}
+
+type Poll struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ConversationId string                 `protobuf:"bytes,2,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
+	CreatedBy      string                 `protobuf:"bytes,3,opt,name=created_by,json=createdBy,proto3" json:"created_by,omitempty"`
+	Question       string                 `protobuf:"bytes,4,opt,name=question,proto3" json:"question,omitempty"`
+	IsAnonymous    bool                   `protobuf:"varint,5,opt,name=is_anonymous,json=isAnonymous,proto3" json:"is_anonymous,omitempty"`
+	IsMultiple     bool                   `protobuf:"varint,6,opt,name=is_multiple,json=isMultiple,proto3" json:"is_multiple,omitempty"`
+	IsClosed       bool                   `protobuf:"varint,7,opt,name=is_closed,json=isClosed,proto3" json:"is_closed,omitempty"`
+	ExpiresAt      int64                  `protobuf:"varint,8,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	CreatedAt      int64                  `protobuf:"varint,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	Options        []*PollOption          `protobuf:"bytes,10,rep,name=options,proto3" json:"options,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *Poll) Reset() {
+	*x = Poll{}
+	mi := &file_proto_chat_proto_msgTypes[78]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Poll) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Poll) ProtoMessage() {}
+
+func (x *Poll) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_chat_proto_msgTypes[78]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Poll.ProtoReflect.Descriptor instead.
+func (*Poll) Descriptor() ([]byte, []int) {
+	return file_proto_chat_proto_rawDescGZIP(), []int{78}
+}
+
+func (x *Poll) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Poll) GetConversationId() string {
+	if x != nil {
+		return x.ConversationId
+	}
+	return ""
+}
+
+func (x *Poll) GetCreatedBy() string {
+	if x != nil {
+		return x.CreatedBy
+	}
+	return ""
+}
+
+func (x *Poll) GetQuestion() string {
+	if x != nil {
+		return x.Question
+	}
+	return ""
+}
+
+func (x *Poll) GetIsAnonymous() bool {
+	if x != nil {
+		return x.IsAnonymous
+	}
+	return false
+}
+
+func (x *Poll) GetIsMultiple() bool {
+	if x != nil {
+		return x.IsMultiple
+	}
+	return false
+}
+
+func (x *Poll) GetIsClosed() bool {
+	if x != nil {
+		return x.IsClosed
+	}
+	return false
+}
+
+func (x *Poll) GetExpiresAt() int64 {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return 0
+}
+
+func (x *Poll) GetCreatedAt() int64 {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return 0
+}
+
+func (x *Poll) GetOptions() []*PollOption {
+	if x != nil {
+		return x.Options
+	}
+	return nil
+}
+
+type CreatePollRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	ConversationId string                 `protobuf:"bytes,1,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
+	CreatedBy      string                 `protobuf:"bytes,2,opt,name=created_by,json=createdBy,proto3" json:"created_by,omitempty"`
+	Question       string                 `protobuf:"bytes,3,opt,name=question,proto3" json:"question,omitempty"`
+	Options        []string               `protobuf:"bytes,4,rep,name=options,proto3" json:"options,omitempty"` // 2-10 options
+	IsAnonymous    bool                   `protobuf:"varint,5,opt,name=is_anonymous,json=isAnonymous,proto3" json:"is_anonymous,omitempty"`
+	IsMultiple     bool                   `protobuf:"varint,6,opt,name=is_multiple,json=isMultiple,proto3" json:"is_multiple,omitempty"`
+	ExpiresAt      int64                  `protobuf:"varint,7,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"` // optional: auto-close time
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CreatePollRequest) Reset() {
+	*x = CreatePollRequest{}
+	mi := &file_proto_chat_proto_msgTypes[79]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreatePollRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreatePollRequest) ProtoMessage() {}
+
+func (x *CreatePollRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_chat_proto_msgTypes[79]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreatePollRequest.ProtoReflect.Descriptor instead.
+func (*CreatePollRequest) Descriptor() ([]byte, []int) {
+	return file_proto_chat_proto_rawDescGZIP(), []int{79}
+}
+
+func (x *CreatePollRequest) GetConversationId() string {
+	if x != nil {
+		return x.ConversationId
+	}
+	return ""
+}
+
+func (x *CreatePollRequest) GetCreatedBy() string {
+	if x != nil {
+		return x.CreatedBy
+	}
+	return ""
+}
+
+func (x *CreatePollRequest) GetQuestion() string {
+	if x != nil {
+		return x.Question
+	}
+	return ""
+}
+
+func (x *CreatePollRequest) GetOptions() []string {
+	if x != nil {
+		return x.Options
+	}
+	return nil
+}
+
+func (x *CreatePollRequest) GetIsAnonymous() bool {
+	if x != nil {
+		return x.IsAnonymous
+	}
+	return false
+}
+
+func (x *CreatePollRequest) GetIsMultiple() bool {
+	if x != nil {
+		return x.IsMultiple
+	}
+	return false
+}
+
+func (x *CreatePollRequest) GetExpiresAt() int64 {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return 0
+}
+
+type CreatePollResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Poll          *Poll                  `protobuf:"bytes,1,opt,name=poll,proto3" json:"poll,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreatePollResponse) Reset() {
+	*x = CreatePollResponse{}
+	mi := &file_proto_chat_proto_msgTypes[80]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreatePollResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreatePollResponse) ProtoMessage() {}
+
+func (x *CreatePollResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_chat_proto_msgTypes[80]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreatePollResponse.ProtoReflect.Descriptor instead.
+func (*CreatePollResponse) Descriptor() ([]byte, []int) {
+	return file_proto_chat_proto_rawDescGZIP(), []int{80}
+}
+
+func (x *CreatePollResponse) GetPoll() *Poll {
+	if x != nil {
+		return x.Poll
+	}
+	return nil
+}
+
+type GetPollRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PollId        string                 `protobuf:"bytes,1,opt,name=poll_id,json=pollId,proto3" json:"poll_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // required to know which options the user voted for
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPollRequest) Reset() {
+	*x = GetPollRequest{}
+	mi := &file_proto_chat_proto_msgTypes[81]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPollRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPollRequest) ProtoMessage() {}
+
+func (x *GetPollRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_chat_proto_msgTypes[81]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPollRequest.ProtoReflect.Descriptor instead.
+func (*GetPollRequest) Descriptor() ([]byte, []int) {
+	return file_proto_chat_proto_rawDescGZIP(), []int{81}
+}
+
+func (x *GetPollRequest) GetPollId() string {
+	if x != nil {
+		return x.PollId
+	}
+	return ""
+}
+
+func (x *GetPollRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type GetPollResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Poll          *Poll                  `protobuf:"bytes,1,opt,name=poll,proto3" json:"poll,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPollResponse) Reset() {
+	*x = GetPollResponse{}
+	mi := &file_proto_chat_proto_msgTypes[82]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPollResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPollResponse) ProtoMessage() {}
+
+func (x *GetPollResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_chat_proto_msgTypes[82]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPollResponse.ProtoReflect.Descriptor instead.
+func (*GetPollResponse) Descriptor() ([]byte, []int) {
+	return file_proto_chat_proto_rawDescGZIP(), []int{82}
+}
+
+func (x *GetPollResponse) GetPoll() *Poll {
+	if x != nil {
+		return x.Poll
+	}
+	return nil
+}
+
+type VotePollRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PollId        string                 `protobuf:"bytes,1,opt,name=poll_id,json=pollId,proto3" json:"poll_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	OptionIds     []string               `protobuf:"bytes,3,rep,name=option_ids,json=optionIds,proto3" json:"option_ids,omitempty"` // 1 if !is_multiple, many if is_multiple
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VotePollRequest) Reset() {
+	*x = VotePollRequest{}
+	mi := &file_proto_chat_proto_msgTypes[83]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VotePollRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VotePollRequest) ProtoMessage() {}
+
+func (x *VotePollRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_chat_proto_msgTypes[83]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VotePollRequest.ProtoReflect.Descriptor instead.
+func (*VotePollRequest) Descriptor() ([]byte, []int) {
+	return file_proto_chat_proto_rawDescGZIP(), []int{83}
+}
+
+func (x *VotePollRequest) GetPollId() string {
+	if x != nil {
+		return x.PollId
+	}
+	return ""
+}
+
+func (x *VotePollRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *VotePollRequest) GetOptionIds() []string {
+	if x != nil {
+		return x.OptionIds
+	}
+	return nil
+}
+
+type VotePollResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Poll          *Poll                  `protobuf:"bytes,1,opt,name=poll,proto3" json:"poll,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VotePollResponse) Reset() {
+	*x = VotePollResponse{}
+	mi := &file_proto_chat_proto_msgTypes[84]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VotePollResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VotePollResponse) ProtoMessage() {}
+
+func (x *VotePollResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_chat_proto_msgTypes[84]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VotePollResponse.ProtoReflect.Descriptor instead.
+func (*VotePollResponse) Descriptor() ([]byte, []int) {
+	return file_proto_chat_proto_rawDescGZIP(), []int{84}
+}
+
+func (x *VotePollResponse) GetPoll() *Poll {
+	if x != nil {
+		return x.Poll
+	}
+	return nil
+}
+
+type ClosePollRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PollId        string                 `protobuf:"bytes,1,opt,name=poll_id,json=pollId,proto3" json:"poll_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClosePollRequest) Reset() {
+	*x = ClosePollRequest{}
+	mi := &file_proto_chat_proto_msgTypes[85]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClosePollRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClosePollRequest) ProtoMessage() {}
+
+func (x *ClosePollRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_chat_proto_msgTypes[85]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClosePollRequest.ProtoReflect.Descriptor instead.
+func (*ClosePollRequest) Descriptor() ([]byte, []int) {
+	return file_proto_chat_proto_rawDescGZIP(), []int{85}
+}
+
+func (x *ClosePollRequest) GetPollId() string {
+	if x != nil {
+		return x.PollId
+	}
+	return ""
+}
+
+func (x *ClosePollRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type ClosePollResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Poll          *Poll                  `protobuf:"bytes,1,opt,name=poll,proto3" json:"poll,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClosePollResponse) Reset() {
+	*x = ClosePollResponse{}
+	mi := &file_proto_chat_proto_msgTypes[86]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClosePollResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClosePollResponse) ProtoMessage() {}
+
+func (x *ClosePollResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_chat_proto_msgTypes[86]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClosePollResponse.ProtoReflect.Descriptor instead.
+func (*ClosePollResponse) Descriptor() ([]byte, []int) {
+	return file_proto_chat_proto_rawDescGZIP(), []int{86}
+}
+
+func (x *ClosePollResponse) GetPoll() *Poll {
+	if x != nil {
+		return x.Poll
+	}
+	return nil
+}
+
 var File_proto_chat_proto protoreflect.FileDescriptor
 
 const file_proto_chat_proto_rawDesc = "" +
@@ -4754,7 +5541,7 @@ const file_proto_chat_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\b \x01(\x03R\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\t \x01(\x03R\tupdatedAt\"\x8e\x05\n" +
+	"updated_at\x18\t \x01(\x03R\tupdatedAt\"\xcc\x06\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12'\n" +
 	"\x0fconversation_id\x18\x02 \x01(\tR\x0econversationId\x12\x1b\n" +
@@ -4782,7 +5569,11 @@ const file_proto_chat_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x13 \x01(\x03R\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\x14 \x01(\x03R\tupdatedAt\"X\n" +
+	"updated_at\x18\x14 \x01(\x03R\tupdatedAt\x12*\n" +
+	"\x11forwarded_from_id\x18\x15 \x01(\tR\x0fforwardedFromId\x12.\n" +
+	"\x13forwarded_from_conv\x18\x16 \x01(\tR\x11forwardedFromConv\x122\n" +
+	"\x15forwarded_from_sender\x18\x17 \x01(\tR\x13forwardedFromSender\x12,\n" +
+	"\x12mentioned_user_ids\x18\x18 \x03(\tR\x10mentionedUserIds\"X\n" +
 	"\bReaction\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
 	"\x05emoji\x18\x02 \x01(\tR\x05emoji\x12\x1d\n" +
@@ -4826,7 +5617,7 @@ const file_proto_chat_proto_rawDesc = "" +
 	"\frequester_id\x18\x02 \x01(\tR\vrequesterId\x12\x1b\n" +
 	"\tmember_id\x18\x03 \x01(\tR\bmemberId\"0\n" +
 	"\x14RemoveMemberResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xb2\x02\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xe0\x02\n" +
 	"\x12SendMessageRequest\x12'\n" +
 	"\x0fconversation_id\x18\x01 \x01(\tR\x0econversationId\x12\x1b\n" +
 	"\tsender_id\x18\x02 \x01(\tR\bsenderId\x12\x18\n" +
@@ -4839,7 +5630,9 @@ const file_proto_chat_proto_rawDesc = "" +
 	"media_size\x18\a \x01(\x03R\tmediaSize\x12\x1b\n" +
 	"\tparent_id\x18\b \x01(\tR\bparentId\x12\x1d\n" +
 	"\n" +
-	"expires_at\x18\t \x01(\x03R\texpiresAt\">\n" +
+	"expires_at\x18\t \x01(\x03R\texpiresAt\x12,\n" +
+	"\x12mentioned_user_ids\x18\n" +
+	" \x03(\tR\x10mentionedUserIds\">\n" +
 	"\x13SendMessageResponse\x12'\n" +
 	"\amessage\x18\x01 \x01(\v2\r.chat.MessageR\amessage\"\xf4\x01\n" +
 	"\x16ScheduleMessageRequest\x12'\n" +
@@ -5079,7 +5872,75 @@ const file_proto_chat_proto_rawDesc = "" +
 	"\x06offset\x18\t \x01(\x05R\x06offset\"Y\n" +
 	"\x16AdvancedSearchResponse\x12)\n" +
 	"\bmessages\x18\x01 \x03(\v2\r.chat.MessageR\bmessages\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x05R\x05total*M\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"\xa3\x01\n" +
+	"\x15ForwardMessageRequest\x12\x1d\n" +
+	"\n" +
+	"message_id\x18\x01 \x01(\tR\tmessageId\x12\x1b\n" +
+	"\tsender_id\x18\x02 \x01(\tR\bsenderId\x124\n" +
+	"\x16target_conversation_id\x18\x03 \x01(\tR\x14targetConversationId\x12\x18\n" +
+	"\acontent\x18\x04 \x01(\tR\acontent\"A\n" +
+	"\x16ForwardMessageResponse\x12'\n" +
+	"\amessage\x18\x01 \x01(\v2\r.chat.MessageR\amessage\"\xa8\x01\n" +
+	"\n" +
+	"PollOption\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1d\n" +
+	"\n" +
+	"sort_order\x18\x03 \x01(\x05R\tsortOrder\x12$\n" +
+	"\x0evoter_user_ids\x18\x04 \x03(\tR\fvoterUserIds\x12\x1d\n" +
+	"\n" +
+	"vote_count\x18\x05 \x01(\x05R\tvoteCount\x12\x12\n" +
+	"\x04mine\x18\x06 \x01(\bR\x04mine\"\xc5\x02\n" +
+	"\x04Poll\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12'\n" +
+	"\x0fconversation_id\x18\x02 \x01(\tR\x0econversationId\x12\x1d\n" +
+	"\n" +
+	"created_by\x18\x03 \x01(\tR\tcreatedBy\x12\x1a\n" +
+	"\bquestion\x18\x04 \x01(\tR\bquestion\x12!\n" +
+	"\fis_anonymous\x18\x05 \x01(\bR\visAnonymous\x12\x1f\n" +
+	"\vis_multiple\x18\x06 \x01(\bR\n" +
+	"isMultiple\x12\x1b\n" +
+	"\tis_closed\x18\a \x01(\bR\bisClosed\x12\x1d\n" +
+	"\n" +
+	"expires_at\x18\b \x01(\x03R\texpiresAt\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\t \x01(\x03R\tcreatedAt\x12*\n" +
+	"\aoptions\x18\n" +
+	" \x03(\v2\x10.chat.PollOptionR\aoptions\"\xf4\x01\n" +
+	"\x11CreatePollRequest\x12'\n" +
+	"\x0fconversation_id\x18\x01 \x01(\tR\x0econversationId\x12\x1d\n" +
+	"\n" +
+	"created_by\x18\x02 \x01(\tR\tcreatedBy\x12\x1a\n" +
+	"\bquestion\x18\x03 \x01(\tR\bquestion\x12\x18\n" +
+	"\aoptions\x18\x04 \x03(\tR\aoptions\x12!\n" +
+	"\fis_anonymous\x18\x05 \x01(\bR\visAnonymous\x12\x1f\n" +
+	"\vis_multiple\x18\x06 \x01(\bR\n" +
+	"isMultiple\x12\x1d\n" +
+	"\n" +
+	"expires_at\x18\a \x01(\x03R\texpiresAt\"4\n" +
+	"\x12CreatePollResponse\x12\x1e\n" +
+	"\x04poll\x18\x01 \x01(\v2\n" +
+	".chat.PollR\x04poll\"B\n" +
+	"\x0eGetPollRequest\x12\x17\n" +
+	"\apoll_id\x18\x01 \x01(\tR\x06pollId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"1\n" +
+	"\x0fGetPollResponse\x12\x1e\n" +
+	"\x04poll\x18\x01 \x01(\v2\n" +
+	".chat.PollR\x04poll\"b\n" +
+	"\x0fVotePollRequest\x12\x17\n" +
+	"\apoll_id\x18\x01 \x01(\tR\x06pollId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x1d\n" +
+	"\n" +
+	"option_ids\x18\x03 \x03(\tR\toptionIds\"2\n" +
+	"\x10VotePollResponse\x12\x1e\n" +
+	"\x04poll\x18\x01 \x01(\v2\n" +
+	".chat.PollR\x04poll\"D\n" +
+	"\x10ClosePollRequest\x12\x17\n" +
+	"\apoll_id\x18\x01 \x01(\tR\x06pollId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"3\n" +
+	"\x11ClosePollResponse\x12\x1e\n" +
+	"\x04poll\x18\x01 \x01(\v2\n" +
+	".chat.PollR\x04poll*M\n" +
 	"\vMessageType\x12\b\n" +
 	"\x04TEXT\x10\x00\x12\t\n" +
 	"\x05IMAGE\x10\x01\x12\t\n" +
@@ -5098,7 +5959,7 @@ const file_proto_chat_proto_rawDesc = "" +
 	"\x10ConversationType\x12\n" +
 	"\n" +
 	"\x06DIRECT\x10\x00\x12\t\n" +
-	"\x05GROUP\x10\x01*\xef\x02\n" +
+	"\x05GROUP\x10\x01*\x8f\x03\n" +
 	"\tEventType\x12\x15\n" +
 	"\x11EVENT_NEW_MESSAGE\x10\x00\x12\x18\n" +
 	"\x14EVENT_MESSAGE_EDITED\x10\x01\x12\x19\n" +
@@ -5116,7 +5977,8 @@ const file_proto_chat_proto_rawDesc = "" +
 	"\x10EVENT_CALL_ENDED\x10\v\x12\x18\n" +
 	"\x14EVENT_CALL_SIGNALING\x10\f\x12\x17\n" +
 	"\x13EVENT_STORY_CREATED\x10\r\x12\x17\n" +
-	"\x13EVENT_STORY_DELETED\x10\x0e2\xda\x12\n" +
+	"\x13EVENT_STORY_DELETED\x10\x0e\x12\x1e\n" +
+	"\x1aEVENT_CONVERSATION_CREATED\x10\x0f2\x99\x15\n" +
 	"\vChatService\x12W\n" +
 	"\x12CreateConversation\x12\x1f.chat.CreateConversationRequest\x1a .chat.CreateConversationResponse\x12Q\n" +
 	"\x10GetConversations\x12\x1d.chat.GetConversationsRequest\x1a\x1e.chat.GetConversationsResponse\x12N\n" +
@@ -5128,7 +5990,8 @@ const file_proto_chat_proto_rawDesc = "" +
 	"\vGetMessages\x12\x18.chat.GetMessagesRequest\x1a\x19.chat.GetMessagesResponse\x12<\n" +
 	"\tGetThread\x12\x16.chat.GetThreadRequest\x1a\x17.chat.GetThreadResponse\x12B\n" +
 	"\vEditMessage\x12\x18.chat.EditMessageRequest\x1a\x19.chat.EditMessageResponse\x12H\n" +
-	"\rDeleteMessage\x12\x1a.chat.DeleteMessageRequest\x1a\x1b.chat.DeleteMessageResponse\x12B\n" +
+	"\rDeleteMessage\x12\x1a.chat.DeleteMessageRequest\x1a\x1b.chat.DeleteMessageResponse\x12K\n" +
+	"\x0eForwardMessage\x12\x1b.chat.ForwardMessageRequest\x1a\x1c.chat.ForwardMessageResponse\x12B\n" +
 	"\vAddReaction\x12\x18.chat.AddReactionRequest\x1a\x19.chat.AddReactionResponse\x12K\n" +
 	"\x0eRemoveReaction\x12\x1b.chat.RemoveReactionRequest\x1a\x1c.chat.RemoveReactionResponse\x129\n" +
 	"\bMarkRead\x12\x15.chat.MarkReadRequest\x1a\x16.chat.MarkReadResponse\x12?\n" +
@@ -5151,7 +6014,12 @@ const file_proto_chat_proto_rawDesc = "" +
 	"\x10GetChatAnalytics\x12\x1d.chat.GetChatAnalyticsRequest\x1a\x1e.chat.GetChatAnalyticsResponse\x12c\n" +
 	"\x16SetNotificationProfile\x12#.chat.SetNotificationProfileRequest\x1a$.chat.SetNotificationProfileResponse\x12f\n" +
 	"\x17GetNotificationProfiles\x12$.chat.GetNotificationProfilesRequest\x1a%.chat.GetNotificationProfilesResponse\x12K\n" +
-	"\x0eAdvancedSearch\x12\x1b.chat.AdvancedSearchRequest\x1a\x1c.chat.AdvancedSearchResponseB\x11Z\x0fgochat/gen/chatb\x06proto3"
+	"\x0eAdvancedSearch\x12\x1b.chat.AdvancedSearchRequest\x1a\x1c.chat.AdvancedSearchResponse\x12?\n" +
+	"\n" +
+	"CreatePoll\x12\x17.chat.CreatePollRequest\x1a\x18.chat.CreatePollResponse\x126\n" +
+	"\aGetPoll\x12\x14.chat.GetPollRequest\x1a\x15.chat.GetPollResponse\x129\n" +
+	"\bVotePoll\x12\x15.chat.VotePollRequest\x1a\x16.chat.VotePollResponse\x12<\n" +
+	"\tClosePoll\x12\x16.chat.ClosePollRequest\x1a\x17.chat.ClosePollResponseB\x11Z\x0fgochat/gen/chatb\x06proto3"
 
 var (
 	file_proto_chat_proto_rawDescOnce sync.Once
@@ -5166,7 +6034,7 @@ func file_proto_chat_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_chat_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_proto_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 76)
+var file_proto_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 88)
 var file_proto_chat_proto_goTypes = []any{
 	(MessageType)(0),                        // 0: chat.MessageType
 	(MessageStatus)(0),                      // 1: chat.MessageStatus
@@ -5247,7 +6115,19 @@ var file_proto_chat_proto_goTypes = []any{
 	(*GetNotificationProfilesResponse)(nil), // 76: chat.GetNotificationProfilesResponse
 	(*AdvancedSearchRequest)(nil),           // 77: chat.AdvancedSearchRequest
 	(*AdvancedSearchResponse)(nil),          // 78: chat.AdvancedSearchResponse
-	nil,                                     // 79: chat.GetUnreadCountsResponse.CountsEntry
+	(*ForwardMessageRequest)(nil),           // 79: chat.ForwardMessageRequest
+	(*ForwardMessageResponse)(nil),          // 80: chat.ForwardMessageResponse
+	(*PollOption)(nil),                      // 81: chat.PollOption
+	(*Poll)(nil),                            // 82: chat.Poll
+	(*CreatePollRequest)(nil),               // 83: chat.CreatePollRequest
+	(*CreatePollResponse)(nil),              // 84: chat.CreatePollResponse
+	(*GetPollRequest)(nil),                  // 85: chat.GetPollRequest
+	(*GetPollResponse)(nil),                 // 86: chat.GetPollResponse
+	(*VotePollRequest)(nil),                 // 87: chat.VotePollRequest
+	(*VotePollResponse)(nil),                // 88: chat.VotePollResponse
+	(*ClosePollRequest)(nil),                // 89: chat.ClosePollRequest
+	(*ClosePollResponse)(nil),               // 90: chat.ClosePollResponse
+	nil,                                     // 91: chat.GetUnreadCountsResponse.CountsEntry
 }
 var file_proto_chat_proto_depIdxs = []int32{
 	2,  // 0: chat.Conversation.type:type_name -> chat.ConversationType
@@ -5274,7 +6154,7 @@ var file_proto_chat_proto_depIdxs = []int32{
 	5,  // 21: chat.MessageEvent.message:type_name -> chat.Message
 	49, // 22: chat.MessageEvent.call_payload:type_name -> chat.CallPayload
 	50, // 23: chat.MessageEvent.story_payload:type_name -> chat.StoryPayload
-	79, // 24: chat.GetUnreadCountsResponse.counts:type_name -> chat.GetUnreadCountsResponse.CountsEntry
+	91, // 24: chat.GetUnreadCountsResponse.counts:type_name -> chat.GetUnreadCountsResponse.CountsEntry
 	51, // 25: chat.CreateFolderResponse.folder:type_name -> chat.ChatFolder
 	51, // 26: chat.ListFoldersResponse.folders:type_name -> chat.ChatFolder
 	62, // 27: chat.AddLabelResponse.chat_label:type_name -> chat.ChatLabel
@@ -5283,75 +6163,91 @@ var file_proto_chat_proto_depIdxs = []int32{
 	72, // 30: chat.SetNotificationProfileRequest.profile:type_name -> chat.NotificationProfile
 	72, // 31: chat.GetNotificationProfilesResponse.profiles:type_name -> chat.NotificationProfile
 	5,  // 32: chat.AdvancedSearchResponse.messages:type_name -> chat.Message
-	9,  // 33: chat.ChatService.CreateConversation:input_type -> chat.CreateConversationRequest
-	11, // 34: chat.ChatService.GetConversations:input_type -> chat.GetConversationsRequest
-	13, // 35: chat.ChatService.GetConversation:input_type -> chat.GetConversationRequest
-	15, // 36: chat.ChatService.AddMember:input_type -> chat.AddMemberRequest
-	17, // 37: chat.ChatService.RemoveMember:input_type -> chat.RemoveMemberRequest
-	19, // 38: chat.ChatService.SendMessage:input_type -> chat.SendMessageRequest
-	21, // 39: chat.ChatService.ScheduleMessage:input_type -> chat.ScheduleMessageRequest
-	23, // 40: chat.ChatService.GetMessages:input_type -> chat.GetMessagesRequest
-	25, // 41: chat.ChatService.GetThread:input_type -> chat.GetThreadRequest
-	27, // 42: chat.ChatService.EditMessage:input_type -> chat.EditMessageRequest
-	29, // 43: chat.ChatService.DeleteMessage:input_type -> chat.DeleteMessageRequest
-	31, // 44: chat.ChatService.AddReaction:input_type -> chat.AddReactionRequest
-	33, // 45: chat.ChatService.RemoveReaction:input_type -> chat.RemoveReactionRequest
-	35, // 46: chat.ChatService.MarkRead:input_type -> chat.MarkReadRequest
-	37, // 47: chat.ChatService.PinMessage:input_type -> chat.PinMessageRequest
-	39, // 48: chat.ChatService.UnpinMessage:input_type -> chat.UnpinMessageRequest
-	41, // 49: chat.ChatService.SearchMessages:input_type -> chat.SearchMessagesRequest
-	43, // 50: chat.ChatService.StreamMessages:input_type -> chat.StreamMessagesRequest
-	45, // 51: chat.ChatService.SendTypingIndicator:input_type -> chat.SendTypingIndicatorRequest
-	47, // 52: chat.ChatService.GetUnreadCounts:input_type -> chat.GetUnreadCountsRequest
-	52, // 53: chat.ChatService.CreateFolder:input_type -> chat.CreateFolderRequest
-	54, // 54: chat.ChatService.DeleteFolder:input_type -> chat.DeleteFolderRequest
-	56, // 55: chat.ChatService.ListFolders:input_type -> chat.ListFoldersRequest
-	58, // 56: chat.ChatService.AddToFolder:input_type -> chat.AddToFolderRequest
-	60, // 57: chat.ChatService.RemoveFromFolder:input_type -> chat.RemoveFromFolderRequest
-	63, // 58: chat.ChatService.AddLabel:input_type -> chat.AddLabelRequest
-	65, // 59: chat.ChatService.RemoveLabel:input_type -> chat.RemoveLabelRequest
-	67, // 60: chat.ChatService.ListLabels:input_type -> chat.ListLabelsRequest
-	70, // 61: chat.ChatService.GetChatAnalytics:input_type -> chat.GetChatAnalyticsRequest
-	73, // 62: chat.ChatService.SetNotificationProfile:input_type -> chat.SetNotificationProfileRequest
-	75, // 63: chat.ChatService.GetNotificationProfiles:input_type -> chat.GetNotificationProfilesRequest
-	77, // 64: chat.ChatService.AdvancedSearch:input_type -> chat.AdvancedSearchRequest
-	10, // 65: chat.ChatService.CreateConversation:output_type -> chat.CreateConversationResponse
-	12, // 66: chat.ChatService.GetConversations:output_type -> chat.GetConversationsResponse
-	14, // 67: chat.ChatService.GetConversation:output_type -> chat.GetConversationResponse
-	16, // 68: chat.ChatService.AddMember:output_type -> chat.AddMemberResponse
-	18, // 69: chat.ChatService.RemoveMember:output_type -> chat.RemoveMemberResponse
-	20, // 70: chat.ChatService.SendMessage:output_type -> chat.SendMessageResponse
-	22, // 71: chat.ChatService.ScheduleMessage:output_type -> chat.ScheduleMessageResponse
-	24, // 72: chat.ChatService.GetMessages:output_type -> chat.GetMessagesResponse
-	26, // 73: chat.ChatService.GetThread:output_type -> chat.GetThreadResponse
-	28, // 74: chat.ChatService.EditMessage:output_type -> chat.EditMessageResponse
-	30, // 75: chat.ChatService.DeleteMessage:output_type -> chat.DeleteMessageResponse
-	32, // 76: chat.ChatService.AddReaction:output_type -> chat.AddReactionResponse
-	34, // 77: chat.ChatService.RemoveReaction:output_type -> chat.RemoveReactionResponse
-	36, // 78: chat.ChatService.MarkRead:output_type -> chat.MarkReadResponse
-	38, // 79: chat.ChatService.PinMessage:output_type -> chat.PinMessageResponse
-	40, // 80: chat.ChatService.UnpinMessage:output_type -> chat.UnpinMessageResponse
-	42, // 81: chat.ChatService.SearchMessages:output_type -> chat.SearchMessagesResponse
-	44, // 82: chat.ChatService.StreamMessages:output_type -> chat.MessageEvent
-	46, // 83: chat.ChatService.SendTypingIndicator:output_type -> chat.SendTypingIndicatorResponse
-	48, // 84: chat.ChatService.GetUnreadCounts:output_type -> chat.GetUnreadCountsResponse
-	53, // 85: chat.ChatService.CreateFolder:output_type -> chat.CreateFolderResponse
-	55, // 86: chat.ChatService.DeleteFolder:output_type -> chat.DeleteFolderResponse
-	57, // 87: chat.ChatService.ListFolders:output_type -> chat.ListFoldersResponse
-	59, // 88: chat.ChatService.AddToFolder:output_type -> chat.AddToFolderResponse
-	61, // 89: chat.ChatService.RemoveFromFolder:output_type -> chat.RemoveFromFolderResponse
-	64, // 90: chat.ChatService.AddLabel:output_type -> chat.AddLabelResponse
-	66, // 91: chat.ChatService.RemoveLabel:output_type -> chat.RemoveLabelResponse
-	68, // 92: chat.ChatService.ListLabels:output_type -> chat.ListLabelsResponse
-	71, // 93: chat.ChatService.GetChatAnalytics:output_type -> chat.GetChatAnalyticsResponse
-	74, // 94: chat.ChatService.SetNotificationProfile:output_type -> chat.SetNotificationProfileResponse
-	76, // 95: chat.ChatService.GetNotificationProfiles:output_type -> chat.GetNotificationProfilesResponse
-	78, // 96: chat.ChatService.AdvancedSearch:output_type -> chat.AdvancedSearchResponse
-	65, // [65:97] is the sub-list for method output_type
-	33, // [33:65] is the sub-list for method input_type
-	33, // [33:33] is the sub-list for extension type_name
-	33, // [33:33] is the sub-list for extension extendee
-	0,  // [0:33] is the sub-list for field type_name
+	5,  // 33: chat.ForwardMessageResponse.message:type_name -> chat.Message
+	81, // 34: chat.Poll.options:type_name -> chat.PollOption
+	82, // 35: chat.CreatePollResponse.poll:type_name -> chat.Poll
+	82, // 36: chat.GetPollResponse.poll:type_name -> chat.Poll
+	82, // 37: chat.VotePollResponse.poll:type_name -> chat.Poll
+	82, // 38: chat.ClosePollResponse.poll:type_name -> chat.Poll
+	9,  // 39: chat.ChatService.CreateConversation:input_type -> chat.CreateConversationRequest
+	11, // 40: chat.ChatService.GetConversations:input_type -> chat.GetConversationsRequest
+	13, // 41: chat.ChatService.GetConversation:input_type -> chat.GetConversationRequest
+	15, // 42: chat.ChatService.AddMember:input_type -> chat.AddMemberRequest
+	17, // 43: chat.ChatService.RemoveMember:input_type -> chat.RemoveMemberRequest
+	19, // 44: chat.ChatService.SendMessage:input_type -> chat.SendMessageRequest
+	21, // 45: chat.ChatService.ScheduleMessage:input_type -> chat.ScheduleMessageRequest
+	23, // 46: chat.ChatService.GetMessages:input_type -> chat.GetMessagesRequest
+	25, // 47: chat.ChatService.GetThread:input_type -> chat.GetThreadRequest
+	27, // 48: chat.ChatService.EditMessage:input_type -> chat.EditMessageRequest
+	29, // 49: chat.ChatService.DeleteMessage:input_type -> chat.DeleteMessageRequest
+	79, // 50: chat.ChatService.ForwardMessage:input_type -> chat.ForwardMessageRequest
+	31, // 51: chat.ChatService.AddReaction:input_type -> chat.AddReactionRequest
+	33, // 52: chat.ChatService.RemoveReaction:input_type -> chat.RemoveReactionRequest
+	35, // 53: chat.ChatService.MarkRead:input_type -> chat.MarkReadRequest
+	37, // 54: chat.ChatService.PinMessage:input_type -> chat.PinMessageRequest
+	39, // 55: chat.ChatService.UnpinMessage:input_type -> chat.UnpinMessageRequest
+	41, // 56: chat.ChatService.SearchMessages:input_type -> chat.SearchMessagesRequest
+	43, // 57: chat.ChatService.StreamMessages:input_type -> chat.StreamMessagesRequest
+	45, // 58: chat.ChatService.SendTypingIndicator:input_type -> chat.SendTypingIndicatorRequest
+	47, // 59: chat.ChatService.GetUnreadCounts:input_type -> chat.GetUnreadCountsRequest
+	52, // 60: chat.ChatService.CreateFolder:input_type -> chat.CreateFolderRequest
+	54, // 61: chat.ChatService.DeleteFolder:input_type -> chat.DeleteFolderRequest
+	56, // 62: chat.ChatService.ListFolders:input_type -> chat.ListFoldersRequest
+	58, // 63: chat.ChatService.AddToFolder:input_type -> chat.AddToFolderRequest
+	60, // 64: chat.ChatService.RemoveFromFolder:input_type -> chat.RemoveFromFolderRequest
+	63, // 65: chat.ChatService.AddLabel:input_type -> chat.AddLabelRequest
+	65, // 66: chat.ChatService.RemoveLabel:input_type -> chat.RemoveLabelRequest
+	67, // 67: chat.ChatService.ListLabels:input_type -> chat.ListLabelsRequest
+	70, // 68: chat.ChatService.GetChatAnalytics:input_type -> chat.GetChatAnalyticsRequest
+	73, // 69: chat.ChatService.SetNotificationProfile:input_type -> chat.SetNotificationProfileRequest
+	75, // 70: chat.ChatService.GetNotificationProfiles:input_type -> chat.GetNotificationProfilesRequest
+	77, // 71: chat.ChatService.AdvancedSearch:input_type -> chat.AdvancedSearchRequest
+	83, // 72: chat.ChatService.CreatePoll:input_type -> chat.CreatePollRequest
+	85, // 73: chat.ChatService.GetPoll:input_type -> chat.GetPollRequest
+	87, // 74: chat.ChatService.VotePoll:input_type -> chat.VotePollRequest
+	89, // 75: chat.ChatService.ClosePoll:input_type -> chat.ClosePollRequest
+	10, // 76: chat.ChatService.CreateConversation:output_type -> chat.CreateConversationResponse
+	12, // 77: chat.ChatService.GetConversations:output_type -> chat.GetConversationsResponse
+	14, // 78: chat.ChatService.GetConversation:output_type -> chat.GetConversationResponse
+	16, // 79: chat.ChatService.AddMember:output_type -> chat.AddMemberResponse
+	18, // 80: chat.ChatService.RemoveMember:output_type -> chat.RemoveMemberResponse
+	20, // 81: chat.ChatService.SendMessage:output_type -> chat.SendMessageResponse
+	22, // 82: chat.ChatService.ScheduleMessage:output_type -> chat.ScheduleMessageResponse
+	24, // 83: chat.ChatService.GetMessages:output_type -> chat.GetMessagesResponse
+	26, // 84: chat.ChatService.GetThread:output_type -> chat.GetThreadResponse
+	28, // 85: chat.ChatService.EditMessage:output_type -> chat.EditMessageResponse
+	30, // 86: chat.ChatService.DeleteMessage:output_type -> chat.DeleteMessageResponse
+	80, // 87: chat.ChatService.ForwardMessage:output_type -> chat.ForwardMessageResponse
+	32, // 88: chat.ChatService.AddReaction:output_type -> chat.AddReactionResponse
+	34, // 89: chat.ChatService.RemoveReaction:output_type -> chat.RemoveReactionResponse
+	36, // 90: chat.ChatService.MarkRead:output_type -> chat.MarkReadResponse
+	38, // 91: chat.ChatService.PinMessage:output_type -> chat.PinMessageResponse
+	40, // 92: chat.ChatService.UnpinMessage:output_type -> chat.UnpinMessageResponse
+	42, // 93: chat.ChatService.SearchMessages:output_type -> chat.SearchMessagesResponse
+	44, // 94: chat.ChatService.StreamMessages:output_type -> chat.MessageEvent
+	46, // 95: chat.ChatService.SendTypingIndicator:output_type -> chat.SendTypingIndicatorResponse
+	48, // 96: chat.ChatService.GetUnreadCounts:output_type -> chat.GetUnreadCountsResponse
+	53, // 97: chat.ChatService.CreateFolder:output_type -> chat.CreateFolderResponse
+	55, // 98: chat.ChatService.DeleteFolder:output_type -> chat.DeleteFolderResponse
+	57, // 99: chat.ChatService.ListFolders:output_type -> chat.ListFoldersResponse
+	59, // 100: chat.ChatService.AddToFolder:output_type -> chat.AddToFolderResponse
+	61, // 101: chat.ChatService.RemoveFromFolder:output_type -> chat.RemoveFromFolderResponse
+	64, // 102: chat.ChatService.AddLabel:output_type -> chat.AddLabelResponse
+	66, // 103: chat.ChatService.RemoveLabel:output_type -> chat.RemoveLabelResponse
+	68, // 104: chat.ChatService.ListLabels:output_type -> chat.ListLabelsResponse
+	71, // 105: chat.ChatService.GetChatAnalytics:output_type -> chat.GetChatAnalyticsResponse
+	74, // 106: chat.ChatService.SetNotificationProfile:output_type -> chat.SetNotificationProfileResponse
+	76, // 107: chat.ChatService.GetNotificationProfiles:output_type -> chat.GetNotificationProfilesResponse
+	78, // 108: chat.ChatService.AdvancedSearch:output_type -> chat.AdvancedSearchResponse
+	84, // 109: chat.ChatService.CreatePoll:output_type -> chat.CreatePollResponse
+	86, // 110: chat.ChatService.GetPoll:output_type -> chat.GetPollResponse
+	88, // 111: chat.ChatService.VotePoll:output_type -> chat.VotePollResponse
+	90, // 112: chat.ChatService.ClosePoll:output_type -> chat.ClosePollResponse
+	76, // [76:113] is the sub-list for method output_type
+	39, // [39:76] is the sub-list for method input_type
+	39, // [39:39] is the sub-list for extension type_name
+	39, // [39:39] is the sub-list for extension extendee
+	0,  // [0:39] is the sub-list for field type_name
 }
 
 func init() { file_proto_chat_proto_init() }
@@ -5365,7 +6261,7 @@ func file_proto_chat_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_chat_proto_rawDesc), len(file_proto_chat_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   76,
+			NumMessages:   88,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

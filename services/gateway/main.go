@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net/http"
 	"os"
@@ -12,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
 	aipb "gochat/gen/ai"
@@ -23,21 +26,61 @@ import (
 	grouppb "gochat/gen/group"
 	mediapb "gochat/gen/media"
 	miniapppb "gochat/gen/miniapp"
-	paymentpb "gochat/gen/payment"
 	socialpb "gochat/gen/social"
 	storypb "gochat/gen/story"
+	"gochat/pkg/cdn"
 	"gochat/pkg/config"
 	"gochat/pkg/database"
+	"gochat/pkg/discovery"
+	"gochat/pkg/eventbus"
 	"gochat/pkg/health"
 	"gochat/pkg/logger"
+	"gochat/pkg/metrics"
 	"gochat/services/gateway/handlers"
 	"gochat/services/gateway/middleware"
 	"gochat/services/gateway/ws"
 
 	"encoding/json"
 	"strings"
+
 	"github.com/redis/go-redis/v9"
+	"google.golang.org/grpc/resolver"
 )
+
+func buildGRPCDialOptions(cfg *config.Config, log *zap.Logger) []grpc.DialOption {
+	if !cfg.GRPCUseTLS {
+		return []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	}
+
+	tlsCfg := &tls.Config{}
+	if cfg.GRPCTLSServerName != "" {
+		tlsCfg.ServerName = cfg.GRPCTLSServerName
+	}
+
+	// Root CAs
+	if cfg.GRPCTLSCACertFile != "" {
+		caPEM, err := os.ReadFile(cfg.GRPCTLSCACertFile)
+		if err != nil {
+			log.Fatal("failed to read GRPC_TLS_CA_CERT", zap.Error(err))
+		}
+		pool := x509.NewCertPool()
+		if !pool.AppendCertsFromPEM(caPEM) {
+			log.Fatal("failed to parse GRPC_TLS_CA_CERT (PEM)")
+		}
+		tlsCfg.RootCAs = pool
+	}
+
+	// Optional mTLS
+	if cfg.GRPCTLSClientCert != "" && cfg.GRPCTLSClientKey != "" {
+		cert, err := tls.LoadX509KeyPair(cfg.GRPCTLSClientCert, cfg.GRPCTLSClientKey)
+		if err != nil {
+			log.Fatal("failed to load gRPC client mTLS cert/key", zap.Error(err))
+		}
+		tlsCfg.Certificates = []tls.Certificate{cert}
+	}
+
+	return []grpc.DialOption{grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg))}
+}
 
 func main() {
 	log := logger.New("api-gateway")
@@ -62,82 +105,91 @@ func main() {
 	healthSrv.Start()
 	defer healthSrv.Stop()
 
-	// ── Dial gRPC Services ────────────────────────────────────────────────────
-	dialOpts := []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	// ── Service Discovery & Load Balancing ────────────────────────────────────
+	var disc discovery.Discovery
+	if cfg.DiscoveryType == "redis" {
+		redisDisc := discovery.NewRedisRegistry(redisClient, log)
+		disc = redisDisc
+		log.Info("service discovery enabled via Redis registry",
+			zap.Duration("ttl", cfg.DiscoveryTTL),
+			zap.Duration("interval", cfg.DiscoveryInterval),
+		)
 	}
 
-	authConn, err := grpc.Dial(cfg.AuthGRPCAddr, dialOpts...)
+	resBuilder := discovery.NewBuilder(disc, log)
+	resolver.Register(resBuilder)
+
+	// ── Dial gRPC Services with Client-Side Load Balancing ────────────────────
+	dialOpts := buildGRPCDialOptions(cfg, log)
+	dialOpts = append(dialOpts, grpc.WithDefaultServiceConfig(`{"loadBalancingPolicy":"round_robin"}`))
+
+	dialService := func(serviceName, fallbackAddr string, extraOpts ...grpc.DialOption) (*grpc.ClientConn, error) {
+		resBuilder.SetStaticFallback(serviceName, fallbackAddr)
+		target := fallbackAddr
+		if cfg.DiscoveryType != "static" && disc != nil {
+			target = discovery.TargetURI(serviceName)
+		}
+		opts := append(dialOpts, extraOpts...)
+		return grpc.Dial(target, opts...)
+	}
+
+	authConn, err := dialService("auth-service", cfg.AuthGRPCAddr)
 	if err != nil {
 		log.Fatal("failed to connect to auth service", zap.Error(err))
 	}
 	defer authConn.Close()
 	authClient := authpb.NewAuthServiceClient(authConn)
 
-	chatConn, err := grpc.Dial(cfg.ChatGRPCAddr, dialOpts...)
+	chatConn, err := dialService("chat-service", cfg.ChatGRPCAddr)
 	if err != nil {
 		log.Fatal("failed to connect to chat service", zap.Error(err))
 	}
 	defer chatConn.Close()
 	chatClient := chatpb.NewChatServiceClient(chatConn)
 
-	groupConn, err := grpc.Dial(cfg.GroupGRPCAddr, dialOpts...)
+	groupConn, err := dialService("group-service", cfg.GroupGRPCAddr)
 	if err != nil {
 		log.Fatal("failed to connect to group service", zap.Error(err))
 	}
 	defer groupConn.Close()
 	groupClient := grouppb.NewGroupServiceClient(groupConn)
 
-	storyConn, err := grpc.Dial(cfg.StoryGRPCAddr, dialOpts...)
+	storyConn, err := dialService("story-service", cfg.StoryGRPCAddr)
 	if err != nil {
 		log.Fatal("failed to connect to story service", zap.Error(err))
 	}
 	defer storyConn.Close()
 	storyClient := storypb.NewStoryServiceClient(storyConn)
 
-	callConn, err := grpc.Dial(cfg.CallGRPCAddr, dialOpts...)
+	callConn, err := dialService("call-service", cfg.CallGRPCAddr)
 	if err != nil {
 		log.Fatal("failed to connect to call service", zap.Error(err))
 	}
 	defer callConn.Close()
 	callClient := callpb.NewCallServiceClient(callConn)
 
-	channelConn, err := grpc.Dial(cfg.ChannelGRPCAddr, dialOpts...)
+	channelConn, err := dialService("channel-service", cfg.ChannelGRPCAddr)
 	if err != nil {
 		log.Fatal("failed to connect to channel service", zap.Error(err))
 	}
 	defer channelConn.Close()
 	channelClient := channelpb.NewChannelServiceClient(channelConn)
 
-	aiConn, err := grpc.Dial(cfg.AIGRPCAddr, dialOpts...)
-	if err != nil {
-		log.Fatal("failed to connect to ai service", zap.Error(err))
-	}
-	defer aiConn.Close()
-	aiClient := aipb.NewAIServiceClient(aiConn)
-
-	paymentConn, err := grpc.Dial(cfg.PaymentGRPCAddr, dialOpts...)
-	if err != nil {
-		log.Fatal("failed to connect to payment service", zap.Error(err))
-	}
-	defer paymentConn.Close()
-	paymentClient := paymentpb.NewPaymentServiceClient(paymentConn)
-
-	socialConn, err := grpc.Dial(cfg.SocialGRPCAddr, dialOpts...)
+	socialConn, err := dialService("social-service", cfg.SocialGRPCAddr)
 	if err != nil {
 		log.Fatal("failed to connect to social service", zap.Error(err))
 	}
 	defer socialConn.Close()
 	socialClient := socialpb.NewSocialServiceClient(socialConn)
 
-	miniappConn, err := grpc.Dial(cfg.MiniAppGRPCAddr, dialOpts...)
+	miniappConn, err := dialService("miniapp-service", cfg.MiniAppGRPCAddr)
 	if err != nil {
 		log.Fatal("failed to connect to miniapp service", zap.Error(err))
 	}
 	defer miniappConn.Close()
 	miniappClient := miniapppb.NewMiniAppServiceClient(miniappConn)
 
-	businessConn, err := grpc.Dial(cfg.BusinessGRPCAddr, dialOpts...)
+	businessConn, err := dialService("business-service", cfg.BusinessGRPCAddr)
 	if err != nil {
 		log.Fatal("failed to connect to business service", zap.Error(err))
 	}
@@ -145,16 +197,27 @@ func main() {
 	businessClient := businesspb.NewBusinessServiceClient(businessConn)
 
 	// Media service requires a larger message size limit for client streaming uploads
-	mediaOpts := append(dialOpts, grpc.WithDefaultCallOptions(
-		grpc.MaxCallRecvMsgSize(110*1024*1024),
-		grpc.MaxCallSendMsgSize(110*1024*1024),
-	))
-	mediaConn, err := grpc.Dial(cfg.MediaGRPCAddr, mediaOpts...)
+	mediaOpts := []grpc.DialOption{
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(110 * 1024 * 1024),
+			grpc.MaxCallSendMsgSize(110 * 1024 * 1024),
+		),
+	}
+	mediaConn, err := dialService("media-service", cfg.MediaGRPCAddr, mediaOpts...)
 	if err != nil {
 		log.Fatal("failed to connect to media service", zap.Error(err))
 	}
 	defer mediaConn.Close()
 	mediaClient := mediapb.NewMediaServiceClient(mediaConn)
+
+	aiConn, err := dialService("ai-service", cfg.AIGRPCAddr)
+	var aiClient aipb.AIServiceClient
+	if err != nil {
+		log.Warn("could not connect to ai service, running with fallback", zap.Error(err))
+	} else {
+		defer aiConn.Close()
+		aiClient = aipb.NewAIServiceClient(aiConn)
+	}
 
 	// ── WebSocket Hub ──────────────────────────────────────────────────────────
 	hub := ws.NewHub()
@@ -169,43 +232,90 @@ func main() {
 	r.Use(gin.Recovery())
 	r.Use(ginLogger(log))
 	r.Use(corsMiddleware(cfg.CORSOrigins))
+	r.Use(middleware.GeoMiddleware())
+	r.Use(metrics.PrometheusMiddleware())
+	r.Use(cdn.CDNMiddleware())
+
+	// Prometheus metrics endpoint
+	r.GET("/metrics", metrics.Handler())
+
+	// Initialize event bus
+	bus := eventbus.New(redisClient, log)
+	_ = bus // available for async publishing in handlers
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(authClient, log)
-	chatHandler := handlers.NewChatHandler(chatClient, log)
+	chatHandler := handlers.NewChatHandler(chatClient, authClient, log)
+	aiHandler := handlers.NewAIHandler(aiClient, log)
 	mediaHandler := handlers.NewMediaHandler(mediaClient, log)
 	groupHandler := handlers.NewGroupHandler(groupClient, log)
 	storyHandler := handlers.NewStoryHandler(storyClient, log)
 	callHandler := handlers.NewCallHandler(callClient, log)
 	channelHandler := handlers.NewChannelHandler(channelClient, log)
-	aiHandler := handlers.NewAIHandler(aiClient, log)
-	paymentHandler := handlers.NewPaymentHandler(paymentClient, log)
-	socialHandler := handlers.NewSocialHandler(socialClient, log)
+	socialHandler := handlers.NewSocialHandler(socialClient, authClient, log)
 	miniappHandler := handlers.NewMiniAppHandler(miniappClient, log)
 	businessHandler := handlers.NewBusinessHandler(businessClient, log)
+	docsHandler := handlers.NewDocsHandler()
+
+	// ── Interactive API Documentation ─────────────────────────────────────────
+	r.GET("/openapi.json", docsHandler.OpenAPIJSON)
+	r.GET("/docs", docsHandler.SwaggerUI)
+	r.GET("/swagger", docsHandler.SwaggerUI)
+	r.GET("/redoc", docsHandler.Redoc)
 
 	// ── Route Configurations ──────────────────────────────────────────────────
 
 	// Public Routes
-	api := r.Group("/api")
+	api := r.Group("/api/v1")
 	{
 		auth := api.Group("/auth")
 		{
-			auth.POST("/register", authHandler.Register)
-			auth.POST("/login", authHandler.Login)
-			auth.POST("/refresh", authHandler.Refresh)
+			authLimiter := middleware.RateLimitMiddleware(redisClient, middleware.RateLimitConfig{
+				Prefix: "rl:auth",
+				Limit:  20,
+				Window: time.Minute,
+			})
+
+			auth.POST("/register", authLimiter, authHandler.Register)
+			auth.POST("/login", authLimiter, authHandler.Login)
+			auth.POST("/refresh", authLimiter, authHandler.Refresh)
+			auth.POST("/recovery/request", authLimiter, authHandler.RequestAccountRecovery)
+			auth.POST("/recovery/verify", authLimiter, authHandler.VerifyAccountRecovery)
+		}
+
+		// Public Marketplace Routes
+		marketplace := api.Group("/marketplace")
+		{
+			marketplace.GET("/products", businessHandler.ListMarketplaceProducts)
+			marketplace.GET("/products/:id", businessHandler.GetMarketplaceProduct)
+			marketplace.GET("/categories", businessHandler.ListCategories)
+			marketplace.GET("/store", businessHandler.GetStore)
+			marketplace.GET("/products/:id/reviews", businessHandler.ListReviews)
 		}
 	}
 
 	// Authenticated Routes
 	authRequired := api.Group("")
-	authRequired.Use(middleware.AuthMiddleware(authClient))
+	authRequired.Use(
+		middleware.AuthMiddleware(authClient),
+		middleware.CsrfMiddleware(),
+	)
 	{
 		// Profile & Presence
 		authRequired.POST("/auth/logout", authHandler.Logout)
 		authRequired.GET("/users/:id", authHandler.GetUser)
 		authRequired.PATCH("/users/me", authHandler.UpdateUser)
+		authRequired.DELETE("/users/me", authHandler.DeleteUser)
 		authRequired.POST("/users/presence", authHandler.UpdatePresence)
+		authRequired.POST("/users/sync", authHandler.SyncContacts)
+
+		// Sessions & Security Audit Logs
+		authRequired.GET("/auth/sessions", authHandler.GetActiveSessions)
+		authRequired.DELETE("/auth/sessions/other", authHandler.TerminateAllOtherSessions)
+		authRequired.DELETE("/auth/sessions/:id", authHandler.TerminateSession)
+		authRequired.GET("/auth/audit-logs", authHandler.GetSecurityAuditLogs)
+		authRequired.POST("/users/report", authHandler.ReportUser)
+		authRequired.PUT("/users/privacy", authHandler.UpdatePrivacySettings)
 
 		// 2FA & PIN
 		authRequired.POST("/auth/2fa", authHandler.SetTwoStepPIN)
@@ -235,16 +345,27 @@ func main() {
 		authRequired.DELETE("/chat/conversations/:id/members", chatHandler.RemoveMember)
 
 		// Messages & Schedules
-		authRequired.POST("/chat/conversations/:id/messages", chatHandler.SendMessage)
+		messageLimiter := middleware.RateLimitMiddleware(redisClient, middleware.RateLimitConfig{
+			Prefix:             "rl:chat:send",
+			Limit:              60,
+			Window:             time.Minute,
+			UseUserIfAvailable: true,
+		})
+		authRequired.POST("/chat/conversations/:id/messages", messageLimiter, chatHandler.SendMessage)
 		authRequired.POST("/chat/conversations/:id/messages/schedule", chatHandler.ScheduleMessage)
 		authRequired.GET("/chat/conversations/:id/messages", chatHandler.GetMessages)
 		authRequired.GET("/chat/threads/:parent_id", chatHandler.GetThread)
 		authRequired.PUT("/chat/messages/:id", chatHandler.EditMessage)
 		authRequired.DELETE("/chat/messages/:id", chatHandler.DeleteMessage)
+		authRequired.GET("/chat/unfurl", chatHandler.UnfurlURL)
+		authRequired.POST("/chat/unfurl", chatHandler.UnfurlURL)
 
 		// Reactions
 		authRequired.POST("/chat/messages/:id/reactions", chatHandler.AddReaction)
 		authRequired.DELETE("/chat/messages/:id/reactions", chatHandler.RemoveReaction)
+
+		// Forwarding
+		authRequired.POST("/chat/messages/:id/forward", chatHandler.ForwardMessage)
 
 		// Message Status & Pins
 		authRequired.POST("/chat/conversations/:id/read", chatHandler.MarkRead)
@@ -256,8 +377,46 @@ func main() {
 		authRequired.GET("/chat/unread", chatHandler.GetUnreadCounts)
 		authRequired.POST("/chat/conversations/:id/typing", chatHandler.SendTypingIndicator)
 
+		// Chat Folders
+		authRequired.POST("/chat/folders", chatHandler.CreateFolder)
+		authRequired.GET("/chat/folders", chatHandler.ListFolders)
+		authRequired.DELETE("/chat/folders/:id", chatHandler.DeleteFolder)
+		authRequired.POST("/chat/folders/:id/conversations", chatHandler.AddToFolder)
+		authRequired.DELETE("/chat/folders/:id/conversations", chatHandler.RemoveFromFolder)
+
+		// Chat Labels
+		authRequired.POST("/chat/labels", chatHandler.AddLabel)
+		authRequired.DELETE("/chat/labels", chatHandler.RemoveLabel)
+		authRequired.GET("/chat/labels", chatHandler.ListLabels)
+
+		// Chat Analytics
+		authRequired.GET("/chat/analytics", chatHandler.GetChatAnalytics)
+
+		// AI Chat Suite
+		authRequired.POST("/ai/summarize", aiHandler.SummarizeChat)
+		authRequired.POST("/ai/suggest-replies", aiHandler.SuggestReplies)
+		authRequired.POST("/ai/translate", aiHandler.TranslateMessage)
+		authRequired.POST("/ai/adjust-tone", aiHandler.AdjustTone)
+		authRequired.POST("/ai/action-items", aiHandler.ExtractActionItems)
+
+		// Notification Profiles
+		authRequired.POST("/chat/notifications", chatHandler.SetNotificationProfile)
+		authRequired.GET("/chat/notifications", chatHandler.GetNotificationProfiles)
+
+		// Polls
+		authRequired.POST("/chat/conversations/:id/polls", chatHandler.CreatePoll)
+		authRequired.GET("/chat/polls/:id", chatHandler.GetPoll)
+		authRequired.POST("/chat/polls/:id/vote", chatHandler.VotePoll)
+		authRequired.POST("/chat/polls/:id/close", chatHandler.ClosePoll)
+
 		// Media upload
-		authRequired.POST("/media/upload", mediaHandler.Upload)
+		uploadLimiter := middleware.RateLimitMiddleware(redisClient, middleware.RateLimitConfig{
+			Prefix:             "rl:media:upload",
+			Limit:              20,
+			Window:             time.Minute,
+			UseUserIfAvailable: true,
+		})
+		authRequired.POST("/media/upload", uploadLimiter, mediaHandler.Upload)
 
 		// Group management
 		authRequired.POST("/groups/:id/metadata", groupHandler.UpdateGroupMetadata)
@@ -308,24 +467,8 @@ func main() {
 		authRequired.GET("/channels/:id", channelHandler.GetChannelMetadata)
 		authRequired.GET("/channels", channelHandler.ListChannels)
 
-		// ── Phase 5: AI Assistant ──────────────────────────────────────────
-		authRequired.POST("/ai/summarize", aiHandler.SummarizeChat)
-		authRequired.POST("/ai/suggest-replies", aiHandler.SuggestReplies)
-		authRequired.POST("/ai/translate", aiHandler.TranslateMessage)
-		authRequired.POST("/ai/adjust-tone", aiHandler.AdjustTone)
-		authRequired.POST("/ai/action-items", aiHandler.ExtractActionItems)
-
-		// ── Phase 6: Payments & Wallet ────────────────────────────────────
-		authRequired.POST("/wallet", paymentHandler.CreateWallet)
-		authRequired.GET("/wallet", paymentHandler.GetWallet)
-		authRequired.POST("/wallet/send", paymentHandler.SendPayment)
-		authRequired.POST("/wallet/request", paymentHandler.RequestPayment)
-		authRequired.POST("/expenses", paymentHandler.CreateExpenseGroup)
-		authRequired.POST("/expenses/:id/items", paymentHandler.AddExpense)
-		authRequired.POST("/expenses/:id/settle", paymentHandler.SettleExpense)
-		authRequired.GET("/wallet/transactions", paymentHandler.GetTransactionHistory)
-
 		// ── Phase 8: Social ───────────────────────────────────────────────
+		authRequired.GET("/social/users/search", socialHandler.SearchUsers)
 		authRequired.POST("/social/follow/:id", socialHandler.FollowUser)
 		authRequired.DELETE("/social/follow/:id", socialHandler.UnfollowUser)
 		authRequired.GET("/social/followers", socialHandler.GetFollowers)
@@ -357,9 +500,63 @@ func main() {
 		authRequired.GET("/developer/api-keys", miniappHandler.ListAPIKeys)
 		authRequired.DELETE("/developer/api-keys/:id", miniappHandler.RevokeAPIKey)
 
-		// ── Phase 9: Business Suite ────────────────────────────────────────
+		// ── Phase 9: Business Suite & Marketplace ──────────────────────────
 		authRequired.POST("/business/profile", businessHandler.CreateBusinessProfile)
 		authRequired.GET("/business/profile", businessHandler.GetBusinessProfile)
+		authRequired.POST("/business/products", businessHandler.CreateMarketplaceProduct)
+		authRequired.PUT("/business/products/:id", businessHandler.UpdateMarketplaceProduct)
+		authRequired.DELETE("/business/products/:id", businessHandler.DeleteMarketplaceProduct)
+		authRequired.GET("/business/products", businessHandler.GetMyProducts)
+		authRequired.POST("/marketplace/products/:id/view", businessHandler.TrackProductView)
+		authRequired.POST("/marketplace/products/:id/reviews", businessHandler.CreateReview)
+
+		// Product Variants
+		authRequired.POST("/business/products/:id/variants", businessHandler.CreateProductVariant)
+		authRequired.GET("/business/products/:id/variants", businessHandler.ListProductVariants)
+		authRequired.PUT("/business/products/:id/variants/:variantId", businessHandler.UpdateProductVariant)
+		authRequired.DELETE("/business/products/:id/variants/:variantId", businessHandler.DeleteProductVariant)
+
+		// Cart, Orders & Coupons
+		authRequired.POST("/marketplace/cart", businessHandler.AddToCart)
+		authRequired.GET("/marketplace/cart", businessHandler.GetCart)
+		authRequired.PUT("/marketplace/cart/items/:id", businessHandler.UpdateCartItem)
+		authRequired.DELETE("/marketplace/cart/items/:id", businessHandler.RemoveFromCart)
+		authRequired.DELETE("/marketplace/cart", businessHandler.ClearCart)
+
+		checkoutLimiter := middleware.RateLimitMiddleware(redisClient, middleware.RateLimitConfig{
+			Prefix:             "rl:checkout",
+			Limit:              10,
+			Window:             time.Minute,
+			UseUserIfAvailable: true,
+		})
+		authRequired.POST("/marketplace/orders", checkoutLimiter, businessHandler.CreateOrders)
+		authRequired.GET("/marketplace/orders", businessHandler.ListBuyerOrders)
+		authRequired.GET("/marketplace/orders/:id", businessHandler.GetOrder)
+		authRequired.GET("/business/orders", businessHandler.ListSellerOrders)
+		authRequired.PUT("/business/orders/:id/status", businessHandler.UpdateOrderStatus)
+		authRequired.PUT("/business/orders/:id/tracking", businessHandler.UpdateOrderTracking)
+
+		authRequired.POST("/business/coupons", businessHandler.CreateCoupon)
+		authRequired.GET("/business/coupons", businessHandler.ListBusinessCoupons)
+		authRequired.POST("/marketplace/coupons/validate", businessHandler.ValidateCoupon)
+
+		// Wishlist
+		authRequired.POST("/marketplace/products/:id/wishlist", businessHandler.ToggleWishlist)
+		authRequired.GET("/marketplace/wishlist", businessHandler.GetWishlist)
+
+		// Product Q&A
+		qaLimiter := middleware.RateLimitMiddleware(redisClient, middleware.RateLimitConfig{
+			Prefix:             "rl:qa",
+			Limit:              5,
+			Window:             time.Hour,
+			UseUserIfAvailable: true,
+		})
+		authRequired.POST("/marketplace/products/:id/questions", qaLimiter, businessHandler.AskProductQuestion)
+		authRequired.GET("/marketplace/products/:id/questions", businessHandler.GetProductQuestions)
+		authRequired.POST("/marketplace/questions/:id/answer", businessHandler.AnswerProductQuestion)
+		authRequired.POST("/marketplace/questions/:id/flag", businessHandler.FlagProductQuestion)
+		authRequired.POST("/marketplace/questions/:id/moderate", businessHandler.ModerateProductQuestion)
+
 		authRequired.POST("/business/catalogs", businessHandler.CreateCatalog)
 		authRequired.POST("/business/catalogs/:id/products", businessHandler.AddProduct)
 		authRequired.GET("/business/catalogs/:id/products", businessHandler.ListProducts)
@@ -374,7 +571,7 @@ func main() {
 	}
 
 	// Real-time WebSocket connection endpoint (secured via AuthMiddleware)
-	r.GET("/ws", middleware.AuthMiddleware(authClient), ws.ServeWs(hub, chatClient, log))
+	r.GET("/ws", middleware.AuthMiddleware(authClient), ws.ServeWs(hub, chatClient, cfg.CORSOrigins, log))
 
 	// ── Server Start ──────────────────────────────────────────────────────────
 	srv := &http.Server{
@@ -415,7 +612,7 @@ func corsMiddleware(origins string) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		reqOrigin := c.Request.Header.Get("Origin")
-		
+
 		isAllowed := false
 		for _, o := range allowedOrigins {
 			if o == "*" || o == reqOrigin {
@@ -426,10 +623,8 @@ func corsMiddleware(origins string) gin.HandlerFunc {
 
 		if isAllowed {
 			c.Writer.Header().Set("Access-Control-Allow-Origin", reqOrigin)
-		} else if len(allowedOrigins) > 0 {
-			c.Writer.Header().Set("Access-Control-Allow-Origin", allowedOrigins[0])
 		}
-		
+
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, PATCH, DELETE")

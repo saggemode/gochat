@@ -11,18 +11,18 @@ import (
 )
 
 type CallLog struct {
-	ID                 uuid.UUID
-	CallerID           uuid.UUID
-	CallerName         string
-	CallerAvatarURL    string
-	ReceiverID         uuid.UUID
-	ReceiverName       string
-	ReceiverAvatarURL  string
-	Type               string // "voice", "video"
-	Status             string // "dialing", "active", "rejected", "missed", "ended", "busy"
-	StartTime          time.Time
-	EndTime            *time.Time
-	DurationSec        int
+	ID                uuid.UUID
+	CallerID          uuid.UUID
+	CallerName        string
+	CallerAvatarURL   string
+	ReceiverID        uuid.UUID
+	ReceiverName      string
+	ReceiverAvatarURL string
+	Type              string // "voice", "video"
+	Status            string // "dialing", "active", "rejected", "missed", "ended", "busy"
+	StartTime         time.Time
+	EndTime           *time.Time
+	DurationSec       int
 }
 
 type CallRepository struct {

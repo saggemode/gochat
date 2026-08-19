@@ -2,8 +2,10 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -36,14 +38,26 @@ func New(repo *repository.UserRepository, jwt *jwtutil.Manager, redis *redis.Cli
 // ── RPCs ──────────────────────────────────────────────────────────────────────
 
 func (s *AuthServer) Register(ctx context.Context, req *authpb.RegisterRequest) (*authpb.RegisterResponse, error) {
-	if req.Email == "" || req.Password == "" || req.DisplayName == "" {
-		return nil, status.Error(codes.InvalidArgument, "email, password and display_name are required")
+	if req.Phone == "" && req.Email == "" {
+		return nil, status.Error(codes.InvalidArgument, "phone number or email is required")
 	}
-	if len(req.Password) < 8 {
+
+	// Auto-generate a secure random password when none is provided
+	password := req.Password
+	if password == "" {
+		b := make([]byte, 32)
+		if _, err := rand.Read(b); err != nil {
+			return nil, status.Error(codes.Internal, "failed to generate secure password")
+		}
+		password = fmt.Sprintf("%x", b)
+	} else if len(password) < 8 {
 		return nil, status.Error(codes.InvalidArgument, "password must be at least 8 characters")
 	}
 
-	user, err := s.repo.CreateUser(ctx, req.Email, req.Password, req.DisplayName)
+	user, err := s.repo.CreateUser(ctx, req.Phone, req.Email, password, req.DisplayName, req.CountryCode)
+	if errors.Is(err, repository.ErrPhoneAlreadyTaken) {
+		return nil, status.Error(codes.AlreadyExists, "phone number is already registered")
+	}
 	if errors.Is(err, repository.ErrEmailAlreadyTaken) {
 		return nil, status.Error(codes.AlreadyExists, "email is already registered")
 	}
@@ -52,7 +66,12 @@ func (s *AuthServer) Register(ctx context.Context, req *authpb.RegisterRequest) 
 		return nil, status.Error(codes.Internal, "failed to create user")
 	}
 
-	access, refresh, err := s.jwt.GenerateTokenPair(user.ID.String(), user.Email)
+	identifier := user.Email
+	if identifier == "" {
+		identifier = user.Phone
+	}
+
+	access, refresh, err := s.jwt.GenerateTokenPair(user.ID.String(), identifier)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to generate tokens")
 	}
@@ -61,7 +80,7 @@ func (s *AuthServer) Register(ctx context.Context, req *authpb.RegisterRequest) 
 		s.log.Warn("register: failed to store refresh token", zap.Error(err))
 	}
 
-	s.log.Info("user registered", zap.String("user_id", user.ID.String()), zap.String("email", user.Email))
+	s.log.Info("user registered", zap.String("user_id", user.ID.String()), zap.String("phone", user.Phone), zap.String("display_name", user.DisplayName))
 
 	return &authpb.RegisterResponse{
 		User:         domainToProto(user),
@@ -71,23 +90,49 @@ func (s *AuthServer) Register(ctx context.Context, req *authpb.RegisterRequest) 
 }
 
 func (s *AuthServer) Login(ctx context.Context, req *authpb.LoginRequest) (*authpb.LoginResponse, error) {
-	if req.Email == "" || req.Password == "" {
-		return nil, status.Error(codes.InvalidArgument, "email and password are required")
+	if req.Email == "" {
+		return nil, status.Error(codes.InvalidArgument, "phone, email, or PIN is required")
 	}
 
-	user, err := s.repo.GetUserByEmail(ctx, req.Email)
+	user, err := s.repo.GetUserByIdentifier(ctx, req.Email)
 	if errors.Is(err, repository.ErrUserNotFound) {
-		return nil, status.Error(codes.Unauthenticated, "invalid credentials")
-	}
-	if err != nil {
+		// WhatsApp / Telegram style: auto-create account on phone/PIN login if user does not exist yet
+		var phoneArg, emailArg string
+		if strings.Contains(req.Email, "@") {
+			emailArg = req.Email
+		} else {
+			phoneArg = req.Email
+		}
+
+		createdUser, createErr := s.repo.CreateUser(ctx, phoneArg, emailArg, "", "", "")
+		if createErr != nil {
+			// If already exists due to formatting, attempt secondary lookup
+			u, fetchErr := s.repo.GetUserByIdentifier(ctx, req.Email)
+			if fetchErr == nil {
+				user = u
+			} else {
+				return nil, status.Error(codes.Unauthenticated, "invalid credentials")
+			}
+		} else {
+			user = createdUser
+		}
+	} else if err != nil {
 		return nil, status.Error(codes.Internal, "login failed")
 	}
 
-	if !s.repo.CheckPassword(user.PasswordHash, req.Password) {
-		return nil, status.Error(codes.Unauthenticated, "invalid credentials")
+	// Only check password if explicitly provided and hash exists
+	if req.Password != "" && user.PasswordHash != "" {
+		if !s.repo.CheckPassword(user.PasswordHash, req.Password) {
+			return nil, status.Error(codes.Unauthenticated, "invalid credentials")
+		}
 	}
 
-	access, refresh, err := s.jwt.GenerateTokenPair(user.ID.String(), user.Email)
+	identifier := user.Email
+	if identifier == "" {
+		identifier = user.Phone
+	}
+
+	access, refresh, err := s.jwt.GenerateTokenPair(user.ID.String(), identifier)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to generate tokens")
 	}
@@ -164,11 +209,18 @@ func (s *AuthServer) ValidateToken(ctx context.Context, req *authpb.ValidateToke
 
 func (s *AuthServer) GetUser(ctx context.Context, req *authpb.GetUserRequest) (*authpb.GetUserResponse, error) {
 	uid, err := uuid.Parse(req.UserId)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid user ID")
+	if err == nil {
+		user, err := s.repo.GetUserByID(ctx, uid)
+		if errors.Is(err, repository.ErrUserNotFound) {
+			return nil, status.Error(codes.NotFound, "user not found")
+		}
+		if err != nil {
+			return nil, status.Error(codes.Internal, "failed to fetch user")
+		}
+		return &authpb.GetUserResponse{User: domainToProto(user)}, nil
 	}
 
-	user, err := s.repo.GetUserByID(ctx, uid)
+	user, err := s.repo.GetUserByIdentifier(ctx, req.UserId)
 	if errors.Is(err, repository.ErrUserNotFound) {
 		return nil, status.Error(codes.NotFound, "user not found")
 	}
@@ -180,16 +232,7 @@ func (s *AuthServer) GetUser(ctx context.Context, req *authpb.GetUserRequest) (*
 }
 
 func (s *AuthServer) GetUsers(ctx context.Context, req *authpb.GetUsersRequest) (*authpb.GetUsersResponse, error) {
-	ids := make([]uuid.UUID, 0, len(req.UserIds))
-	for _, idStr := range req.UserIds {
-		uid, err := uuid.Parse(idStr)
-		if err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "invalid user ID: %s", idStr)
-		}
-		ids = append(ids, uid)
-	}
-
-	users, err := s.repo.GetUsersByIDs(ctx, ids)
+	users, err := s.repo.GetUsersByIdentifiers(ctx, req.UserIds)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to fetch users")
 	}
@@ -208,15 +251,35 @@ func (s *AuthServer) UpdateUser(ctx context.Context, req *authpb.UpdateUserReque
 		return nil, status.Error(codes.InvalidArgument, "invalid user ID")
 	}
 
-	user, err := s.repo.UpdateUser(ctx, uid, req.DisplayName, req.AvatarUrl, req.StatusText)
+	user, err := s.repo.UpdateUser(ctx, uid, req.DisplayName, req.AvatarUrl, req.StatusText, req.Email, req.Phone)
 	if errors.Is(err, repository.ErrUserNotFound) {
 		return nil, status.Error(codes.NotFound, "user not found")
+	}
+	if errors.Is(err, repository.ErrEmailAlreadyTaken) {
+		return nil, status.Error(codes.AlreadyExists, "email is already registered")
 	}
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to update user")
 	}
 
 	return &authpb.UpdateUserResponse{User: domainToProto(user)}, nil
+}
+
+func (s *AuthServer) DeleteUser(ctx context.Context, req *authpb.DeleteUserRequest) (*authpb.DeleteUserResponse, error) {
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user ID")
+	}
+
+	err = s.repo.DeleteUser(ctx, uid)
+	if errors.Is(err, repository.ErrUserNotFound) {
+		return nil, status.Error(codes.NotFound, "user not found")
+	}
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to delete user")
+	}
+
+	return &authpb.DeleteUserResponse{Success: true}, nil
 }
 
 func (s *AuthServer) Logout(ctx context.Context, req *authpb.LogoutRequest) (*authpb.LogoutResponse, error) {
@@ -271,6 +334,8 @@ func domainToProto(u *repository.User) *authpb.User {
 		CreatedAt:     u.CreatedAt.Unix(),
 		Phone:         u.Phone,
 		PhoneVerified: u.PhoneVerified,
+		Pin:           u.PIN,
+		CountryCode:   u.CountryCode,
 	}
 }
 

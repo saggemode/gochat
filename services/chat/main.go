@@ -67,6 +67,11 @@ func main() {
 	// ── Repositories ──────────────────────────────────────────────────────────
 	convRepo := repository.NewConversationRepository(db)
 	msgRepo := repository.NewMessageRepository(db)
+	folderRepo := repository.NewFolderRepository(db)
+	labelRepo := repository.NewLabelRepository(db)
+	analyticsRepo := repository.NewAnalyticsRepository(db)
+	notifRepo := repository.NewNotificationProfileRepository(db)
+	pollRepo := repository.NewPollRepository(db)
 
 	// ── Scheduler ─────────────────────────────────────────────────────────────
 	sched := scheduler.New(msgRepo, redisClient, log)
@@ -89,7 +94,7 @@ func main() {
 		),
 	)
 
-	chatpb.RegisterChatServiceServer(grpcServer, server.New(convRepo, msgRepo, redisClient, authzClient, log))
+	chatpb.RegisterChatServiceServer(grpcServer, server.New(convRepo, msgRepo, folderRepo, labelRepo, analyticsRepo, notifRepo, pollRepo, redisClient, authzClient, log))
 
 	reflection.Register(grpcServer)
 

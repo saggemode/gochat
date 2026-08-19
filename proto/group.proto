@@ -36,6 +36,8 @@ message GroupMetadata {
   bool admins_only_edit_info = 4;
   string invite_code = 5;
   bool join_approval_required = 6;
+  string name = 7;
+  string avatar_url = 8;
 }
 
 message UpdateGroupMetadataRequest {
@@ -45,6 +47,8 @@ message UpdateGroupMetadataRequest {
   bool announcements_only = 4;
   bool admins_only_edit_info = 5;
   bool join_approval_required = 6;
+  string name = 7;
+  string avatar_url = 8;
 }
 
 message UpdateGroupMetadataResponse {

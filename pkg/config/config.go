@@ -19,17 +19,17 @@ type Config struct {
 	RedisDB       int
 
 	// JWT (used by auth service and gateway)
-	JWTSecret             string
-	JWTExpiryDuration     time.Duration
-	JWTRefreshExpiry      time.Duration
+	JWTSecret         string
+	JWTExpiryDuration time.Duration
+	JWTRefreshExpiry  time.Duration
 
 	// Service addresses (used by gateway)
-	AuthGRPCAddr  string
-	ChatGRPCAddr  string
-	MediaGRPCAddr string
-	AuthzGRPCAddr string
-	GroupGRPCAddr string
-	StoryGRPCAddr string
+	AuthGRPCAddr     string
+	ChatGRPCAddr     string
+	MediaGRPCAddr    string
+	AuthzGRPCAddr    string
+	GroupGRPCAddr    string
+	StoryGRPCAddr    string
 	CallGRPCAddr     string
 	ChannelGRPCAddr  string
 	AIGRPCAddr       string
@@ -54,13 +54,32 @@ type Config struct {
 	MinioBucket    string
 	MinIOUseSSL    bool
 
+	// E2EE key encryption (base64-encoded 32-byte key for AES-256-GCM)
+	E2EEKeyEncryptionKey string
+
+	// Service Discovery & Load Balancing
+	DiscoveryType     string        // "static", "redis", "consul"
+	DiscoveryTTL      time.Duration // e.g. 15s
+	DiscoveryInterval time.Duration // e.g. 5s
+
 	// CORS
 	CORSOrigins string
+
+	// gRPC client TLS (used by gateway)
+	GRPCUseTLS        bool
+	GRPCTLSCACertFile string // path to CA cert used to verify server certs
+	GRPCTLSClientCert string // optional mTLS client cert (PEM)
+	GRPCTLSClientKey  string // optional mTLS client key (PEM)
+	GRPCTLSServerName string // optional override for TLS server name
 }
 
 // Load reads all config from environment variables with sensible defaults.
 func Load() *Config {
 	return &Config{
+		DiscoveryType:     getEnv("DISCOVERY_TYPE", "static"),
+		DiscoveryTTL:      time.Duration(getEnvInt("DISCOVERY_TTL_SECONDS", 15)) * time.Second,
+		DiscoveryInterval: time.Duration(getEnvInt("DISCOVERY_INTERVAL_SECONDS", 5)) * time.Second,
+
 		PostgresDSN: getEnv("POSTGRES_DSN",
 			"postgres://gochat:gochat_secret@localhost:5432/gochat?sslmode=disable"),
 
@@ -72,22 +91,22 @@ func Load() *Config {
 		JWTExpiryDuration: time.Duration(getEnvInt("JWT_EXPIRY_HOURS", 24)) * time.Hour,
 		JWTRefreshExpiry:  time.Duration(getEnvInt("JWT_REFRESH_EXPIRY_DAYS", 30)) * 24 * time.Hour,
 
-		AuthGRPCAddr:    getEnv("AUTH_GRPC_ADDR", "localhost:50051"),
-		ChatGRPCAddr:    getEnv("CHAT_GRPC_ADDR", "localhost:50052"),
-		MediaGRPCAddr:   getEnv("MEDIA_GRPC_ADDR", "localhost:50053"),
-		AuthzGRPCAddr:   getEnv("AUTHZ_GRPC_ADDR", "localhost:50054"),
-		GroupGRPCAddr:   getEnv("GROUP_GRPC_ADDR", "localhost:50055"),
-		StoryGRPCAddr:   getEnv("STORY_GRPC_ADDR", "localhost:50056"),
-		CallGRPCAddr:    getEnv("CALL_GRPC_ADDR", "localhost:50057"),
-		ChannelGRPCAddr: getEnv("CHANNEL_GRPC_ADDR", "localhost:50058"),
+		AuthGRPCAddr:     getEnv("AUTH_GRPC_ADDR", "localhost:50051"),
+		ChatGRPCAddr:     getEnv("CHAT_GRPC_ADDR", "localhost:50052"),
+		MediaGRPCAddr:    getEnv("MEDIA_GRPC_ADDR", "localhost:50053"),
+		AuthzGRPCAddr:    getEnv("AUTHZ_GRPC_ADDR", "localhost:50054"),
+		GroupGRPCAddr:    getEnv("GROUP_GRPC_ADDR", "localhost:50055"),
+		StoryGRPCAddr:    getEnv("STORY_GRPC_ADDR", "localhost:50056"),
+		CallGRPCAddr:     getEnv("CALL_GRPC_ADDR", "localhost:50057"),
+		ChannelGRPCAddr:  getEnv("CHANNEL_GRPC_ADDR", "localhost:50058"),
 		AIGRPCAddr:       getEnv("AI_GRPC_ADDR", "localhost:50059"),
 		PaymentGRPCAddr:  getEnv("PAYMENT_GRPC_ADDR", "localhost:50060"),
 		SocialGRPCAddr:   getEnv("SOCIAL_GRPC_ADDR", "localhost:50061"),
 		MiniAppGRPCAddr:  getEnv("MINIAPP_GRPC_ADDR", "localhost:50062"),
 		BusinessGRPCAddr: getEnv("BUSINESS_GRPC_ADDR", "localhost:50063"),
 
-		GRPCPort: getEnv("GRPC_PORT", "50051"),
-		HTTPPort: getEnv("HTTP_PORT", "8080"),
+		GRPCPort:   getEnv("GRPC_PORT", "50051"),
+		HTTPPort:   getEnv("HTTP_PORT", "8080"),
 		HealthPort: getEnv("HEALTH_PORT", "9090"),
 
 		MinIOEndpoint:  getEnv("MINIO_ENDPOINT", "localhost:9000"),
@@ -96,7 +115,15 @@ func Load() *Config {
 		MinioBucket:    getEnv("MINIO_BUCKET", "gochat-media"),
 		MinIOUseSSL:    getEnvBool("MINIO_USE_SSL", false),
 
-		CORSOrigins: getEnv("CORS_ORIGINS", "http://localhost:5173"),
+		E2EEKeyEncryptionKey: getEnv("E2EE_KEY_ENCRYPTION_KEY", ""),
+
+		CORSOrigins: getEnv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000"),
+
+		GRPCUseTLS:        getEnvBool("GRPC_USE_TLS", false),
+		GRPCTLSCACertFile: getEnv("GRPC_TLS_CA_CERT", ""),
+		GRPCTLSClientCert: getEnv("GRPC_TLS_CLIENT_CERT", ""),
+		GRPCTLSClientKey:  getEnv("GRPC_TLS_CLIENT_KEY", ""),
+		GRPCTLSServerName: getEnv("GRPC_TLS_SERVER_NAME", ""),
 	}
 }
 

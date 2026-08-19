@@ -29,6 +29,8 @@ type GroupMetadata struct {
 	AdminsOnlyEditInfo   bool                   `protobuf:"varint,4,opt,name=admins_only_edit_info,json=adminsOnlyEditInfo,proto3" json:"admins_only_edit_info,omitempty"`
 	InviteCode           string                 `protobuf:"bytes,5,opt,name=invite_code,json=inviteCode,proto3" json:"invite_code,omitempty"`
 	JoinApprovalRequired bool                   `protobuf:"varint,6,opt,name=join_approval_required,json=joinApprovalRequired,proto3" json:"join_approval_required,omitempty"`
+	Name                 string                 `protobuf:"bytes,7,opt,name=name,proto3" json:"name,omitempty"`
+	AvatarUrl            string                 `protobuf:"bytes,8,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -105,6 +107,20 @@ func (x *GroupMetadata) GetJoinApprovalRequired() bool {
 	return false
 }
 
+func (x *GroupMetadata) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GroupMetadata) GetAvatarUrl() string {
+	if x != nil {
+		return x.AvatarUrl
+	}
+	return ""
+}
+
 type UpdateGroupMetadataRequest struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	ConversationId       string                 `protobuf:"bytes,1,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
@@ -113,6 +129,8 @@ type UpdateGroupMetadataRequest struct {
 	AnnouncementsOnly    bool                   `protobuf:"varint,4,opt,name=announcements_only,json=announcementsOnly,proto3" json:"announcements_only,omitempty"`
 	AdminsOnlyEditInfo   bool                   `protobuf:"varint,5,opt,name=admins_only_edit_info,json=adminsOnlyEditInfo,proto3" json:"admins_only_edit_info,omitempty"`
 	JoinApprovalRequired bool                   `protobuf:"varint,6,opt,name=join_approval_required,json=joinApprovalRequired,proto3" json:"join_approval_required,omitempty"`
+	Name                 string                 `protobuf:"bytes,7,opt,name=name,proto3" json:"name,omitempty"`
+	AvatarUrl            string                 `protobuf:"bytes,8,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -187,6 +205,20 @@ func (x *UpdateGroupMetadataRequest) GetJoinApprovalRequired() bool {
 		return x.JoinApprovalRequired
 	}
 	return false
+}
+
+func (x *UpdateGroupMetadataRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *UpdateGroupMetadataRequest) GetAvatarUrl() string {
+	if x != nil {
+		return x.AvatarUrl
+	}
+	return ""
 }
 
 type UpdateGroupMetadataResponse struct {
@@ -2225,7 +2257,7 @@ var File_proto_group_proto protoreflect.FileDescriptor
 
 const file_proto_group_proto_rawDesc = "" +
 	"\n" +
-	"\x11proto/group.proto\x12\x05group\"\x93\x02\n" +
+	"\x11proto/group.proto\x12\x05group\"\xc6\x02\n" +
 	"\rGroupMetadata\x12'\n" +
 	"\x0fconversation_id\x18\x01 \x01(\tR\x0econversationId\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12-\n" +
@@ -2233,14 +2265,20 @@ const file_proto_group_proto_rawDesc = "" +
 	"\x15admins_only_edit_info\x18\x04 \x01(\bR\x12adminsOnlyEditInfo\x12\x1f\n" +
 	"\vinvite_code\x18\x05 \x01(\tR\n" +
 	"inviteCode\x124\n" +
-	"\x16join_approval_required\x18\x06 \x01(\bR\x14joinApprovalRequired\"\xa2\x02\n" +
+	"\x16join_approval_required\x18\x06 \x01(\bR\x14joinApprovalRequired\x12\x12\n" +
+	"\x04name\x18\a \x01(\tR\x04name\x12\x1d\n" +
+	"\n" +
+	"avatar_url\x18\b \x01(\tR\tavatarUrl\"\xd5\x02\n" +
 	"\x1aUpdateGroupMetadataRequest\x12'\n" +
 	"\x0fconversation_id\x18\x01 \x01(\tR\x0econversationId\x12!\n" +
 	"\frequester_id\x18\x02 \x01(\tR\vrequesterId\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12-\n" +
 	"\x12announcements_only\x18\x04 \x01(\bR\x11announcementsOnly\x121\n" +
 	"\x15admins_only_edit_info\x18\x05 \x01(\bR\x12adminsOnlyEditInfo\x124\n" +
-	"\x16join_approval_required\x18\x06 \x01(\bR\x14joinApprovalRequired\"O\n" +
+	"\x16join_approval_required\x18\x06 \x01(\bR\x14joinApprovalRequired\x12\x12\n" +
+	"\x04name\x18\a \x01(\tR\x04name\x12\x1d\n" +
+	"\n" +
+	"avatar_url\x18\b \x01(\tR\tavatarUrl\"O\n" +
 	"\x1bUpdateGroupMetadataResponse\x120\n" +
 	"\bmetadata\x18\x01 \x01(\v2\x14.group.GroupMetadataR\bmetadata\"e\n" +
 	"\x17GetGroupMetadataRequest\x12'\n" +

@@ -16,6 +16,7 @@ import (
 
 	authpb "gochat/gen/auth"
 	"gochat/pkg/config"
+	"gochat/pkg/crypto"
 	"gochat/pkg/database"
 	"gochat/pkg/health"
 	"gochat/pkg/jwtutil"
@@ -60,8 +61,20 @@ func main() {
 	// ── JWT Manager ───────────────────────────────────────────────────────────
 	jwtMgr := jwtutil.NewManager(cfg.JWTSecret, cfg.JWTExpiryDuration, cfg.JWTRefreshExpiry)
 
+	// ── E2EE Key Encryptor ─────────────────────────────────────────────────────
+	var enc *crypto.Encryptor
+	if cfg.E2EEKeyEncryptionKey != "" {
+		enc, err = crypto.NewEncryptor(cfg.E2EEKeyEncryptionKey)
+		if err != nil {
+			log.Fatal("failed to initialize E2EE key encryptor", zap.Error(err))
+		}
+		log.Info("E2EE key encryption-at-rest enabled")
+	} else {
+		log.Warn("E2EE_KEY_ENCRYPTION_KEY not set — prekeys stored in plaintext (dev only)")
+	}
+
 	// ── Repository ────────────────────────────────────────────────────────────
-	repo := repository.NewUserRepository(db)
+	repo := repository.NewUserRepositoryWithEncryptor(db, enc)
 
 	// ── gRPC Server ───────────────────────────────────────────────────────────
 	grpcServer := grpc.NewServer(

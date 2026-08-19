@@ -1,0 +1,1115 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "GoChat API Gateway",
+    "version": "1.0.0",
+    "description": "Comprehensive HTTP & WebSocket REST API documentation for the GoChat microservices platform. Supports End-to-End Encrypted messaging, WebRTC calling, real-time group collaboration, multi-vendor marketplace, mini-apps, stories, social feeds, and enterprise business suite."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Local Development Gateway"
+    },
+    {
+      "url": "/api/v1",
+      "description": "API v1 Relative Base"
+    }
+  ],
+  "tags": [
+    { "name": "Authentication & Security", "description": "User registration, login, 2FA PIN, device sessions, and recovery" },
+    { "name": "Users & Privacy", "description": "Profile management, presence, contact sync, privacy settings, and user reporting" },
+    { "name": "Chat & Messaging", "description": "Conversations, messages, scheduled messages, threads, reactions, folders, and labels" },
+    { "name": "AI Assistance", "description": "Smart reply suggestions and AI assistant features" },
+    { "name": "Media & Storage", "description": "High-performance multipart media uploads and attachments" },
+    { "name": "Groups & Communities", "description": "Group metadata, invites, approvals, role promotion/demotion, and communities" },
+    { "name": "Broadcast Lists", "description": "One-to-many broadcast messaging lists" },
+    { "name": "Status & Stories", "description": "24-hour ephemeral status updates and viewer tracking" },
+    { "name": "Audio & Video Calls", "description": "WebSockets & WebRTC signaling for 1-on-1 and group voice/video calling" },
+    { "name": "Public Channels", "description": "Broadcast channels for subscribers" },
+    { "name": "Social Network & Moments", "description": "Follows, moments feed, likes, comments, nearby users, and audio rooms" },
+    { "name": "Mini-Apps & Bots", "description": "Developer platform, bots, mini-app sandbox, webhooks, and API keys" },
+    { "name": "Marketplace & Products", "description": "Public catalog, product listings, variants, stock, search, and store profiles" },
+    { "name": "Cart, Orders & Checkout", "description": "Shopping cart, multi-seller checkout, locked pricing, order tracking, and coupons" },
+    { "name": "Product Reviews & Q&A", "description": "Verified buyer reviews, ratings, and customer questions & answers" },
+    { "name": "Business Suite", "description": "Merchant profiles, catalogs, appointments, auto-replies, and live queue" },
+    { "name": "Real-time WebSocket", "description": "Bi-directional WebSocket streaming connection" }
+  ],
+  "paths": {
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": ["Authentication & Security"],
+        "summary": "Register a new user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["phone"],
+                "properties": {
+                  "phone": { "type": "string", "example": "+1234567890" },
+                  "display_name": { "type": "string", "example": "Alex Rivers" },
+                  "email": { "type": "string", "example": "alex@example.com" },
+                  "password": { "type": "string", "example": "Password123!" },
+                  "country_code": { "type": "string", "example": "US" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Registration successful with token & session" },
+          "400": { "description": "Validation error or user already exists" }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": ["Authentication & Security"],
+        "summary": "Log in with email or phone",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string", "example": "alex@example.com" },
+                  "phone": { "type": "string", "example": "+1234567890" },
+                  "password": { "type": "string", "example": "Password123!" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Login successful, sets HttpOnly auth cookies" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": ["Authentication & Security"],
+        "security": [{ "BearerAuth": [] }, { "CookieAuth": [] }],
+        "summary": "Log out and invalidate session",
+        "responses": {
+          "200": { "description": "Logged out successfully" }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": ["Authentication & Security"],
+        "summary": "Refresh access token",
+        "responses": {
+          "200": { "description": "Access token refreshed" }
+        }
+      }
+    },
+    "/api/v1/auth/recovery/request": {
+      "post": {
+        "tags": ["Authentication & Security"],
+        "summary": "Request account recovery code",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["identifier"],
+                "properties": {
+                  "identifier": { "type": "string", "example": "alex@example.com" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Recovery code sent" }
+        }
+      }
+    },
+    "/api/v1/auth/recovery/verify": {
+      "post": {
+        "tags": ["Authentication & Security"],
+        "summary": "Verify recovery code and reset PIN/Password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["identifier", "recovery_code", "new_pin"],
+                "properties": {
+                  "identifier": { "type": "string" },
+                  "recovery_code": { "type": "string" },
+                  "new_pin": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Account recovered successfully" }
+        }
+      }
+    },
+    "/api/v1/auth/sessions": {
+      "get": {
+        "tags": ["Authentication & Security"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "List active device sessions",
+        "responses": {
+          "200": { "description": "List of active sessions" }
+        }
+      }
+    },
+    "/api/v1/auth/sessions/{id}": {
+      "delete": {
+        "tags": ["Authentication & Security"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Terminate a specific device session",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Session terminated" }
+        }
+      }
+    },
+    "/api/v1/auth/sessions/other": {
+      "delete": {
+        "tags": ["Authentication & Security"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Terminate all other device sessions except current",
+        "responses": {
+          "200": { "description": "Other sessions terminated" }
+        }
+      }
+    },
+    "/api/v1/auth/audit-logs": {
+      "get": {
+        "tags": ["Authentication & Security"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Get security audit logs",
+        "responses": {
+          "200": { "description": "Security audit events" }
+        }
+      }
+    },
+    "/api/v1/auth/2fa": {
+      "post": {
+        "tags": ["Authentication & Security"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Configure Two-Step Verification PIN",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["pin"],
+                "properties": {
+                  "pin": { "type": "string", "example": "123456" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "2FA configured" }
+        }
+      }
+    },
+    "/api/v1/users/{id}": {
+      "get": {
+        "tags": ["Users & Privacy"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Get user profile by ID",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "User profile" }
+        }
+      }
+    },
+    "/api/v1/users/me": {
+      "patch": {
+        "tags": ["Users & Privacy"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Update current user profile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "display_name": { "type": "string" },
+                  "avatar_url": { "type": "string" },
+                  "bio": { "type": "string" },
+                  "status_text": { "type": "string" },
+                  "country_code": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Profile updated" }
+        }
+      },
+      "delete": {
+        "tags": ["Users & Privacy"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Delete current user account",
+        "responses": {
+          "200": { "description": "Account deleted" }
+        }
+      }
+    },
+    "/api/v1/users/presence": {
+      "post": {
+        "tags": ["Users & Privacy"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Update online status/presence",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "is_online": { "type": "boolean" },
+                  "status_text": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Presence updated" }
+        }
+      }
+    },
+    "/api/v1/users/sync": {
+      "post": {
+        "tags": ["Users & Privacy"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Sync contact address book with GoChat registered users",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["identifiers"],
+                "properties": {
+                  "identifiers": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "example": ["+1234567890", "alex@example.com"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Matched registered users" }
+        }
+      }
+    },
+    "/api/v1/users/privacy": {
+      "put": {
+        "tags": ["Users & Privacy"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Update granular privacy settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profile_photo_privacy": { "type": "string", "enum": ["everyone", "contacts", "nobody"] },
+                  "status_privacy": { "type": "string", "enum": ["everyone", "contacts", "nobody"] },
+                  "read_receipts_enabled": { "type": "boolean" },
+                  "online_privacy": { "type": "string", "enum": ["everyone", "same_as_last_seen"] },
+                  "last_seen_privacy": { "type": "string", "enum": ["everyone", "contacts", "nobody"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Privacy settings updated" }
+        }
+      }
+    },
+    "/api/v1/users/report": {
+      "post": {
+        "tags": ["Users & Privacy"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Report inappropriate user or behavior",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["reported_user_id", "reason"],
+                "properties": {
+                  "reported_user_id": { "type": "string" },
+                  "reason": { "type": "string" },
+                  "details": { "type": "string" },
+                  "evidence_msg_ids": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Report submitted" }
+        }
+      }
+    },
+    "/api/v1/chat/conversations": {
+      "post": {
+        "tags": ["Chat & Messaging"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Create direct, group, or secret chat conversation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["member_ids"],
+                "properties": {
+                  "name": { "type": "string", "example": "Project Alpha Team" },
+                  "is_group": { "type": "boolean", "example": true },
+                  "is_secret": { "type": "boolean", "example": false },
+                  "member_ids": { "type": "array", "items": { "type": "string" } },
+                  "avatar": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Conversation created" }
+        }
+      },
+      "get": {
+        "tags": ["Chat & Messaging"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "List all active conversations for current user",
+        "responses": {
+          "200": { "description": "List of conversations" }
+        }
+      }
+    },
+    "/api/v1/chat/conversations/{id}": {
+      "get": {
+        "tags": ["Chat & Messaging"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Get conversation details by ID",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Conversation details" }
+        }
+      }
+    },
+    "/api/v1/chat/conversations/{id}/messages": {
+      "post": {
+        "tags": ["Chat & Messaging"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Send a message in conversation",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "content": { "type": "string", "example": "Hello team!" },
+                  "media_url": { "type": "string" },
+                  "media_type": { "type": "string" },
+                  "parent_id": { "type": "string", "description": "Thread parent message ID" },
+                  "is_encrypted": { "type": "boolean" },
+                  "topic_id": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Message sent" }
+        }
+      },
+      "get": {
+        "tags": ["Chat & Messaging"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Get messages in conversation with cursor pagination",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "Message list" }
+        }
+      }
+    },
+    "/api/v1/chat/messages/{id}": {
+      "put": {
+        "tags": ["Chat & Messaging"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Edit an existing message",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["content"],
+                "properties": {
+                  "content": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Message updated" }
+        }
+      },
+      "delete": {
+        "tags": ["Chat & Messaging"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Delete or recall a message",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Message deleted" }
+        }
+      }
+    },
+    "/api/v1/chat/messages/{id}/reactions": {
+      "post": {
+        "tags": ["Chat & Messaging"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Add emoji reaction to message",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["emoji"],
+                "properties": {
+                  "emoji": { "type": "string", "example": "❤️" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Reaction added" }
+        }
+      },
+      "delete": {
+        "tags": ["Chat & Messaging"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Remove reaction from message",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Reaction removed" }
+        }
+      }
+    },
+    "/api/v1/chat/conversations/{id}/read": {
+      "post": {
+        "tags": ["Chat & Messaging"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Mark all messages in conversation as read",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Marked as read" }
+        }
+      }
+    },
+    "/api/v1/chat/search": {
+      "get": {
+        "tags": ["Chat & Messaging"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Search message history across chats",
+        "parameters": [
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "conversation_id", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Search results" }
+        }
+      }
+    },
+    "/api/v1/chat/unread": {
+      "get": {
+        "tags": ["Chat & Messaging"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Get unread message count summary",
+        "responses": {
+          "200": { "description": "Unread message counts" }
+        }
+      }
+    },
+    "/api/v1/ai/suggest-replies": {
+      "post": {
+        "tags": ["AI Assistance"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Generate smart AI reply suggestions for recent messages",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["messages"],
+                "properties": {
+                  "messages": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "AI reply suggestions" }
+        }
+      }
+    },
+    "/api/v1/media/upload": {
+      "post": {
+        "tags": ["Media & Storage"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Upload photos, videos, voice notes, and documents",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Uploaded media URL & metadata" }
+        }
+      }
+    },
+    "/api/v1/groups/{id}/metadata": {
+      "get": {
+        "tags": ["Groups & Communities"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Get group metadata, description & permissions",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Group metadata" } }
+      },
+      "post": {
+        "tags": ["Groups & Communities"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Update group metadata (name, avatar, permissions)",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "avatar_url": { "type": "string" },
+                  "announcements_only": { "type": "boolean" },
+                  "admins_only_edit_info": { "type": "boolean" },
+                  "join_approval_required": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Group metadata updated" } }
+      }
+    },
+    "/api/v1/groups/{id}/invite-link": {
+      "post": {
+        "tags": ["Groups & Communities"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Generate or reset group invite link code",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Invite link code" } }
+      }
+    },
+    "/api/v1/groups/join": {
+      "post": {
+        "tags": ["Groups & Communities"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Join group using an invite code",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["invite_code"],
+                "properties": {
+                  "invite_code": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Joined group successfully" } }
+      }
+    },
+    "/api/v1/stories": {
+      "get": {
+        "tags": ["Status & Stories"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Get 24h active status stories feed",
+        "responses": { "200": { "description": "List of active stories" } }
+      },
+      "post": {
+        "tags": ["Status & Stories"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Post a new ephemeral story",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["media_url"],
+                "properties": {
+                  "media_url": { "type": "string" },
+                  "caption": { "type": "string" },
+                  "media_type": { "type": "string", "enum": ["image", "video"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Story posted" } }
+      }
+    },
+    "/api/v1/calls": {
+      "post": {
+        "tags": ["Audio & Video Calls"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Initiate an audio or video call",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["recipient_id"],
+                "properties": {
+                  "recipient_id": { "type": "string" },
+                  "is_video": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Call created" } }
+      }
+    },
+    "/api/v1/calls/{id}/accept": {
+      "post": {
+        "tags": ["Audio & Video Calls"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Accept an incoming call",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Call accepted" } }
+      }
+    },
+    "/api/v1/calls/{id}/end": {
+      "post": {
+        "tags": ["Audio & Video Calls"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "End an ongoing call",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Call ended" } }
+      }
+    },
+    "/api/v1/calls/{id}/signaling": {
+      "post": {
+        "tags": ["Audio & Video Calls"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Exchange WebRTC SDP offer/answer or ICE candidates",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["target_id", "type"],
+                "properties": {
+                  "target_id": { "type": "string" },
+                  "type": { "type": "string", "enum": ["offer", "answer", "candidate"] },
+                  "sdp": { "type": "string" },
+                  "candidate": { "type": "object" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Signaling packet routed" } }
+      }
+    },
+    "/api/v1/marketplace/products": {
+      "get": {
+        "tags": ["Marketplace & Products"],
+        "summary": "List public marketplace products with search and category filters",
+        "parameters": [
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "category_id", "in": "query", "schema": { "type": "string" } },
+          { "name": "sort_by", "in": "query", "schema": { "type": "string", "enum": ["featured", "price_low", "price_high", "newest"] } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "Product list with pagination" }
+        }
+      }
+    },
+    "/api/v1/marketplace/products/{id}": {
+      "get": {
+        "tags": ["Marketplace & Products"],
+        "summary": "Get product details by ID",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Product details" } }
+      }
+    },
+    "/api/v1/business/products": {
+      "post": {
+        "tags": ["Marketplace & Products"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Create a new product (Seller)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "price"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "price": { "type": "number" },
+                  "discount_percent": { "type": "number" },
+                  "quantity": { "type": "integer" },
+                  "category_id": { "type": "string" },
+                  "currency": { "type": "string", "example": "USD" },
+                  "image_urls": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Product created" } }
+      },
+      "get": {
+        "tags": ["Marketplace & Products"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "List merchant's own products (Dashboard)",
+        "responses": { "200": { "description": "Merchant product inventory" } }
+      }
+    },
+    "/api/v1/business/products/{id}": {
+      "put": {
+        "tags": ["Marketplace & Products"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Update product details & published status",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "price": { "type": "number" },
+                  "discount_percent": { "type": "number" },
+                  "quantity": { "type": "integer" },
+                  "is_published": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Product updated" } }
+      },
+      "delete": {
+        "tags": ["Marketplace & Products"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Delete a product",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Product deleted" } }
+      }
+    },
+    "/api/v1/business/products/{id}/variants": {
+      "post": {
+        "tags": ["Marketplace & Products"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Add a variant to a product",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["sku", "title", "stock_quantity"],
+                "properties": {
+                  "sku": { "type": "string" },
+                  "title": { "type": "string", "example": "Large / Midnight Black" },
+                  "attributes_json": { "type": "string", "example": "{\"size\":\"L\",\"color\":\"Black\"}" },
+                  "price_override": { "type": "number" },
+                  "stock_quantity": { "type": "integer" },
+                  "image_url": { "type": "string" },
+                  "is_active": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Variant created" } }
+      },
+      "get": {
+        "tags": ["Marketplace & Products"],
+        "summary": "List all active variants for a product",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Variant list" } }
+      }
+    },
+    "/api/v1/marketplace/cart": {
+      "get": {
+        "tags": ["Cart, Orders & Checkout"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Get user shopping cart with locked pricing",
+        "responses": { "200": { "description": "Shopping cart object" } }
+      },
+      "post": {
+        "tags": ["Cart, Orders & Checkout"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Add product or variant to shopping cart",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["product_id"],
+                "properties": {
+                  "product_id": { "type": "string" },
+                  "quantity": { "type": "integer", "default": 1 },
+                  "variant_id": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Item added to cart" } }
+      },
+      "delete": {
+        "tags": ["Cart, Orders & Checkout"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Clear entire shopping cart",
+        "responses": { "200": { "description": "Cart cleared" } }
+      }
+    },
+    "/api/v1/marketplace/cart/items/{id}": {
+      "put": {
+        "tags": ["Cart, Orders & Checkout"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Update cart item quantity with stock validation",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["quantity"],
+                "properties": {
+                  "quantity": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Cart updated" },
+          "400": { "description": "Stock limit exceeded" }
+        }
+      },
+      "delete": {
+        "tags": ["Cart, Orders & Checkout"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Remove item from cart",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Item removed" } }
+      }
+    },
+    "/api/v1/marketplace/orders": {
+      "post": {
+        "tags": ["Cart, Orders & Checkout"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Place order with multi-seller packages & shipping",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["shipping_name", "shipping_phone", "shipping_address", "orders"],
+                "properties": {
+                  "shipping_name": { "type": "string" },
+                  "shipping_phone": { "type": "string" },
+                  "shipping_address": { "type": "string" },
+                  "shipping_city": { "type": "string" },
+                  "shipping_country": { "type": "string" },
+                  "orders": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["business_id", "items"],
+                      "properties": {
+                        "business_id": { "type": "string" },
+                        "coupon_code": { "type": "string" },
+                        "shipping_fee": { "type": "number" },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "product_id": { "type": "string" },
+                              "quantity": { "type": "integer" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Orders created" } }
+      },
+      "get": {
+        "tags": ["Cart, Orders & Checkout"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "List orders placed by current buyer",
+        "responses": { "200": { "description": "Buyer order history" } }
+      }
+    },
+    "/api/v1/business/orders": {
+      "get": {
+        "tags": ["Cart, Orders & Checkout"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "List orders received by seller store",
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["pending", "paid", "processing", "shipped", "delivered", "cancelled"] } }
+        ],
+        "responses": { "200": { "description": "Seller orders" } }
+      }
+    },
+    "/api/v1/business/orders/{id}/status": {
+      "put": {
+        "tags": ["Cart, Orders & Checkout"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Update order status (Seller)",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": { "type": "string", "enum": ["processing", "shipped", "delivered", "cancelled"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Order status updated" } }
+      }
+    },
+    "/api/v1/marketplace/coupons/validate": {
+      "post": {
+        "tags": ["Coupons & Promotions"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Validate discount promo code for a store subtotal",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["business_id", "code", "subtotal"],
+                "properties": {
+                  "business_id": { "type": "string" },
+                  "code": { "type": "string" },
+                  "subtotal": { "type": "number" },
+                  "product_ids": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Coupon validation result" } }
+      }
+    },
+    "/ws": {
+      "get": {
+        "tags": ["Real-time WebSocket"],
+        "security": [{ "BearerAuth": [] }, { "CookieAuth": [] }],
+        "summary": "Upgrade to bi-directional WebSocket connection for instant chat events, typing notifications, and call signals",
+        "responses": {
+          "101": { "description": "Switching protocols to WebSocket" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Provide your JWT Access Token: Bearer <token>"
+      },
+      "CookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "gochat_access_token",
+        "description": "HttpOnly session cookie"
+      },
+      "CSRFToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRF-Token",
+        "description": "CSRF Token for mutating requests"
+      }
+    }
+  }
+}

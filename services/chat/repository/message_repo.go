@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,7 +21,7 @@ const (
 	ConversationGroup  ConversationType = "group"
 )
 
-type MessageType   string
+type MessageType string
 type MessageStatus string
 
 const (
@@ -51,26 +52,30 @@ type Conversation struct {
 }
 
 type Message struct {
-	ID             uuid.UUID
-	ConversationID uuid.UUID
-	SenderID       uuid.UUID
-	Content        string
-	Type           MessageType
-	Status         MessageStatus
-	MediaURL       string
-	MediaMime      string
-	MediaSize      int64
-	ParentID       *uuid.UUID
-	ThreadCount    int
-	SendAt         time.Time
-	ExpiresAt      *time.Time
-	IsPinned       bool
-	IsEdited       bool
-	IsDeleted      bool
-	Reactions      []Reaction
-	Reads          []MessageRead
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID                  uuid.UUID
+	ConversationID      uuid.UUID
+	SenderID            uuid.UUID
+	Content             string
+	Type                MessageType
+	Status              MessageStatus
+	MediaURL            string
+	MediaMime           string
+	MediaSize           int64
+	ParentID            *uuid.UUID
+	ThreadCount         int
+	SendAt              time.Time
+	ExpiresAt           *time.Time
+	IsPinned            bool
+	IsEdited            bool
+	IsDeleted           bool
+	Reactions           []Reaction
+	Reads               []MessageRead
+	ForwardedFromID     *uuid.UUID
+	ForwardedFromConv   *uuid.UUID
+	ForwardedFromSender *uuid.UUID
+	MentionedUserIDs    []uuid.UUID
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 }
 
 type Reaction struct {
@@ -108,7 +113,38 @@ func NewConversationRepository(db *pgxpool.Pool) *ConversationRepository {
 	return &ConversationRepository{db: db}
 }
 
+func (r *ConversationRepository) FindDirectConversation(ctx context.Context, user1, user2 uuid.UUID) (*Conversation, error) {
+	var convID uuid.UUID
+	err := r.db.QueryRow(ctx, `
+		SELECT cm1.conversation_id
+		FROM conversation_members cm1
+		JOIN conversation_members cm2 ON cm1.conversation_id = cm2.conversation_id
+		JOIN conversations c ON c.id = cm1.conversation_id
+		WHERE c.type = 'direct'
+		  AND cm1.user_id = $1
+		  AND cm2.user_id = $2
+		LIMIT 1
+	`, user1, user2).Scan(&convID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return r.GetByID(ctx, convID)
+}
+
 func (r *ConversationRepository) Create(ctx context.Context, convType ConversationType, name string, creatorID uuid.UUID, memberIDs []uuid.UUID) (*Conversation, error) {
+	allMembers := uniqueIDs(append(memberIDs, creatorID))
+
+	// Check if a direct 1:1 conversation between these users already exists to prevent duplicates
+	if convType == ConversationDirect && len(allMembers) == 2 {
+		existing, err := r.FindDirectConversation(ctx, allMembers[0], allMembers[1])
+		if err == nil && existing != nil {
+			return existing, nil
+		}
+	}
+
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)
@@ -128,8 +164,6 @@ func (r *ConversationRepository) Create(ctx context.Context, convType Conversati
 		return nil, fmt.Errorf("insert conversation: %w", err)
 	}
 
-	// Add all members including creator
-	allMembers := uniqueIDs(append(memberIDs, creatorID))
 	for _, memberID := range allMembers {
 		role := "member"
 		if memberID == creatorID {
@@ -196,6 +230,9 @@ func (r *ConversationRepository) ListForUser(ctx context.Context, userID uuid.UU
 		if err := rows.Scan(&c.ID, &c.Type, &c.Name, &c.AvatarURL,
 			&c.CreatedBy, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, 0, err
+		}
+		if members, err := r.getMembers(ctx, c.ID); err == nil {
+			c.Members = members
 		}
 		convs = append(convs, c)
 	}
@@ -271,26 +308,37 @@ func (r *MessageRepository) Create(ctx context.Context, msg *Message) (*Message,
 		INSERT INTO messages (
 			conversation_id, sender_id, content, type, status,
 			media_url, media_mime, media_size,
-			parent_id, send_at, expires_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+			parent_id, send_at, expires_at,
+			forwarded_from_id, forwarded_from_conv, forwarded_from_sender
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
 		RETURNING id, conversation_id, sender_id, content, type, status,
 		          media_url, media_mime, media_size,
 		          parent_id, thread_count, send_at, expires_at,
 		          is_pinned, is_edited, is_deleted,
+		          forwarded_from_id, forwarded_from_conv, forwarded_from_sender,
 		          created_at, updated_at
 	`, msg.ConversationID, msg.SenderID, msg.Content, string(msg.Type), string(msg.Status),
 		msg.MediaURL, msg.MediaMime, msg.MediaSize,
 		msg.ParentID, msg.SendAt, msg.ExpiresAt,
+		msg.ForwardedFromID, msg.ForwardedFromConv, msg.ForwardedFromSender,
 	).Scan(
 		&msg.ID, &msg.ConversationID, &msg.SenderID, &msg.Content, &msg.Type, &msg.Status,
 		&msg.MediaURL, &msg.MediaMime, &msg.MediaSize,
 		&msg.ParentID, &msg.ThreadCount, &msg.SendAt, &msg.ExpiresAt,
 		&msg.IsPinned, &msg.IsEdited, &msg.IsDeleted,
+		&msg.ForwardedFromID, &msg.ForwardedFromConv, &msg.ForwardedFromSender,
 		&msg.CreatedAt, &msg.UpdatedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("inserting message: %w", err)
 	}
+
+	if len(msg.MentionedUserIDs) > 0 {
+		if err := r.SaveMentions(ctx, msg.ID, msg.MentionedUserIDs); err != nil {
+			return nil, fmt.Errorf("saving mentions: %w", err)
+		}
+	}
+
 	return msg, nil
 }
 
@@ -301,6 +349,7 @@ func (r *MessageRepository) GetByID(ctx context.Context, id uuid.UUID) (*Message
 		       media_url, media_mime, media_size,
 		       parent_id, thread_count, send_at, expires_at,
 		       is_pinned, is_edited, is_deleted,
+		       forwarded_from_id, forwarded_from_conv, forwarded_from_sender,
 		       created_at, updated_at
 		FROM messages WHERE id = $1
 	`, id).Scan(
@@ -308,10 +357,38 @@ func (r *MessageRepository) GetByID(ctx context.Context, id uuid.UUID) (*Message
 		&msg.MediaURL, &msg.MediaMime, &msg.MediaSize,
 		&msg.ParentID, &msg.ThreadCount, &msg.SendAt, &msg.ExpiresAt,
 		&msg.IsPinned, &msg.IsEdited, &msg.IsDeleted,
+		&msg.ForwardedFromID, &msg.ForwardedFromConv, &msg.ForwardedFromSender,
 		&msg.CreatedAt, &msg.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrMessageNotFound
+	}
+	return msg, err
+}
+
+func (r *MessageRepository) GetLastMessage(ctx context.Context, convID uuid.UUID) (*Message, error) {
+	msg := &Message{}
+	err := r.db.QueryRow(ctx, `
+		SELECT id, conversation_id, sender_id, content, type, status,
+		       media_url, media_mime, media_size,
+		       parent_id, thread_count, send_at, expires_at,
+		       is_pinned, is_edited, is_deleted,
+		       forwarded_from_id, forwarded_from_conv, forwarded_from_sender,
+		       created_at, updated_at
+		FROM messages
+		WHERE conversation_id = $1 AND is_deleted = FALSE AND status <> 'scheduled'
+		ORDER BY created_at DESC
+		LIMIT 1
+	`, convID).Scan(
+		&msg.ID, &msg.ConversationID, &msg.SenderID, &msg.Content, &msg.Type, &msg.Status,
+		&msg.MediaURL, &msg.MediaMime, &msg.MediaSize,
+		&msg.ParentID, &msg.ThreadCount, &msg.SendAt, &msg.ExpiresAt,
+		&msg.IsPinned, &msg.IsEdited, &msg.IsDeleted,
+		&msg.ForwardedFromID, &msg.ForwardedFromConv, &msg.ForwardedFromSender,
+		&msg.CreatedAt, &msg.UpdatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
 	}
 	return msg, err
 }
@@ -326,6 +403,7 @@ func (r *MessageRepository) List(ctx context.Context, convID uuid.UUID, cursor *
 			       media_url, media_mime, media_size,
 			       parent_id, thread_count, send_at, expires_at,
 			       is_pinned, is_edited, is_deleted,
+			       forwarded_from_id, forwarded_from_conv, forwarded_from_sender,
 			       created_at, updated_at
 			FROM messages
 			WHERE conversation_id = $1 AND is_deleted = FALSE AND status <> 'scheduled'
@@ -338,6 +416,7 @@ func (r *MessageRepository) List(ctx context.Context, convID uuid.UUID, cursor *
 			       media_url, media_mime, media_size,
 			       parent_id, thread_count, send_at, expires_at,
 			       is_pinned, is_edited, is_deleted,
+			       forwarded_from_id, forwarded_from_conv, forwarded_from_sender,
 			       created_at, updated_at
 			FROM messages
 			WHERE conversation_id = $1 AND is_deleted = FALSE AND status <> 'scheduled'
@@ -379,6 +458,7 @@ func (r *MessageRepository) GetThread(ctx context.Context, parentID uuid.UUID, c
 			       media_url, media_mime, media_size,
 			       parent_id, thread_count, send_at, expires_at,
 			       is_pinned, is_edited, is_deleted,
+			       forwarded_from_id, forwarded_from_conv, forwarded_from_sender,
 			       created_at, updated_at
 			FROM messages
 			WHERE parent_id = $1 AND is_deleted = FALSE
@@ -391,6 +471,7 @@ func (r *MessageRepository) GetThread(ctx context.Context, parentID uuid.UUID, c
 			       media_url, media_mime, media_size,
 			       parent_id, thread_count, send_at, expires_at,
 			       is_pinned, is_edited, is_deleted,
+			       forwarded_from_id, forwarded_from_conv, forwarded_from_sender,
 			       created_at, updated_at
 			FROM messages
 			WHERE parent_id = $1 AND is_deleted = FALSE
@@ -446,12 +527,14 @@ func (r *MessageRepository) Edit(ctx context.Context, msgID, editorID uuid.UUID,
 		          media_url, media_mime, media_size,
 		          parent_id, thread_count, send_at, expires_at,
 		          is_pinned, is_edited, is_deleted,
+		          forwarded_from_id, forwarded_from_conv, forwarded_from_sender,
 		          created_at, updated_at
 	`, newContent, msgID, editorID).Scan(
 		&msg.ID, &msg.ConversationID, &msg.SenderID, &msg.Content, &msg.Type, &msg.Status,
 		&msg.MediaURL, &msg.MediaMime, &msg.MediaSize,
 		&msg.ParentID, &msg.ThreadCount, &msg.SendAt, &msg.ExpiresAt,
 		&msg.IsPinned, &msg.IsEdited, &msg.IsDeleted,
+		&msg.ForwardedFromID, &msg.ForwardedFromConv, &msg.ForwardedFromSender,
 		&msg.CreatedAt, &msg.UpdatedAt,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -639,21 +722,100 @@ func (r *MessageRepository) Unpin(ctx context.Context, msgID, convID uuid.UUID) 
 
 // ── Search ────────────────────────────────────────────────────────────────────
 
+// SearchFilter defines multi-criteria message search options.
+type SearchFilter struct {
+	UserID         uuid.UUID
+	Query          string
+	ConversationID string
+	SenderName     string
+	MediaType      string
+	FromDate       *time.Time
+	ToDate         *time.Time
+	Fuzzy          bool
+	Limit          int
+	Offset         int
+}
+
 func (r *MessageRepository) Search(ctx context.Context, userID uuid.UUID, query, convID string, limit, offset int) ([]*Message, int, error) {
+	return r.SearchAdvanced(ctx, SearchFilter{
+		UserID:         userID,
+		Query:          query,
+		ConversationID: convID,
+		Fuzzy:          true,
+		Limit:          limit,
+		Offset:         offset,
+	})
+}
+
+func (r *MessageRepository) SearchAdvanced(ctx context.Context, filter SearchFilter) ([]*Message, int, error) {
+	if filter.Limit <= 0 || filter.Limit > 100 {
+		filter.Limit = 20
+	}
+
 	baseQuery := `
 		FROM messages m
 		INNER JOIN conversation_members cm ON cm.conversation_id = m.conversation_id AND cm.user_id = $1
+		LEFT JOIN core.users u ON u.id = m.sender_id
 		WHERE m.is_deleted = FALSE
-		  AND m.search_vector @@ plainto_tsquery('english', $2)
 	`
+	args := []interface{}{filter.UserID}
+	argIdx := 2
 
-	args := []interface{}{userID, query}
-	argIdx := 3
-
-	if convID != "" {
+	// Scope to single conversation
+	if filter.ConversationID != "" {
 		baseQuery += fmt.Sprintf(" AND m.conversation_id = $%d", argIdx)
-		args = append(args, convID)
+		args = append(args, filter.ConversationID)
 		argIdx++
+	}
+
+	// Filter by sender display name / phone / email
+	if filter.SenderName != "" {
+		baseQuery += fmt.Sprintf(" AND (u.display_name ILIKE $%d OR u.phone ILIKE $%d OR u.email ILIKE $%d)", argIdx, argIdx, argIdx)
+		args = append(args, "%"+filter.SenderName+"%")
+		argIdx++
+	}
+
+	// Filter by media type
+	if filter.MediaType != "" {
+		switch strings.ToLower(filter.MediaType) {
+		case "image", "photo", "images":
+			baseQuery += " AND (m.type = 'image' OR m.media_mime ILIKE 'image/%')"
+		case "video", "videos":
+			baseQuery += " AND (m.type = 'video' OR m.media_mime ILIKE 'video/%')"
+		case "audio", "voice", "voice_note":
+			baseQuery += " AND (m.type = 'audio' OR m.type = 'voice_note' OR m.media_mime ILIKE 'audio/%')"
+		case "document", "file", "documents", "files":
+			baseQuery += " AND (m.type = 'file' OR (m.media_url IS NOT NULL AND m.media_url != '' AND m.media_mime NOT ILIKE 'image/%' AND m.media_mime NOT ILIKE 'video/%' AND m.media_mime NOT ILIKE 'audio/%'))"
+		case "media":
+			baseQuery += " AND (m.media_url IS NOT NULL AND m.media_url != '')"
+		default:
+			baseQuery += fmt.Sprintf(" AND m.type = $%d", argIdx)
+			args = append(args, filter.MediaType)
+			argIdx++
+		}
+	}
+
+	// Date range filters
+	if filter.FromDate != nil && !filter.FromDate.IsZero() {
+		baseQuery += fmt.Sprintf(" AND m.created_at >= $%d", argIdx)
+		args = append(args, *filter.FromDate)
+		argIdx++
+	}
+	if filter.ToDate != nil && !filter.ToDate.IsZero() {
+		baseQuery += fmt.Sprintf(" AND m.created_at <= $%d", argIdx)
+		args = append(args, *filter.ToDate)
+		argIdx++
+	}
+
+	// Text search query (Hybrid Full-Text + Fuzzy Substring + Sender Name Match)
+	if filter.Query != "" {
+		baseQuery += fmt.Sprintf(` AND (
+			m.content ILIKE $%d
+			OR (m.search_vector IS NOT NULL AND m.search_vector @@ plainto_tsquery('english', $%d))
+			OR u.display_name ILIKE $%d
+		)`, argIdx, argIdx+1, argIdx)
+		args = append(args, "%"+filter.Query+"%", filter.Query)
+		argIdx += 2
 	}
 
 	var total int
@@ -661,12 +823,13 @@ func (r *MessageRepository) Search(ctx context.Context, userID uuid.UUID, query,
 		return nil, 0, err
 	}
 
-	args = append(args, limit, offset)
+	args = append(args, filter.Limit, filter.Offset)
 	rows, err := r.db.Query(ctx, `
 		SELECT m.id, m.conversation_id, m.sender_id, m.content, m.type, m.status,
 		       m.media_url, m.media_mime, m.media_size,
 		       m.parent_id, m.thread_count, m.send_at, m.expires_at,
 		       m.is_pinned, m.is_edited, m.is_deleted,
+		       m.forwarded_from_id, m.forwarded_from_conv, m.forwarded_from_sender,
 		       m.created_at, m.updated_at
 		`+baseQuery+fmt.Sprintf(" ORDER BY m.created_at DESC LIMIT $%d OFFSET $%d", argIdx, argIdx+1),
 		args...,
@@ -689,6 +852,7 @@ func (r *MessageRepository) GetDueScheduledMessages(ctx context.Context) ([]*Mes
 		       media_url, media_mime, media_size,
 		       parent_id, thread_count, send_at, expires_at,
 		       is_pinned, is_edited, is_deleted,
+		       forwarded_from_id, forwarded_from_conv, forwarded_from_sender,
 		       created_at, updated_at
 		FROM messages
 		WHERE status = 'scheduled' AND send_at <= NOW() AND is_deleted = FALSE
@@ -719,6 +883,7 @@ func (r *MessageRepository) GetExpiredMessages(ctx context.Context) ([]*Message,
 		       media_url, media_mime, media_size,
 		       parent_id, thread_count, send_at, expires_at,
 		       is_pinned, is_edited, is_deleted,
+		       forwarded_from_id, forwarded_from_conv, forwarded_from_sender,
 		       created_at, updated_at
 		FROM messages
 		WHERE expires_at IS NOT NULL AND expires_at <= NOW() AND is_deleted = FALSE
@@ -742,6 +907,7 @@ func scanMessages(rows pgx.Rows) ([]*Message, error) {
 			&m.MediaURL, &m.MediaMime, &m.MediaSize,
 			&m.ParentID, &m.ThreadCount, &m.SendAt, &m.ExpiresAt,
 			&m.IsPinned, &m.IsEdited, &m.IsDeleted,
+			&m.ForwardedFromID, &m.ForwardedFromConv, &m.ForwardedFromSender,
 			&m.CreatedAt, &m.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -761,4 +927,69 @@ func uniqueIDs(ids []uuid.UUID) []uuid.UUID {
 		}
 	}
 	return result
+}
+
+// ── Forwarding ────────────────────────────────────────────────────────────────
+
+func (r *MessageRepository) Forward(ctx context.Context, originalMsg *Message, targetConvID, senderID uuid.UUID) (*Message, error) {
+	msg := &Message{
+		ConversationID:      targetConvID,
+		SenderID:            senderID,
+		Content:             originalMsg.Content,
+		Type:                originalMsg.Type,
+		Status:              MessageStatusSent,
+		MediaURL:            originalMsg.MediaURL,
+		MediaMime:           originalMsg.MediaMime,
+		MediaSize:           originalMsg.MediaSize,
+		SendAt:              time.Now(),
+		ForwardedFromID:     &originalMsg.ID,
+		ForwardedFromConv:   &originalMsg.ConversationID,
+		ForwardedFromSender: &originalMsg.SenderID,
+	}
+
+	return r.Create(ctx, msg)
+}
+
+// ── Mentions ──────────────────────────────────────────────────────────────────
+
+func (r *MessageRepository) SaveMentions(ctx context.Context, msgID uuid.UUID, userIDs []uuid.UUID) error {
+	if len(userIDs) == 0 {
+		return nil
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	for _, uid := range userIDs {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO message_mentions (message_id, user_id)
+			VALUES ($1, $2)
+			ON CONFLICT DO NOTHING
+		`, msgID, uid); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+
+func (r *MessageRepository) GetMentions(ctx context.Context, msgID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT user_id FROM message_mentions WHERE message_id = $1
+	`, msgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }

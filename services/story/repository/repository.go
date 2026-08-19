@@ -97,11 +97,27 @@ func (r *StoryRepository) Delete(ctx context.Context, storyID, userID uuid.UUID)
 
 func (r *StoryRepository) GetStoriesFeed(ctx context.Context, requesterID uuid.UUID) ([]*UserStories, error) {
 	rows, err := r.db.Query(ctx, `
-		SELECT s.id, s.user_id, u.display_name, u.avatar_url, s.media_url, s.media_type, s.content, s.background_color, s.font_style, s.expires_at, s.created_at,
+		SELECT s.id, s.user_id, COALESCE(NULLIF(u.display_name, ''), u.phone, u.pin, 'Contact'), u.avatar_url, s.media_url, s.media_type, s.content, s.background_color, s.font_style, s.expires_at, s.created_at,
 		       EXISTS(SELECT 1 FROM story_views WHERE story_id = s.id AND viewer_id = $1) as viewed
 		FROM stories s
-		JOIN users u ON s.user_id = u.id
+		JOIN core.users u ON s.user_id = u.id
 		WHERE s.expires_at > NOW()
+		  AND (
+			    s.user_id = $1
+			 OR EXISTS (
+				SELECT 1
+				FROM social.user_followers uf
+				WHERE uf.follower_id = $1 AND uf.following_id = s.user_id
+			)
+			 OR EXISTS (
+				SELECT 1
+				FROM chat.conversation_members requester_member
+				JOIN chat.conversation_members target_member
+				  ON target_member.conversation_id = requester_member.conversation_id
+				WHERE requester_member.user_id = $1
+				  AND target_member.user_id = s.user_id
+			)
+		)
 		ORDER BY s.created_at DESC
 	`, requesterID)
 	if err != nil {

@@ -5,10 +5,31 @@
 -- ============================================================================
 
 -- ── Extensions (installed in public, accessible by all schemas) ──────────────
+SET search_path TO public;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 CREATE EXTENSION IF NOT EXISTS "btree_gin";
 CREATE EXTENSION IF NOT EXISTS "postgis";
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_proc p
+        JOIN pg_namespace n ON p.pronamespace = n.oid
+        WHERE p.proname = 'uuid_generate_v4'
+          AND n.nspname = 'public'
+    ) THEN
+        CREATE OR REPLACE FUNCTION public.uuid_generate_v4()
+        RETURNS uuid
+        LANGUAGE sql
+        AS $func$ SELECT gen_random_uuid(); $func$;
+    END IF;
+END;
+$$;
+
+RESET search_path;
 
 -- ── Create Schemas ──────────────────────────────────────────────────────────
 CREATE SCHEMA IF NOT EXISTS core;
@@ -20,8 +41,6 @@ CREATE SCHEMA IF NOT EXISTS grp;
 CREATE SCHEMA IF NOT EXISTS story;
 CREATE SCHEMA IF NOT EXISTS call;
 CREATE SCHEMA IF NOT EXISTS channel;
-CREATE SCHEMA IF NOT EXISTS ai;
-CREATE SCHEMA IF NOT EXISTS payment;
 CREATE SCHEMA IF NOT EXISTS social;
 CREATE SCHEMA IF NOT EXISTS miniapp;
 CREATE SCHEMA IF NOT EXISTS business;
@@ -59,6 +78,8 @@ CREATE TABLE IF NOT EXISTS core.users (
     prekey_identity     TEXT,
     prekey_signed       TEXT,
     prekey_signature    TEXT,
+    country_code        TEXT        NOT NULL DEFAULT '',
+    pin                 TEXT        DEFAULT '',
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

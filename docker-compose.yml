@@ -17,7 +17,7 @@ services:
       - ./migrations/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
       - ./migrations:/migrations:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gochat}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gochat}" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -40,7 +40,7 @@ services:
           cpus: '0.25'
           memory: 128M
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h localhost -p 6432 -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -h localhost -p 6432 -U postgres" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -62,7 +62,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_secret}", "ping"]
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_secret}", "ping" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -79,12 +79,12 @@ services:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin_secret}
     ports:
-      - "9000:9000"   # S3 API
-      - "9001:9001"   # Web console
+      - "9000:9000" # S3 API
+      - "9001:9001" # Web console
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -108,7 +108,7 @@ services:
       AUTH_DB_DSN: ${AUTH_DB_DSN}
       REDIS_ADDR: redis:6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
-      JWT_SECRET: ${JWT_SECRET:-super_secret_jwt_key_change_in_prod}
+      JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRY_HOURS: 24
       JWT_REFRESH_EXPIRY_DAYS: 30
     depends_on:
@@ -117,7 +117,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -142,17 +142,18 @@ services:
       AUTHZ_DB_DSN: ${AUTHZ_DB_DSN}
       REDIS_ADDR: redis:6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
+      JWT_SECRET: ${JWT_SECRET}
     depends_on:
       pgbouncer:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz" ]
       interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 5s
+      start_period: 30s
     networks:
       - gochat_net
 
@@ -183,7 +184,7 @@ services:
       authz:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -212,7 +213,7 @@ services:
       minio:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -239,7 +240,7 @@ services:
       pgbouncer:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -270,7 +271,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -301,7 +302,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -328,61 +329,7 @@ services:
       pgbouncer:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
-    networks:
-      - gochat_net
-
-  # ─── AI Service ──────────────────────────────────────────────────────────────
-  ai:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        SERVICE: ai
-    container_name: gochat_ai
-    restart: unless-stopped
-    environment:
-      GRPC_PORT: 50059
-      HEALTH_PORT: 9090
-      POSTGRES_DSN: ${AI_DB_DSN}
-      AI_PORT: ${AI_PORT}
-      AI_DB_DSN: ${AI_DB_DSN}
-    depends_on:
-      pgbouncer:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
-    networks:
-      - gochat_net
-
-  # ─── Payment Service ────────────────────────────────────────────────────────
-  payment:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        SERVICE: payment
-    container_name: gochat_payment
-    restart: unless-stopped
-    environment:
-      GRPC_PORT: 50060
-      HEALTH_PORT: 9090
-      POSTGRES_DSN: ${PAYMENT_DB_DSN}
-      PAYMENT_PORT: ${PAYMENT_PORT}
-      PAYMENT_DB_DSN: ${PAYMENT_DB_DSN}
-    depends_on:
-      pgbouncer:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -409,7 +356,7 @@ services:
       pgbouncer:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -436,7 +383,7 @@ services:
       pgbouncer:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -459,11 +406,13 @@ services:
       POSTGRES_DSN: ${BUSINESS_DB_DSN}
       BUSINESS_PORT: ${BUSINESS_PORT}
       BUSINESS_DB_DSN: ${BUSINESS_DB_DSN}
+    volumes:
+      - ./migrations:/migrations:ro
     depends_on:
       pgbouncer:
-        condition: service_healthy      
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -490,14 +439,12 @@ services:
       STORY_GRPC_ADDR: story:50056
       CALL_GRPC_ADDR: call:50057
       CHANNEL_GRPC_ADDR: channel:50058
-      AI_GRPC_ADDR: ai:50059
-      PAYMENT_GRPC_ADDR: payment:50060
       SOCIAL_GRPC_ADDR: social:50061
       MINIAPP_GRPC_ADDR: miniapp:50062
       BUSINESS_GRPC_ADDR: business:50063
       REDIS_ADDR: redis:6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
-      JWT_SECRET: ${JWT_SECRET:-super_secret_jwt_key_change_in_prod}
+      JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
     depends_on:
       auth:
@@ -516,10 +463,6 @@ services:
         condition: service_healthy
       channel:
         condition: service_healthy
-      ai:
-        condition: service_healthy
-      payment:
-        condition: service_healthy
       social:
         condition: service_healthy
       miniapp:
@@ -527,32 +470,13 @@ services:
       business:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/readyz" ]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 5s
-    networks:
-      - gochat_net
-
-  # ─── Nginx Load Balancer ────────────────────────────────────────────────────
-  nginx:
-    image: nginx:stable-alpine
-    container_name: gochat_nginx
-    restart: unless-stopped
     ports:
       - "8080:8080"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      gateway:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
     networks:
       - gochat_net
 

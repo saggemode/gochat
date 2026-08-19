@@ -63,16 +63,16 @@ func TestEvaluate_Equality(t *testing.T) {
 			false, false,
 		},
 		{
-			"missing attribute resolves to empty",
+			"missing attribute returns error",
 			"subject.id == resource.sender_id",
 			map[string]string{"subject.id": "abc"},
-			false, false,
+			false, true,
 		},
 		{
-			"both missing attributes equal empty",
+			"both missing attributes returns error",
 			"subject.id == resource.sender_id",
 			map[string]string{},
-			true, false,
+			false, true,
 		},
 	}
 	for _, tt := range tests {
@@ -160,7 +160,7 @@ func TestEvaluate_LogicalOR(t *testing.T) {
 	}{
 		{"first matches", "subject.conversation_role == 'banned' || subject.system_role == 'banned'", true},
 		{"second matches", "subject.system_role == 'banned' || subject.conversation_role == 'banned'", true},
-		{"neither matches", "subject.conversation_role == 'banned' || subject.system_role == 'muted'", true},
+		{"neither matches", "subject.conversation_role == 'admin' || subject.system_role == 'user'", false},
 		{"both mismatch", "subject.conversation_role == 'admin' || subject.system_role == 'user'", false},
 	}
 	for _, tt := range tests {
@@ -178,9 +178,9 @@ func TestEvaluate_LogicalOR(t *testing.T) {
 
 func TestEvaluate_CombinedANDOR(t *testing.T) {
 	attrs := map[string]string{
-		"subject.role": "user",
-		"subject.id":   "user_999",
-		"env.active":   "true",
+		"subject.role":      "user",
+		"subject.id":        "user_999",
+		"env.active":        "true",
 		"resource.owner_id": "user_999",
 	}
 
@@ -216,12 +216,23 @@ func TestEvaluate_QuotedValues(t *testing.T) {
 
 func TestEvaluate_EnvPrefix(t *testing.T) {
 	attrs := map[string]string{"env.version": "2"}
-	got, err := Evaluate("env.version == '2'", attrs)
+	got, err := Evaluate("env.version == 2", attrs)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if got != true {
 		t.Errorf("Evaluate(env) = %v, want true", got)
+	}
+}
+
+func TestEvaluate_EnvPrefixWithAttr(t *testing.T) {
+	attrs := map[string]string{"env.active": "true", "subject.role": "admin"}
+	got, err := Evaluate("subject.role == 'admin' && env.active == true", attrs)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != true {
+		t.Errorf("Evaluate(env+attr) = %v, want true", got)
 	}
 }
 

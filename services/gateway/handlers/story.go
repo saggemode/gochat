@@ -28,7 +28,7 @@ func (h *StoryHandler) PostStory(c *gin.Context) {
 
 	var req struct {
 		MediaUrl        string `json:"media_url"`
-		MediaType       string `json:"media_type"` // "text", "image", "video"
+		MediaType       string `json:"media_type"`       // "text", "image", "video"
 		Content         string `json:"content"`          // optional caption/text status content
 		BackgroundColor string `json:"background_color"` // optional background hex code for text status
 		FontStyle       string `json:"font_style"`       // optional font name for text status

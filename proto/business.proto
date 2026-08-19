@@ -12,11 +12,36 @@ service BusinessService {
   rpc UpdateBusinessProfile(UpdateBusinessProfileRequest) returns (UpdateBusinessProfileResponse);
   rpc GetBusinessProfile(GetBusinessProfileRequest) returns (GetBusinessProfileResponse);
 
-  // Product Catalog
+  // Product Catalog (legacy)
   rpc CreateCatalog(CreateCatalogRequest) returns (CreateCatalogResponse);
   rpc AddProduct(AddProductRequest) returns (AddProductResponse);
   rpc UpdateProduct(UpdateProductRequest) returns (UpdateProductResponse);
   rpc ListProducts(ListProductsRequest) returns (ListProductsResponse);
+
+  // Marketplace Products
+  rpc CreateMarketplaceProduct(CreateMarketplaceProductRequest) returns (CreateMarketplaceProductResponse);
+  rpc UpdateMarketplaceProduct(UpdateMarketplaceProductRequest) returns (UpdateMarketplaceProductResponse);
+  rpc DeleteMarketplaceProduct(DeleteMarketplaceProductRequest) returns (DeleteMarketplaceProductResponse);
+  rpc GetMarketplaceProduct(GetMarketplaceProductRequest) returns (GetMarketplaceProductResponse);
+  rpc ListBusinessProducts(ListBusinessProductsRequest) returns (ListBusinessProductsResponse);
+  rpc ListMarketplaceProducts(ListMarketplaceProductsRequest) returns (ListMarketplaceProductsResponse);
+
+  // Product Variants
+  rpc CreateProductVariant(CreateProductVariantRequest) returns (CreateProductVariantResponse);
+  rpc ListProductVariants(ListProductVariantsRequest) returns (ListProductVariantsResponse);
+  rpc UpdateProductVariant(UpdateProductVariantRequest) returns (UpdateProductVariantResponse);
+  rpc DeleteProductVariant(DeleteProductVariantRequest) returns (DeleteProductVariantResponse);
+
+  // Categories
+  rpc ListCategories(ListCategoriesRequest) returns (ListCategoriesResponse);
+
+  // Store (public)
+  rpc GetStore(GetStoreRequest) returns (GetStoreResponse);
+
+  // Engagement
+  rpc TrackProductView(TrackProductViewRequest) returns (TrackProductViewResponse);
+  rpc CreateReview(CreateReviewRequest) returns (CreateReviewResponse);
+  rpc ListReviews(ListReviewsRequest) returns (ListReviewsResponse);
 
   // Appointments
   rpc CreateAppointmentSlot(CreateAppointmentSlotRequest) returns (CreateAppointmentSlotResponse);
@@ -31,9 +56,54 @@ service BusinessService {
   rpc EnqueueCustomer(EnqueueCustomerRequest) returns (EnqueueCustomerResponse);
   rpc DequeueCustomer(DequeueCustomerRequest) returns (DequeueCustomerResponse);
   rpc GetQueuePosition(GetQueuePositionRequest) returns (GetQueuePositionResponse);
+
+  // Cart
+  rpc AddToCart(AddToCartRequest) returns (AddToCartResponse);
+  rpc GetCart(GetCartRequest) returns (GetCartResponse);
+  rpc UpdateCartItem(UpdateCartItemRequest) returns (UpdateCartItemResponse);
+  rpc RemoveFromCart(RemoveFromCartRequest) returns (RemoveFromCartResponse);
+  rpc ClearCart(ClearCartRequest) returns (ClearCartResponse);
+
+  // Orders
+  rpc CreateOrders(CreateOrdersRequest) returns (CreateOrdersResponse);
+  rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
+  rpc ListBuyerOrders(ListBuyerOrdersRequest) returns (ListBuyerOrdersResponse);
+  rpc ListSellerOrders(ListSellerOrdersRequest) returns (ListSellerOrdersResponse);
+  rpc UpdateOrderStatus(UpdateOrderStatusRequest) returns (UpdateOrderStatusResponse);
+  rpc UpdateOrderTracking(UpdateOrderTrackingRequest) returns (UpdateOrderTrackingResponse);
+
+  // Coupons
+  rpc CreateCoupon(CreateCouponRequest) returns (CreateCouponResponse);
+  rpc ListBusinessCoupons(ListBusinessCouponsRequest) returns (ListBusinessCouponsResponse);
+  rpc ValidateCoupon(ValidateCouponRequest) returns (ValidateCouponResponse);
+
+  // Wishlist
+  rpc ToggleWishlist(ToggleWishlistRequest) returns (ToggleWishlistResponse);
+  rpc GetWishlist(GetWishlistRequest) returns (GetWishlistResponse);
+
+  // Product Q&A
+  rpc AskProductQuestion(AskProductQuestionRequest) returns (AskProductQuestionResponse);
+  rpc AnswerProductQuestion(AnswerProductQuestionRequest) returns (AnswerProductQuestionResponse);
+  rpc GetProductQuestions(GetProductQuestionsRequest) returns (GetProductQuestionsResponse);
+  rpc FlagProductQuestion(FlagProductQuestionRequest) returns (FlagProductQuestionResponse);
+  rpc ModerateProductQuestion(ModerateProductQuestionRequest) returns (ModerateProductQuestionResponse);
+
+  // Order Status Workflow
+  rpc TransitionOrderStatus(TransitionOrderStatusRequest) returns (TransitionOrderStatusResponse);
+  rpc GetOrderStatusHistory(GetOrderStatusHistoryRequest) returns (GetOrderStatusHistoryResponse);
+
+  // Refunds
+  rpc CreateRefund(CreateRefundRequest) returns (CreateRefundResponse);
+  rpc ProcessRefund(ProcessRefundRequest) returns (ProcessRefundResponse);
+  rpc ListRefunds(ListRefundsRequest) returns (ListRefundsResponse);
+
+  // Order Modifications
+  rpc CreateOrderModification(CreateOrderModificationRequest) returns (CreateOrderModificationResponse);
+  rpc ProcessOrderModification(ProcessOrderModificationRequest) returns (ProcessOrderModificationResponse);
+  rpc ListOrderModifications(ListOrderModificationsRequest) returns (ListOrderModificationsResponse);
 }
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// ── Core Types ───────────────────────────────────────────────────────────────
 
 message BusinessProfile {
   string user_id       = 1;
@@ -46,13 +116,98 @@ message BusinessProfile {
   string phone         = 8;
   string hours_json    = 9;
   bool   is_verified   = 10;
+  string logo_url      = 11;
+  string banner_url    = 12;
+  string state         = 13;
+  string country_code  = 14;
+  string slug          = 15;
 }
+
+message MarketplaceProduct {
+  string id               = 1;
+  string business_id      = 2;
+  string owner_id         = 3;
+  string name             = 4;
+  string description      = 5;
+  string category_id      = 6;
+  string sub_category_id  = 7;
+  string brand_id         = 8;
+  double price            = 9;
+  double discount_percent = 10;
+  string currency         = 11;
+  int32  quantity         = 12;
+  string sku              = 13;
+  string color            = 14;
+  string size             = 15;
+  double weight           = 16;
+  double shipping_fee     = 17;
+  bool   is_published     = 18;
+  int32  view_count       = 19;
+  int32  order_count      = 20;
+  double rating_avg       = 21;
+  int32  review_count     = 22;
+  repeated string image_urls   = 23;
+  string seller_name           = 24;
+  string seller_avatar         = 25;
+  string seller_slug           = 26;
+  string category_name         = 27;
+  string brand_name            = 28;
+  string created_at            = 29;
+}
+
+message Category {
+  string id         = 1;
+  string name       = 2;
+  string icon       = 3;
+  int32  sort_order = 4;
+  repeated SubCategory sub_categories = 5;
+}
+
+message SubCategory {
+  string id          = 1;
+  string category_id = 2;
+  string name        = 3;
+  int32  sort_order  = 4;
+}
+
+message Review {
+  string id         = 1;
+  string product_id = 2;
+  string user_id    = 3;
+  string user_name  = 4;
+  string user_avatar = 5;
+  int32  rating     = 6;
+  string comment    = 7;
+  string created_at = 8;
+}
+
+message Store {
+  BusinessProfile profile     = 1;
+  repeated MarketplaceProduct products = 2;
+  int32 product_count         = 3;
+  double avg_rating           = 4;
+  int32  total_reviews        = 5;
+}
+
+// ── Legacy Types ─────────────────────────────────────────────────────────────
 
 message ProductCatalog {
   string id      = 1;
   string user_id = 2;
   string name    = 3;
   repeated Product products = 4;
+}
+
+message ProductVariant {
+  string id              = 1;
+  string product_id      = 2;
+  string sku             = 3;
+  string title           = 4;
+  string attributes_json = 5; // JSON string e.g. {"size":"L","color":"Black"}
+  double price_override  = 6;
+  int32  stock_quantity  = 7;
+  string image_url       = 8;
+  bool   is_active       = 9;
 }
 
 message Product {
@@ -64,6 +219,7 @@ message Product {
   string currency    = 6;
   string image_url   = 7;
   bool   in_stock    = 8;
+  repeated ProductVariant variants = 9;
 }
 
 message Appointment {
@@ -104,6 +260,10 @@ message CreateBusinessProfileRequest {
   string email         = 7;
   string phone         = 8;
   string hours_json    = 9;
+  string logo_url      = 10;
+  string banner_url    = 11;
+  string state         = 12;
+  string country_code  = 13;
 }
 message CreateBusinessProfileResponse { BusinessProfile profile = 1; }
 
@@ -117,13 +277,17 @@ message UpdateBusinessProfileRequest {
   string email         = 7;
   string phone         = 8;
   string hours_json    = 9;
+  string logo_url      = 10;
+  string banner_url    = 11;
+  string state         = 12;
+  string country_code  = 13;
 }
 message UpdateBusinessProfileResponse { BusinessProfile profile = 1; }
 
 message GetBusinessProfileRequest { string user_id = 1; }
 message GetBusinessProfileResponse { BusinessProfile profile = 1; }
 
-// ── Catalog Requests ────────────────────────────────────────────────────────
+// ── Legacy Catalog Requests ────────────────────────────────────────────────
 
 message CreateCatalogRequest { string user_id = 1; string name = 2; }
 message CreateCatalogResponse { ProductCatalog catalog = 1; }
@@ -149,6 +313,161 @@ message UpdateProductResponse { Product product = 1; }
 
 message ListProductsRequest { string catalog_id = 1; int32 limit = 2; int32 offset = 3; }
 message ListProductsResponse { repeated Product products = 1; int32 total = 2; }
+
+// ── Marketplace Product Requests ────────────────────────────────────────────
+
+message CreateMarketplaceProductRequest {
+  string business_id      = 1;
+  string owner_id         = 2;
+  string name             = 3;
+  string description      = 4;
+  string category_id      = 5;
+  string sub_category_id  = 6;
+  string brand_id         = 7;
+  double price            = 8;
+  double discount_percent = 9;
+  string currency         = 10;
+  int32  quantity         = 11;
+  string sku              = 12;
+  string color            = 13;
+  string size             = 14;
+  double weight           = 15;
+  double shipping_fee     = 16;
+  repeated string image_urls = 17;
+}
+message CreateMarketplaceProductResponse { MarketplaceProduct product = 1; }
+
+message UpdateMarketplaceProductRequest {
+  string id               = 1;
+  string owner_id         = 2;
+  string name             = 3;
+  string description      = 4;
+  string category_id      = 5;
+  string sub_category_id  = 6;
+  string brand_id         = 7;
+  double price            = 8;
+  double discount_percent = 9;
+  string currency         = 10;
+  int32  quantity         = 11;
+  string sku              = 12;
+  string color            = 13;
+  string size             = 14;
+  double weight           = 15;
+  double shipping_fee     = 16;
+  bool   is_published     = 17;
+  repeated string image_urls = 18;
+}
+message UpdateMarketplaceProductResponse { MarketplaceProduct product = 1; }
+
+message DeleteMarketplaceProductRequest {
+  string id       = 1;
+  string owner_id = 2;
+}
+message DeleteMarketplaceProductResponse { bool success = 1; }
+
+message GetMarketplaceProductRequest { string id = 1; }
+message GetMarketplaceProductResponse { MarketplaceProduct product = 1; }
+
+message ListBusinessProductsRequest {
+  string business_id = 1;
+  int32  limit       = 2;
+  int32  offset      = 3;
+}
+message ListBusinessProductsResponse {
+  repeated MarketplaceProduct products = 1;
+  int32 total = 2;
+}
+
+message ListMarketplaceProductsRequest {
+  string category_id = 1;
+  string sort_by     = 2;  // "best_selling", "newest", "top_rated", "price_low", "price_high"
+  string search      = 3;
+  int32  limit       = 4;
+  int32  offset      = 5;
+}
+message ListMarketplaceProductsResponse {
+  repeated MarketplaceProduct products = 1;
+  int32 total = 2;
+}
+
+// ── Product Variant Requests ────────────────────────────────────────────────
+
+message CreateProductVariantRequest {
+  string product_id      = 1;
+  string sku             = 2;
+  string title           = 3;
+  string attributes_json = 4;
+  double price_override  = 5;
+  int32  stock_quantity  = 6;
+  string image_url       = 7;
+  bool   is_active       = 8;
+}
+message CreateProductVariantResponse { ProductVariant variant = 1; }
+
+message ListProductVariantsRequest {
+  string product_id = 1;
+}
+message ListProductVariantsResponse {
+  repeated ProductVariant variants = 1;
+}
+
+message UpdateProductVariantRequest {
+  string id              = 1;
+  string product_id      = 2;
+  string sku             = 3;
+  string title           = 4;
+  string attributes_json = 5;
+  double price_override  = 6;
+  int32  stock_quantity  = 7;
+  string image_url       = 8;
+  bool   is_active       = 9;
+}
+message UpdateProductVariantResponse { ProductVariant variant = 1; }
+
+message DeleteProductVariantRequest {
+  string id         = 1;
+  string product_id = 2;
+}
+message DeleteProductVariantResponse { bool success = 1; }
+
+// ── Category Requests ───────────────────────────────────────────────────────
+
+message ListCategoriesRequest {}
+message ListCategoriesResponse { repeated Category categories = 1; }
+
+// ── Store Requests ──────────────────────────────────────────────────────────
+
+message GetStoreRequest {
+  string slug    = 1;
+  string user_id = 2;
+}
+message GetStoreResponse { Store store = 1; }
+
+// ── Engagement Requests ─────────────────────────────────────────────────────
+
+message TrackProductViewRequest {
+  string product_id = 1;
+  string user_id    = 2;
+}
+message TrackProductViewResponse { bool success = 1; }
+
+message CreateReviewRequest {
+  string product_id = 1;
+  string user_id    = 2;
+  int32  rating     = 3;
+  string comment    = 4;
+}
+message CreateReviewResponse { Review review = 1; }
+
+message ListReviewsRequest {
+  string product_id = 1;
+  int32  limit      = 2;
+  int32  offset     = 3;
+}
+message ListReviewsResponse {
+  repeated Review reviews = 1;
+  int32 total = 2;
+}
 
 // ── Appointment Requests ────────────────────────────────────────────────────
 
@@ -195,3 +514,468 @@ message DequeueCustomerResponse { QueueEntry entry = 1; }
 
 message GetQueuePositionRequest { string business_id = 1; string customer_id = 2; }
 message GetQueuePositionResponse { int32 position = 1; int32 total_in_queue = 2; }
+
+// ── Phase 2 Message Types ───────────────────────────────────────────────────
+
+message CartItem {
+  string id         = 1;
+  string cart_id    = 2;
+  string product_id = 3;
+  int32  quantity   = 4;
+  MarketplaceProduct product = 5;
+  double locked_price = 6;      // Price locked when added to cart
+  double locked_discount_percent = 7; // Discount percentage locked when added to cart
+  string price_locked_at = 8;    // Timestamp when price was locked
+  string variant_id = 9;
+  string variant_title = 10;
+}
+
+message Cart {
+  string id = 1;
+  string user_id = 2;
+  repeated CartItem items = 3;
+  double subtotal = 4;
+}
+
+message AddToCartRequest {
+  string user_id    = 1;
+  string product_id = 2;
+  int32  quantity   = 3;
+  string variant_id = 4;
+}
+message AddToCartResponse { Cart cart = 1; }
+
+message GetCartRequest { string user_id = 1; }
+message GetCartResponse { Cart cart = 1; }
+
+message UpdateCartItemRequest {
+  string user_id      = 1;
+  string cart_item_id = 2;
+  int32  quantity     = 3;
+}
+message UpdateCartItemResponse { Cart cart = 1; }
+
+message RemoveFromCartRequest {
+  string user_id      = 1;
+  string cart_item_id = 2;
+}
+message RemoveFromCartResponse { Cart cart = 1; }
+
+message ClearCartRequest { string user_id = 1; }
+message ClearCartResponse { bool success = 1; }
+
+// Orders
+
+message OrderItem {
+  string id           = 1;
+  string order_id     = 2;
+  string product_id   = 3;
+  string product_name = 4;
+  string product_sku  = 5;
+  string image_url    = 6;
+  double unit_price   = 7;
+  int32  quantity     = 8;
+  double subtotal     = 9;
+  double locked_price = 10;      // Original locked price from cart
+  double locked_discount_percent = 11; // Original locked discount from cart
+  bool price_changed = 12;      // Whether price changed between cart and order
+}
+
+message OrderFxQuote {
+  string target_currency      = 1;
+  repeated string source_currencies = 2;
+  double buyer_total_amount   = 3;
+  double buyer_shipping_fee   = 4;
+  double buyer_discount_amount = 5;
+  double buyer_grand_total    = 6;
+  map<string, double> rates   = 7;
+  string provider             = 8;
+  string as_of                = 9;
+  bool stale                  = 10;
+  string locked_at            = 11;
+}
+
+message Order {
+  string id               = 1;
+  string order_number     = 2;
+  string buyer_id         = 3;
+  string business_id      = 4;
+  double total_amount     = 5;
+  double shipping_fee     = 6;
+  double discount_amount  = 7;
+  double grand_total      = 8;
+  string coupon_code      = 9;
+  string status           = 10; // pending, paid, processing, shipped, delivered, cancelled
+  string shipping_name    = 11;
+  string shipping_phone   = 12;
+  string shipping_address = 13;
+  string shipping_city    = 14;
+  string shipping_state   = 15;
+  string shipping_country = 16;
+  string payment_method   = 17;
+  string payment_status   = 18;
+  string notes            = 19;
+  string business_name    = 20;
+  string business_logo    = 21;
+  string buyer_name       = 22;
+  string buyer_avatar     = 23;
+  repeated OrderItem items = 24;
+  string created_at       = 25;
+  OrderFxQuote fx_quote   = 26;
+  string tracking_number  = 27;
+  string tracking_carrier = 28;
+  string tracking_url     = 29;
+  string estimated_delivery_date = 30;
+  string actual_delivery_date = 31;
+  string shipped_at       = 32;
+  string delivery_notes   = 33;
+}
+
+message CreateOrderItemInput {
+  string product_id = 1;
+  int32  quantity   = 2;
+}
+
+message CreateSingleOrderInput {
+  string business_id     = 1;
+  string coupon_code     = 2;
+  double shipping_fee    = 3;
+  repeated CreateOrderItemInput items = 4;
+  OrderFxQuote fx_quote  = 5;
+}
+
+message CreateOrdersRequest {
+  string buyer_id         = 1;
+  string shipping_name    = 2;
+  string shipping_phone   = 3;
+  string shipping_address = 4;
+  string shipping_city    = 5;
+  string shipping_state   = 6;
+  string shipping_country = 7;
+  string payment_method   = 8;
+  string notes            = 9;
+  repeated CreateSingleOrderInput orders = 10;
+}
+
+message CreateOrdersResponse {
+  repeated Order orders = 1;
+}
+
+message GetOrderRequest {
+  string id      = 1;
+  string user_id = 2;
+}
+message GetOrderResponse { Order order = 1; }
+
+message ListBuyerOrdersRequest {
+  string buyer_id = 1;
+  int32  limit    = 2;
+  int32  offset   = 3;
+}
+message ListBuyerOrdersResponse {
+  repeated Order orders = 1;
+  int32 total = 2;
+}
+
+message ListSellerOrdersRequest {
+  string business_id = 1;
+  string status      = 2;
+  int32  limit       = 3;
+  int32  offset      = 4;
+}
+message ListSellerOrdersResponse {
+  repeated Order orders = 1;
+  int32 total = 2;
+}
+
+message UpdateOrderStatusRequest {
+  string id          = 1;
+  string business_id = 2;
+  string status      = 3;
+}
+message UpdateOrderStatusResponse { Order order = 1; }
+
+message UpdateOrderTrackingRequest {
+  string id                    = 1;
+  string business_id           = 2;
+  string tracking_number       = 3;
+  string tracking_carrier      = 4;
+  string tracking_url          = 5;
+  string estimated_delivery_date = 6;
+  string delivery_notes        = 7;
+}
+message UpdateOrderTrackingResponse { Order order = 1; }
+
+// Coupons
+
+message Coupon {
+  string id                = 1;
+  string business_id       = 2;
+  string code              = 3;
+  string discount_type     = 4; // 'percentage' or 'fixed'
+  double discount_value    = 5;
+  double min_spend         = 6;
+  int32  max_uses          = 7;
+  int32  used_count        = 8;
+  string expires_at        = 9;
+  bool   is_active         = 10;
+  string created_at        = 11;
+  string product_id        = 12;
+  int32  max_uses_per_user = 13;
+  string product_name      = 14;
+}
+
+message CreateCouponRequest {
+  string business_id       = 1;
+  string code              = 2;
+  string discount_type     = 3;
+  double discount_value    = 4;
+  double min_spend         = 5;
+  int32  max_uses          = 6;
+  string expires_at        = 7;
+  string product_id        = 8;
+  int32  max_uses_per_user = 9;
+}
+message CreateCouponResponse { Coupon coupon = 1; }
+
+message ListBusinessCouponsRequest { string business_id = 1; }
+message ListBusinessCouponsResponse { repeated Coupon coupons = 1; }
+
+message ValidateCouponRequest {
+  string          business_id = 1;
+  string          code        = 2;
+  double          subtotal    = 3;
+  string          user_id     = 4;
+  repeated string product_ids = 5;
+}
+message ValidateCouponResponse {
+  bool   valid           = 1;
+  string message         = 2;
+  double discount_amount = 3;
+  Coupon coupon          = 4;
+}
+
+// Wishlist
+
+message ToggleWishlistRequest {
+  string user_id    = 1;
+  string product_id = 2;
+}
+message ToggleWishlistResponse {
+  bool is_wishlisted = 1;
+}
+
+message GetWishlistRequest {
+  string user_id = 1;
+}
+message GetWishlistResponse {
+  repeated MarketplaceProduct products = 1;
+}
+
+// Product Q&A
+
+message ProductQuestionPB {
+  string id          = 1;
+  string product_id  = 2;
+  string user_id     = 3;
+  string question    = 4;
+  string answer      = 5;
+  string answered_by = 6;
+  string user_name   = 7;
+  string answer_name = 8;
+  string created_at  = 9;
+  string updated_at  = 10;
+  bool   is_flagged  = 11;
+  string flag_reason = 12;
+  string status      = 13; // pending, approved, rejected, deleted
+  int32  flag_count  = 14;
+}
+
+message AskProductQuestionRequest {
+  string product_id = 1;
+  string user_id    = 2;
+  string question   = 3;
+}
+message AskProductQuestionResponse {
+  ProductQuestionPB question = 1;
+}
+
+message AnswerProductQuestionRequest {
+  string question_id = 1;
+  string answered_by = 2;
+  string answer      = 3;
+}
+message AnswerProductQuestionResponse {
+  bool success = 1;
+}
+
+message GetProductQuestionsRequest {
+  string product_id = 1;
+}
+message GetProductQuestionsResponse {
+  repeated ProductQuestionPB questions = 1;
+}
+
+message FlagProductQuestionRequest {
+  string question_id = 1;
+  string user_id    = 2;
+  string reason     = 3;
+}
+message FlagProductQuestionResponse {
+  bool success = 1;
+}
+
+// ── Order Status Workflow ───────────────────────────────────────────────────
+
+message TransitionOrderStatusRequest {
+  string order_id      = 1;
+  string user_id       = 2;
+  string new_status    = 3;
+  string reason        = 4;
+}
+message TransitionOrderStatusResponse {
+  Order order = 1;
+  bool success = 2;
+}
+
+message GetOrderStatusHistoryRequest {
+  string order_id = 1;
+}
+message GetOrderStatusHistoryResponse {
+  repeated OrderStatusChangePB history = 1;
+}
+
+message OrderStatusChangePB {
+  string id          = 1;
+  string order_id    = 2;
+  string from_status = 3;
+  string to_status   = 4;
+  string changed_by  = 5;
+  string change_reason = 6;
+  string created_at  = 7;
+}
+
+// ── Refunds ───────────────────────────────────────────────────────────────
+
+message RefundPB {
+  string id              = 1;
+  string order_id        = 2;
+  double refund_amount   = 3;
+  string refund_reason   = 4;
+  string refund_type     = 5; // 'full', 'partial'
+  string status          = 6; // 'pending', 'approved', 'rejected', 'processed', 'failed'
+  string requested_by    = 7;
+  string processed_by    = 8;
+  string processed_at    = 9;
+  string rejection_reason = 10;
+  string refund_method   = 11; // 'original', 'store_credit', 'bank_transfer'
+  string refund_reference = 12;
+  string created_at      = 13;
+  repeated RefundItemPB items = 14;
+}
+
+message RefundItemPB {
+  string id            = 1;
+  string refund_id     = 2;
+  string order_item_id = 3;
+  int32  quantity      = 4;
+  double refund_amount = 5;
+  string reason        = 6;
+}
+
+message CreateRefundRequest {
+  string order_id      = 1;
+  double refund_amount = 2;
+  string refund_reason = 3;
+  string refund_type   = 4; // 'full', 'partial'
+  string user_id       = 5;
+  repeated RefundItemPB items = 6;
+}
+message CreateRefundResponse {
+  RefundPB refund = 1;
+}
+
+message ProcessRefundRequest {
+  string refund_id        = 1;
+  string user_id         = 2; // Admin/seller processing the refund
+  string status          = 3; // 'approved', 'rejected', 'processed'
+  string rejection_reason = 4;
+  string refund_method    = 5;
+  string refund_reference = 6;
+}
+message ProcessRefundResponse {
+  RefundPB refund = 1;
+  bool success = 2;
+}
+
+message ListRefundsRequest {
+  string order_id = 1;
+  string user_id  = 2;
+  string status   = 3;
+  int32  limit    = 4;
+  int32  offset   = 5;
+}
+message ListRefundsResponse {
+  repeated RefundPB refunds = 1;
+  int32 total = 2;
+}
+
+// ── Order Modifications ───────────────────────────────────────────────────
+
+message OrderModificationPB {
+  string id               = 1;
+  string order_id         = 2;
+  string modification_type = 3; // 'shipping_address', 'items', 'quantity', 'cancel_item'
+  string old_value        = 4; // JSON string
+  string new_value        = 5; // JSON string
+  string reason           = 6;
+  string requested_by     = 7;
+  string approved_by      = 8;
+  string status           = 9; // 'pending', 'approved', 'rejected'
+  string rejection_reason = 10;
+  string created_at       = 11;
+}
+
+message CreateOrderModificationRequest {
+  string order_id         = 1;
+  string modification_type = 2;
+  string old_value        = 3; // JSON string
+  string new_value        = 4; // JSON string
+  string reason           = 5;
+  string user_id          = 6;
+}
+message CreateOrderModificationResponse {
+  OrderModificationPB modification = 1;
+}
+
+message ProcessOrderModificationRequest {
+  string modification_id = 1;
+  string user_id         = 2; // Admin/seller processing the modification
+  string status          = 3; // 'approved', 'rejected'
+  string rejection_reason = 4;
+}
+message ProcessOrderModificationResponse {
+  OrderModificationPB modification = 1;
+  bool success = 2;
+}
+
+message ListOrderModificationsRequest {
+  string order_id = 1;
+  string status   = 2;
+  int32  limit    = 3;
+  int32  offset   = 4;
+}
+message ListOrderModificationsResponse {
+  repeated OrderModificationPB modifications = 1;
+  int32 total = 2;
+}
+
+message ModerateProductQuestionRequest {
+  string question_id = 1;
+  string business_id = 2;
+  string action      = 3; // approve, reject, delete
+  string reason      = 4;
+}
+message ModerateProductQuestionResponse {
+  bool success = 1;
+}

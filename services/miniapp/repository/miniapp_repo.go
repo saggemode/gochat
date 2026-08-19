@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -223,8 +224,8 @@ type APIKey struct {
 func (r *MiniAppRepository) CreateAPIKey(ctx context.Context, userID, name string, permissions []string) (*APIKey, string, error) {
 	id := uuid.New().String()
 	rawKey := generateSecret()
-	keyHash := hashKey(rawKey)
 	prefix := rawKey[:8]
+	keyHash := hashKey(prefix, rawKey)
 
 	_, err := r.db.Exec(ctx,
 		`INSERT INTO api_keys (id, user_id, key_hash, name, permissions) VALUES ($1, $2, $3, $4, $5)`,
@@ -237,7 +238,7 @@ func (r *MiniAppRepository) CreateAPIKey(ctx context.Context, userID, name strin
 
 func (r *MiniAppRepository) ListAPIKeys(ctx context.Context, userID string) ([]*APIKey, error) {
 	rows, err := r.db.Query(ctx,
-		`SELECT id, name, LEFT(key_hash, 8), is_active FROM api_keys WHERE user_id = $1 AND is_active = TRUE`, userID)
+		`SELECT id, name, key_hash, is_active FROM api_keys WHERE user_id = $1 AND is_active = TRUE`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +247,24 @@ func (r *MiniAppRepository) ListAPIKeys(ctx context.Context, userID string) ([]*
 	var keys []*APIKey
 	for rows.Next() {
 		k := &APIKey{}
-		rows.Scan(&k.ID, &k.Name, &k.KeyPrefix, &k.IsActive)
+		var keyHash string
+		if err := rows.Scan(&k.ID, &k.Name, &keyHash, &k.IsActive); err != nil {
+			return nil, err
+		}
+
+		if strings.Contains(keyHash, ":") {
+			parts := strings.Split(keyHash, ":")
+			if len(parts) >= 1 {
+				k.KeyPrefix = parts[0]
+			}
+		} else {
+			// Legacy fallback
+			if len(keyHash) >= 8 {
+				k.KeyPrefix = keyHash[:8]
+			} else {
+				k.KeyPrefix = keyHash
+			}
+		}
 		keys = append(keys, k)
 	}
 	return keys, nil
@@ -264,7 +282,15 @@ func generateSecret() string {
 	return hex.EncodeToString(b)
 }
 
-func hashKey(key string) string {
-	h := sha256.Sum256([]byte(key))
-	return hex.EncodeToString(h[:])
+func hashKey(prefix, key string) string {
+	saltBytes := make([]byte, 16)
+	rand.Read(saltBytes)
+	salt := hex.EncodeToString(saltBytes)
+
+	h := sha256.New()
+	h.Write([]byte(key))
+	h.Write(saltBytes)
+	hashed := hex.EncodeToString(h.Sum(nil))
+
+	return fmt.Sprintf("%s:%s:%s", prefix, salt, hashed)
 }

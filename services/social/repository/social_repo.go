@@ -22,24 +22,24 @@ func NewSocialRepository(db *pgxpool.Pool) *SocialRepository {
 
 func (r *SocialRepository) Follow(ctx context.Context, followerID, followedID string) error {
 	_, err := r.db.Exec(ctx,
-		`INSERT INTO follows (follower_id, followed_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+		`INSERT INTO user_followers (follower_id, following_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
 		followerID, followedID)
 	return err
 }
 
 func (r *SocialRepository) Unfollow(ctx context.Context, followerID, followedID string) error {
 	_, err := r.db.Exec(ctx,
-		`DELETE FROM follows WHERE follower_id = $1 AND followed_id = $2`,
+		`DELETE FROM user_followers WHERE follower_id = $1 AND following_id = $2`,
 		followerID, followedID)
 	return err
 }
 
 func (r *SocialRepository) GetFollowers(ctx context.Context, userID string, limit, offset int) ([]string, int, error) {
 	var total int
-	r.db.QueryRow(ctx, `SELECT COUNT(*) FROM follows WHERE followed_id = $1`, userID).Scan(&total)
+	r.db.QueryRow(ctx, `SELECT COUNT(*) FROM user_followers WHERE following_id = $1`, userID).Scan(&total)
 
 	rows, err := r.db.Query(ctx,
-		`SELECT follower_id FROM follows WHERE followed_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+		`SELECT follower_id FROM user_followers WHERE following_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
 		userID, limit, offset)
 	if err != nil {
 		return nil, 0, err
@@ -57,10 +57,10 @@ func (r *SocialRepository) GetFollowers(ctx context.Context, userID string, limi
 
 func (r *SocialRepository) GetFollowing(ctx context.Context, userID string, limit, offset int) ([]string, int, error) {
 	var total int
-	r.db.QueryRow(ctx, `SELECT COUNT(*) FROM follows WHERE follower_id = $1`, userID).Scan(&total)
+	r.db.QueryRow(ctx, `SELECT COUNT(*) FROM user_followers WHERE follower_id = $1`, userID).Scan(&total)
 
 	rows, err := r.db.Query(ctx,
-		`SELECT followed_id FROM follows WHERE follower_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+		`SELECT following_id FROM user_followers WHERE follower_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
 		userID, limit, offset)
 	if err != nil {
 		return nil, 0, err
@@ -88,6 +88,15 @@ type Moment struct {
 	LikeCount    int
 	CommentCount int
 	CreatedAt    time.Time
+	HasLiked     bool
+}
+
+type Comment struct {
+	ID        string
+	MomentID  string
+	UserID    string
+	Content   string
+	CreatedAt time.Time
 }
 
 func (r *SocialRepository) CreateMoment(ctx context.Context, userID, content, mediaURL, mediaType, visibility string) (*Moment, error) {
@@ -116,18 +125,65 @@ func (r *SocialRepository) LikeMoment(ctx context.Context, userID, momentID stri
 	return err
 }
 
+func (r *SocialRepository) CommentMoment(ctx context.Context, userID, momentID, content string) (*Comment, error) {
+	id := uuid.New().String()
+	createdAt := time.Now()
+	_, err := r.db.Exec(ctx,
+		`INSERT INTO moment_comments (id, moment_id, user_id, content, created_at) VALUES ($1, $2, $3, $4, $5)`,
+		id, momentID, userID, content, createdAt)
+	if err != nil {
+		return nil, fmt.Errorf("comment moment: %w", err)
+	}
+	r.db.Exec(ctx, `UPDATE moments SET comment_count = comment_count + 1 WHERE id = $1`, momentID)
+	return &Comment{
+		ID:        id,
+		MomentID:  momentID,
+		UserID:    userID,
+		Content:   content,
+		CreatedAt: createdAt,
+	}, nil
+}
+
+func (r *SocialRepository) GetCommentsForMoments(ctx context.Context, momentIDs []string) (map[string][]*Comment, error) {
+	commentsMap := make(map[string][]*Comment)
+	if len(momentIDs) == 0 {
+		return commentsMap, nil
+	}
+
+	rows, err := r.db.Query(ctx,
+		`SELECT id, moment_id, user_id, content, created_at 
+		 FROM moment_comments 
+		 WHERE moment_id = ANY($1) 
+		 ORDER BY created_at ASC`, momentIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		c := &Comment{}
+		err := rows.Scan(&c.ID, &c.MomentID, &c.UserID, &c.Content, &c.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		commentsMap[c.MomentID] = append(commentsMap[c.MomentID], c)
+	}
+	return commentsMap, nil
+}
+
 func (r *SocialRepository) GetMomentsFeed(ctx context.Context, userID string, limit, offset int) ([]*Moment, int, error) {
 	var total int
 	r.db.QueryRow(ctx,
 		`SELECT COUNT(*) FROM moments m
-		 WHERE m.user_id IN (SELECT followed_id FROM follows WHERE follower_id = $1)
+		 WHERE m.user_id IN (SELECT following_id FROM user_followers WHERE follower_id = $1)
 		 OR m.user_id = $1`, userID).Scan(&total)
 
 	rows, err := r.db.Query(ctx,
 		`SELECT id, user_id, COALESCE(content,''), COALESCE(media_url,''), COALESCE(media_type,''),
-		 visibility, like_count, comment_count, created_at
+		 visibility, like_count, comment_count, created_at,
+		 EXISTS(SELECT 1 FROM moment_likes WHERE moment_id = moments.id AND user_id = $1) AS has_liked
 		 FROM moments
-		 WHERE user_id IN (SELECT followed_id FROM follows WHERE follower_id = $1) OR user_id = $1
+		 WHERE user_id IN (SELECT following_id FROM user_followers WHERE follower_id = $1) OR user_id = $1
 		 ORDER BY created_at DESC LIMIT $2 OFFSET $3`, userID, limit, offset)
 	if err != nil {
 		return nil, 0, err
@@ -138,7 +194,7 @@ func (r *SocialRepository) GetMomentsFeed(ctx context.Context, userID string, li
 	for rows.Next() {
 		m := &Moment{}
 		rows.Scan(&m.ID, &m.UserID, &m.Content, &m.MediaURL, &m.MediaType,
-			&m.Visibility, &m.LikeCount, &m.CommentCount, &m.CreatedAt)
+			&m.Visibility, &m.LikeCount, &m.CommentCount, &m.CreatedAt, &m.HasLiked)
 		moments = append(moments, m)
 	}
 	return moments, total, nil
@@ -193,7 +249,7 @@ func (r *SocialRepository) GetNearbyUsers(ctx context.Context, userID string, ra
 		   AND target.is_visible = TRUE
 		   AND ST_DWithin(me.location, target.location, $2 * 1000.0)
 		 ORDER BY distance_km ASC
-		 LIMIT $3`, 
+		 LIMIT $3`,
 		userID, radiusKM, limit)
 	if err != nil {
 		return nil, err

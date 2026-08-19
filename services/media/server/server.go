@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	mediapb "gochat/gen/media"
+	"gochat/services/media/optimizer"
 	"gochat/services/media/storage"
 )
 
@@ -27,7 +28,7 @@ func New(store *storage.MinIOStorage, log *zap.Logger) *MediaServer {
 	return &MediaServer{store: store, log: log}
 }
 
-// UploadMedia handles client-streaming upload.
+// UploadMedia handles client-streaming upload with automated optimization.
 // The first message must contain a header; subsequent messages contain file chunks.
 func (s *MediaServer) UploadMedia(stream mediapb.MediaService_UploadMediaServer) error {
 	ctx := stream.Context()
@@ -59,7 +60,7 @@ func (s *MediaServer) UploadMedia(stream mediapb.MediaService_UploadMediaServer)
 	)
 
 	// ── Remaining messages: file chunks ───────────────────────────────────────
-	// Buffer chunks into a pipe for streaming to MinIO without full in-memory load
+	// Buffer chunks into a pipe for streaming through optimizer and MinIO
 	pr, pw := io.Pipe()
 
 	errCh := make(chan error, 1)
@@ -88,8 +89,14 @@ func (s *MediaServer) UploadMedia(stream mediapb.MediaService_UploadMediaServer)
 		}
 	}()
 
-	// Upload to MinIO while chunks stream in
-	result, err := s.store.Upload(ctx, pr, h.FileName, h.MimeType, h.TotalSize)
+	// ── Server-Side Optimization & Compression ────────────────────────────────
+	optResult, optErr := optimizer.Optimize(ctx, pr, h.FileName, h.MimeType, h.TotalSize, s.log)
+	if optErr != nil {
+		s.log.Warn("optimizer error, continuing with stream", zap.Error(optErr))
+	}
+
+	// Upload to MinIO
+	result, err := s.store.Upload(ctx, optResult.Reader, h.FileName, optResult.MimeType, optResult.Size)
 	if err != nil {
 		return status.Errorf(codes.Internal, "upload failed: %v", err)
 	}
@@ -103,7 +110,7 @@ func (s *MediaServer) UploadMedia(stream mediapb.MediaService_UploadMediaServer)
 		Media: &mediapb.MediaMeta{
 			ObjectKey:  result.ObjectKey,
 			Url:        result.URL,
-			MimeType:   h.MimeType,
+			MimeType:   optResult.MimeType,
 			SizeBytes:  result.Size,
 			MediaType:  h.MediaType,
 			UploadedAt: time.Now().Unix(),

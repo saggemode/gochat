@@ -30,6 +30,7 @@ const (
 	ChatService_GetThread_FullMethodName               = "/chat.ChatService/GetThread"
 	ChatService_EditMessage_FullMethodName             = "/chat.ChatService/EditMessage"
 	ChatService_DeleteMessage_FullMethodName           = "/chat.ChatService/DeleteMessage"
+	ChatService_ForwardMessage_FullMethodName          = "/chat.ChatService/ForwardMessage"
 	ChatService_AddReaction_FullMethodName             = "/chat.ChatService/AddReaction"
 	ChatService_RemoveReaction_FullMethodName          = "/chat.ChatService/RemoveReaction"
 	ChatService_MarkRead_FullMethodName                = "/chat.ChatService/MarkRead"
@@ -51,6 +52,10 @@ const (
 	ChatService_SetNotificationProfile_FullMethodName  = "/chat.ChatService/SetNotificationProfile"
 	ChatService_GetNotificationProfiles_FullMethodName = "/chat.ChatService/GetNotificationProfiles"
 	ChatService_AdvancedSearch_FullMethodName          = "/chat.ChatService/AdvancedSearch"
+	ChatService_CreatePoll_FullMethodName              = "/chat.ChatService/CreatePoll"
+	ChatService_GetPoll_FullMethodName                 = "/chat.ChatService/GetPoll"
+	ChatService_VotePoll_FullMethodName                = "/chat.ChatService/VotePoll"
+	ChatService_ClosePoll_FullMethodName               = "/chat.ChatService/ClosePoll"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -79,6 +84,8 @@ type ChatServiceClient interface {
 	EditMessage(ctx context.Context, in *EditMessageRequest, opts ...grpc.CallOption) (*EditMessageResponse, error)
 	// Soft-delete a message
 	DeleteMessage(ctx context.Context, in *DeleteMessageRequest, opts ...grpc.CallOption) (*DeleteMessageResponse, error)
+	// Forward a message to another conversation
+	ForwardMessage(ctx context.Context, in *ForwardMessageRequest, opts ...grpc.CallOption) (*ForwardMessageResponse, error)
 	// React to a message with an emoji
 	AddReaction(ctx context.Context, in *AddReactionRequest, opts ...grpc.CallOption) (*AddReactionResponse, error)
 	// Remove a reaction
@@ -114,6 +121,11 @@ type ChatServiceClient interface {
 	GetNotificationProfiles(ctx context.Context, in *GetNotificationProfilesRequest, opts ...grpc.CallOption) (*GetNotificationProfilesResponse, error)
 	// Advanced Search
 	AdvancedSearch(ctx context.Context, in *AdvancedSearchRequest, opts ...grpc.CallOption) (*AdvancedSearchResponse, error)
+	// ── Polls ────────────────────────────────────────────────────────────────
+	CreatePoll(ctx context.Context, in *CreatePollRequest, opts ...grpc.CallOption) (*CreatePollResponse, error)
+	GetPoll(ctx context.Context, in *GetPollRequest, opts ...grpc.CallOption) (*GetPollResponse, error)
+	VotePoll(ctx context.Context, in *VotePollRequest, opts ...grpc.CallOption) (*VotePollResponse, error)
+	ClosePoll(ctx context.Context, in *ClosePollRequest, opts ...grpc.CallOption) (*ClosePollResponse, error)
 }
 
 type chatServiceClient struct {
@@ -228,6 +240,16 @@ func (c *chatServiceClient) DeleteMessage(ctx context.Context, in *DeleteMessage
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DeleteMessageResponse)
 	err := c.cc.Invoke(ctx, ChatService_DeleteMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) ForwardMessage(ctx context.Context, in *ForwardMessageRequest, opts ...grpc.CallOption) (*ForwardMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ForwardMessageResponse)
+	err := c.cc.Invoke(ctx, ChatService_ForwardMessage_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -453,6 +475,46 @@ func (c *chatServiceClient) AdvancedSearch(ctx context.Context, in *AdvancedSear
 	return out, nil
 }
 
+func (c *chatServiceClient) CreatePoll(ctx context.Context, in *CreatePollRequest, opts ...grpc.CallOption) (*CreatePollResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreatePollResponse)
+	err := c.cc.Invoke(ctx, ChatService_CreatePoll_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetPoll(ctx context.Context, in *GetPollRequest, opts ...grpc.CallOption) (*GetPollResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPollResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetPoll_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) VotePoll(ctx context.Context, in *VotePollRequest, opts ...grpc.CallOption) (*VotePollResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(VotePollResponse)
+	err := c.cc.Invoke(ctx, ChatService_VotePoll_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) ClosePoll(ctx context.Context, in *ClosePollRequest, opts ...grpc.CallOption) (*ClosePollResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ClosePollResponse)
+	err := c.cc.Invoke(ctx, ChatService_ClosePoll_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -479,6 +541,8 @@ type ChatServiceServer interface {
 	EditMessage(context.Context, *EditMessageRequest) (*EditMessageResponse, error)
 	// Soft-delete a message
 	DeleteMessage(context.Context, *DeleteMessageRequest) (*DeleteMessageResponse, error)
+	// Forward a message to another conversation
+	ForwardMessage(context.Context, *ForwardMessageRequest) (*ForwardMessageResponse, error)
 	// React to a message with an emoji
 	AddReaction(context.Context, *AddReactionRequest) (*AddReactionResponse, error)
 	// Remove a reaction
@@ -514,6 +578,11 @@ type ChatServiceServer interface {
 	GetNotificationProfiles(context.Context, *GetNotificationProfilesRequest) (*GetNotificationProfilesResponse, error)
 	// Advanced Search
 	AdvancedSearch(context.Context, *AdvancedSearchRequest) (*AdvancedSearchResponse, error)
+	// ── Polls ────────────────────────────────────────────────────────────────
+	CreatePoll(context.Context, *CreatePollRequest) (*CreatePollResponse, error)
+	GetPoll(context.Context, *GetPollRequest) (*GetPollResponse, error)
+	VotePoll(context.Context, *VotePollRequest) (*VotePollResponse, error)
+	ClosePoll(context.Context, *ClosePollRequest) (*ClosePollResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -556,6 +625,9 @@ func (UnimplementedChatServiceServer) EditMessage(context.Context, *EditMessageR
 }
 func (UnimplementedChatServiceServer) DeleteMessage(context.Context, *DeleteMessageRequest) (*DeleteMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteMessage not implemented")
+}
+func (UnimplementedChatServiceServer) ForwardMessage(context.Context, *ForwardMessageRequest) (*ForwardMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ForwardMessage not implemented")
 }
 func (UnimplementedChatServiceServer) AddReaction(context.Context, *AddReactionRequest) (*AddReactionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AddReaction not implemented")
@@ -619,6 +691,18 @@ func (UnimplementedChatServiceServer) GetNotificationProfiles(context.Context, *
 }
 func (UnimplementedChatServiceServer) AdvancedSearch(context.Context, *AdvancedSearchRequest) (*AdvancedSearchResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AdvancedSearch not implemented")
+}
+func (UnimplementedChatServiceServer) CreatePoll(context.Context, *CreatePollRequest) (*CreatePollResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreatePoll not implemented")
+}
+func (UnimplementedChatServiceServer) GetPoll(context.Context, *GetPollRequest) (*GetPollResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPoll not implemented")
+}
+func (UnimplementedChatServiceServer) VotePoll(context.Context, *VotePollRequest) (*VotePollResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method VotePoll not implemented")
+}
+func (UnimplementedChatServiceServer) ClosePoll(context.Context, *ClosePollRequest) (*ClosePollResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ClosePoll not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -835,6 +919,24 @@ func _ChatService_DeleteMessage_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ChatServiceServer).DeleteMessage(ctx, req.(*DeleteMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_ForwardMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ForwardMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).ForwardMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_ForwardMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).ForwardMessage(ctx, req.(*ForwardMessageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1210,6 +1312,78 @@ func _ChatService_AdvancedSearch_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_CreatePoll_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreatePollRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).CreatePoll(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_CreatePoll_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).CreatePoll(ctx, req.(*CreatePollRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetPoll_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPollRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetPoll(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetPoll_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetPoll(ctx, req.(*GetPollRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_VotePoll_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VotePollRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).VotePoll(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_VotePoll_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).VotePoll(ctx, req.(*VotePollRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_ClosePoll_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClosePollRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).ClosePoll(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_ClosePoll_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).ClosePoll(ctx, req.(*ClosePollRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1260,6 +1434,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteMessage",
 			Handler:    _ChatService_DeleteMessage_Handler,
+		},
+		{
+			MethodName: "ForwardMessage",
+			Handler:    _ChatService_ForwardMessage_Handler,
 		},
 		{
 			MethodName: "AddReaction",
@@ -1340,6 +1518,22 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AdvancedSearch",
 			Handler:    _ChatService_AdvancedSearch_Handler,
+		},
+		{
+			MethodName: "CreatePoll",
+			Handler:    _ChatService_CreatePoll_Handler,
+		},
+		{
+			MethodName: "GetPoll",
+			Handler:    _ChatService_GetPoll_Handler,
+		},
+		{
+			MethodName: "VotePoll",
+			Handler:    _ChatService_VotePoll_Handler,
+		},
+		{
+			MethodName: "ClosePoll",
+			Handler:    _ChatService_ClosePoll_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

@@ -22,8 +22,11 @@ service AuthService {
   // Fetch a user by ID
   rpc GetUser(GetUserRequest) returns (GetUserResponse);
 
-  // Update user profile (display name, avatar, status)
+  // Update user profile (display name, avatar, status, email, phone)
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+
+  // Delete the currently authenticated user account
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
 
   // Revoke a refresh token (logout)
   rpc Logout(LogoutRequest) returns (LogoutResponse);
@@ -68,12 +71,16 @@ message User {
   int64  created_at     = 8;
   string phone          = 9;
   bool   phone_verified = 10;
+  string pin            = 11; // BBM-style unique PIN for user discovery
+  string country_code   = 12; // ISO 3166-1 alpha-2 (e.g. "US", "NG", "GB")
 }
 
 message RegisterRequest {
   string email        = 1;
   string password     = 2;
   string display_name = 3;
+  string phone        = 4;
+  string country_code = 5; // auto-detected from IP at the gateway
 }
 
 message RegisterResponse {
@@ -133,10 +140,20 @@ message UpdateUserRequest {
   string display_name = 2; // optional — empty = no change
   string avatar_url   = 3;
   string status_text  = 4;
+  string email        = 5;
+  string phone        = 6;
 }
 
 message UpdateUserResponse {
   User user = 1;
+}
+
+message DeleteUserRequest {
+  string user_id = 1;
+}
+
+message DeleteUserResponse {
+  bool success = 1;
 }
 
 message LogoutRequest {

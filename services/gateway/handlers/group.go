@@ -28,6 +28,8 @@ func (h *GroupHandler) UpdateGroupMetadata(c *gin.Context) {
 	}
 
 	var req struct {
+		Name                 string `json:"name"`
+		AvatarUrl            string `json:"avatar_url"`
 		Description          string `json:"description"`
 		AnnouncementsOnly    bool   `json:"announcements_only"`
 		AdminsOnlyEditInfo   bool   `json:"admins_only_edit_info"`
@@ -41,6 +43,8 @@ func (h *GroupHandler) UpdateGroupMetadata(c *gin.Context) {
 	resp, err := h.client.UpdateGroupMetadata(c.Request.Context(), &grouppb.UpdateGroupMetadataRequest{
 		ConversationId:       convID,
 		RequesterId:          userID,
+		Name:                 req.Name,
+		AvatarUrl:            req.AvatarUrl,
 		Description:          req.Description,
 		AnnouncementsOnly:    req.AnnouncementsOnly,
 		AdminsOnlyEditInfo:   req.AdminsOnlyEditInfo,
@@ -168,7 +172,7 @@ func (h *GroupHandler) ResolvePendingApproval(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success":         resp.Success,
 		"conversation_id": resp.ConversationId,
-		"user_id":          resp.UserId,
+		"user_id":         resp.UserId,
 	})
 }
 
@@ -391,8 +395,8 @@ func (h *GroupHandler) AddBroadcastRecipient(c *gin.Context) {
 
 	resp, err := h.client.AddBroadcastRecipient(c.Request.Context(), &grouppb.AddBroadcastRecipientRequest{
 		BroadcastListId: listID,
-		RecipientId:      req.RecipientID,
-		OwnerId:          userID,
+		RecipientId:     req.RecipientID,
+		OwnerId:         userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to add broadcast recipient")
@@ -412,8 +416,8 @@ func (h *GroupHandler) RemoveBroadcastRecipient(c *gin.Context) {
 
 	resp, err := h.client.RemoveBroadcastRecipient(c.Request.Context(), &grouppb.RemoveBroadcastRecipientRequest{
 		BroadcastListId: listID,
-		RecipientId:      recipientID,
-		OwnerId:          userID,
+		RecipientId:     recipientID,
+		OwnerId:         userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to remove broadcast recipient")
@@ -432,7 +436,7 @@ func (h *GroupHandler) GetBroadcastList(c *gin.Context) {
 
 	resp, err := h.client.GetBroadcastList(c.Request.Context(), &grouppb.GetBroadcastListRequest{
 		BroadcastListId: listID,
-		OwnerId:          userID,
+		OwnerId:         userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to fetch broadcast list")

@@ -40,6 +40,9 @@ service ChatService {
   // Soft-delete a message
   rpc DeleteMessage(DeleteMessageRequest) returns (DeleteMessageResponse);
 
+  // Forward a message to another conversation
+  rpc ForwardMessage(ForwardMessageRequest) returns (ForwardMessageResponse);
+
   // React to a message with an emoji
   rpc AddReaction(AddReactionRequest) returns (AddReactionResponse);
 
@@ -90,6 +93,12 @@ service ChatService {
 
   // Advanced Search
   rpc AdvancedSearch(AdvancedSearchRequest) returns (AdvancedSearchResponse);
+
+  // ── Polls ────────────────────────────────────────────────────────────────
+  rpc CreatePoll(CreatePollRequest) returns (CreatePollResponse);
+  rpc GetPoll(GetPollRequest) returns (GetPollResponse);
+  rpc VotePoll(VotePollRequest) returns (VotePollResponse);
+  rpc ClosePoll(ClosePollRequest) returns (ClosePollResponse);
 }
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
@@ -133,6 +142,7 @@ enum EventType {
   EVENT_CALL_SIGNALING   = 12;
   EVENT_STORY_CREATED    = 13;
   EVENT_STORY_DELETED    = 14;
+  EVENT_CONVERSATION_CREATED = 15;
 }
 
 // ── Core Types ────────────────────────────────────────────────────────────────
@@ -170,6 +180,10 @@ message Message {
   repeated MessageRead reads     = 18;
   int64         created_at       = 19;
   int64         updated_at       = 20;
+  string        forwarded_from_id  = 21; // original message ID if forwarded
+  string        forwarded_from_conv = 22; // original conversation ID if forwarded
+  string        forwarded_from_sender = 23; // original sender ID if forwarded
+  repeated string mentioned_user_ids = 24; // users mentioned in this message
 }
 
 message Reaction {
@@ -253,6 +267,7 @@ message SendMessageRequest {
   int64       media_size      = 7;
   string      parent_id       = 8;  // reply to a message (thread)
   int64       expires_at      = 9;  // self-destruct Unix timestamp
+  repeated string mentioned_user_ids = 10; // users mentioned in this message
 }
 
 message SendMessageResponse {
@@ -595,4 +610,83 @@ message AdvancedSearchRequest {
 message AdvancedSearchResponse {
   repeated Message messages = 1;
   int32            total    = 2;
+}
+
+// ── Forward Message ────────────────────────────────────────────────────────────
+
+message ForwardMessageRequest {
+  string message_id        = 1; // original message to forward
+  string sender_id         = 2; // user forwarding the message
+  string target_conversation_id = 3; // conversation to forward into
+  string content           = 4; // optional: override content (empty = use original)
+}
+
+message ForwardMessageResponse {
+  Message message = 1;
+}
+
+// ── Polls ─────────────────────────────────────────────────────────────────────
+
+message PollOption {
+  string id         = 1;
+  string text       = 2;
+  int32  sort_order = 3;
+  repeated string voter_user_ids = 4; // populated by GetPoll, empty if anonymous
+  int32  vote_count = 5;             // number of votes for this option
+  bool   mine       = 6;             // did the requester vote for this?
+}
+
+message Poll {
+  string           id              = 1;
+  string           conversation_id = 2;
+  string           created_by      = 3;
+  string           question        = 4;
+  bool             is_anonymous    = 5;
+  bool             is_multiple     = 6;
+  bool             is_closed       = 7;
+  int64            expires_at      = 8;
+  int64            created_at      = 9;
+  repeated PollOption options       = 10;
+}
+
+message CreatePollRequest {
+  string           conversation_id = 1;
+  string           created_by      = 2;
+  string           question        = 3;
+  repeated string  options         = 4; // 2-10 options
+  bool             is_anonymous    = 5;
+  bool             is_multiple     = 6;
+  int64            expires_at      = 7; // optional: auto-close time
+}
+
+message CreatePollResponse {
+  Poll poll = 1;
+}
+
+message GetPollRequest {
+  string poll_id = 1;
+  string user_id = 2; // required to know which options the user voted for
+}
+
+message GetPollResponse {
+  Poll poll = 1;
+}
+
+message VotePollRequest {
+  string         poll_id     = 1;
+  string         user_id     = 2;
+  repeated string option_ids  = 3; // 1 if !is_multiple, many if is_multiple
+}
+
+message VotePollResponse {
+  Poll poll = 1;
+}
+
+message ClosePollRequest {
+  string poll_id   = 1;
+  string user_id   = 2;
+}
+
+message ClosePollResponse {
+  Poll poll = 1;
 }

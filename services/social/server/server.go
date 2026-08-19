@@ -39,7 +39,9 @@ func (s *SocialServer) UnfollowUser(ctx context.Context, req *pb.UnfollowUserReq
 
 func (s *SocialServer) GetFollowers(ctx context.Context, req *pb.GetFollowersRequest) (*pb.GetFollowersResponse, error) {
 	limit := int(req.Limit)
-	if limit <= 0 { limit = 20 }
+	if limit <= 0 {
+		limit = 20
+	}
 	ids, total, err := s.repo.GetFollowers(ctx, req.UserId, limit, int(req.Offset))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "get followers: %v", err)
@@ -49,7 +51,9 @@ func (s *SocialServer) GetFollowers(ctx context.Context, req *pb.GetFollowersReq
 
 func (s *SocialServer) GetFollowing(ctx context.Context, req *pb.GetFollowingRequest) (*pb.GetFollowingResponse, error) {
 	limit := int(req.Limit)
-	if limit <= 0 { limit = 20 }
+	if limit <= 0 {
+		limit = 20
+	}
 	ids, total, err := s.repo.GetFollowing(ctx, req.UserId, limit, int(req.Offset))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "get following: %v", err)
@@ -76,25 +80,62 @@ func (s *SocialServer) LikeMoment(ctx context.Context, req *pb.LikeMomentRequest
 }
 
 func (s *SocialServer) CommentMoment(ctx context.Context, req *pb.CommentMomentRequest) (*pb.CommentMomentResponse, error) {
+	c, err := s.repo.CommentMoment(ctx, req.UserId, req.MomentId, req.Content)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "comment moment: %v", err)
+	}
 	return &pb.CommentMomentResponse{Comment: &pb.MomentComment{
-		UserId: req.UserId, Content: req.Content,
+		Id:        c.ID,
+		UserId:    c.UserID,
+		Content:   c.Content,
+		CreatedAt: c.CreatedAt.Unix(),
 	}}, nil
 }
 
 func (s *SocialServer) GetMomentsFeed(ctx context.Context, req *pb.GetMomentsFeedRequest) (*pb.GetMomentsFeedResponse, error) {
 	limit := int(req.Limit)
-	if limit <= 0 { limit = 20 }
+	if limit <= 0 {
+		limit = 20
+	}
 	moments, total, err := s.repo.GetMomentsFeed(ctx, req.UserId, limit, int(req.Offset))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "get feed: %v", err)
 	}
+
+	momentIDs := make([]string, len(moments))
+	for i, m := range moments {
+		momentIDs[i] = m.ID
+	}
+
+	commentsMap, err := s.repo.GetCommentsForMoments(ctx, momentIDs)
+	if err != nil {
+		s.log.Error("failed to get comments for moments", zap.Error(err))
+	}
+
 	var pbMoments []*pb.Moment
 	for _, m := range moments {
+		var pbComments []*pb.MomentComment
+		if dbComments, exists := commentsMap[m.ID]; exists {
+			for _, dbc := range dbComments {
+				pbComments = append(pbComments, &pb.MomentComment{
+					Id:        dbc.ID,
+					UserId:    dbc.UserID,
+					Content:   dbc.Content,
+					CreatedAt: dbc.CreatedAt.Unix(),
+				})
+			}
+		}
+
+		visibility := m.Visibility
+		if m.HasLiked {
+			visibility = visibility + "_LIKED"
+		}
+
 		pbMoments = append(pbMoments, &pb.Moment{
 			Id: m.ID, UserId: m.UserID, Content: m.Content, MediaUrl: m.MediaURL,
-			MediaType: m.MediaType, Visibility: m.Visibility,
+			MediaType: m.MediaType, Visibility: visibility,
 			LikeCount: int32(m.LikeCount), CommentCount: int32(m.CommentCount),
-			CreatedAt: m.CreatedAt.Unix(),
+			CreatedAt: m.CreatedAt.Unix(), Comments: pbComments,
 		})
 	}
 	return &pb.GetMomentsFeedResponse{Moments: pbMoments, Total: int32(total)}, nil
@@ -113,9 +154,13 @@ func (s *SocialServer) SetNearbyVisible(ctx context.Context, req *pb.SetNearbyVi
 
 func (s *SocialServer) GetNearbyUsers(ctx context.Context, req *pb.GetNearbyUsersRequest) (*pb.GetNearbyUsersResponse, error) {
 	radius := int(req.RadiusKm)
-	if radius <= 0 { radius = 5 }
+	if radius <= 0 {
+		radius = 5
+	}
 	limit := int(req.Limit)
-	if limit <= 0 { limit = 20 }
+	if limit <= 0 {
+		limit = 20
+	}
 	users, err := s.repo.GetNearbyUsers(ctx, req.UserId, radius, limit)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "get nearby: %v", err)
@@ -137,7 +182,9 @@ func (s *SocialServer) GetUserBadges(ctx context.Context, req *pb.GetUserBadgesR
 
 func (s *SocialServer) CreateAudioRoom(ctx context.Context, req *pb.CreateAudioRoomRequest) (*pb.CreateAudioRoomResponse, error) {
 	maxSpeakers := int(req.MaxSpeakers)
-	if maxSpeakers <= 0 { maxSpeakers = 10 }
+	if maxSpeakers <= 0 {
+		maxSpeakers = 10
+	}
 	rm, err := s.repo.CreateAudioRoom(ctx, req.UserId, req.Title, maxSpeakers)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "create audio room: %v", err)
@@ -165,7 +212,9 @@ func (s *SocialServer) LeaveAudioRoom(ctx context.Context, req *pb.LeaveAudioRoo
 
 func (s *SocialServer) ListAudioRooms(ctx context.Context, req *pb.ListAudioRoomsRequest) (*pb.ListAudioRoomsResponse, error) {
 	limit := int(req.Limit)
-	if limit <= 0 { limit = 20 }
+	if limit <= 0 {
+		limit = 20
+	}
 	rooms, total, err := s.repo.ListAudioRooms(ctx, limit, int(req.Offset))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list rooms: %v", err)

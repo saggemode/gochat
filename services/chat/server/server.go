@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"time"
 
-
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -23,27 +22,42 @@ import (
 type ChatServer struct {
 	chatpb.UnimplementedChatServiceServer
 
-	convRepo *repository.ConversationRepository
-	msgRepo  *repository.MessageRepository
-	redis    *redis.Client
-	authz    *authz.Client
-	log      *zap.Logger
+	convRepo      *repository.ConversationRepository
+	msgRepo       *repository.MessageRepository
+	folderRepo    *repository.FolderRepository
+	labelRepo     *repository.LabelRepository
+	analyticsRepo *repository.AnalyticsRepository
+	notifRepo     *repository.NotificationProfileRepository
+	pollRepo      *repository.PollRepository
+	redis         *redis.Client
+	authz         *authz.Client
+	log           *zap.Logger
 }
 
 // New creates a ChatServer.
 func New(
 	convRepo *repository.ConversationRepository,
 	msgRepo *repository.MessageRepository,
+	folderRepo *repository.FolderRepository,
+	labelRepo *repository.LabelRepository,
+	analyticsRepo *repository.AnalyticsRepository,
+	notifRepo *repository.NotificationProfileRepository,
+	pollRepo *repository.PollRepository,
 	redisClient *redis.Client,
 	authzClient *authz.Client,
 	log *zap.Logger,
 ) *ChatServer {
 	return &ChatServer{
-		convRepo: convRepo,
-		msgRepo:  msgRepo,
-		redis:    redisClient,
-		authz:    authzClient,
-		log:      log,
+		convRepo:      convRepo,
+		msgRepo:       msgRepo,
+		folderRepo:    folderRepo,
+		labelRepo:     labelRepo,
+		analyticsRepo: analyticsRepo,
+		notifRepo:     notifRepo,
+		pollRepo:      pollRepo,
+		redis:         redisClient,
+		authz:         authzClient,
+		log:           log,
 	}
 }
 
@@ -82,6 +96,9 @@ func (s *ChatServer) CreateConversation(ctx context.Context, req *chatpb.CreateC
 		return nil, status.Error(codes.Internal, "failed to create conversation")
 	}
 
+	// Notify all conversation members via Redis pub/sub
+	s.publishConvCreatedEvent(ctx, conv.ID.String(), req.CreatorId)
+
 	return &chatpb.CreateConversationResponse{
 		Conversation: convToProto(conv, nil, 0),
 	}, nil
@@ -109,7 +126,11 @@ func (s *ChatServer) GetConversations(ctx context.Context, req *chatpb.GetConver
 
 	protoConvs := make([]*chatpb.Conversation, len(convs))
 	for i, c := range convs {
-		protoConvs[i] = convToProto(c, nil, 0)
+		var lastMsgProto *chatpb.Message
+		if lastMsg, err := s.msgRepo.GetLastMessage(ctx, c.ID); err == nil && lastMsg != nil {
+			lastMsgProto = msgToProto(lastMsg)
+		}
+		protoConvs[i] = convToProto(c, lastMsgProto, 0)
 	}
 
 	return &chatpb.GetConversationsResponse{
@@ -180,7 +201,7 @@ func (s *ChatServer) SendMessage(ctx context.Context, req *chatpb.SendMessageReq
 		ConversationID: convID,
 		SenderID:       senderID,
 		Content:        req.Content,
-		Type:           repository.MessageType(req.Type.String()),
+		Type:           protoToMessageType(req.Type),
 		Status:         repository.MessageStatusSent,
 		MediaURL:       req.MediaUrl,
 		MediaMime:      req.MediaMime,
@@ -197,6 +218,13 @@ func (s *ChatServer) SendMessage(ctx context.Context, req *chatpb.SendMessageReq
 	if req.ExpiresAt > 0 {
 		t := time.Unix(req.ExpiresAt, 0)
 		msg.ExpiresAt = &t
+	}
+
+	for _, mid := range req.MentionedUserIds {
+		uid, err := uuid.Parse(mid)
+		if err == nil {
+			msg.MentionedUserIDs = append(msg.MentionedUserIDs, uid)
+		}
 	}
 
 	saved, err := s.msgRepo.Create(ctx, msg)
@@ -346,6 +374,12 @@ func (s *ChatServer) EditMessage(ctx context.Context, req *chatpb.EditMessageReq
 		return nil, status.Error(codes.PermissionDenied, "unauthorized: "+reason)
 	}
 
+	// Enforce 15-minute edit window (aligning with WhatsApp & common messaging platforms)
+	const maxEditWindow = 15 * time.Minute
+	if time.Since(msg.CreatedAt) > maxEditWindow {
+		return nil, status.Errorf(codes.FailedPrecondition, "messages can only be edited within %d minutes of sending", int(maxEditWindow.Minutes()))
+	}
+
 	updatedMsg, history, err := s.msgRepo.Edit(ctx, msgID, editorID, req.Content)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to edit message")
@@ -398,13 +432,62 @@ func (s *ChatServer) DeleteMessage(ctx context.Context, req *chatpb.DeleteMessag
 	return &chatpb.DeleteMessageResponse{Success: true}, nil
 }
 
+func (s *ChatServer) ForwardMessage(ctx context.Context, req *chatpb.ForwardMessageRequest) (*chatpb.ForwardMessageResponse, error) {
+	originalMsgID, err := uuid.Parse(req.MessageId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid message_id")
+	}
+	senderID, err := uuid.Parse(req.SenderId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid sender_id")
+	}
+	targetConvID, err := uuid.Parse(req.TargetConversationId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid target_conversation_id")
+	}
+
+	original, err := s.msgRepo.GetByID(ctx, originalMsgID)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "original message not found")
+	}
+	if original.IsDeleted {
+		return nil, status.Error(codes.FailedPrecondition, "cannot forward a deleted message")
+	}
+
+	isMember, err := s.convRepo.IsMember(ctx, targetConvID, senderID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "membership check failed")
+	}
+	if !isMember {
+		return nil, status.Error(codes.PermissionDenied, "you are not a member of the target conversation")
+	}
+
+	forwarded, err := s.msgRepo.Forward(ctx, original, targetConvID, senderID)
+	if err != nil {
+		s.log.Error("forward message", zap.Error(err))
+		return nil, status.Error(codes.Internal, "failed to forward message")
+	}
+
+	if req.Content != "" {
+		forwarded.Content = req.Content
+	}
+
+	s.publishEvent(ctx, "new_message", forwarded.ID.String(), targetConvID.String(), senderID.String())
+
+	return &chatpb.ForwardMessageResponse{Message: msgToProto(forwarded)}, nil
+}
+
 func (s *ChatServer) AddReaction(ctx context.Context, req *chatpb.AddReactionRequest) (*chatpb.AddReactionResponse, error) {
-	msgID, _ := uuid.Parse(req.MessageId)
-	userID, _ := uuid.Parse(req.UserId)
+	msgID, err1 := uuid.Parse(req.MessageId)
+	userID, err2 := uuid.Parse(req.UserId)
+	if err1 != nil || err2 != nil || msgID == uuid.Nil || userID == uuid.Nil {
+		return &chatpb.AddReactionResponse{}, nil
+	}
 
 	rxn, err := s.msgRepo.AddReaction(ctx, msgID, userID, req.Emoji)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to add reaction")
+		s.log.Warn("add reaction ignored", zap.Error(err))
+		return &chatpb.AddReactionResponse{}, nil
 	}
 
 	msg, _ := s.msgRepo.GetByID(ctx, msgID)
@@ -497,7 +580,16 @@ func (s *ChatServer) SearchMessages(ctx context.Context, req *chatpb.SearchMessa
 		limit = 20
 	}
 
-	msgs, total, err := s.msgRepo.Search(ctx, userID, req.Query, req.ConversationId, limit, int(req.Offset))
+	filter := repository.SearchFilter{
+		UserID:         userID,
+		Query:          req.Query,
+		ConversationID: req.ConversationId,
+		Fuzzy:          true,
+		Limit:          limit,
+		Offset:         int(req.Offset),
+	}
+
+	msgs, total, err := s.msgRepo.SearchAdvanced(ctx, filter)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "search failed")
 	}
@@ -623,6 +715,8 @@ func (s *ChatServer) StreamMessages(req *chatpb.StreamMessagesRequest, stream ch
 			event.EventType = chatpb.EventType_EVENT_STORY_CREATED
 		case "story_deleted":
 			event.EventType = chatpb.EventType_EVENT_STORY_DELETED
+		case "conversation_created":
+			event.EventType = chatpb.EventType_EVENT_CONVERSATION_CREATED
 		default:
 			continue
 		}
@@ -662,6 +756,14 @@ func (s *ChatServer) StreamMessages(req *chatpb.StreamMessagesRequest, stream ch
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
+
+func (s *ChatServer) publishConvCreatedEvent(ctx context.Context, convID, actorID string) {
+	channel := "chat:" + convID
+	payload := `{"event":"conversation_created","conv_id":"` + convID + `","actor_id":"` + actorID + `"}`
+	if err := s.redis.Publish(ctx, channel, payload).Err(); err != nil {
+		s.log.Warn("redis publish failed", zap.Error(err), zap.String("channel", channel))
+	}
+}
 
 func (s *ChatServer) publishEvent(ctx context.Context, eventType, msgID, convID, actorID string) {
 	channel := "chat:" + convID
@@ -718,6 +820,18 @@ func msgToProto(m *repository.Message) *chatpb.Message {
 	if m.ExpiresAt != nil {
 		pb.ExpiresAt = m.ExpiresAt.Unix()
 	}
+	if m.ForwardedFromID != nil {
+		pb.ForwardedFromId = m.ForwardedFromID.String()
+	}
+	if m.ForwardedFromConv != nil {
+		pb.ForwardedFromConv = m.ForwardedFromConv.String()
+	}
+	if m.ForwardedFromSender != nil {
+		pb.ForwardedFromSender = m.ForwardedFromSender.String()
+	}
+	for _, uid := range m.MentionedUserIDs {
+		pb.MentionedUserIds = append(pb.MentionedUserIds, uid.String())
+	}
 
 	// Map type
 	switch m.Type {
@@ -765,4 +879,561 @@ func msgToProto(m *repository.Message) *chatpb.Message {
 	}
 
 	return pb
+}
+
+func protoToMessageType(t chatpb.MessageType) repository.MessageType {
+	switch t {
+	case chatpb.MessageType_IMAGE:
+		return repository.MessageTypeImage
+	case chatpb.MessageType_VIDEO:
+		return repository.MessageTypeVideo
+	case chatpb.MessageType_AUDIO:
+		return repository.MessageTypeAudio
+	case chatpb.MessageType_VOICE:
+		return repository.MessageTypeVoice
+	case chatpb.MessageType_FILE:
+		return repository.MessageTypeFile
+	default:
+		return repository.MessageTypeText
+	}
+}
+
+// ── Folders ───────────────────────────────────────────────────────────────────
+
+func (s *ChatServer) CreateFolder(ctx context.Context, req *chatpb.CreateFolderRequest) (*chatpb.CreateFolderResponse, error) {
+	if req.UserId == "" || req.Name == "" {
+		return nil, status.Error(codes.InvalidArgument, "user_id and name required")
+	}
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+	f, err := s.folderRepo.Create(ctx, uid, req.Name, req.Icon, req.Color, int(req.SortOrder))
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to create folder")
+	}
+	return &chatpb.CreateFolderResponse{Folder: folderToProto(f)}, nil
+}
+
+func (s *ChatServer) DeleteFolder(ctx context.Context, req *chatpb.DeleteFolderRequest) (*chatpb.DeleteFolderResponse, error) {
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+	folderID, err := uuid.Parse(req.FolderId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid folder_id")
+	}
+	if err := s.folderRepo.Delete(ctx, uid, folderID); err != nil {
+		if errors.Is(err, repository.ErrFolderNotFound) {
+			return nil, status.Error(codes.NotFound, "folder not found")
+		}
+		return nil, status.Error(codes.Internal, "failed to delete folder")
+	}
+	return &chatpb.DeleteFolderResponse{Success: true}, nil
+}
+
+func (s *ChatServer) ListFolders(ctx context.Context, req *chatpb.ListFoldersRequest) (*chatpb.ListFoldersResponse, error) {
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+	folders, err := s.folderRepo.ListByUser(ctx, uid)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to list folders")
+	}
+	out := make([]*chatpb.ChatFolder, len(folders))
+	for i, f := range folders {
+		out[i] = folderToProto(f)
+	}
+	return &chatpb.ListFoldersResponse{Folders: out}, nil
+}
+
+func (s *ChatServer) AddToFolder(ctx context.Context, req *chatpb.AddToFolderRequest) (*chatpb.AddToFolderResponse, error) {
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+	folderID, err := uuid.Parse(req.FolderId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid folder_id")
+	}
+	convID, err := uuid.Parse(req.ConversationId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid conversation_id")
+	}
+	if err := s.folderRepo.AddConversation(ctx, uid, folderID, convID); err != nil {
+		if errors.Is(err, repository.ErrFolderNotFound) {
+			return nil, status.Error(codes.NotFound, "folder not found")
+		}
+		return nil, status.Error(codes.Internal, "failed to add to folder")
+	}
+	return &chatpb.AddToFolderResponse{Success: true}, nil
+}
+
+func (s *ChatServer) RemoveFromFolder(ctx context.Context, req *chatpb.RemoveFromFolderRequest) (*chatpb.RemoveFromFolderResponse, error) {
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+	folderID, err := uuid.Parse(req.FolderId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid folder_id")
+	}
+	convID, err := uuid.Parse(req.ConversationId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid conversation_id")
+	}
+	if err := s.folderRepo.RemoveConversation(ctx, uid, folderID, convID); err != nil {
+		if errors.Is(err, repository.ErrFolderNotFound) {
+			return nil, status.Error(codes.NotFound, "folder not found")
+		}
+		return nil, status.Error(codes.Internal, "failed to remove from folder")
+	}
+	return &chatpb.RemoveFromFolderResponse{Success: true}, nil
+}
+
+// ── Labels ────────────────────────────────────────────────────────────────────
+
+func (s *ChatServer) AddLabel(ctx context.Context, req *chatpb.AddLabelRequest) (*chatpb.AddLabelResponse, error) {
+	if req.UserId == "" || req.MessageId == "" || req.Label == "" {
+		return nil, status.Error(codes.InvalidArgument, "user_id, message_id, and label are required")
+	}
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+	msgID, err := uuid.Parse(req.MessageId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid message_id")
+	}
+	color := req.Color
+	if color == "" {
+		color = "#f59e0b"
+	}
+	l, err := s.labelRepo.Add(ctx, uid, msgID, req.Label, color)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to add label")
+	}
+	return &chatpb.AddLabelResponse{ChatLabel: labelToProto(l)}, nil
+}
+
+func (s *ChatServer) RemoveLabel(ctx context.Context, req *chatpb.RemoveLabelRequest) (*chatpb.RemoveLabelResponse, error) {
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+	msgID, err := uuid.Parse(req.MessageId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid message_id")
+	}
+	if err := s.labelRepo.Remove(ctx, uid, msgID, req.Label); err != nil {
+		if errors.Is(err, repository.ErrLabelNotFound) {
+			return nil, status.Error(codes.NotFound, "label not found")
+		}
+		return nil, status.Error(codes.Internal, "failed to remove label")
+	}
+	return &chatpb.RemoveLabelResponse{Success: true}, nil
+}
+
+func (s *ChatServer) ListLabels(ctx context.Context, req *chatpb.ListLabelsRequest) (*chatpb.ListLabelsResponse, error) {
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+	labels, err := s.labelRepo.List(ctx, uid, req.Label)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to list labels")
+	}
+	out := make([]*chatpb.ChatLabel, len(labels))
+	for i, l := range labels {
+		out[i] = labelToProto(l)
+	}
+	return &chatpb.ListLabelsResponse{Labels: out}, nil
+}
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+
+func (s *ChatServer) GetChatAnalytics(ctx context.Context, req *chatpb.GetChatAnalyticsRequest) (*chatpb.GetChatAnalyticsResponse, error) {
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+	var convID *uuid.UUID
+	if req.ConversationId != "" {
+		cID, err := uuid.Parse(req.ConversationId)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, "invalid conversation_id")
+		}
+		convID = &cID
+	}
+
+	if convID != nil {
+		if err := s.analyticsRepo.Recompute(ctx, uid, *convID); err != nil {
+			return nil, status.Error(codes.Internal, "failed to recompute analytics")
+		}
+	}
+
+	rows, err := s.analyticsRepo.Get(ctx, uid, convID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to fetch analytics")
+	}
+	out := make([]*chatpb.ConversationAnalytics, len(rows))
+	for i, a := range rows {
+		out[i] = analyticsToProto(a)
+	}
+	return &chatpb.GetChatAnalyticsResponse{Analytics: out}, nil
+}
+
+// ── Notification Profiles ─────────────────────────────────────────────────────
+
+func (s *ChatServer) SetNotificationProfile(ctx context.Context, req *chatpb.SetNotificationProfileRequest) (*chatpb.SetNotificationProfileResponse, error) {
+	if req.UserId == "" || req.Profile == nil {
+		return nil, status.Error(codes.InvalidArgument, "user_id and profile required")
+	}
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+	convID, err := uuid.Parse(req.Profile.ConversationId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid conversation_id")
+	}
+
+	var muteUntil *time.Time
+	if req.Profile.MuteUntil > 0 {
+		t := time.Unix(req.Profile.MuteUntil, 0)
+		muteUntil = &t
+	}
+
+	p := &repository.NotificationProfile{
+		UserID:              uid,
+		ConversationID:      convID,
+		Muted:               req.Profile.Muted,
+		MuteUntil:           muteUntil,
+		Sound:               req.Profile.Sound,
+		Vibration:           req.Profile.Vibration,
+		Priority:            req.Profile.Priority,
+		ShowPreview:         req.Profile.ShowPreview,
+		NotifyOnMentionOnly: req.Profile.NotifyOnMentionOnly,
+	}
+	if err := s.notifRepo.Set(ctx, p); err != nil {
+		return nil, status.Error(codes.Internal, "failed to set notification profile")
+	}
+	return &chatpb.SetNotificationProfileResponse{Success: true}, nil
+}
+
+func (s *ChatServer) GetNotificationProfiles(ctx context.Context, req *chatpb.GetNotificationProfilesRequest) (*chatpb.GetNotificationProfilesResponse, error) {
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+	profiles, err := s.notifRepo.ListByUser(ctx, uid)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to list notification profiles")
+	}
+	out := make([]*chatpb.NotificationProfile, len(profiles))
+	for i, p := range profiles {
+		out[i] = notifToProto(p)
+	}
+	return &chatpb.GetNotificationProfilesResponse{Profiles: out}, nil
+}
+
+// ── Polls ─────────────────────────────────────────────────────────────────────
+
+func (s *ChatServer) CreatePoll(ctx context.Context, req *chatpb.CreatePollRequest) (*chatpb.CreatePollResponse, error) {
+	if req.ConversationId == "" || req.CreatedBy == "" || req.Question == "" {
+		return nil, status.Error(codes.InvalidArgument, "conversation_id, created_by, and question are required")
+	}
+	if len(req.Options) < 2 || len(req.Options) > 10 {
+		return nil, status.Error(codes.InvalidArgument, "a poll must have between 2 and 10 options")
+	}
+
+	convID, err := uuid.Parse(req.ConversationId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid conversation_id")
+	}
+	uid, err := uuid.Parse(req.CreatedBy)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid created_by")
+	}
+
+	isMember, err := s.convRepo.IsMember(ctx, convID, uid)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "membership check failed")
+	}
+	if !isMember {
+		return nil, status.Error(codes.PermissionDenied, "you are not a member of this conversation")
+	}
+
+	var expiresAt *time.Time
+	if req.ExpiresAt > 0 {
+		t := time.Unix(req.ExpiresAt, 0)
+		expiresAt = &t
+	}
+
+	p := &repository.Poll{
+		ConversationID: convID,
+		CreatedBy:      uid,
+		Question:       req.Question,
+		IsAnonymous:    req.IsAnonymous,
+		IsMultiple:     req.IsMultiple,
+		ExpiresAt:      expiresAt,
+	}
+
+	poll, err := s.pollRepo.Create(ctx, p, req.Options)
+	if err != nil {
+		if errors.Is(err, repository.ErrInvalidPollOption) {
+			return nil, status.Error(codes.InvalidArgument, "invalid poll options")
+		}
+		return nil, status.Error(codes.Internal, "failed to create poll")
+	}
+
+	s.publishEvent(ctx, "poll_created", poll.ID.String(), convID.String(), uid.String())
+
+	return &chatpb.CreatePollResponse{Poll: pollToProto(poll, nil, nil)}, nil
+}
+
+func (s *ChatServer) GetPoll(ctx context.Context, req *chatpb.GetPollRequest) (*chatpb.GetPollResponse, error) {
+	if req.PollId == "" || req.UserId == "" {
+		return nil, status.Error(codes.InvalidArgument, "poll_id and user_id are required")
+	}
+	pollID, err := uuid.Parse(req.PollId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid poll_id")
+	}
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+
+	poll, err := s.pollRepo.Get(ctx, pollID)
+	if err != nil {
+		if errors.Is(err, repository.ErrPollNotFound) {
+			return nil, status.Error(codes.NotFound, "poll not found")
+		}
+		return nil, status.Error(codes.Internal, "failed to fetch poll")
+	}
+
+	isMember, err := s.convRepo.IsMember(ctx, poll.ConversationID, uid)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "membership check failed")
+	}
+	if !isMember {
+		return nil, status.Error(codes.PermissionDenied, "you are not a member of this conversation")
+	}
+
+	options, err := s.pollRepo.ListOptions(ctx, pollID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to fetch poll options")
+	}
+
+	requesterUUID := uid
+	counts, err := s.pollRepo.GetVoteCounts(ctx, pollID, &requesterUUID, poll.IsAnonymous)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to fetch vote counts")
+	}
+
+	return &chatpb.GetPollResponse{Poll: pollToProto(poll, options, counts)}, nil
+}
+
+func (s *ChatServer) VotePoll(ctx context.Context, req *chatpb.VotePollRequest) (*chatpb.VotePollResponse, error) {
+	if req.PollId == "" || req.UserId == "" || len(req.OptionIds) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "poll_id, user_id, and at least one option_id are required")
+	}
+	pollID, err := uuid.Parse(req.PollId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid poll_id")
+	}
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+
+	optionIDs := make([]uuid.UUID, 0, len(req.OptionIds))
+	for _, idStr := range req.OptionIds {
+		oid, err := uuid.Parse(idStr)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "invalid option_id: %s", idStr)
+		}
+		optionIDs = append(optionIDs, oid)
+	}
+
+	poll, err := s.pollRepo.Get(ctx, pollID)
+	if err != nil {
+		if errors.Is(err, repository.ErrPollNotFound) {
+			return nil, status.Error(codes.NotFound, "poll not found")
+		}
+		return nil, status.Error(codes.Internal, "failed to fetch poll")
+	}
+
+	isMember, err := s.convRepo.IsMember(ctx, poll.ConversationID, uid)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "membership check failed")
+	}
+	if !isMember {
+		return nil, status.Error(codes.PermissionDenied, "you are not a member of this conversation")
+	}
+
+	if poll.IsClosed {
+		return nil, status.Error(codes.FailedPrecondition, "poll is closed")
+	}
+
+	if !poll.IsMultiple && len(optionIDs) > 1 {
+		return nil, status.Error(codes.InvalidArgument, "single-choice poll accepts only one option")
+	}
+
+	if err := s.pollRepo.Vote(ctx, pollID, uid, optionIDs, poll.IsMultiple); err != nil {
+		switch {
+		case errors.Is(err, repository.ErrPollClosed):
+			return nil, status.Error(codes.FailedPrecondition, "poll is closed")
+		case errors.Is(err, repository.ErrInvalidPollOption):
+			return nil, status.Error(codes.InvalidArgument, "invalid poll option")
+		default:
+			return nil, status.Error(codes.Internal, "failed to record vote")
+		}
+	}
+
+	s.publishEvent(ctx, "poll_voted", pollID.String(), poll.ConversationID.String(), uid.String())
+
+	options, err := s.pollRepo.ListOptions(ctx, pollID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to refetch options")
+	}
+	counts, err := s.pollRepo.GetVoteCounts(ctx, pollID, &uid, poll.IsAnonymous)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to refetch counts")
+	}
+	poll, _ = s.pollRepo.Get(ctx, pollID)
+	return &chatpb.VotePollResponse{Poll: pollToProto(poll, options, counts)}, nil
+}
+
+func (s *ChatServer) ClosePoll(ctx context.Context, req *chatpb.ClosePollRequest) (*chatpb.ClosePollResponse, error) {
+	if req.PollId == "" || req.UserId == "" {
+		return nil, status.Error(codes.InvalidArgument, "poll_id and user_id are required")
+	}
+	pollID, err := uuid.Parse(req.PollId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid poll_id")
+	}
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+
+	if err := s.pollRepo.Close(ctx, pollID, uid); err != nil {
+		switch {
+		case errors.Is(err, repository.ErrPollNotFound):
+			return nil, status.Error(codes.NotFound, "poll not found")
+		case errors.Is(err, repository.ErrNotPollCreator):
+			return nil, status.Error(codes.PermissionDenied, "only the poll creator can close it")
+		default:
+			return nil, status.Error(codes.Internal, "failed to close poll")
+		}
+	}
+
+	poll, _ := s.pollRepo.Get(ctx, pollID)
+	options, _ := s.pollRepo.ListOptions(ctx, pollID)
+	counts, _ := s.pollRepo.GetVoteCounts(ctx, pollID, &uid, poll.IsAnonymous)
+	s.publishEvent(ctx, "poll_closed", pollID.String(), poll.ConversationID.String(), uid.String())
+	return &chatpb.ClosePollResponse{Poll: pollToProto(poll, options, counts)}, nil
+}
+
+// ── Mappers ───────────────────────────────────────────────────────────────────
+
+func folderToProto(f *repository.Folder) *chatpb.ChatFolder {
+	items := make([]string, len(f.Items))
+	for i, id := range f.Items {
+		items[i] = id.String()
+	}
+	return &chatpb.ChatFolder{
+		Id:              f.ID.String(),
+		Name:            f.Name,
+		Icon:            f.Icon,
+		Color:           f.Color,
+		SortOrder:       int32(f.SortOrder),
+		ConversationIds: items,
+	}
+}
+
+func labelToProto(l *repository.Label) *chatpb.ChatLabel {
+	return &chatpb.ChatLabel{
+		Id:        l.ID.String(),
+		MessageId: l.MessageID.String(),
+		Label:     l.Label,
+		Color:     l.Color,
+		CreatedAt: l.CreatedAt.Unix(),
+	}
+}
+
+func analyticsToProto(a *repository.ConversationAnalytics) *chatpb.ConversationAnalytics {
+	var lastActive int64
+	if a.LastActiveAt != nil {
+		lastActive = a.LastActiveAt.Unix()
+	}
+	return &chatpb.ConversationAnalytics{
+		ConversationId: a.ConversationID.String(),
+		TotalMessages:  int32(a.TotalMessages),
+		AvgResponseMs:  a.AvgResponseMs,
+		LastActiveAt:   lastActive,
+		BusiestHour:    int32(a.BusiestHour),
+	}
+}
+
+func notifToProto(p *repository.NotificationProfile) *chatpb.NotificationProfile {
+	var muteUntil int64
+	if p.MuteUntil != nil {
+		muteUntil = p.MuteUntil.Unix()
+	}
+	return &chatpb.NotificationProfile{
+		ConversationId:      p.ConversationID.String(),
+		Muted:               p.Muted,
+		MuteUntil:           muteUntil,
+		Sound:               p.Sound,
+		Vibration:           p.Vibration,
+		Priority:            p.Priority,
+		ShowPreview:         p.ShowPreview,
+		NotifyOnMentionOnly: p.NotifyOnMentionOnly,
+	}
+}
+
+func pollToProto(p *repository.Poll, options []*repository.PollOption, counts map[uuid.UUID]*repository.PollVoteCount) *chatpb.Poll {
+	var expiresAt int64
+	if p.ExpiresAt != nil {
+		expiresAt = p.ExpiresAt.Unix()
+	}
+
+	protoOptions := make([]*chatpb.PollOption, 0)
+	if options != nil {
+		for _, opt := range options {
+			pmc := counts[opt.ID]
+			co := &chatpb.PollOption{
+				Id:        opt.ID.String(),
+				Text:      opt.Text,
+				SortOrder: int32(opt.SortOrder),
+			}
+			if pmc != nil {
+				co.VoteCount = int32(pmc.Count)
+				voters := make([]string, len(pmc.VoterIDs))
+				for i, vid := range pmc.VoterIDs {
+					voters[i] = vid.String()
+				}
+				co.VoterUserIds = voters
+			}
+			protoOptions = append(protoOptions, co)
+		}
+	}
+
+	return &chatpb.Poll{
+		Id:             p.ID.String(),
+		ConversationId: p.ConversationID.String(),
+		CreatedBy:      p.CreatedBy.String(),
+		Question:       p.Question,
+		IsAnonymous:    p.IsAnonymous,
+		IsMultiple:     p.IsMultiple,
+		IsClosed:       p.IsClosed,
+		ExpiresAt:      expiresAt,
+		CreatedAt:      p.CreatedAt.Unix(),
+		Options:        protoOptions,
+	}
 }

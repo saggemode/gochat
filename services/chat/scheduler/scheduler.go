@@ -14,10 +14,10 @@ import (
 // Scheduler polls for due scheduled messages and expired (self-destruct) messages,
 // fires them, and publishes events to Redis pub/sub for the gateway to fan-out.
 type Scheduler struct {
-	msgRepo  *repository.MessageRepository
-	redis    *redis.Client
-	cron     *cron.Cron
-	log      *zap.Logger
+	msgRepo *repository.MessageRepository
+	redis   *redis.Client
+	cron    *cron.Cron
+	log     *zap.Logger
 }
 
 // New creates a Scheduler.

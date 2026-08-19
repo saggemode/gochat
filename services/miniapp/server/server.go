@@ -45,7 +45,9 @@ func (s *MiniAppServer) RegisterBot(ctx context.Context, req *pb.RegisterBotRequ
 
 func (s *MiniAppServer) ListBots(ctx context.Context, req *pb.ListBotsRequest) (*pb.ListBotsResponse, error) {
 	limit := int(req.Limit)
-	if limit <= 0 { limit = 20 }
+	if limit <= 0 {
+		limit = 20
+	}
 	bots, total, err := s.repo.ListBots(ctx, limit, int(req.Offset))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list bots: %v", err)
@@ -88,7 +90,9 @@ func (s *MiniAppServer) LaunchMiniApp(ctx context.Context, req *pb.LaunchMiniApp
 
 func (s *MiniAppServer) ListMiniApps(ctx context.Context, req *pb.ListMiniAppsRequest) (*pb.ListMiniAppsResponse, error) {
 	limit := int(req.Limit)
-	if limit <= 0 { limit = 20 }
+	if limit <= 0 {
+		limit = 20
+	}
 	apps, total, err := s.repo.ListMiniApps(ctx, limit, int(req.Offset), req.Category)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list miniapps: %v", err)

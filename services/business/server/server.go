@@ -3,8 +3,9 @@ package server
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	pb "gochat/gen/business"
 	"gochat/services/business/repository"
@@ -21,7 +22,8 @@ type BusinessServer struct {
 }
 
 func NewBusinessServer(db *pgxpool.Pool, log *zap.Logger) *BusinessServer {
-	return &BusinessServer{repo: repository.NewBusinessRepository(db), log: log}
+	notificationService := repository.NewNotificationService(db, log)
+	return &BusinessServer{repo: repository.NewBusinessRepository(db, notificationService, log), log: log}
 }
 
 func (s *BusinessServer) CreateBusinessProfile(ctx context.Context, req *pb.CreateBusinessProfileRequest) (*pb.CreateBusinessProfileResponse, error) {
@@ -29,6 +31,7 @@ func (s *BusinessServer) CreateBusinessProfile(ctx context.Context, req *pb.Crea
 		UserID: req.UserId, BusinessName: req.BusinessName, Category: req.Category,
 		Description: req.Description, Address: req.Address, Website: req.Website,
 		Email: req.Email, Phone: req.Phone, HoursJSON: req.HoursJson,
+		// LogoURL: req.LogoUrl, BannerURL: req.BannerUrl, State: req.State, CountryCode: req.CountryCode,
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "create profile: %v", err)
@@ -37,10 +40,11 @@ func (s *BusinessServer) CreateBusinessProfile(ctx context.Context, req *pb.Crea
 }
 
 func (s *BusinessServer) UpdateBusinessProfile(ctx context.Context, req *pb.UpdateBusinessProfileRequest) (*pb.UpdateBusinessProfileResponse, error) {
-	p, err := s.repo.CreateBusinessProfile(ctx, &repository.BusinessProfile{
+	p, err := s.repo.UpdateBusinessProfile(ctx, &repository.BusinessProfile{
 		UserID: req.UserId, BusinessName: req.BusinessName, Category: req.Category,
 		Description: req.Description, Address: req.Address, Website: req.Website,
 		Email: req.Email, Phone: req.Phone, HoursJSON: req.HoursJson,
+		// LogoURL: req.LogoUrl, BannerURL: req.BannerUrl, State: req.State, CountryCode: req.CountryCode,
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "update profile: %v", err)
@@ -81,7 +85,9 @@ func (s *BusinessServer) UpdateProduct(ctx context.Context, req *pb.UpdateProduc
 
 func (s *BusinessServer) ListProducts(ctx context.Context, req *pb.ListProductsRequest) (*pb.ListProductsResponse, error) {
 	limit := int(req.Limit)
-	if limit <= 0 { limit = 20 }
+	if limit <= 0 {
+		limit = 20
+	}
 	products, total, err := s.repo.ListProducts(ctx, req.CatalogId, limit, int(req.Offset))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list products: %v", err)
@@ -97,7 +103,9 @@ func (s *BusinessServer) CreateAppointmentSlot(ctx context.Context, req *pb.Crea
 	start := time.Unix(req.StartTime, 0)
 	end := time.Unix(req.EndTime, 0)
 	maxBookings := int(req.MaxBookings)
-	if maxBookings <= 0 { maxBookings = 1 }
+	if maxBookings <= 0 {
+		maxBookings = 1
+	}
 	a, err := s.repo.CreateAppointmentSlot(ctx, req.BusinessId, req.Title, req.Description, start, end, maxBookings)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "create appointment: %v", err)
@@ -114,7 +122,9 @@ func (s *BusinessServer) BookAppointment(ctx context.Context, req *pb.BookAppoin
 
 func (s *BusinessServer) ListAppointments(ctx context.Context, req *pb.ListAppointmentsRequest) (*pb.ListAppointmentsResponse, error) {
 	limit := int(req.Limit)
-	if limit <= 0 { limit = 20 }
+	if limit <= 0 {
+		limit = 20
+	}
 	appts, total, err := s.repo.ListAppointments(ctx, req.BusinessId, limit, int(req.Offset))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list appointments: %v", err)
@@ -127,7 +137,7 @@ func (s *BusinessServer) ListAppointments(ctx context.Context, req *pb.ListAppoi
 }
 
 func (s *BusinessServer) SetAutoReply(ctx context.Context, req *pb.SetAutoReplyRequest) (*pb.SetAutoReplyResponse, error) {
-	rule, err := s.repo.SetAutoReply(ctx, req.UserId, req.TriggerType, req.TriggerValue, req.ReplyText)
+	rule, err := s.repo.SetAutoReply(ctx, req.UserId, req.TriggerType, req.TriggerValue, req.ReplyText, "always", "UTC", []int32{1, 2, 3, 4, 5}, "09:00", "17:00")
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "set auto reply: %v", err)
 	}
@@ -171,6 +181,7 @@ func profileToPB(p *repository.BusinessProfile) *pb.BusinessProfile {
 		UserId: p.UserID, BusinessName: p.BusinessName, Category: p.Category,
 		Description: p.Description, Address: p.Address, Website: p.Website,
 		Email: p.Email, Phone: p.Phone, HoursJson: p.HoursJSON, IsVerified: p.IsVerified,
+		// LogoUrl: p.LogoURL, BannerUrl: p.BannerURL, State: p.State, CountryCode: p.CountryCode, Slug: p.Slug,
 	}
 }
 

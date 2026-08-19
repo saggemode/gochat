@@ -25,6 +25,7 @@ const (
 	AuthService_ValidateToken_FullMethodName    = "/auth.AuthService/ValidateToken"
 	AuthService_GetUser_FullMethodName          = "/auth.AuthService/GetUser"
 	AuthService_UpdateUser_FullMethodName       = "/auth.AuthService/UpdateUser"
+	AuthService_DeleteUser_FullMethodName       = "/auth.AuthService/DeleteUser"
 	AuthService_Logout_FullMethodName           = "/auth.AuthService/Logout"
 	AuthService_GetUsers_FullMethodName         = "/auth.AuthService/GetUsers"
 	AuthService_SetPresence_FullMethodName      = "/auth.AuthService/SetPresence"
@@ -54,8 +55,10 @@ type AuthServiceClient interface {
 	ValidateToken(ctx context.Context, in *ValidateTokenRequest, opts ...grpc.CallOption) (*ValidateTokenResponse, error)
 	// Fetch a user by ID
 	GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*GetUserResponse, error)
-	// Update user profile (display name, avatar, status)
+	// Update user profile (display name, avatar, status, email, phone)
 	UpdateUser(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*UpdateUserResponse, error)
+	// Delete the currently authenticated user account
+	DeleteUser(ctx context.Context, in *DeleteUserRequest, opts ...grpc.CallOption) (*DeleteUserResponse, error)
 	// Revoke a refresh token (logout)
 	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
 	// Batch-fetch users by IDs (for populating conversation member info)
@@ -141,6 +144,16 @@ func (c *authServiceClient) UpdateUser(ctx context.Context, in *UpdateUserReques
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(UpdateUserResponse)
 	err := c.cc.Invoke(ctx, AuthService_UpdateUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) DeleteUser(ctx context.Context, in *DeleteUserRequest, opts ...grpc.CallOption) (*DeleteUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteUserResponse)
+	err := c.cc.Invoke(ctx, AuthService_DeleteUser_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -291,8 +304,10 @@ type AuthServiceServer interface {
 	ValidateToken(context.Context, *ValidateTokenRequest) (*ValidateTokenResponse, error)
 	// Fetch a user by ID
 	GetUser(context.Context, *GetUserRequest) (*GetUserResponse, error)
-	// Update user profile (display name, avatar, status)
+	// Update user profile (display name, avatar, status, email, phone)
 	UpdateUser(context.Context, *UpdateUserRequest) (*UpdateUserResponse, error)
+	// Delete the currently authenticated user account
+	DeleteUser(context.Context, *DeleteUserRequest) (*DeleteUserResponse, error)
 	// Revoke a refresh token (logout)
 	Logout(context.Context, *LogoutRequest) (*LogoutResponse, error)
 	// Batch-fetch users by IDs (for populating conversation member info)
@@ -341,6 +356,9 @@ func (UnimplementedAuthServiceServer) GetUser(context.Context, *GetUserRequest) 
 }
 func (UnimplementedAuthServiceServer) UpdateUser(context.Context, *UpdateUserRequest) (*UpdateUserResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateUser not implemented")
+}
+func (UnimplementedAuthServiceServer) DeleteUser(context.Context, *DeleteUserRequest) (*DeleteUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteUser not implemented")
 }
 func (UnimplementedAuthServiceServer) Logout(context.Context, *LogoutRequest) (*LogoutResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Logout not implemented")
@@ -506,6 +524,24 @@ func _AuthService_UpdateUser_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AuthServiceServer).UpdateUser(ctx, req.(*UpdateUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_DeleteUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).DeleteUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_DeleteUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).DeleteUser(ctx, req.(*DeleteUserRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -774,6 +810,10 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateUser",
 			Handler:    _AuthService_UpdateUser_Handler,
+		},
+		{
+			MethodName: "DeleteUser",
+			Handler:    _AuthService_DeleteUser_Handler,
 		},
 		{
 			MethodName: "Logout",

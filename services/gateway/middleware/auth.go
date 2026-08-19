@@ -29,6 +29,13 @@ func AuthMiddleware(authClient authpb.AuthServiceClient) gin.HandlerFunc {
 			token = c.Query("token")
 		}
 
+		// Fallback to HttpOnly cookie (browser clients)
+		if token == "" {
+			if cookieToken, err := c.Cookie("gochat_access_token"); err == nil && cookieToken != "" {
+				token = cookieToken
+			}
+		}
+
 		if token == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization token required"})
 			c.Abort()
