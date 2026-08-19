@@ -5,7 +5,6 @@ import '../models/user.dart';
 class StorageService {
   static const String _keyToken = 'auth_token';
   static const String _keyUser = 'current_user';
-  static const String _keyDarkMode = 'dark_mode';
 
   static Future<void> saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
