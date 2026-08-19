@@ -18,8 +18,7 @@ RUN protoc \
     --go-grpc_out=. --go-grpc_opt=module=gochat \
     proto/*.proto
 
-ARG SERVICE
-RUN test -n "${SERVICE}"
+ARG SERVICE=gateway
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/service ./services/${SERVICE}
