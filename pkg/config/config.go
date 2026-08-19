@@ -83,7 +83,7 @@ func Load() *Config {
 		PostgresDSN: getEnv("POSTGRES_DSN",
 			"postgres://gochat:gochat_secret@localhost:5432/gochat?sslmode=disable"),
 
-		RedisAddr:     getEnv("REDIS_ADDR", "localhost:6379"),
+		RedisAddr:     getEnv("REDIS_URL", getEnv("REDIS_ADDR", "localhost:6379")),
 		RedisPassword: getEnv("REDIS_PASSWORD", "redis_secret"),
 		RedisDB:       getEnvInt("REDIS_DB", 0),
 
@@ -106,7 +106,7 @@ func Load() *Config {
 		BusinessGRPCAddr: getEnv("BUSINESS_GRPC_ADDR", "localhost:50063"),
 
 		GRPCPort:   getEnv("GRPC_PORT", "50051"),
-		HTTPPort:   getEnv("HTTP_PORT", "8080"),
+		HTTPPort:   getEnv("PORT", getEnv("HTTP_PORT", "8080")),
 		HealthPort: getEnv("HEALTH_PORT", "9090"),
 
 		MinIOEndpoint:  getEnv("MINIO_ENDPOINT", "localhost:9000"),
