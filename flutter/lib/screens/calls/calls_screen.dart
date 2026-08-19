@@ -135,6 +135,7 @@ class CallsScreen extends StatelessWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'calls_fab',
         backgroundColor: AppTheme.primary,
         onPressed: () {
           ScaffoldMessenger.of(context).showSnackBar(

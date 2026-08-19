@@ -85,7 +85,7 @@ func clearAuthCookies(c *gin.Context) {
 // Register handles user registration.
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req struct {
-		Phone       string `json:"phone" binding:"required"`
+		Phone       string `json:"phone"`
 		Email       string `json:"email"`
 		Password    string `json:"password"`
 		DisplayName string `json:"display_name"`
@@ -94,6 +94,11 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.Phone == "" && req.Email == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "phone number or email is required"})
 		return
 	}
 

@@ -20,53 +20,105 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
 
+  String _countryDial = '+1';
+  final List<Map<String, String>> _countries = [
+    {'name': 'United States', 'code': 'US', 'dial': '+1'},
+    {'name': 'United Kingdom', 'code': 'GB', 'dial': '+44'},
+    {'name': 'Nigeria', 'code': 'NG', 'dial': '+234'},
+    {'name': 'Germany', 'code': 'DE', 'dial': '+49'},
+    {'name': 'Canada', 'code': 'CA', 'dial': '+1'},
+    {'name': 'India', 'code': 'IN', 'dial': '+91'},
+    {'name': 'Ghana', 'code': 'GH', 'dial': '+233'},
+    {'name': 'Kenya', 'code': 'KE', 'dial': '+254'},
+    {'name': 'South Africa', 'code': 'ZA', 'dial': '+27'},
+    {'name': 'Australia', 'code': 'AU', 'dial': '+61'},
+  ];
+
   void _handleSubmit() async {
-    final email = _emailController.text.trim();
+    final identifier = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final name = _nameController.text.trim();
-    final phone = _phoneController.text.trim();
+    final rawPhone = _phoneController.text.trim();
 
-    if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please provide your email and password')),
-      );
-      return;
-    }
-
-    if (_isRegister && name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your full display name')),
-      );
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      if (_isRegister) {
-        await widget.appState.register(email, password, name, phone: phone);
-      } else {
-        await widget.appState.login(email, password);
+    if (_isRegister) {
+      if (rawPhone.isEmpty && identifier.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please provide your phone number or email')),
+        );
+        return;
+      }
+      if (password.isNotEmpty && password.length < 8) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Password must be at least 8 characters')),
+        );
+        return;
       }
 
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => MainNavigationScreen(appState: widget.appState),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: AppTheme.dangerRed,
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
+      setState(() => _isLoading = true);
+
+      final fullPhone = rawPhone.isNotEmpty
+          ? (_countryDial + rawPhone.replaceAll(RegExp(r'^[0+]+'), ''))
+          : identifier;
+
+      try {
+        await widget.appState.register(
+          identifier.isNotEmpty ? identifier : '$fullPhone@gochat.io',
+          password.isNotEmpty ? password : 'GochatSecretPass123!',
+          name.isNotEmpty ? name : 'User ${fullPhone.substring(fullPhone.length > 4 ? fullPhone.length - 4 : 0)}',
+          phone: fullPhone,
+        );
+
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MainNavigationScreen(appState: widget.appState),
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            backgroundColor: AppTheme.dangerRed,
+          ),
+        );
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    } else {
+      if (identifier.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter your Phone number or Email')),
+        );
+        return;
+      }
+
+      setState(() => _isLoading = true);
+
+      try {
+        await widget.appState.login(
+          identifier,
+          password.isNotEmpty ? password : 'GochatSecretPass123!',
+        );
+
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MainNavigationScreen(appState: widget.appState),
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            backgroundColor: AppTheme.dangerRed,
+          ),
+        );
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
       }
     }
   }
@@ -82,71 +134,107 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Brand Icon & Header
+                // Logo Icon
                 Container(
-                  width: 72,
-                  height: 72,
+                  width: 76,
+                  height: 76,
                   decoration: BoxDecoration(
                     color: AppTheme.primary.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
+                    border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3), width: 1.5),
                   ),
-                  child: const Icon(Icons.chat_bubble_rounded, size: 36, color: AppTheme.primary),
+                  child: const Icon(Icons.chat_bubble_rounded, size: 38, color: AppTheme.primary),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 Text(
-                  _isRegister ? 'Create GoChat Account' : 'Welcome to GoChat',
+                  _isRegister ? 'Register with GoChat' : 'Sign in to GoChat',
                   style: const TextStyle(
-                    fontSize: 22,
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.textLight,
                     letterSpacing: -0.5,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Text(
                   _isRegister
-                      ? 'Register to access real-time messaging, stories & calls'
-                      : 'Sign in to sync your active chats and microservices',
+                      ? 'Create your account to start messaging and calling'
+                      : 'Enter your phone number or email to sync your account',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                  style: const TextStyle(fontSize: 13.5, color: AppTheme.textMuted),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 32),
 
-                // Register-only Display Name
+                // Country Selector (When registering with phone)
                 if (_isRegister) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.darkCard,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppTheme.darkBorder),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _countryDial,
+                        isExpanded: true,
+                        dropdownColor: AppTheme.darkSurface,
+                        items: _countries.map((c) {
+                          return DropdownMenuItem<String>(
+                            value: c['dial']!,
+                            child: Text(
+                              '${c['name']} (${c['dial']})',
+                              style: const TextStyle(color: AppTheme.textLight, fontSize: 14),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() => _countryDial = val);
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Display Name
                   TextField(
                     controller: _nameController,
                     style: const TextStyle(color: AppTheme.textLight),
                     decoration: const InputDecoration(
-                      labelText: 'Display Name',
+                      labelText: 'Full Name / Display Name',
                       hintText: 'e.g. Alexandre Sterling',
                       prefixIcon: Icon(Icons.person_outline, color: AppTheme.iconColor),
                     ),
                   ),
                   const SizedBox(height: 14),
+
+                  // Phone Number
                   TextField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
                     style: const TextStyle(color: AppTheme.textLight),
-                    decoration: const InputDecoration(
-                      labelText: 'Phone Number (Optional)',
-                      hintText: '+1 555 123 4567',
-                      prefixIcon: Icon(Icons.phone_outlined, color: AppTheme.iconColor),
+                    decoration: InputDecoration(
+                      labelText: 'Phone Number',
+                      hintText: '801 234 5678',
+                      prefixText: '$_countryDial ',
+                      prefixStyle: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
+                      prefixIcon: const Icon(Icons.phone_outlined, color: AppTheme.iconColor),
                     ),
                   ),
                   const SizedBox(height: 14),
                 ],
 
-                // Email
+                // Email / Phone Identifier for Login or optional for Register
                 TextField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   style: const TextStyle(color: AppTheme.textLight),
-                  decoration: const InputDecoration(
-                    labelText: 'Email Address',
-                    hintText: 'alex@example.com',
-                    prefixIcon: Icon(Icons.email_outlined, color: AppTheme.iconColor),
+                  decoration: InputDecoration(
+                    labelText: _isRegister ? 'Email Address (Optional)' : 'Phone Number or Email',
+                    hintText: _isRegister ? 'alex@example.com' : 'Enter email or phone number',
+                    prefixIcon: const Icon(Icons.mail_outline, color: AppTheme.iconColor),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -158,37 +246,39 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: const TextStyle(color: AppTheme.textLight),
                   decoration: const InputDecoration(
                     labelText: 'Password',
+                    hintText: 'Minimum 8 characters',
                     prefixIcon: Icon(Icons.lock_outline, color: AppTheme.iconColor),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
 
-                // Submit Button
+                // Action Button
                 SizedBox(
                   width: double.infinity,
-                  height: 48,
+                  height: 50,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primary,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
                     ),
                     onPressed: _isLoading ? null : _handleSubmit,
                     child: _isLoading
                         ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
                           )
                         : Text(
-                            _isRegister ? 'Sign Up' : 'Log In',
+                            _isRegister ? 'Create Account' : 'Log In',
                             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
 
-                // Switch between Log In and Register
+                // Toggle Login / Register
                 TextButton(
                   onPressed: () {
                     setState(() {
@@ -197,9 +287,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                   child: Text(
                     _isRegister
-                        ? 'Already have an account? Log In'
-                        : 'Do not have an account? Sign Up',
-                    style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
+                        ? 'Already have an account? Sign In'
+                        : 'New to GoChat? Register with Phone / Email',
+                    style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                 ),
               ],

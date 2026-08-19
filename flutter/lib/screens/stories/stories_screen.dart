@@ -160,6 +160,7 @@ class StoriesScreen extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           FloatingActionButton.small(
+            heroTag: 'story_edit_fab',
             backgroundColor: AppTheme.darkCard,
             foregroundColor: AppTheme.textLight,
             onPressed: () {
@@ -172,6 +173,7 @@ class StoriesScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           FloatingActionButton(
+            heroTag: 'story_camera_fab',
             backgroundColor: AppTheme.primary,
             onPressed: () {
               appState.addStory(
