@@ -93,15 +93,19 @@ func main() {
 	// ── Redis ─────────────────────────────────────────────────────────────────
 	redisClient, err := database.NewRedis(ctx, cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB, log)
 	if err != nil {
-		log.Fatal("failed to connect to redis", zap.Error(err))
+		log.Warn("Redis not available, operating in standalone in-memory mode", zap.Error(err))
+		redisClient = nil
+	} else {
+		defer redisClient.Close()
 	}
-	defer redisClient.Close()
 
 	// ── Health Check Server ──────────────────────────────────────────────────
 	healthSrv := health.New("api-gateway", cfg.HealthPort, log)
-	healthSrv.AddCheck("redis", func(ctx context.Context) error {
-		return redisClient.Ping(ctx).Err()
-	})
+	if redisClient != nil {
+		healthSrv.AddCheck("redis", func(ctx context.Context) error {
+			return redisClient.Ping(ctx).Err()
+		})
+	}
 	healthSrv.Start()
 	defer healthSrv.Stop()
 
@@ -661,8 +665,11 @@ func ginLogger(log *zap.Logger) gin.HandlerFunc {
 	}
 }
 
-// startPushNotificationWorker listens to Redis for new messages, and if any recipient is offline, logs a mock push notification.
 func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client, chatClient chatpb.ChatServiceClient, hub *ws.Hub, log *zap.Logger) {
+	if redisClient == nil {
+		log.Info("Push Notification background worker skipped (no Redis client configured)")
+		return
+	}
 	pubsub := redisClient.PSubscribe(ctx, "chat:*")
 	go func() {
 		defer pubsub.Close()

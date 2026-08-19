@@ -43,8 +43,12 @@ else
 end
 `)
 
-// RateLimitMiddleware provides a high-performance Redis Sliding-Window Rate Limiter.
 func RateLimitMiddleware(rdb *redis.Client, cfg RateLimitConfig) gin.HandlerFunc {
+	if rdb == nil {
+		return func(c *gin.Context) {
+			c.Next()
+		}
+	}
 	return func(c *gin.Context) {
 		keyPart := c.ClientIP()
 		tier := "guest"
