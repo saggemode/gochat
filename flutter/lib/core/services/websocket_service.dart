@@ -25,15 +25,16 @@ class WebSocketService {
   Future<void> connect() async {
     if (_isConnected) return;
 
-    final token = await StorageService.getToken();
-    final uri = Uri.parse(ApiConstants.wsUrl).replace(
-      queryParameters: {
-        if (token != null && token.isNotEmpty) 'token': token,
-      },
-    );
-
     try {
+      final token = await StorageService.getToken();
+      final uri = Uri.parse(ApiConstants.wsUrl).replace(
+        queryParameters: {
+          if (token != null && token.isNotEmpty) 'token': token,
+        },
+      );
+
       _channel = WebSocketChannel.connect(uri);
+      await _channel!.ready;
       _isConnected = true;
 
       _channel?.stream.listen(
@@ -47,12 +48,13 @@ class WebSocketService {
             }
           } catch (_) {}
         },
-        onError: (err) {
+        onError: (_) {
           _handleDisconnect();
         },
         onDone: () {
           _handleDisconnect();
         },
+        cancelOnError: true,
       );
     } catch (_) {
       _handleDisconnect();
