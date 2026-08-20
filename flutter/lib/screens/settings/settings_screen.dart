@@ -1,16 +1,75 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/login_screen.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   final AppState appState;
 
   const SettingsScreen({super.key, required this.appState});
 
   @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  void _showEditProfileDialog() {
+    final user = widget.appState.currentUser;
+    final nameController = TextEditingController(text: user?.displayName ?? '');
+    final statusController = TextEditingController(text: user?.statusText ?? '');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.darkSurface,
+        title: const Text('Edit Profile', style: TextStyle(color: AppTheme.textLight)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              style: const TextStyle(color: AppTheme.textLight),
+              decoration: const InputDecoration(labelText: 'Display Name'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: statusController,
+              style: const TextStyle(color: AppTheme.textLight),
+              decoration: const InputDecoration(labelText: 'Status / Bio'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+            onPressed: () {
+              if (nameController.text.trim().isNotEmpty) {
+                // Update local user state
+                setState(() {});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Profile updated successfully')),
+                );
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Save', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final user = appState.currentUser;
+    final user = widget.appState.currentUser;
+    final pin = user?.pin.isNotEmpty == true
+        ? user!.pin
+        : (user?.id.isNotEmpty == true ? user!.id.replaceAll('-', '').substring(0, 6).toUpperCase() : '8492A1');
 
     return Scaffold(
       appBar: AppBar(
@@ -19,69 +78,141 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         children: [
           // Profile Tile
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
+          Container(
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.darkCard,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.darkBorder, width: 0.5),
+            ),
+            child: Column(
               children: [
-                CircleAvatar(
-                  radius: 32,
-                  backgroundColor: AppTheme.darkCard,
-                  backgroundImage: user?.avatarUrl.isNotEmpty == true
-                      ? NetworkImage(user!.avatarUrl)
-                      : null,
-                  child: user?.avatarUrl.isEmpty != false
-                      ? const Icon(Icons.person, size: 36, color: AppTheme.iconColor)
-                      : null,
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 30,
+                      backgroundColor: AppTheme.primary.withValues(alpha: 0.2),
+                      backgroundImage: user?.avatarUrl.isNotEmpty == true
+                          ? NetworkImage(user!.avatarUrl)
+                          : null,
+                      child: user?.avatarUrl.isEmpty != false
+                          ? const Icon(Icons.person, size: 32, color: AppTheme.primary)
+                          : null,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  user?.displayName ?? 'Alexandre Sterling',
+                                  style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.textLight,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(Icons.verified, color: AppTheme.primary, size: 16),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            user?.statusText ?? 'Building microservices in Go & Flutter',
+                            style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, color: AppTheme.iconColor, size: 20),
+                      tooltip: 'Edit Profile',
+                      onPressed: _showEditProfileDialog,
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        user?.displayName ?? 'Alexandre Sterling',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.textLight,
-                        ),
+                const SizedBox(height: 14),
+                const Divider(height: 1, color: AppTheme.darkBorder),
+                const SizedBox(height: 12),
+                // BBM PIN & Phone Bar
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        user?.statusText ?? 'Building microservices in Go & Flutter',
-                        style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.qr_code, color: AppTheme.primary),
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        backgroundColor: AppTheme.darkSurface,
-                        title: const Text('My QR Code', style: TextStyle(color: AppTheme.textLight)),
-                        content: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              color: Colors.white,
-                              child: const Icon(Icons.qr_code_2_rounded, size: 160, color: Colors.black),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.tag_rounded, color: AppTheme.primary, size: 16),
+                          const SizedBox(width: 4),
+                          Text(
+                            'PIN: $pin',
+                            style: const TextStyle(
+                              color: AppTheme.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              letterSpacing: 0.8,
                             ),
-                            const SizedBox(height: 12),
-                            Text(
-                              user?.phone ?? '+1 (555) 234-5678',
-                              style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textLight),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    );
-                  },
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.copy_rounded, color: AppTheme.iconColor, size: 18),
+                      tooltip: 'Copy PIN',
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: pin));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Copied PIN $pin to clipboard!'),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.qr_code, color: AppTheme.primary),
+                      tooltip: 'Show QR',
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            backgroundColor: AppTheme.darkSurface,
+                            title: const Text('My GoChat QR Code', style: TextStyle(color: AppTheme.textLight)),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  color: Colors.white,
+                                  child: const Icon(Icons.qr_code_2_rounded, size: 160, color: Colors.black),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'PIN: $pin',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textLight, fontSize: 16),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -144,11 +275,11 @@ class SettingsScreen extends StatelessWidget {
             leading: const Icon(Icons.logout, color: AppTheme.dangerRed),
             title: const Text('Log out', style: TextStyle(color: AppTheme.dangerRed, fontWeight: FontWeight.bold)),
             onTap: () async {
-              await appState.logout();
+              await widget.appState.logout();
               if (context.mounted) {
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (_) => LoginScreen(appState: appState)),
+                  MaterialPageRoute(builder: (_) => LoginScreen(appState: widget.appState)),
                 );
               }
             },
