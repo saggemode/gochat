@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/models/story.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/widgets.dart';
@@ -12,7 +13,16 @@ class StoriesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final stories = appState.stories;
-    final myStory = stories.firstWhere((s) => s.isMe, orElse: () => stories.first);
+    final myStory = stories.where((s) => s.isMe).firstOrNull ??
+        (stories.isNotEmpty
+            ? stories.first
+            : UserStories(
+                userId: appState.currentUser?.id ?? 'me',
+                userName: appState.currentUser?.displayName ?? 'My Status',
+                userAvatar: appState.currentUser?.avatarUrl ?? '',
+                isMe: true,
+                stories: [],
+              ));
     final otherStories = stories.where((s) => !s.isMe).toList();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
