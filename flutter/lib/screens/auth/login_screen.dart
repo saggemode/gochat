@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
 import '../main_navigation_screen.dart';
+import 'country_data.dart';
+import 'otp_verification_view.dart';
+import 'phone_registration_form.dart';
+import 'sign_in_form.dart';
 
 class LoginScreen extends StatefulWidget {
   final AppState appState;
@@ -14,7 +18,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Navigation mode: true for Register, false for Sign In
   bool _isRegister = true;
 
   // Country & Phone State
@@ -40,36 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Timer? _otpAutoFillTimer;
   Timer? _otpAutoRedirectTimer;
 
-  // Full country list sorted alphabetically with dial codes and flags
-  final List<Map<String, String>> _countries = [
-    {'name': 'Australia', 'code': 'AU', 'dial': '+61', 'flag': '🇦🇺'},
-    {'name': 'Brazil', 'code': 'BR', 'dial': '+55', 'flag': '🇧🇷'},
-    {'name': 'Canada', 'code': 'CA', 'dial': '+1', 'flag': '🇨🇦'},
-    {'name': 'France', 'code': 'FR', 'dial': '+33', 'flag': '🇫🇷'},
-    {'name': 'Germany', 'code': 'DE', 'dial': '+49', 'flag': '🇩🇪'},
-    {'name': 'Ghana', 'code': 'GH', 'dial': '+233', 'flag': '🇬🇭'},
-    {'name': 'India', 'code': 'IN', 'dial': '+91', 'flag': '🇮🇳'},
-    {'name': 'Kenya', 'code': 'KE', 'dial': '+254', 'flag': '🇰🇪'},
-    {'name': 'Nigeria', 'code': 'NG', 'dial': '+234', 'flag': '🇳🇬'},
-    {'name': 'South Africa', 'code': 'ZA', 'dial': '+27', 'flag': '🇿🇦'},
-    {'name': 'United Arab Emirates', 'code': 'AE', 'dial': '+971', 'flag': '🇦🇪'},
-    {'name': 'United Kingdom', 'code': 'GB', 'dial': '+44', 'flag': '🇬🇧'},
-    {'name': 'United States', 'code': 'US', 'dial': '+1', 'flag': '🇺🇸'},
-  ];
-
-  Map<String, String> get _selectedCountry =>
-      _countries.firstWhere((c) => c['code'] == _selectedCountryCode,
-          orElse: () => _countries.firstWhere((c) => c['code'] == 'NG'));
-
-  List<Map<String, String>> get _filteredCountries {
-    if (_countrySearch.isEmpty) return _countries;
-    final q = _countrySearch.toLowerCase();
-    return _countries.where((c) {
-      return c['name']!.toLowerCase().contains(q) ||
-          c['dial']!.contains(q) ||
-          c['code']!.toLowerCase().contains(q);
-    }).toList();
-  }
+  Map<String, String> get _selectedCountry => CountryData.getCountry(_selectedCountryCode);
 
   @override
   void dispose() {
@@ -185,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: const Color(0xFF050507),
       body: Stack(
         children: [
-          // Background Decorative Blur Gradients
+          // Decorative Glow Background
           Positioned(
             top: MediaQuery.of(context).size.height * 0.15,
             left: -40,
@@ -206,7 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
               height: 280,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF7C3AED).withValues(alpha: 0.10), // Violet
+                color: const Color(0xFF7C3AED).withValues(alpha: 0.10),
               ),
             ),
           ),
@@ -253,30 +227,26 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 6),
                       Text(
                         _isRegister
-                            ? 'Enter your phone number to create your account'
-                            : 'Enter your phone number, email, or PIN to continue',
+                            ? 'Connect instantly via phone and your personal BBM PIN'
+                            : 'Sign in to access your chats, groups, channels & marketplace',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 13.5, color: Color(0xFFA1A1AA)),
+                        style: const TextStyle(fontSize: 13, color: Color(0xFFA1A1AA)),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 28),
 
-                      // Glass Card Container
+                      // Card Container
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF121215).withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Colors.white10),
+                          color: const Color(0xFF121215).withValues(alpha: 0.8),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFF27272A)),
                           boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black45,
-                              blurRadius: 25,
-                              offset: Offset(0, 10),
-                            ),
+                            BoxShadow(color: Colors.black54, blurRadius: 30, offset: Offset(0, 10)),
                           ],
                         ),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Error Banner
                             if (_error != null)
@@ -284,480 +254,77 @@ class _LoginScreenState extends State<LoginScreen> {
                                 margin: const EdgeInsets.only(bottom: 16),
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: Colors.red.withValues(alpha: 0.1),
+                                  color: Colors.red.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                                  border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.shield_outlined, color: Colors.redAccent, size: 18),
-                                    const SizedBox(width: 10),
+                                    const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 18),
+                                    const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
                                         _error!,
-                                        style: const TextStyle(color: Color(0xFFF87171), fontSize: 12.5),
+                                        style: const TextStyle(color: Colors.redAccent, fontSize: 13),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
 
-                            // ── REGISTER: Step 1 (Phone Input & Country Picker) ──
-                            if (_isRegister && !_showOtp) ...[
-                              const Text(
-                                'PHONE NUMBER',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFFA1A1AA),
-                                  letterSpacing: 0.8,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Country Code Selector Button
-                                  GestureDetector(
-                                    onTap: () => setState(() => _showCountryPicker = !_showCountryPicker),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF18181B).withValues(alpha: 0.7),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: _showCountryPicker ? const Color(0xFF10B981) : const Color(0xFF27272A),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Text(_selectedCountry['flag']!, style: const TextStyle(fontSize: 16)),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            _selectedCountry['dial']!,
-                                            style: const TextStyle(
-                                              color: Color(0xFFD4D4D8),
-                                              fontFamily: 'monospace',
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF71717A), size: 16),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-
-                                  // Phone Number Input
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _phoneController,
-                                      keyboardType: TextInputType.phone,
-                                      style: const TextStyle(color: Colors.white, fontSize: 14.5),
-                                      decoration: InputDecoration(
-                                        hintText: 'Phone number',
-                                        hintStyle: const TextStyle(color: Color(0xFF71717A), fontSize: 13.5),
-                                        filled: true,
-                                        fillColor: const Color(0xFF18181B).withValues(alpha: 0.7),
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: const BorderSide(color: Color(0xFF27272A)),
-                                        ),
-                                        focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                          borderSide: const BorderSide(color: Color(0xFF10B981)),
-                                        ),
-                                      ),
-                                      onChanged: (val) {
-                                        setState(() => _localPhone = val);
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              // Country Search Modal Dropdown
-                              if (_showCountryPicker) ...[
-                                const SizedBox(height: 8),
-                                Container(
-                                  constraints: const BoxConstraints(maxHeight: 220),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF18181B),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(color: const Color(0xFF27272A)),
-                                    boxShadow: const [
-                                      BoxShadow(color: Colors.black87, blurRadius: 20, offset: Offset(0, 8)),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Padding(
-                                        padding: const EdgeInsets.all(8),
-                                        child: TextField(
-                                          style: const TextStyle(color: Colors.white, fontSize: 12.5),
-                                          decoration: InputDecoration(
-                                            hintText: 'Search country or code...',
-                                            hintStyle: const TextStyle(color: Color(0xFF71717A), fontSize: 12),
-                                            prefixIcon: const Icon(Icons.search, color: Color(0xFF71717A), size: 16),
-                                            filled: true,
-                                            fillColor: const Color(0xFF27272A),
-                                            contentPadding: const EdgeInsets.symmetric(vertical: 6),
-                                            border: OutlineInputBorder(
-                                              borderRadius: BorderRadius.circular(8),
-                                              borderSide: BorderSide.none,
-                                            ),
-                                          ),
-                                          onChanged: (val) {
-                                            setState(() => _countrySearch = val);
-                                          },
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: ListView.builder(
-                                          itemCount: _filteredCountries.length,
-                                          itemBuilder: (context, idx) {
-                                            final c = _filteredCountries[idx];
-                                            final isSelected = c['code'] == _selectedCountryCode;
-
-                                            return InkWell(
-                                              onTap: () {
-                                                setState(() {
-                                                  _selectedCountryCode = c['code']!;
-                                                  _showCountryPicker = false;
-                                                  _countrySearch = '';
-                                                });
-                                              },
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                                color: isSelected
-                                                    ? const Color(0xFF10B981).withValues(alpha: 0.12)
-                                                    : Colors.transparent,
-                                                child: Row(
-                                                  children: [
-                                                    Text(c['flag']!, style: const TextStyle(fontSize: 16)),
-                                                    const SizedBox(width: 10),
-                                                    Expanded(
-                                                      child: Text(
-                                                        c['name']!,
-                                                        style: TextStyle(
-                                                          color: isSelected ? const Color(0xFF34D399) : Colors.white,
-                                                          fontSize: 13,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      c['dial']!,
-                                                      style: const TextStyle(
-                                                        color: Color(0xFF71717A),
-                                                        fontFamily: 'monospace',
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Fast & secure phone sign-up. Username & email can be added anytime in Settings.',
-                                style: TextStyle(fontSize: 11, color: Color(0xFF71717A), height: 1.3),
-                              ),
-                              const SizedBox(height: 20),
-
-                              // Submit Button
-                              SizedBox(
-                                width: double.infinity,
-                                height: 46,
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF10B981),
-                                    foregroundColor: Colors.black,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    elevation: 0,
-                                  ),
-                                  onPressed: _loading ? null : _handleRegisterSubmit,
-                                  child: _loading
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
-                                        )
-                                      : const Text(
-                                          'Continue with Phone',
-                                          style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
-                                        ),
-                                ),
-                              ),
-                            ],
-
-                            // ── REGISTER: Step 2 (Account Created & SMS OTP) ──
-                            if (_isRegister && _showOtp) ...[
-                              Center(
-                                child: Column(
-                                  children: [
-                                    const Icon(Icons.vpn_key_rounded, color: Color(0xFF34D399), size: 40),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      'Account Created!',
-                                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                                    ),
-                                    const SizedBox(height: 8),
-
-                                    if (_assignedUsername != null)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF18181B),
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(color: const Color(0xFF27272A)),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(Icons.auto_awesome, color: Color(0xFF34D399), size: 14),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              'Assigned Username: ${_assignedUsername!}',
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                color: Color(0xFF34D399),
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    const SizedBox(height: 6),
-
-                                    Text(
-                                      'Your unique BBM PIN: $_generatedPin',
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontFamily: 'monospace',
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF34D399),
-                                        letterSpacing: 2,
-                                      ),
-                                    ),
-                                    const Text(
-                                      'Share this PIN with friends to connect on GoChat',
-                                      style: TextStyle(fontSize: 10.5, color: Color(0xFF71717A)),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-
-                              // SMS Detection Box
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF064E3B).withValues(alpha: 0.3),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.2)),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Container(
-                                          width: 8,
-                                          height: 8,
-                                          decoration: const BoxDecoration(
-                                            color: Color(0xFF34D399),
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          _otp.length == 6
-                                              ? 'SMS OTP Verified! Redirecting...'
-                                              : 'Detecting SMS OTP on this device...',
-                                          style: const TextStyle(
-                                            color: Color(0xFF6EE7B7),
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Verification code for ${_selectedCountry['dial']} $_localPhone',
-                                      style: const TextStyle(fontSize: 11, color: Color(0xFF059669)),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-
-                              // OTP Input Field
-                              TextField(
-                                controller: _otpController,
-                                textAlign: TextAlign.center,
-                                keyboardType: TextInputType.number,
-                                maxLength: 6,
-                                style: const TextStyle(
-                                  fontSize: 22,
-                                  fontFamily: 'monospace',
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 12,
-                                  color: Colors.white,
-                                ),
-                                decoration: InputDecoration(
-                                  counterText: '',
-                                  hintText: '000000',
-                                  hintStyle: const TextStyle(color: Color(0xFF52525B)),
-                                  filled: true,
-                                  fillColor: const Color(0xFF18181B).withValues(alpha: 0.7),
-                                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(color: Color(0xFF27272A)),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(color: Color(0xFF10B981)),
-                                  ),
-                                ),
-                                onChanged: (val) {
+                            // Forms
+                            if (_isRegister && !_showOtp)
+                              PhoneRegistrationForm(
+                                selectedCountry: _selectedCountry,
+                                phoneController: _phoneController,
+                                showCountryPicker: _showCountryPicker,
+                                countrySearch: _countrySearch,
+                                loading: _loading,
+                                onToggleCountryPicker: () {
+                                  setState(() => _showCountryPicker = !_showCountryPicker);
+                                },
+                                onCountrySearchChanged: (val) {
+                                  setState(() => _countrySearch = val);
+                                },
+                                onCountrySelected: (code) {
+                                  setState(() {
+                                    _selectedCountryCode = code;
+                                    _showCountryPicker = false;
+                                    _countrySearch = '';
+                                  });
+                                },
+                                onPhoneChanged: (val) {
+                                  setState(() => _localPhone = val);
+                                },
+                                onSubmit: _handleRegisterSubmit,
+                              )
+                            else if (_isRegister && _showOtp)
+                              OtpVerificationView(
+                                assignedUsername: _assignedUsername,
+                                generatedPin: _generatedPin,
+                                selectedDialCode: _selectedCountry['dial']!,
+                                localPhone: _localPhone,
+                                otp: _otp,
+                                otpController: _otpController,
+                                onOtpChanged: (val) {
                                   setState(() => _otp = val);
                                   if (val.length == 6) {
                                     _navigateToChat();
                                   }
                                 },
+                                onStartMessaging: _navigateToChat,
+                              )
+                            else
+                              SignInForm(
+                                identifierController: _loginIdentifierController,
+                                passwordController: _loginPasswordController,
+                                loading: _loading,
+                                onSubmit: _handleLoginSubmit,
                               ),
-                              const SizedBox(height: 18),
-
-                              // Start Messaging Button
-                              SizedBox(
-                                width: double.infinity,
-                                height: 46,
-                                child: ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF10B981),
-                                    foregroundColor: Colors.black,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  ),
-                                  icon: const Icon(Icons.auto_awesome, size: 16),
-                                  label: Text(
-                                    _otp.length == 6 ? 'Verifying & Opening Chat...' : 'Start Messaging Now',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                  ),
-                                  onPressed: _navigateToChat,
-                                ),
-                              ),
-                            ],
-
-                            // ── SIGN IN FLOW ────────────────────────────────────
-                            if (!_isRegister) ...[
-                              const Text(
-                                'PHONE NUMBER, EMAIL, OR PIN',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFFA1A1AA),
-                                  letterSpacing: 0.8,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-
-                              TextField(
-                                controller: _loginIdentifierController,
-                                style: const TextStyle(color: Colors.white, fontSize: 14.5),
-                                decoration: InputDecoration(
-                                  hintText: 'e.g. +2348012345678, alex@gochat.io, or PIN',
-                                  hintStyle: const TextStyle(color: Color(0xFF71717A), fontSize: 13.5),
-                                  prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF71717A), size: 20),
-                                  filled: true,
-                                  fillColor: const Color(0xFF18181B).withValues(alpha: 0.7),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(color: Color(0xFF27272A)),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(color: Color(0xFF10B981)),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-
-                              const Text(
-                                'PASSWORD (OPTIONAL)',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFFA1A1AA),
-                                  letterSpacing: 0.8,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-
-                              TextField(
-                                controller: _loginPasswordController,
-                                obscureText: true,
-                                style: const TextStyle(color: Colors.white, fontSize: 14.5),
-                                decoration: InputDecoration(
-                                  hintText: 'Leave empty for PIN / phone login',
-                                  hintStyle: const TextStyle(color: Color(0xFF71717A), fontSize: 13.5),
-                                  prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF71717A), size: 20),
-                                  filled: true,
-                                  fillColor: const Color(0xFF18181B).withValues(alpha: 0.7),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(color: Color(0xFF27272A)),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(color: Color(0xFF10B981)),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-
-                              SizedBox(
-                                width: double.infinity,
-                                height: 46,
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF10B981),
-                                    foregroundColor: Colors.black,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  ),
-                                  onPressed: _loading ? null : _handleLoginSubmit,
-                                  child: _loading
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
-                                        )
-                                      : const Text(
-                                          'Sign In',
-                                          style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold),
-                                        ),
-                                ),
-                              ),
-                            ],
 
                             const SizedBox(height: 18),
 
-                            // Toggle Link
+                            // Toggle Sign In / Sign Up Link
                             Center(
                               child: TextButton(
                                 onPressed: () {
@@ -777,7 +344,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ),
                                       TextSpan(
                                         text: _isRegister ? 'Sign In' : 'Create Account',
-                                        style: const TextStyle(color: Color(0xFF34D399), fontWeight: FontWeight.bold),
+                                        style: const TextStyle(
+                                          color: Color(0xFF34D399),
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ],
                                   ),
