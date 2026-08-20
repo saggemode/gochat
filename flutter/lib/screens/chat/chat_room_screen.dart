@@ -517,17 +517,170 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
                       ),
               ),
 
-              // ── Bottom Input Bar ──────────────────────────────────────────
-              ChatInputBar(
-                inputController: _inputController,
-                isTyping: _isTyping,
-                replyingTo: _replyingTo,
-                onCancelReply: () => setState(() => _replyingTo = null),
-                onAttachmentPressed: _showAttachmentSheet,
-                onVoiceNotePressed: _handleSendVoiceNote,
-                onPingPressed: _handleSendPing,
-                onSendPressed: _handleSend,
-                onChanged: _handleTypingChanged,
+              // ── Dynamic Input / Invitation Approval Bar ──────────────────
+              Builder(
+                builder: (context) {
+                  final liveConv = widget.appState.conversations.firstWhere(
+                    (c) => c.id == widget.conversation.id,
+                    orElse: () => widget.conversation,
+                  );
+
+                  // 1. Sender awaiting recipient's acceptance
+                  if (liveConv.invitationStatus == InvitationStatus.pendingOutgoing) {
+                    return Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppTheme.darkCard : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.35)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primary.withValues(alpha: 0.08),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.hourglass_top_rounded, color: AppTheme.primary, size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Invitation Pending',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primary),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Waiting for ${liveConv.title} to accept your request before sending more messages.',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  // 2. Recipient needs to accept/decline contact request
+                  if (liveConv.invitationStatus == InvitationStatus.pendingIncoming) {
+                    return Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppTheme.darkCard : Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: Colors.amber.withValues(alpha: 0.5), width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.amber.withValues(alpha: 0.12),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              CustomAvatar(
+                                imageUrl: liveConv.avatarUrl,
+                                name: liveConv.title,
+                                radius: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      liveConv.title,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                    Text(
+                                      'wants to connect with you via BBM PIN',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.redAccent,
+                                    side: const BorderSide(color: Colors.redAccent, width: 1.2),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                  ),
+                                  onPressed: () {
+                                    widget.appState.declineInvitation(liveConv.id);
+                                    Navigator.pop(context);
+                                  },
+                                  child: const Text('Decline'),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.primary,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                  ),
+                                  onPressed: () {
+                                    widget.appState.acceptInvitation(liveConv.id);
+                                  },
+                                  child: const Text('Accept & Chat', style: TextStyle(fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  // 3. Accepted Contact: Normal Chat Input Bar
+                  return ChatInputBar(
+                    inputController: _inputController,
+                    isTyping: _isTyping,
+                    replyingTo: _replyingTo,
+                    onCancelReply: () => setState(() => _replyingTo = null),
+                    onAttachmentPressed: _showAttachmentSheet,
+                    onVoiceNotePressed: _handleSendVoiceNote,
+                    onPingPressed: _handleSendPing,
+                    onSendPressed: _handleSend,
+                    onChanged: _handleTypingChanged,
+                  );
+                },
               ),
             ],
           ),

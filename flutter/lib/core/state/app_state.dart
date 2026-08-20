@@ -217,12 +217,15 @@ class AppState extends ChangeNotifier {
           _conversations.removeAt(convIdx);
           _conversations.insert(0, updated);
         } else {
-          // New conversation created by sender - add to receiver's list immediately
+          // New conversation created by sender - add to receiver's list as incoming invitation if not from me
+          final isFromMe = msg.isMe || (_currentUser?.id.isNotEmpty == true && msg.senderId == _currentUser?.id);
           final newConv = Conversation(
             id: msg.conversationId,
-            title: msg.senderName.isNotEmpty && msg.senderName != 'Me' ? msg.senderName : 'Chat',
+            title: msg.senderName.isNotEmpty && msg.senderName != 'Me' ? msg.senderName : 'Contact',
             lastMessage: msg,
             type: ConversationType.direct,
+            invitationStatus: isFromMe ? InvitationStatus.pendingOutgoing : InvitationStatus.pendingIncoming,
+            invitationSenderId: msg.senderId,
             updatedAt: DateTime.now(),
           );
           _conversations.insert(0, newConv);
@@ -246,7 +249,19 @@ class AppState extends ChangeNotifier {
         notifyListeners();
       }
     }
-    // 2. Incoming Live Typing Event
+    // 2. Incoming Invitation Accepted Event
+    else if (eventType == 'invitation_accepted' || data['type'] == 'invitation_accepted') {
+      final convId = (data['conversation_id'] ?? data['conversationId'] ?? data['conv_id'] ?? '').toString();
+      final idx = _conversations.indexWhere((c) => c.id == convId);
+      if (idx != -1) {
+        _conversations[idx] = _conversations[idx].copyWith(
+          invitationStatus: InvitationStatus.accepted,
+        );
+        StorageService.saveCachedConversations(_conversations);
+        notifyListeners();
+      }
+    }
+    // 3. Incoming Live Typing Event
     else if (eventType == '6' || eventType == 'EVENT_TYPING' || eventType == 'typing') {
       final convId = (data['conversation_id'] ?? data['conversationId'] ?? data['conv_id'] ?? '').toString();
       final isTyping = data['is_typing'] == true || data['isTyping'] == true;
@@ -264,7 +279,7 @@ class AppState extends ChangeNotifier {
         notifyListeners();
       }
     }
-    // 3. Incoming PING Nudge Event
+    // 4. Incoming PING Nudge Event
     else if (eventType == 'ping' || eventType == 'EVENT_PINNED' || data['is_ping'] == true) {
       final convId = (data['conversation_id'] ?? data['conversationId'] ?? data['conv_id'] ?? '').toString();
       if (convId.isNotEmpty) {
@@ -579,17 +594,28 @@ class AppState extends ChangeNotifier {
   }
 
   // ── Chat: Create Conversation ───────────────────────────────────────────────
-  Future<Conversation> createConversation(String name, List<String> memberIds, {bool isGroup = false}) async {
+  Future<Conversation> createConversation(
+    String name,
+    List<String> memberIds, {
+    bool isGroup = false,
+    InvitationStatus invitationStatus = InvitationStatus.accepted,
+    String? partnerPin,
+  }) async {
     try {
       final conv = await ApiService.createConversation(
         name: name,
         memberIds: memberIds,
         isGroup: isGroup,
       );
-      _conversations.insert(0, conv);
+      final withInvitation = conv.copyWith(
+        invitationStatus: invitationStatus,
+        partnerPin: partnerPin,
+        invitationSenderId: _currentUser?.id,
+      );
+      _conversations.insert(0, withInvitation);
       await StorageService.saveCachedConversations(_conversations);
       notifyListeners();
-      return conv;
+      return withInvitation;
     } catch (_) {
       // Local fallback for offline / 401 unauth / direct PIN chat
       final localId = 'conv_${DateTime.now().millisecondsSinceEpoch}';
@@ -598,6 +624,9 @@ class AppState extends ChangeNotifier {
         title: name,
         avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
         type: isGroup ? ConversationType.group : ConversationType.direct,
+        invitationStatus: invitationStatus,
+        partnerPin: partnerPin,
+        invitationSenderId: _currentUser?.id,
         isOnline: true,
         unreadCount: 0,
         updatedAt: DateTime.now(),
@@ -607,6 +636,53 @@ class AppState extends ChangeNotifier {
       await StorageService.saveCachedConversations(_conversations);
       notifyListeners();
       return fallbackConv;
+    }
+  }
+
+  // ── Chat: Accept Contact Invitation ─────────────────────────────────────────
+  Future<void> acceptInvitation(String convId) async {
+    final idx = _conversations.indexWhere((c) => c.id == convId);
+    if (idx != -1) {
+      _conversations[idx] = _conversations[idx].copyWith(
+        invitationStatus: InvitationStatus.accepted,
+      );
+      await StorageService.saveCachedConversations(_conversations);
+
+      // Broadcast acceptance over WebSocket so sender unblocks immediately
+      wsService.send({
+        'type': 'invitation_accepted',
+        'conversation_id': convId,
+        'user_id': _currentUser?.id ?? '',
+        'user_name': _currentUser?.displayName ?? 'Me',
+      });
+
+      // Send greeting system message
+      await sendMessage(
+        convId,
+        '🤝 Contact invitation accepted! You can now chat.',
+      );
+
+      notifyListeners();
+    }
+  }
+
+  // ── Chat: Decline Contact Invitation ─────────────────────────────────────────
+  Future<void> declineInvitation(String convId) async {
+    final idx = _conversations.indexWhere((c) => c.id == convId);
+    if (idx != -1) {
+      _conversations[idx] = _conversations[idx].copyWith(
+        invitationStatus: InvitationStatus.declined,
+      );
+      _conversations.removeAt(idx);
+      await StorageService.saveCachedConversations(_conversations);
+
+      wsService.send({
+        'type': 'invitation_declined',
+        'conversation_id': convId,
+        'user_id': _currentUser?.id ?? '',
+      });
+
+      notifyListeners();
     }
   }
 

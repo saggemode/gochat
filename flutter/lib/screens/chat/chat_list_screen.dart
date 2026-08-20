@@ -218,6 +218,55 @@ class _ChatListScreenState extends State<ChatListScreen> {
               ),
             ),
 
+            // Pending Contact Invitations Banner
+            Builder(
+              builder: (context) {
+                final pendingIncoming = widget.appState.conversations
+                    .where((c) => c.invitationStatus == InvitationStatus.pendingIncoming)
+                    .toList();
+                if (pendingIncoming.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+
+                return SliverToBoxAdapter(
+                  child: Container(
+                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.mark_email_unread_rounded, color: Colors.amber, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            '${pendingIncoming.length} new contact invitation request${pendingIncoming.length > 1 ? 's' : ''}',
+                            style: const TextStyle(
+                              color: Colors.amber,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.amber,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'Review',
+                            style: TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+
             // Conversation Threads List with ConversationTile
             if (convs.isEmpty)
               SliverFillRemaining(
@@ -252,7 +301,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     final isTyping = widget.appState.isUserTyping(c.id);
 
                     String msgPreview = 'No messages yet';
-                    if (lastMsg != null) {
+                    if (c.invitationStatus == InvitationStatus.pendingIncoming) {
+                      msgPreview = '🤝 Incoming invitation · Tap to accept';
+                    } else if (c.invitationStatus == InvitationStatus.pendingOutgoing) {
+                      msgPreview = '⏳ Invitation sent · Waiting for acceptance';
+                    } else if (lastMsg != null) {
                       if (lastMsg.isPing) {
                         msgPreview = '💥 PING!!!';
                       } else if (lastMsg.type == MessageType.voice) {

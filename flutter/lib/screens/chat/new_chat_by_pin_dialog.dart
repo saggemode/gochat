@@ -110,10 +110,20 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
     if (matchIndex != -1) {
       targetConv = widget.appState.conversations[matchIndex];
     } else {
-      targetConv = await widget.appState.createConversation(title, []);
+      targetConv = await widget.appState.createConversation(
+        title,
+        [],
+        invitationStatus: InvitationStatus.pendingOutgoing,
+        partnerPin: rawPin,
+      );
       if (avatarUrl.isNotEmpty) {
         targetConv = targetConv.copyWith(avatarUrl: avatarUrl);
       }
+      // Send initial invitation request message
+      await widget.appState.sendMessage(
+        targetConv.id,
+        '👋 Hi! I added you on GoChat via BBM PIN ($rawPin).',
+      );
     }
 
     if (!mounted) return;
@@ -130,7 +140,7 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('💬 Chat started with $title'),
+        content: Text('📨 Invitation sent to $title'),
         backgroundColor: AppTheme.primary,
       ),
     );

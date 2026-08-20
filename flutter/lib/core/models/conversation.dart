@@ -6,6 +6,13 @@ enum ConversationType {
   channel,
 }
 
+enum InvitationStatus {
+  accepted,
+  pendingOutgoing, // Current user sent invitation, waiting for receiver to accept
+  pendingIncoming, // Current user received invitation, needs to accept/decline
+  declined,
+}
+
 class Conversation {
   final String id;
   final String title;
@@ -18,6 +25,9 @@ class Conversation {
   final bool isOnline;
   final DateTime updatedAt;
   final List<String> memberIds;
+  final InvitationStatus invitationStatus;
+  final String? invitationSenderId;
+  final String? partnerPin;
 
   Conversation({
     required this.id,
@@ -31,8 +41,15 @@ class Conversation {
     this.isOnline = false,
     DateTime? updatedAt,
     List<String>? memberIds,
+    this.invitationStatus = InvitationStatus.accepted,
+    this.invitationSenderId,
+    this.partnerPin,
   })  : updatedAt = updatedAt ?? DateTime.now(),
         memberIds = memberIds ?? [];
+
+  bool get isPendingApproval =>
+      invitationStatus == InvitationStatus.pendingOutgoing ||
+      invitationStatus == InvitationStatus.pendingIncoming;
 
   Conversation copyWith({
     String? id,
@@ -46,6 +63,9 @@ class Conversation {
     bool? isOnline,
     DateTime? updatedAt,
     List<String>? memberIds,
+    InvitationStatus? invitationStatus,
+    String? invitationSenderId,
+    String? partnerPin,
   }) {
     return Conversation(
       id: id ?? this.id,
@@ -59,10 +79,23 @@ class Conversation {
       isOnline: isOnline ?? this.isOnline,
       updatedAt: updatedAt ?? this.updatedAt,
       memberIds: memberIds ?? this.memberIds,
+      invitationStatus: invitationStatus ?? this.invitationStatus,
+      invitationSenderId: invitationSenderId ?? this.invitationSenderId,
+      partnerPin: partnerPin ?? this.partnerPin,
     );
   }
 
   factory Conversation.fromJson(Map<String, dynamic> json, {String currentUserId = ''}) {
+    final statusStr = json['invitation_status']?.toString().toLowerCase();
+    InvitationStatus invStatus = InvitationStatus.accepted;
+    if (statusStr == 'pending_outgoing' || statusStr == 'pendingoutgoing') {
+      invStatus = InvitationStatus.pendingOutgoing;
+    } else if (statusStr == 'pending_incoming' || statusStr == 'pendingincoming') {
+      invStatus = InvitationStatus.pendingIncoming;
+    } else if (statusStr == 'declined') {
+      invStatus = InvitationStatus.declined;
+    }
+
     return Conversation(
       id: json['id']?.toString() ?? '',
       title: json['title'] ?? json['name'] ?? 'Chat',
@@ -81,6 +114,9 @@ class Conversation {
           ? DateTime.tryParse(json['updated_at'].toString()) ?? DateTime.now()
           : DateTime.now(),
       memberIds: (json['member_ids'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      invitationStatus: invStatus,
+      invitationSenderId: json['invitation_sender_id']?.toString(),
+      partnerPin: json['partner_pin']?.toString(),
     );
   }
 
@@ -97,6 +133,9 @@ class Conversation {
       'is_online': isOnline,
       'updated_at': updatedAt.toIso8601String(),
       'member_ids': memberIds,
+      'invitation_status': invitationStatus.name,
+      'invitation_sender_id': invitationSenderId,
+      'partner_pin': partnerPin,
     };
   }
 }
