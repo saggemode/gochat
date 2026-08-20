@@ -10,8 +10,9 @@ import '../stories/story_viewer_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
   final AppState appState;
+  final VoidCallback? onOpenDrawer;
 
-  const ChatListScreen({super.key, required this.appState});
+  const ChatListScreen({super.key, required this.appState, this.onOpenDrawer});
 
   @override
   State<ChatListScreen> createState() => _ChatListScreenState();
@@ -78,6 +79,13 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu_rounded, color: AppTheme.textLight, size: 26),
+          tooltip: 'Main Menu',
+          onPressed: widget.onOpenDrawer != null
+              ? widget.onOpenDrawer
+              : () => Scaffold.of(context).openDrawer(),
+        ),
         title: _isSearching
             ? TextField(
                 controller: _searchController,

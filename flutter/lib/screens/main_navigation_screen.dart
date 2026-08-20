@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
+import '../../widgets/app_drawer.dart';
 import 'chat/chat_list_screen.dart';
 import 'stories/stories_screen.dart';
 import 'channels/channels_screen.dart';
@@ -18,6 +19,7 @@ class MainNavigationScreen extends StatefulWidget {
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int _currentIndex = 0;
 
   @override
@@ -44,7 +46,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         .fold(0, (sum, c) => sum + c.unreadCount);
 
     final screens = [
-      ChatListScreen(appState: widget.appState),
+      ChatListScreen(
+        appState: widget.appState,
+        onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
+      ),
       StoriesScreen(appState: widget.appState),
       ChannelsScreen(appState: widget.appState),
       CallsScreen(appState: widget.appState),
@@ -53,6 +58,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     ];
 
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: AppDrawer(
+        appState: widget.appState,
+        currentIndex: _currentIndex,
+        onSelectTab: (idx) => setState(() => _currentIndex = idx),
+      ),
       body: IndexedStack(
         index: _currentIndex,
         children: screens,
