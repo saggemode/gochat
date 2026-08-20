@@ -127,7 +127,22 @@ func main() {
 	dialOpts := buildGRPCDialOptions(cfg, log)
 	dialOpts = append(dialOpts, grpc.WithDefaultServiceConfig(`{"loadBalancingPolicy":"round_robin"}`))
 
+	var inProcessConn *grpc.ClientConn
+	if !isHostResolvable(cfg.AuthGRPCAddr) || os.Getenv("STANDALONE_MODE") == "true" {
+		log.Info("remote gRPC services unreachable or standalone mode enabled — booting in-process services with Neon Cloud DB")
+		inConn, inErr := startInProcessGRPC(ctx, cfg, redisClient, log)
+		if inErr != nil {
+			log.Warn("failed to initialize in-process services", zap.Error(inErr))
+		} else {
+			inProcessConn = inConn
+			defer inProcessConn.Close()
+		}
+	}
+
 	dialService := func(serviceName, fallbackAddr string, extraOpts ...grpc.DialOption) (*grpc.ClientConn, error) {
+		if inProcessConn != nil && (!isHostResolvable(fallbackAddr) || os.Getenv("STANDALONE_MODE") == "true") {
+			return inProcessConn, nil
+		}
 		resBuilder.SetStaticFallback(serviceName, fallbackAddr)
 		target := fallbackAddr
 		if cfg.DiscoveryType != "static" && disc != nil {
