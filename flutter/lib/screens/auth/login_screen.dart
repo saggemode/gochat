@@ -13,155 +13,89 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
-  bool _isRegister = true; // Default to Register flow like web frontend
-  bool _showOtp = false;
-  bool _isLoading = false;
-  String? _errorMessage;
+class _LoginScreenState extends State<LoginScreen> {
+  // Navigation mode: true for Register, false for Sign In
+  bool _isRegister = true;
 
-  // Form Fields
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _identifierController = TextEditingController(); // For login (phone/email/pin)
-  final TextEditingController _otpController = TextEditingController();
-
-  // Registration Result Data
-  String? _assignedUsername;
-  String? _generatedPin;
-
-  // Country Selection
+  // Country & Phone State
   String _selectedCountryCode = 'NG';
-  String _selectedDial = '+234';
+  String _localPhone = '';
+  bool _showCountryPicker = false;
   String _countrySearch = '';
 
-  final List<Map<String, String>> _allCountries = [
-    {'name': 'Nigeria', 'code': 'NG', 'dial': '+234', 'flag': '🇳🇬'},
-    {'name': 'United States', 'code': 'US', 'dial': '+1', 'flag': '🇺🇸'},
-    {'name': 'United Kingdom', 'code': 'GB', 'dial': '+44', 'flag': '🇬🇧'},
-    {'name': 'Germany', 'code': 'DE', 'dial': '+49', 'flag': '🇩🇪'},
-    {'name': 'Canada', 'code': 'CA', 'dial': '+1', 'flag': '🇨🇦'},
-    {'name': 'India', 'code': 'IN', 'dial': '+91', 'flag': '🇮🇳'},
-    {'name': 'Ghana', 'code': 'GH', 'dial': '+233', 'flag': '🇬🇭'},
-    {'name': 'Kenya', 'code': 'KE', 'dial': '+254', 'flag': '🇰🇪'},
-    {'name': 'South Africa', 'code': 'ZA', 'dial': '+27', 'flag': '🇿🇦'},
+  // OTP / Success Verification States
+  bool _showOtp = false;
+  String _otp = '';
+  String? _generatedPin;
+  String? _assignedUsername;
+
+  // Controllers
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _otpController = TextEditingController();
+  final TextEditingController _loginIdentifierController = TextEditingController();
+  final TextEditingController _loginPasswordController = TextEditingController();
+
+  bool _loading = false;
+  String? _error;
+  Timer? _otpAutoFillTimer;
+  Timer? _otpAutoRedirectTimer;
+
+  // Full country list sorted alphabetically with dial codes and flags
+  final List<Map<String, String>> _countries = [
     {'name': 'Australia', 'code': 'AU', 'dial': '+61', 'flag': '🇦🇺'},
-    {'name': 'France', 'code': 'FR', 'dial': '+33', 'flag': '🇫🇷'},
     {'name': 'Brazil', 'code': 'BR', 'dial': '+55', 'flag': '🇧🇷'},
+    {'name': 'Canada', 'code': 'CA', 'dial': '+1', 'flag': '🇨🇦'},
+    {'name': 'France', 'code': 'FR', 'dial': '+33', 'flag': '🇫🇷'},
+    {'name': 'Germany', 'code': 'DE', 'dial': '+49', 'flag': '🇩🇪'},
+    {'name': 'Ghana', 'code': 'GH', 'dial': '+233', 'flag': '🇬🇭'},
+    {'name': 'India', 'code': 'IN', 'dial': '+91', 'flag': '🇮🇳'},
+    {'name': 'Kenya', 'code': 'KE', 'dial': '+254', 'flag': '🇰🇪'},
+    {'name': 'Nigeria', 'code': 'NG', 'dial': '+234', 'flag': '🇳🇬'},
+    {'name': 'South Africa', 'code': 'ZA', 'dial': '+27', 'flag': '🇿🇦'},
     {'name': 'United Arab Emirates', 'code': 'AE', 'dial': '+971', 'flag': '🇦🇪'},
+    {'name': 'United Kingdom', 'code': 'GB', 'dial': '+44', 'flag': '🇬🇧'},
+    {'name': 'United States', 'code': 'US', 'dial': '+1', 'flag': '🇺🇸'},
   ];
 
   Map<String, String> get _selectedCountry =>
-      _allCountries.firstWhere((c) => c['code'] == _selectedCountryCode,
-          orElse: () => _allCountries.first);
+      _countries.firstWhere((c) => c['code'] == _selectedCountryCode,
+          orElse: () => _countries.firstWhere((c) => c['code'] == 'NG'));
 
-  void _openCountryPickerModal() {
-    _countrySearch = '';
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppTheme.darkSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final filtered = _allCountries.where((c) {
-              if (_countrySearch.isEmpty) return true;
-              final q = _countrySearch.toLowerCase();
-              return c['name']!.toLowerCase().contains(q) ||
-                  c['dial']!.contains(q) ||
-                  c['code']!.toLowerCase().contains(q);
-            }).toList();
-
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.7,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              child: Column(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Search Box
-                  TextField(
-                    autofocus: true,
-                    style: const TextStyle(color: AppTheme.textLight, fontSize: 14),
-                    decoration: InputDecoration(
-                      hintText: 'Search country or dialing code...',
-                      prefixIcon: const Icon(Icons.search, color: AppTheme.iconColor),
-                      fillColor: AppTheme.darkCard,
-                      filled: true,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                    ),
-                    onChanged: (val) {
-                      setModalState(() {
-                        _countrySearch = val;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: filtered.length,
-                      itemBuilder: (context, idx) {
-                        final c = filtered[idx];
-                        final isSelected = c['code'] == _selectedCountryCode;
-
-                        return ListTile(
-                          leading: Text(c['flag']!, style: const TextStyle(fontSize: 22)),
-                          title: Text(
-                            c['name']!,
-                            style: TextStyle(
-                              color: isSelected ? AppTheme.accent : AppTheme.textLight,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            ),
-                          ),
-                          trailing: Text(
-                            c['dial']!,
-                            style: const TextStyle(
-                              color: AppTheme.textMuted,
-                              fontFamily: 'monospace',
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          onTap: () {
-                            setState(() {
-                              _selectedCountryCode = c['code']!;
-                              _selectedDial = c['dial']!;
-                            });
-                            Navigator.pop(ctx);
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
+  List<Map<String, String>> get _filteredCountries {
+    if (_countrySearch.isEmpty) return _countries;
+    final q = _countrySearch.toLowerCase();
+    return _countries.where((c) {
+      return c['name']!.toLowerCase().contains(q) ||
+          c['dial']!.contains(q) ||
+          c['code']!.toLowerCase().contains(q);
+    }).toList();
   }
 
-  void _handleRegisterSubmit() async {
-    final localNum = _phoneController.text.replaceAll(RegExp(r'[^\d]'), '');
-    if (localNum.isEmpty) {
-      setState(() => _errorMessage = 'Please enter a valid phone number');
+  @override
+  void dispose() {
+    _otpAutoFillTimer?.cancel();
+    _otpAutoRedirectTimer?.cancel();
+    _phoneController.dispose();
+    _otpController.dispose();
+    _loginIdentifierController.dispose();
+    _loginPasswordController.dispose();
+    super.dispose();
+  }
+
+  // ── Register Handler ────────────────────────────────────────────────────────
+  Future<void> _handleRegisterSubmit() async {
+    final cleanPhone = _localPhone.replaceAll(RegExp(r'[^\d]'), '').replaceFirst(RegExp(r'^0+'), '');
+    if (cleanPhone.isEmpty) {
+      setState(() => _error = 'Please enter a valid phone number');
       return;
     }
 
     setState(() {
-      _isLoading = true;
-      _errorMessage = null;
+      _loading = true;
+      _error = null;
     });
 
-    final fullPhone = '$_selectedDial${localNum.replaceFirst(RegExp(r'^0+'), '')}';
+    final fullPhone = _selectedCountry['dial']! + cleanPhone;
 
     try {
       await widget.appState.register(
@@ -172,59 +106,76 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       );
 
       final user = widget.appState.currentUser;
+      final assignedName = user?.displayName ?? 'GoChat User';
+      final pin = user?.id.isNotEmpty == true
+          ? user!.id.replaceAll('-', '').substring(0, 6).toUpperCase()
+          : '8492A1';
+
       setState(() {
-        _assignedUsername = user?.displayName ?? 'GoChat User';
-        _generatedPin = user?.id.substring(0, 6).toUpperCase() ?? '8F39A1';
+        _assignedUsername = assignedName;
+        _generatedPin = pin;
         _showOtp = true;
-        _isLoading = false;
+        _loading = false;
       });
 
-      // Simulate same-device SMS OTP auto-detection (700ms)
-      Timer(const Duration(milliseconds: 700), () {
-        if (mounted && _showOtp) {
+      // Simulate same-device SMS OTP auto-fill & auto-verify after 700ms
+      _otpAutoFillTimer = Timer(const Duration(milliseconds: 700), () {
+        if (!mounted) return;
+        setState(() {
+          _otp = '849201';
           _otpController.text = '849201';
-          setState(() {});
-        }
+        });
+
+        _otpAutoRedirectTimer = Timer(const Duration(milliseconds: 500), () {
+          if (!mounted) return;
+          _navigateToChat();
+        });
       });
     } catch (e) {
       setState(() {
-        _errorMessage = e.toString().replaceFirst('Exception: ', '');
-        _isLoading = false;
+        _error = e.toString().replaceFirst('Exception: ', '');
+        _loading = false;
       });
     }
   }
 
-  void _handleLoginSubmit() async {
-    final identifier = _identifierController.text.trim();
+  // ── Login Handler ───────────────────────────────────────────────────────────
+  Future<void> _handleLoginSubmit() async {
+    final identifier = _loginIdentifierController.text.trim();
+    final password = _loginPasswordController.text.trim();
+
     if (identifier.isEmpty) {
-      setState(() => _errorMessage = 'Please enter your Phone number, Email, or PIN');
+      setState(() => _error = 'Please enter your phone number, email, or PIN');
       return;
     }
 
     setState(() {
-      _isLoading = true;
-      _errorMessage = null;
+      _loading = true;
+      _error = null;
     });
 
     try {
-      await widget.appState.login(identifier, 'GochatSecretPass123!');
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => MainNavigationScreen(appState: widget.appState)),
+      await widget.appState.login(
+        identifier,
+        password.isNotEmpty ? password : 'GochatSecretPass123!',
       );
+
+      if (!mounted) return;
+      _navigateToChat();
     } catch (e) {
       setState(() {
-        _errorMessage = e.toString().replaceFirst('Exception: ', '');
-        _isLoading = false;
+        _error = e.toString().replaceFirst('Exception: ', '');
+        _loading = false;
       });
     }
   }
 
-  void _handleOtpComplete() {
+  void _navigateToChat() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => MainNavigationScreen(appState: widget.appState)),
+      MaterialPageRoute(
+        builder: (_) => MainNavigationScreen(appState: widget.appState),
+      ),
     );
   }
 
@@ -234,16 +185,16 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       backgroundColor: const Color(0xFF050507),
       body: Stack(
         children: [
-          // Background Decorative Glowing Orbs (WhatsApp Pro / Glass Aesthetic)
+          // Background Decorative Blur Gradients
           Positioned(
             top: MediaQuery.of(context).size.height * 0.15,
             left: -40,
             child: Container(
-              width: 260,
-              height: 260,
+              width: 300,
+              height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primary.withValues(alpha: 0.12),
+                color: AppTheme.primary.withValues(alpha: 0.10),
               ),
             ),
           ),
@@ -251,11 +202,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             bottom: MediaQuery.of(context).size.height * 0.15,
             right: -40,
             child: Container(
-              width: 240,
-              height: 240,
+              width: 280,
+              height: 280,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.tealAccent.withValues(alpha: 0.08),
+                color: const Color(0xFF7C3AED).withValues(alpha: 0.10), // Violet
               ),
             ),
           ),
@@ -263,39 +214,38 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
                 child: Container(
                   constraints: const BoxConstraints(maxWidth: 440),
                   child: Column(
                     children: [
-                      // Brand Logo Header
+                      // Header Icon & Title
                       Container(
-                        width: 68,
-                        height: 68,
+                        width: 56,
+                        height: 56,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [AppTheme.primary, AppTheme.accent],
+                            colors: [Color(0xFF059669), Color(0xFF34D399)],
                             begin: Alignment.bottomLeft,
                             end: Alignment.topRight,
                           ),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: AppTheme.primary.withValues(alpha: 0.35),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
+                              color: const Color(0xFF10B981).withValues(alpha: 0.25),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
                             ),
                           ],
                         ),
-                        child: const Icon(Icons.chat_bubble_rounded, size: 34, color: Colors.black),
+                        child: const Icon(Icons.chat_bubble_rounded, size: 28, color: Colors.black),
                       ),
                       const SizedBox(height: 20),
-
                       Text(
-                        _isRegister ? 'Get Started with GoChat' : 'Sign in to GoChat',
+                        _isRegister ? 'Get Started with GoChat' : 'Welcome to GoChat',
                         style: const TextStyle(
                           fontSize: 26,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w800,
                           color: Colors.white,
                           letterSpacing: -0.5,
                         ),
@@ -306,21 +256,21 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             ? 'Enter your phone number to create your account'
                             : 'Enter your phone number, email, or PIN to continue',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 13.5, color: AppTheme.textMuted),
+                        style: const TextStyle(fontSize: 13.5, color: Color(0xFFA1A1AA)),
                       ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 24),
 
                       // Glass Card Container
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: AppTheme.darkSurface.withValues(alpha: 0.85),
-                          borderRadius: BorderRadius.circular(28),
-                          border: Border.all(color: Colors.white12, width: 0.8),
+                          color: const Color(0xFF121215).withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: Colors.white10),
                           boxShadow: const [
                             BoxShadow(
-                              color: Colors.black54,
-                              blurRadius: 30,
+                              color: Colors.black45,
+                              blurRadius: 25,
                               offset: Offset(0, 10),
                             ),
                           ],
@@ -329,133 +279,235 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             // Error Banner
-                            if (_errorMessage != null)
+                            if (_error != null)
                               Container(
-                                margin: const EdgeInsets.only(bottom: 18),
+                                margin: const EdgeInsets.only(bottom: 16),
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.dangerRed.withValues(alpha: 0.12),
+                                  color: Colors.red.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppTheme.dangerRed.withValues(alpha: 0.3)),
+                                  border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.error_outline_rounded, color: AppTheme.dangerRed, size: 20),
+                                    const Icon(Icons.shield_outlined, color: Colors.redAccent, size: 18),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Text(
-                                        _errorMessage!,
-                                        style: const TextStyle(color: Color(0xFFFF6B6B), fontSize: 12.5),
+                                        _error!,
+                                        style: const TextStyle(color: Color(0xFFF87171), fontSize: 12.5),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
 
-                            // STEP 1: Registration Form
+                            // ── REGISTER: Step 1 (Phone Input & Country Picker) ──
                             if (_isRegister && !_showOtp) ...[
                               const Text(
                                 'PHONE NUMBER',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.textMuted,
-                                  letterSpacing: 1.0,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFFA1A1AA),
+                                  letterSpacing: 0.8,
                                 ),
                               ),
                               const SizedBox(height: 8),
 
                               Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Country Selector Button
+                                  // Country Code Selector Button
                                   GestureDetector(
-                                    onTap: _openCountryPickerModal,
+                                    onTap: () => setState(() => _showCountryPicker = !_showCountryPicker),
                                     child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
                                       decoration: BoxDecoration(
-                                        color: AppTheme.darkCard,
-                                        borderRadius: BorderRadius.circular(14),
-                                        border: Border.all(color: AppTheme.darkBorder),
+                                        color: const Color(0xFF18181B).withValues(alpha: 0.7),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: _showCountryPicker ? const Color(0xFF10B981) : const Color(0xFF27272A),
+                                        ),
                                       ),
                                       child: Row(
                                         children: [
-                                          Text(_selectedCountry['flag']!, style: const TextStyle(fontSize: 18)),
+                                          Text(_selectedCountry['flag']!, style: const TextStyle(fontSize: 16)),
                                           const SizedBox(width: 6),
                                           Text(
-                                            _selectedDial,
+                                            _selectedCountry['dial']!,
                                             style: const TextStyle(
-                                              color: AppTheme.textLight,
+                                              color: Color(0xFFD4D4D8),
                                               fontFamily: 'monospace',
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 13.5,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
                                             ),
                                           ),
                                           const SizedBox(width: 4),
-                                          const Icon(Icons.keyboard_arrow_down, color: AppTheme.textMuted, size: 18),
+                                          const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF71717A), size: 16),
                                         ],
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 10),
+                                  const SizedBox(width: 8),
 
-                                  // Phone Input Field
+                                  // Phone Number Input
                                   Expanded(
                                     child: TextField(
                                       controller: _phoneController,
                                       keyboardType: TextInputType.phone,
-                                      style: const TextStyle(color: AppTheme.textLight, fontSize: 15),
+                                      style: const TextStyle(color: Colors.white, fontSize: 14.5),
                                       decoration: InputDecoration(
-                                        hintText: '801 234 5678',
-                                        hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 14),
-                                        fillColor: AppTheme.darkCard,
+                                        hintText: 'Phone number',
+                                        hintStyle: const TextStyle(color: Color(0xFF71717A), fontSize: 13.5),
                                         filled: true,
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(14),
-                                          borderSide: BorderSide.none,
+                                        fillColor: const Color(0xFF18181B).withValues(alpha: 0.7),
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: const BorderSide(color: Color(0xFF27272A)),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: const BorderSide(color: Color(0xFF10B981)),
                                         ),
                                       ),
+                                      onChanged: (val) {
+                                        setState(() => _localPhone = val);
+                                      },
                                     ),
                                   ),
                                 ],
                               ),
 
-                              const SizedBox(height: 10),
+                              // Country Search Modal Dropdown
+                              if (_showCountryPicker) ...[
+                                const SizedBox(height: 8),
+                                Container(
+                                  constraints: const BoxConstraints(maxHeight: 220),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF18181B),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(color: const Color(0xFF27272A)),
+                                    boxShadow: const [
+                                      BoxShadow(color: Colors.black87, blurRadius: 20, offset: Offset(0, 8)),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.all(8),
+                                        child: TextField(
+                                          style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                                          decoration: InputDecoration(
+                                            hintText: 'Search country or code...',
+                                            hintStyle: const TextStyle(color: Color(0xFF71717A), fontSize: 12),
+                                            prefixIcon: const Icon(Icons.search, color: Color(0xFF71717A), size: 16),
+                                            filled: true,
+                                            fillColor: const Color(0xFF27272A),
+                                            contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: BorderSide.none,
+                                            ),
+                                          ),
+                                          onChanged: (val) {
+                                            setState(() => _countrySearch = val);
+                                          },
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: ListView.builder(
+                                          itemCount: _filteredCountries.length,
+                                          itemBuilder: (context, idx) {
+                                            final c = _filteredCountries[idx];
+                                            final isSelected = c['code'] == _selectedCountryCode;
+
+                                            return InkWell(
+                                              onTap: () {
+                                                setState(() {
+                                                  _selectedCountryCode = c['code']!;
+                                                  _showCountryPicker = false;
+                                                  _countrySearch = '';
+                                                });
+                                              },
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                color: isSelected
+                                                    ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                                                    : Colors.transparent,
+                                                child: Row(
+                                                  children: [
+                                                    Text(c['flag']!, style: const TextStyle(fontSize: 16)),
+                                                    const SizedBox(width: 10),
+                                                    Expanded(
+                                                      child: Text(
+                                                        c['name']!,
+                                                        style: TextStyle(
+                                                          color: isSelected ? const Color(0xFF34D399) : Colors.white,
+                                                          fontSize: 13,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      c['dial']!,
+                                                      style: const TextStyle(
+                                                        color: Color(0xFF71717A),
+                                                        fontFamily: 'monospace',
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+
+                              const SizedBox(height: 8),
                               const Text(
                                 'Fast & secure phone sign-up. Username & email can be added anytime in Settings.',
-                                style: TextStyle(fontSize: 11, color: AppTheme.textMuted, height: 1.3),
+                                style: TextStyle(fontSize: 11, color: Color(0xFF71717A), height: 1.3),
                               ),
-                              const SizedBox(height: 22),
+                              const SizedBox(height: 20),
 
-                              // Continue Button
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppTheme.primary,
-                                  foregroundColor: Colors.black,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                  elevation: 0,
+                              // Submit Button
+                              SizedBox(
+                                width: double.infinity,
+                                height: 46,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF10B981),
+                                    foregroundColor: Colors.black,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    elevation: 0,
+                                  ),
+                                  onPressed: _loading ? null : _handleRegisterSubmit,
+                                  child: _loading
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                                        )
+                                      : const Text(
+                                          'Continue with Phone',
+                                          style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
+                                        ),
                                 ),
-                                onPressed: _isLoading ? null : _handleRegisterSubmit,
-                                child: _isLoading
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
-                                      )
-                                    : const Text(
-                                        'Continue with Phone',
-                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                                      ),
                               ),
                             ],
 
-                            // STEP 2: Account Created & SMS OTP Verification
+                            // ── REGISTER: Step 2 (Account Created & SMS OTP) ──
                             if (_isRegister && _showOtp) ...[
                               Center(
                                 child: Column(
                                   children: [
-                                    const Icon(Icons.vpn_key_rounded, color: AppTheme.accent, size: 42),
+                                    const Icon(Icons.vpn_key_rounded, color: Color(0xFF34D399), size: 40),
                                     const SizedBox(height: 8),
                                     const Text(
                                       'Account Created!',
@@ -465,20 +517,24 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
                                     if (_assignedUsername != null)
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                                         decoration: BoxDecoration(
-                                          color: AppTheme.darkCard,
+                                          color: const Color(0xFF18181B),
                                           borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(color: AppTheme.darkBorder),
+                                          border: Border.all(color: const Color(0xFF27272A)),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            const Icon(Icons.auto_awesome, color: AppTheme.accent, size: 14),
+                                            const Icon(Icons.auto_awesome, color: Color(0xFF34D399), size: 14),
                                             const SizedBox(width: 6),
                                             Text(
                                               'Assigned Username: ${_assignedUsername!}',
-                                              style: const TextStyle(fontSize: 12, color: AppTheme.accent, fontWeight: FontWeight.bold),
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Color(0xFF34D399),
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -491,26 +547,26 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                         fontSize: 13,
                                         fontFamily: 'monospace',
                                         fontWeight: FontWeight.bold,
-                                        color: AppTheme.accent,
+                                        color: Color(0xFF34D399),
                                         letterSpacing: 2,
                                       ),
                                     ),
                                     const Text(
                                       'Share this PIN with friends to connect on GoChat',
-                                      style: TextStyle(fontSize: 10.5, color: AppTheme.textMuted),
+                                      style: TextStyle(fontSize: 10.5, color: Color(0xFF71717A)),
                                     ),
                                   ],
                                 ),
                               ),
                               const SizedBox(height: 18),
 
-                              // SMS Detection Indicator
+                              // SMS Detection Box
                               Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.primary.withValues(alpha: 0.12),
+                                  color: const Color(0xFF064E3B).withValues(alpha: 0.3),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppTheme.primary.withValues(alpha: 0.25)),
+                                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.2)),
                                 ),
                                 child: Column(
                                   children: [
@@ -521,17 +577,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                           width: 8,
                                           height: 8,
                                           decoration: const BoxDecoration(
-                                            color: AppTheme.accent,
+                                            color: Color(0xFF34D399),
                                             shape: BoxShape.circle,
                                           ),
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
-                                          _otpController.text.length == 6
-                                              ? 'SMS OTP Verified!'
+                                          _otp.length == 6
+                                              ? 'SMS OTP Verified! Redirecting...'
                                               : 'Detecting SMS OTP on this device...',
                                           style: const TextStyle(
-                                            color: AppTheme.accent,
+                                            color: Color(0xFF6EE7B7),
                                             fontWeight: FontWeight.bold,
                                             fontSize: 12,
                                           ),
@@ -540,8 +596,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Verification code for $_selectedDial ${_phoneController.text}',
-                                      style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                                      'Verification code for ${_selectedCountry['dial']} $_localPhone',
+                                      style: const TextStyle(fontSize: 11, color: Color(0xFF059669)),
                                     ),
                                   ],
                                 ),
@@ -555,111 +611,175 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                 keyboardType: TextInputType.number,
                                 maxLength: 6,
                                 style: const TextStyle(
-                                  fontSize: 24,
+                                  fontSize: 22,
                                   fontFamily: 'monospace',
                                   fontWeight: FontWeight.bold,
-                                  letterSpacing: 10,
+                                  letterSpacing: 12,
                                   color: Colors.white,
                                 ),
                                 decoration: InputDecoration(
                                   counterText: '',
                                   hintText: '000000',
-                                  fillColor: AppTheme.darkCard,
+                                  hintStyle: const TextStyle(color: Color(0xFF52525B)),
                                   filled: true,
+                                  fillColor: const Color(0xFF18181B).withValues(alpha: 0.7),
                                   contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    borderSide: BorderSide.none,
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(color: Color(0xFF27272A)),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(color: Color(0xFF10B981)),
                                   ),
                                 ),
+                                onChanged: (val) {
+                                  setState(() => _otp = val);
+                                  if (val.length == 6) {
+                                    _navigateToChat();
+                                  }
+                                },
                               ),
                               const SizedBox(height: 18),
 
                               // Start Messaging Button
-                              ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppTheme.primary,
-                                  foregroundColor: Colors.black,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 46,
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF10B981),
+                                    foregroundColor: Colors.black,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                  icon: const Icon(Icons.auto_awesome, size: 16),
+                                  label: Text(
+                                    _otp.length == 6 ? 'Verifying & Opening Chat...' : 'Start Messaging Now',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  ),
+                                  onPressed: _navigateToChat,
                                 ),
-                                icon: const Icon(Icons.auto_awesome, size: 18),
-                                label: const Text('Start Messaging Now', style: TextStyle(fontWeight: FontWeight.bold)),
-                                onPressed: _handleOtpComplete,
                               ),
                             ],
 
-                            // LOGIN FLOW
+                            // ── SIGN IN FLOW ────────────────────────────────────
                             if (!_isRegister) ...[
                               const Text(
                                 'PHONE NUMBER, EMAIL, OR PIN',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.textMuted,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFFA1A1AA),
                                   letterSpacing: 0.8,
                                 ),
                               ),
                               const SizedBox(height: 8),
 
                               TextField(
-                                controller: _identifierController,
-                                style: const TextStyle(color: AppTheme.textLight, fontSize: 15),
+                                controller: _loginIdentifierController,
+                                style: const TextStyle(color: Colors.white, fontSize: 14.5),
                                 decoration: InputDecoration(
                                   hintText: 'e.g. +2348012345678, alex@gochat.io, or PIN',
-                                  prefixIcon: const Icon(Icons.account_circle_outlined, color: AppTheme.iconColor),
-                                  fillColor: AppTheme.darkCard,
+                                  hintStyle: const TextStyle(color: Color(0xFF71717A), fontSize: 13.5),
+                                  prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF71717A), size: 20),
                                   filled: true,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    borderSide: BorderSide.none,
+                                  fillColor: const Color(0xFF18181B).withValues(alpha: 0.7),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(color: Color(0xFF27272A)),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(color: Color(0xFF10B981)),
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 22),
+                              const SizedBox(height: 14),
 
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppTheme.primary,
-                                  foregroundColor: Colors.black,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              const Text(
+                                'PASSWORD (OPTIONAL)',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFFA1A1AA),
+                                  letterSpacing: 0.8,
                                 ),
-                                onPressed: _isLoading ? null : _handleLoginSubmit,
-                                child: _isLoading
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
-                                      )
-                                    : const Text(
-                                        'Sign In',
-                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                                      ),
+                              ),
+                              const SizedBox(height: 8),
+
+                              TextField(
+                                controller: _loginPasswordController,
+                                obscureText: true,
+                                style: const TextStyle(color: Colors.white, fontSize: 14.5),
+                                decoration: InputDecoration(
+                                  hintText: 'Leave empty for PIN / phone login',
+                                  hintStyle: const TextStyle(color: Color(0xFF71717A), fontSize: 13.5),
+                                  prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF71717A), size: 20),
+                                  filled: true,
+                                  fillColor: const Color(0xFF18181B).withValues(alpha: 0.7),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(color: Color(0xFF27272A)),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(color: Color(0xFF10B981)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+
+                              SizedBox(
+                                width: double.infinity,
+                                height: 46,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF10B981),
+                                    foregroundColor: Colors.black,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                  onPressed: _loading ? null : _handleLoginSubmit,
+                                  child: _loading
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                                        )
+                                      : const Text(
+                                          'Sign In',
+                                          style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold),
+                                        ),
+                                ),
                               ),
                             ],
 
                             const SizedBox(height: 18),
 
-                            // Toggle Switch between Register & Sign In
+                            // Toggle Link
                             Center(
                               child: TextButton(
                                 onPressed: () {
                                   setState(() {
                                     _isRegister = !_isRegister;
                                     _showOtp = false;
-                                    _errorMessage = null;
+                                    _error = null;
                                   });
                                 },
-                                child: Text(
-                                  _isRegister
-                                      ? 'Already registered? Sign In'
-                                      : 'New to GoChat? Create Account',
-                                  style: const TextStyle(
-                                    color: AppTheme.accent,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13.5,
+                                child: RichText(
+                                  text: TextSpan(
+                                    style: const TextStyle(fontSize: 12.5),
+                                    children: [
+                                      TextSpan(
+                                        text: _isRegister ? 'Already registered? ' : 'New to GoChat? ',
+                                        style: const TextStyle(color: Color(0xFF71717A)),
+                                      ),
+                                      TextSpan(
+                                        text: _isRegister ? 'Sign In' : 'Create Account',
+                                        style: const TextStyle(color: Color(0xFF34D399), fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
