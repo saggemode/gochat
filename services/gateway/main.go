@@ -100,14 +100,16 @@ func main() {
 	}
 
 	// ── Health Check Server ──────────────────────────────────────────────────
-	healthSrv := health.New("api-gateway", cfg.HealthPort, log)
-	if redisClient != nil {
-		healthSrv.AddCheck("redis", func(ctx context.Context) error {
-			return redisClient.Ping(ctx).Err()
-		})
+	if cfg.HealthPort != "" && cfg.HealthPort != cfg.HTTPPort {
+		healthSrv := health.New("api-gateway", cfg.HealthPort, log)
+		if redisClient != nil {
+			healthSrv.AddCheck("redis", func(ctx context.Context) error {
+				return redisClient.Ping(ctx).Err()
+			})
+		}
+		healthSrv.Start()
+		defer healthSrv.Stop()
 	}
-	healthSrv.Start()
-	defer healthSrv.Stop()
 
 	// ── Service Discovery & Load Balancing ────────────────────────────────────
 	var disc discovery.Discovery
