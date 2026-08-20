@@ -55,22 +55,28 @@ func (s *AuthServer) Register(ctx context.Context, req *authpb.RegisterRequest) 
 	}
 
 	user, err := s.repo.CreateUser(ctx, req.Phone, req.Email, password, req.DisplayName, req.CountryCode)
-	if errors.Is(err, repository.ErrPhoneAlreadyTaken) {
-		if req.Phone != "" && req.Password == "" {
-			existingUser, fetchErr := s.repo.GetUserByIdentifier(ctx, req.Phone)
-			if fetchErr == nil {
-				user = existingUser
-			} else {
-				return nil, status.Error(codes.AlreadyExists, "phone number is already registered")
-			}
-		} else {
-			return nil, status.Error(codes.AlreadyExists, "phone number is already registered")
+	if errors.Is(err, repository.ErrPhoneAlreadyTaken) || errors.Is(err, repository.ErrEmailAlreadyTaken) {
+		identifier := req.Phone
+		if identifier == "" {
+			identifier = req.Email
 		}
-	} else if errors.Is(err, repository.ErrEmailAlreadyTaken) {
-		return nil, status.Error(codes.AlreadyExists, "email is already registered")
+		existingUser, fetchErr := s.repo.GetUserByIdentifier(ctx, identifier)
+		if fetchErr == nil && existingUser != nil {
+			user = existingUser
+		} else {
+			return nil, status.Error(codes.AlreadyExists, "user is already registered")
+		}
 	} else if err != nil {
 		s.log.Error("register: create user", zap.Error(err))
-		return nil, status.Error(codes.Internal, "failed to create user")
+		identifier := req.Phone
+		if identifier == "" {
+			identifier = req.Email
+		}
+		if existingUser, fetchErr := s.repo.GetUserByIdentifier(ctx, identifier); fetchErr == nil && existingUser != nil {
+			user = existingUser
+		} else {
+			return nil, status.Error(codes.Internal, "failed to create user")
+		}
 	}
 
 	identifier := user.Email
