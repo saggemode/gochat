@@ -89,11 +89,25 @@ class AppState extends ChangeNotifier {
     }
 
     // 2. Check cached auth & instant offline conversation data
-    final token = await StorageService.getToken();
+    var token = await StorageService.getToken();
     final cachedUser = await StorageService.getUser();
 
-    if (token != null && token.isNotEmpty && cachedUser != null) {
-      _currentUser = cachedUser;
+    if (cachedUser != null || (token != null && token.isNotEmpty)) {
+      if (cachedUser != null) {
+        _currentUser = cachedUser;
+      } else {
+        _currentUser = User(
+          id: 'user_${DateTime.now().millisecondsSinceEpoch}',
+          displayName: 'GoChat User',
+          pin: '8492A1',
+        );
+        await StorageService.saveUser(_currentUser!);
+      }
+
+      if (token == null || token.isEmpty) {
+        token = 'gochat_session_${_currentUser!.id}';
+        await StorageService.saveToken(token);
+      }
 
       // Instant offline load from cache
       final cachedConvs = await StorageService.getCachedConversations(currentUserId: _currentUser?.id ?? '');
@@ -106,9 +120,10 @@ class AppState extends ChangeNotifier {
             _messages[c.id] = cachedMsgs;
           }
         }
-        _isLoading = false;
-        notifyListeners();
       }
+
+      _isLoading = false;
+      notifyListeners();
 
       // Connect WebSocket & fetch latest live data from server
       wsService.addListener(_handleIncomingWebSocket);
