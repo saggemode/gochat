@@ -639,6 +639,10 @@ func corsMiddleware(origins string) gin.HandlerFunc {
 				break
 			}
 		}
+		// Also allow any localhost origin (Flutter web uses random ports)
+		if !isAllowed && strings.HasPrefix(reqOrigin, "http://localhost:") {
+			isAllowed = true
+		}
 
 		if isAllowed {
 			c.Writer.Header().Set("Access-Control-Allow-Origin", reqOrigin)
