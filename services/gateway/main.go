@@ -33,7 +33,6 @@ import (
 	"gochat/pkg/database"
 	"gochat/pkg/discovery"
 	"gochat/pkg/eventbus"
-	"gochat/pkg/health"
 	"gochat/pkg/logger"
 	"gochat/pkg/metrics"
 	"gochat/services/gateway/handlers"
@@ -97,18 +96,6 @@ func main() {
 		redisClient = nil
 	} else {
 		defer redisClient.Close()
-	}
-
-	// ── Health Check Server ──────────────────────────────────────────────────
-	if cfg.HealthPort != "" && cfg.HealthPort != cfg.HTTPPort {
-		healthSrv := health.New("api-gateway", cfg.HealthPort, log)
-		if redisClient != nil {
-			healthSrv.AddCheck("redis", func(ctx context.Context) error {
-				return redisClient.Ping(ctx).Err()
-			})
-		}
-		healthSrv.Start()
-		defer healthSrv.Stop()
 	}
 
 	// ── Service Discovery & Load Balancing ────────────────────────────────────
@@ -629,10 +616,10 @@ func main() {
 	<-quit
 	log.Info("shutting down API Gateway...")
 
-	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
 
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Fatal("API Gateway forced to shutdown", zap.Error(err))
 	}
 
