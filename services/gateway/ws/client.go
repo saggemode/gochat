@@ -169,6 +169,9 @@ func ServeWs(hub *Hub, chatClient chatpb.ChatServiceClient, allowedOrigins strin
 				if origin == "" {
 					return true // Allow non-browser clients (like curl, desktop apps)
 				}
+				if strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "https://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:") || strings.HasPrefix(origin, "https://127.0.0.1:") {
+					return true
+				}
 				originsList := strings.Split(allowedOrigins, ",")
 				for _, o := range originsList {
 					o = strings.TrimSpace(o)
