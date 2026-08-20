@@ -1,14 +1,6 @@
-import 'package:flutter/foundation.dart';
-import '../models/user.dart';
-import '../models/conversation.dart';
-import '../models/message.dart';
-import '../models/story.dart';
-import '../models/call.dart';
-import '../models/channel.dart';
-import '../models/product.dart';
-import '../services/api_service.dart';
-import '../services/storage_service.dart';
-import '../services/websocket_service.dart';
+import 'package:flutter/material.dart';
+import '../models/models.dart';
+import '../services/services.dart';
 
 class AppState extends ChangeNotifier {
   final WebSocketService wsService = WebSocketService();
@@ -16,6 +8,7 @@ class AppState extends ChangeNotifier {
   User? _currentUser;
   bool _isLoading = true;
   String? _errorMessage;
+  ThemeMode _themeMode = ThemeMode.dark;
   List<Conversation> _conversations = [];
   final Map<String, List<Message>> _messages = {};
   List<UserStories> _stories = [];
@@ -29,6 +22,8 @@ class AppState extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _currentUser != null;
+  ThemeMode get themeMode => _themeMode;
+  bool get isDarkMode => _themeMode == ThemeMode.dark;
   List<Conversation> get conversations => _conversations;
   List<UserStories> get stories => _stories;
   List<CallRecord> get calls => _calls;
@@ -41,10 +36,35 @@ class AppState extends ChangeNotifier {
     return _messages[convId] ?? [];
   }
 
+  Future<void> setThemeMode(ThemeMode mode) async {
+    _themeMode = mode;
+    final modeStr = mode == ThemeMode.light ? 'light' : (mode == ThemeMode.system ? 'system' : 'dark');
+    await StorageService.saveThemeMode(modeStr);
+    notifyListeners();
+  }
+
+  Future<void> toggleTheme() async {
+    if (_themeMode == ThemeMode.dark) {
+      await setThemeMode(ThemeMode.light);
+    } else {
+      await setThemeMode(ThemeMode.dark);
+    }
+  }
+
   Future<void> init() async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
+
+    // Load persisted theme preference
+    final savedTheme = await StorageService.getThemeMode();
+    if (savedTheme == 'light') {
+      _themeMode = ThemeMode.light;
+    } else if (savedTheme == 'system') {
+      _themeMode = ThemeMode.system;
+    } else {
+      _themeMode = ThemeMode.dark;
+    }
 
     // Check cached auth
     final token = await StorageService.getToken();

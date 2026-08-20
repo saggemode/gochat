@@ -26,7 +26,9 @@ class GoChatApp extends StatelessWidget {
         return MaterialApp(
           title: 'GoChat',
           debugShowCheckedModeBanner: false,
-          theme: AppTheme.darkTheme,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: appState.themeMode,
           home: appState.isAuthenticated
               ? MainNavigationScreen(appState: appState)
               : LoginScreen(appState: appState),

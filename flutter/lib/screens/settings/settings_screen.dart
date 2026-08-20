@@ -64,6 +64,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _showThemeDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.darkSurface,
+        title: const Row(
+          children: [
+            Icon(Icons.palette_outlined, color: AppTheme.primary),
+            SizedBox(width: 8),
+            Text('Choose Theme', style: TextStyle(color: AppTheme.textLight)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.dark_mode_rounded, color: AppTheme.primary),
+              title: const Text('Dark Mode (Emerald)', style: TextStyle(color: AppTheme.textLight)),
+              trailing: widget.appState.themeMode == ThemeMode.dark
+                  ? const Icon(Icons.check_circle_rounded, color: AppTheme.primary)
+                  : null,
+              onTap: () {
+                widget.appState.setThemeMode(ThemeMode.dark);
+                Navigator.pop(ctx);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.light_mode_rounded, color: Colors.amber),
+              title: const Text('Light Mode (Clean)', style: TextStyle(color: AppTheme.textLight)),
+              trailing: widget.appState.themeMode == ThemeMode.light
+                  ? const Icon(Icons.check_circle_rounded, color: AppTheme.primary)
+                  : null,
+              onTap: () {
+                widget.appState.setThemeMode(ThemeMode.light);
+                Navigator.pop(ctx);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings_system_daydream_rounded, color: AppTheme.textMuted),
+              title: const Text('System Default', style: TextStyle(color: AppTheme.textLight)),
+              trailing: widget.appState.themeMode == ThemeMode.system
+                  ? const Icon(Icons.check_circle_rounded, color: AppTheme.primary)
+                  : null,
+              onTap: () {
+                widget.appState.setThemeMode(ThemeMode.system);
+                Navigator.pop(ctx);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = widget.appState.currentUser;
@@ -233,11 +287,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
             'Block contacts, disappearing messages, read receipts',
             onTap: () {},
           ),
-          _buildSettingsTile(
-            Icons.palette_outlined,
-            'Appearance & Theme',
-            'Dark Emerald (Active), Wallpapers, Font size',
-            onTap: () {},
+          ListTile(
+            leading: Icon(
+              widget.appState.isDarkMode ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+              color: AppTheme.primary,
+            ),
+            title: const Text(
+              'Appearance & Theme',
+              style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textLight, fontSize: 15),
+            ),
+            subtitle: Text(
+              widget.appState.themeMode == ThemeMode.dark
+                  ? 'Dark Emerald (Active)'
+                  : (widget.appState.themeMode == ThemeMode.light ? 'Light Clean (Active)' : 'System Default'),
+              style: const TextStyle(fontSize: 12.5, color: AppTheme.textMuted),
+            ),
+            trailing: Switch(
+              value: widget.appState.isDarkMode,
+              activeColor: AppTheme.primary,
+              onChanged: (_) {
+                widget.appState.toggleTheme();
+              },
+            ),
+            onTap: () => _showThemeDialog(context),
           ),
           _buildSettingsTile(
             Icons.smart_toy_outlined,

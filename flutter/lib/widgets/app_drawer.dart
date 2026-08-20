@@ -28,8 +28,11 @@ class AppDrawer extends StatelessWidget {
       child: SafeArea(
         child: Column(
           children: [
-            // User Profile Header
-            AppDrawerProfileHeader(user: user),
+            AppDrawerProfileHeader(
+              user: user,
+              isDarkMode: appState.isDarkMode,
+              onToggleTheme: () => appState.toggleTheme(),
+            ),
 
             // Navigation Items List
             Expanded(

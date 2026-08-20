@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class AppTheme {
-  // Brand Emerald & WhatsApp Palette
+  // Brand Emerald & WhatsApp Dark Palette
   static const Color primary = Color(0xFF00A884);
   static const Color primaryDark = Color(0xFF008069);
   static const Color accent = Color(0xFF25D366);
@@ -20,6 +20,18 @@ class AppTheme {
   static const Color readBlue = Color(0xFF53BDEB);
   static const Color dangerRed = Color(0xFFEA0038);
 
+  // WhatsApp Light Palette
+  static const Color lightBg = Color(0xFFF0F2F5);
+  static const Color lightSurface = Color(0xFFFFFFFF);
+  static const Color lightCard = Color(0xFFFFFFFF);
+  static const Color lightBorder = Color(0xFFE9EDEF);
+  static const Color textDark = Color(0xFF111B21);
+  static const Color textMutedLight = Color(0xFF667781);
+  static const Color senderBubbleLight = Color(0xFFD9FDD3);
+  static const Color receiverBubbleLight = Color(0xFFFFFFFF);
+  static const Color iconColorLight = Color(0xFF54656F);
+
+  // ── Dark Theme ──────────────────────────────────────────────────────────────
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
@@ -97,6 +109,91 @@ class AppTheme {
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: primary,
+        foregroundColor: Colors.white,
+        elevation: 4,
+        shape: CircleBorder(),
+      ),
+    );
+  }
+
+  // ── Light Theme ─────────────────────────────────────────────────────────────
+  static ThemeData get lightTheme {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: lightBg,
+      primaryColor: primaryDark,
+      colorScheme: const ColorScheme.light(
+        primary: primaryDark,
+        secondary: primary,
+        surface: lightSurface,
+        surfaceContainerHighest: lightCard,
+        error: dangerRed,
+        onPrimary: Colors.white,
+        onSurface: textDark,
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: primaryDark,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        centerTitle: false,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          systemNavigationBarColor: lightSurface,
+          systemNavigationBarIconBrightness: Brightness.dark,
+        ),
+        titleTextStyle: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+          letterSpacing: 0.2,
+        ),
+        iconTheme: IconThemeData(color: Colors.white),
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: lightSurface,
+        selectedItemColor: primaryDark,
+        unselectedItemColor: textMutedLight,
+        type: BottomNavigationBarType.fixed,
+        elevation: 8,
+        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+        unselectedLabelStyle: TextStyle(fontWeight: FontWeight.normal, fontSize: 12),
+      ),
+      cardTheme: CardThemeData(
+        color: lightCard,
+        elevation: 1,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: lightBorder, width: 0.5),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: lightBorder,
+        thickness: 0.5,
+        space: 0.5,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: Colors.white,
+        hintStyle: const TextStyle(color: textMutedLight, fontSize: 14),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(24),
+          borderSide: const BorderSide(color: lightBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(24),
+          borderSide: const BorderSide(color: lightBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(24),
+          borderSide: const BorderSide(color: primaryDark, width: 1.5),
+        ),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: primaryDark,
         foregroundColor: Colors.white,
         elevation: 4,
         shape: CircleBorder(),

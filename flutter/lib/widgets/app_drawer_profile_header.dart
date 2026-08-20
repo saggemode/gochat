@@ -4,8 +4,15 @@ import '../core/theme/app_theme.dart';
 
 class AppDrawerProfileHeader extends StatelessWidget {
   final User? user;
+  final bool isDarkMode;
+  final VoidCallback? onToggleTheme;
 
-  const AppDrawerProfileHeader({super.key, required this.user});
+  const AppDrawerProfileHeader({
+    super.key,
+    required this.user,
+    this.isDarkMode = true,
+    this.onToggleTheme,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -112,6 +119,16 @@ class AppDrawerProfileHeader extends StatelessWidget {
               ],
             ),
           ),
+          if (onToggleTheme != null)
+            IconButton(
+              icon: Icon(
+                isDarkMode ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                color: isDarkMode ? Colors.amber : AppTheme.primary,
+                size: 22,
+              ),
+              tooltip: isDarkMode ? 'Switch to Light Theme' : 'Switch to Dark Theme',
+              onPressed: onToggleTheme,
+            ),
         ],
       ),
     );
