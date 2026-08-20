@@ -32,7 +32,19 @@ class ApiService {
     final safeName = displayName.isNotEmpty
         ? displayName
         : (cleanPhone.isNotEmpty ? 'User ${cleanPhone.length > 4 ? cleanPhone.substring(cleanPhone.length - 4) : cleanPhone}' : 'GoChat User');
+    final identifier = cleanPhone.isNotEmpty ? cleanPhone : email;
 
+    // 1. Check if user already exists on the backend by attempting login first
+    if (identifier.isNotEmpty) {
+      try {
+        final existingSession = await login(email: identifier, password: '');
+        if (existingSession['user'] != null || (existingSession['access_token'] != null || existingSession['token'] != null)) {
+          return existingSession;
+        }
+      } catch (_) {}
+    }
+
+    // 2. If not found, proceed to register new user
     final body = <String, dynamic>{
       if (cleanPhone.isNotEmpty) 'phone': cleanPhone,
       if (email.isNotEmpty) 'email': email,
@@ -52,15 +64,14 @@ class ApiService {
       }
     } catch (_) {}
 
-    // If registration fails or user already exists, auto-login with phone/email identifier
-    final identifier = cleanPhone.isNotEmpty ? cleanPhone : email;
+    // 3. If registration responded with conflict/already exists, fallback to login
     if (identifier.isNotEmpty) {
       try {
         return await login(email: identifier, password: '');
       } catch (_) {}
     }
 
-    // Return synthesized session
+    // 4. Return synthesized session
     return {
       'token': 'gochat_session_${DateTime.now().millisecondsSinceEpoch}',
       'user': {
@@ -80,19 +91,16 @@ class ApiService {
     required String password,
   }) async {
     final cleanIdentifier = email.trim();
-    final safeEmail = cleanIdentifier.contains('@')
-        ? cleanIdentifier
-        : '${cleanIdentifier.replaceAll(RegExp(r'[^\w]'), '')}@gochat.app';
     final safePassword = password.isNotEmpty ? password : 'GoChat@Password123!';
 
     final res = await http.post(
       Uri.parse(ApiConstants.login),
       headers: await _headers(),
       body: jsonEncode({
-        'email': safeEmail,
+        'email': cleanIdentifier,
         'password': safePassword,
       }),
-    ).timeout(const Duration(seconds: 12));
+    ).timeout(const Duration(seconds: 10));
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
       return jsonDecode(res.body);
