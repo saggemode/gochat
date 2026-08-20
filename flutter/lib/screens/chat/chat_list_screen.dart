@@ -82,9 +82,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
         leading: IconButton(
           icon: const Icon(Icons.menu_rounded, color: AppTheme.textLight, size: 26),
           tooltip: 'Main Menu',
-          onPressed: widget.onOpenDrawer != null
-              ? widget.onOpenDrawer
-              : () => Scaffold.of(context).openDrawer(),
+          onPressed: widget.onOpenDrawer ?? () => Scaffold.of(context).openDrawer(),
         ),
         title: _isSearching
             ? TextField(
