@@ -83,4 +83,20 @@ class Conversation {
       memberIds: (json['member_ids'] as List?)?.map((e) => e.toString()).toList() ?? [],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'avatar_url': avatarUrl,
+      'type': type.name,
+      'last_message': lastMessage?.toJson(),
+      'unread_count': unreadCount,
+      'is_pinned': isPinned,
+      'is_muted': isMuted,
+      'is_online': isOnline,
+      'updated_at': updatedAt.toIso8601String(),
+      'member_ids': memberIds,
+    };
+  }
 }

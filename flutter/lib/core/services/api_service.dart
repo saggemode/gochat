@@ -303,4 +303,30 @@ class ApiService {
     }
     throw Exception(data['error'] ?? 'Checkout failed');
   }
+
+  // ── WebRTC Calls: Get Call History ──────────────────────────────────────────
+  static Future<List<CallRecord>> getCalls() async {
+    return [
+      CallRecord(
+        id: 'call_1',
+        callerId: 'u_1',
+        callerName: 'Alex Rivera',
+        callerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+        type: CallType.video,
+        direction: CallDirection.incoming,
+        timestamp: DateTime.now().subtract(const Duration(minutes: 42)),
+        durationSeconds: 310,
+      ),
+      CallRecord(
+        id: 'call_2',
+        callerId: 'u_2',
+        callerName: 'Sarah Connor',
+        callerAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
+        type: CallType.audio,
+        direction: CallDirection.missed,
+        timestamp: DateTime.now().subtract(const Duration(hours: 3)),
+        durationSeconds: 0,
+      ),
+    ];
+  }
 }

@@ -8,6 +8,8 @@ enum MessageType {
   poll,
   canvas,
   game,
+  product,
+  ping,
 }
 
 enum MessageStatus {
@@ -120,8 +122,11 @@ class Message {
   final int? mediaDuration; // In seconds for audio/video
   final int? mediaSize;     // In bytes
   final PollData? pollData;
+  final Map<String, dynamic>? productData;
+  final bool isPing;
   final String? replyToId;
   final String? replyToText;
+  final String? replyToSenderName;
   final Map<String, List<String>> reactions; // emoji -> list of userIds
   final DateTime createdAt;
   final bool isMe;
@@ -139,8 +144,11 @@ class Message {
     this.mediaDuration,
     this.mediaSize,
     this.pollData,
+    this.productData,
+    this.isPing = false,
     this.replyToId,
     this.replyToText,
+    this.replyToSenderName,
     Map<String, List<String>>? reactions,
     DateTime? createdAt,
     this.isMe = false,
@@ -160,8 +168,11 @@ class Message {
     int? mediaDuration,
     int? mediaSize,
     PollData? pollData,
+    Map<String, dynamic>? productData,
+    bool? isPing,
     String? replyToId,
     String? replyToText,
+    String? replyToSenderName,
     Map<String, List<String>>? reactions,
     DateTime? createdAt,
     bool? isMe,
@@ -179,8 +190,11 @@ class Message {
       mediaDuration: mediaDuration ?? this.mediaDuration,
       mediaSize: mediaSize ?? this.mediaSize,
       pollData: pollData ?? this.pollData,
+      productData: productData ?? this.productData,
+      isPing: isPing ?? this.isPing,
       replyToId: replyToId ?? this.replyToId,
       replyToText: replyToText ?? this.replyToText,
+      replyToSenderName: replyToSenderName ?? this.replyToSenderName,
       reactions: reactions ?? this.reactions,
       createdAt: createdAt ?? this.createdAt,
       isMe: isMe ?? this.isMe,
@@ -189,27 +203,57 @@ class Message {
 
   factory Message.fromJson(Map<String, dynamic> json, {String currentUserId = ''}) {
     final senderId = json['sender_id']?.toString() ?? '';
+    final msgType = _parseMessageType(json['type'] ?? json['media_type']);
+    final isPingVal = json['is_ping'] == true || msgType == MessageType.ping || (json['content']?.toString().contains('💥 PING') ?? false);
+
     return Message(
       id: json['id']?.toString() ?? '',
       conversationId: json['conversation_id']?.toString() ?? '',
       senderId: senderId,
       senderName: json['sender_name'] ?? 'User',
       content: json['content'] ?? json['text'] ?? '',
-      type: _parseMessageType(json['type'] ?? json['media_type']),
+      type: isPingVal ? MessageType.ping : msgType,
       status: _parseMessageStatus(json['status']),
       mediaUrl: json['media_url'],
       mediaThumbnail: json['thumbnail_url'],
       mediaDuration: json['duration'],
       mediaSize: json['file_size'],
       pollData: json['poll_data'] != null ? PollData.fromJson(json['poll_data']) : null,
+      productData: json['product_data'] is Map<String, dynamic> ? json['product_data'] : null,
+      isPing: isPingVal,
       replyToId: json['reply_to_id'],
       replyToText: json['reply_to_text'],
+      replyToSenderName: json['reply_to_sender_name'],
       reactions: _parseReactions(json['reactions']),
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
           : DateTime.now(),
       isMe: currentUserId.isNotEmpty && senderId == currentUserId,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'conversation_id': conversationId,
+      'sender_id': senderId,
+      'sender_name': senderName,
+      'content': content,
+      'type': type.name,
+      'status': status.name,
+      'media_url': mediaUrl,
+      'thumbnail_url': mediaThumbnail,
+      'duration': mediaDuration,
+      'file_size': mediaSize,
+      'poll_data': pollData?.toJson(),
+      'product_data': productData,
+      'is_ping': isPing,
+      'reply_to_id': replyToId,
+      'reply_to_text': replyToText,
+      'reply_to_sender_name': replyToSenderName,
+      'reactions': reactions,
+      'created_at': createdAt.toIso8601String(),
+    };
   }
 
   static MessageType _parseMessageType(dynamic val) {
@@ -232,6 +276,10 @@ class Message {
         return MessageType.canvas;
       case 'game':
         return MessageType.game;
+      case 'product':
+        return MessageType.product;
+      case 'ping':
+        return MessageType.ping;
       default:
         return MessageType.text;
     }

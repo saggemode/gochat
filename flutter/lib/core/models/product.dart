@@ -40,4 +40,20 @@ class Product {
       inStock: json['in_stock'] != false,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'price': price,
+      'currency': currency,
+      'image_url': imageUrl,
+      'category': category,
+      'store_name': storeName,
+      'rating': rating,
+      'reviews_count': reviewsCount,
+      'in_stock': inStock,
+    };
+  }
 }

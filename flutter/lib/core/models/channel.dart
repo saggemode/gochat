@@ -22,6 +22,8 @@ class ChannelPost {
   })  : reactions = reactions ?? {},
         createdAt = createdAt ?? DateTime.now();
 
+  int get likesCount => reactions.values.fold(0, (sum, v) => sum + v);
+
   factory ChannelPost.fromJson(Map<String, dynamic> json) {
     return ChannelPost(
       id: json['id']?.toString() ?? '',

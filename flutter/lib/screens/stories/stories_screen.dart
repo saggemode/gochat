@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
-import '../../widgets/story_avatar.dart';
+import '../../widgets/widgets.dart';
 import 'story_viewer_screen.dart';
 
 class StoriesScreen extends StatelessWidget {
@@ -14,10 +14,17 @@ class StoriesScreen extends StatelessWidget {
     final stories = appState.stories;
     final myStory = stories.firstWhere((s) => s.isMe, orElse: () => stories.first);
     final otherStories = stories.where((s) => !s.isMe).toList();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Updates', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          'Updates',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: isDark ? AppTheme.textLight : AppTheme.textDark,
+          ),
+        ),
         actions: [
           IconButton(icon: const Icon(Icons.search), onPressed: () {}),
           IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
@@ -57,7 +64,7 @@ class StoriesScreen extends StatelessWidget {
                           color: AppTheme.primary,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.add, size: 16, color: Colors.white),
+                        child: const Icon(Icons.add, size: 16, color: Colors.black),
                       ),
                     ),
                   ],
@@ -67,12 +74,12 @@ class StoriesScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'My status',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.textLight,
+                          color: isDark ? AppTheme.textLight : AppTheme.textDark,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -80,7 +87,10 @@ class StoriesScreen extends StatelessWidget {
                         myStory.stories.isNotEmpty
                             ? '${myStory.stories.length} updates'
                             : 'Tap to add status update',
-                        style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
+                        ),
                       ),
                     ],
                   ),
@@ -101,89 +111,66 @@ class StoriesScreen extends StatelessWidget {
             ),
           ),
 
-          const Divider(),
+          const SectionHeader(title: 'RECENT UPDATES'),
 
-          // Recent updates section
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Text(
-              'Recent updates',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textMuted,
+          if (otherStories.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: EmptyStateView(
+                icon: Icons.history_toggle_off_rounded,
+                title: 'No Recent Updates',
+                description: 'Status updates from your contacts will appear here and disappear after 24 hours.',
               ),
-            ),
-          ),
-
-          ...otherStories.map((item) {
-            return ListTile(
-              leading: StoryAvatar(
-                avatarUrl: item.userAvatar,
-                radius: 26,
-                hasUnseenStory: item.hasUnseenStories,
-                storyCount: item.stories.length,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => StoryViewerScreen(userStories: item),
-                    ),
-                  );
-                },
-              ),
-              title: Text(
-                item.userName,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                  color: AppTheme.textLight,
+            )
+          else
+            ...otherStories.map((item) {
+              return ListTile(
+                leading: StoryAvatar(
+                  avatarUrl: item.userAvatar,
+                  radius: 26,
+                  hasUnseenStory: item.hasUnseenStories,
+                  storyCount: item.stories.length,
                 ),
-              ),
-              subtitle: const Text(
-                'Today, 2:45 PM',
-                style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
-              ),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => StoryViewerScreen(userStories: item),
+                title: Text(
+                  item.userName,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? AppTheme.textLight : AppTheme.textDark,
                   ),
-                );
-              },
-            );
-          }),
+                ),
+                subtitle: Text(
+                  item.stories.isNotEmpty ? 'Today, 2:30 PM' : 'No updates',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
+                  ),
+                ),
+                onTap: () {
+                  if (item.stories.isNotEmpty) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => StoryViewerScreen(userStories: item),
+                      ),
+                    );
+                  }
+                },
+              );
+            }),
         ],
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton.small(
-            heroTag: 'story_edit_fab',
-            backgroundColor: AppTheme.darkCard,
-            foregroundColor: AppTheme.textLight,
-            onPressed: () {
-              appState.addStory(
-                'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600',
-                'Feeling energized & grateful 💫',
-              );
-            },
-            child: const Icon(Icons.edit),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton(
-            heroTag: 'story_camera_fab',
-            backgroundColor: AppTheme.primary,
-            onPressed: () {
-              appState.addStory(
-                'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?w=600',
-                'Adventure awaits! 🏔️',
-              );
-            },
-            child: const Icon(Icons.camera_alt_rounded),
-          ),
-        ],
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'stories_fab',
+        onPressed: () {
+          appState.addStory(
+            'https://images.unsplash.com/photo-1518770660439-4636190af475?w=600',
+            'New status story ✨',
+          );
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('📸 Status story posted')),
+          );
+        },
+        child: const Icon(Icons.camera_alt_rounded),
       ),
     );
   }

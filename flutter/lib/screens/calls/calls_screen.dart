@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../core/models/call.dart';
+import '../../core/models/models.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
+import '../../widgets/widgets.dart';
 import 'active_call_screen.dart';
 
 class CallsScreen extends StatelessWidget {
@@ -22,7 +23,16 @@ class CallsScreen extends StatelessWidget {
   }
 
   void _startCall(BuildContext context, CallRecord record, CallType type) {
-    appState.startCall(record.callerName, record.callerAvatar, type);
+    final newCall = CallRecord(
+      id: 'call_${DateTime.now().millisecondsSinceEpoch}',
+      callerId: record.callerId,
+      callerName: record.callerName,
+      callerAvatar: record.callerAvatar,
+      type: type,
+      direction: CallDirection.outgoing,
+      timestamp: DateTime.now(),
+    );
+    appState.startCall(newCall);
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -37,10 +47,17 @@ class CallsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final calls = appState.calls;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Calls', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          'Calls',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: isDark ? AppTheme.textLight : AppTheme.textDark,
+          ),
+        ),
         actions: [
           IconButton(icon: const Icon(Icons.search), onPressed: () {}),
           IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
@@ -51,21 +68,27 @@ class CallsScreen extends StatelessWidget {
           // Create Call link tile
           ListTile(
             leading: Container(
-              width: 52,
-              height: 52,
+              width: 48,
+              height: 48,
               decoration: const BoxDecoration(
                 color: AppTheme.primary,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.link_rounded, color: Colors.white, size: 26),
+              child: const Icon(Icons.link_rounded, color: Colors.black, size: 24),
             ),
-            title: const Text(
+            title: Text(
               'Create call link',
-              style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textLight),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isDark ? AppTheme.textLight : AppTheme.textDark,
+              ),
             ),
-            subtitle: const Text(
-              'Share a link for your GoChat call',
-              style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+            subtitle: Text(
+              'Share a link for your GoChat audio/video room',
+              style: TextStyle(
+                color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
+                fontSize: 13,
+              ),
             ),
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -74,53 +97,44 @@ class CallsScreen extends StatelessWidget {
             },
           ),
 
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text(
-              'Recent',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textMuted,
-              ),
-            ),
-          ),
+          const SectionHeader(title: 'RECENT CALLS'),
 
           if (calls.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(32.0),
-              child: Center(
-                child: Text('No recent calls', style: TextStyle(color: AppTheme.textMuted)),
+            Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: EmptyStateView(
+                icon: Icons.phone_missed_rounded,
+                title: 'No Recent Calls',
+                description: 'To start a voice or video call with a contact, open a chat room and tap the call icon.',
               ),
             )
           else
             ...calls.map((call) {
               final dateStr = DateFormat('MMM dd, hh:mm a').format(call.timestamp);
               return ListTile(
-                leading: CircleAvatar(
-                  radius: 26,
-                  backgroundColor: AppTheme.darkCard,
-                  backgroundImage: call.callerAvatar.isNotEmpty
-                      ? NetworkImage(call.callerAvatar)
-                      : null,
-                  child: call.callerAvatar.isEmpty
-                      ? const Icon(Icons.person, color: AppTheme.iconColor)
-                      : null,
+                leading: CustomAvatar(
+                  imageUrl: call.callerAvatar,
+                  name: call.callerName,
+                  radius: 24,
                 ),
                 title: Text(
                   call.callerName,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: call.direction == CallDirection.missed
-                        ? AppTheme.dangerRed
-                        : AppTheme.textLight,
+                    color: isDark ? AppTheme.textLight : AppTheme.textDark,
                   ),
                 ),
                 subtitle: Row(
                   children: [
                     _buildDirectionIcon(call.direction),
-                    const SizedBox(width: 4),
-                    Text(dateStr, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                    const SizedBox(width: 6),
+                    Text(
+                      dateStr,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
+                      ),
+                    ),
                   ],
                 ),
                 trailing: IconButton(
@@ -136,10 +150,9 @@ class CallsScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'calls_fab',
-        backgroundColor: AppTheme.primary,
         onPressed: () {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Select contact to call')),
+            const SnackBar(content: Text('Select contact for new call')),
           );
         },
         child: const Icon(Icons.add_call),

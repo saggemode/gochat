@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../core/models/conversation.dart';
-import '../../core/models/message.dart';
+import '../../core/models/models.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
-import '../../widgets/story_avatar.dart';
+import '../../widgets/widgets.dart';
 import 'chat_room_screen.dart';
 import '../stories/story_viewer_screen.dart';
 
@@ -47,16 +46,20 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   Widget _buildFilterChip(String label) {
     final isSelected = _selectedFilter == label;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: () => setState(() => _selectedFilter = label),
       child: Container(
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primary.withValues(alpha: 0.2) : AppTheme.darkCard,
+          color: isSelected
+              ? AppTheme.primary.withValues(alpha: 0.18)
+              : (isDark ? AppTheme.darkCard : Colors.white),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? AppTheme.primary : Colors.transparent,
+            color: isSelected ? AppTheme.primary : (isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
             width: 1,
           ),
         ),
@@ -65,7 +68,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
           style: TextStyle(
             fontSize: 13,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected ? AppTheme.primary : AppTheme.textMuted,
+            color: isSelected ? AppTheme.primary : (isDark ? AppTheme.textMuted : AppTheme.textMutedLight),
           ),
         ),
       ),
@@ -76,33 +79,30 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Widget build(BuildContext context) {
     final convs = _filterConversations(widget.appState.conversations);
     final stories = widget.appState.stories;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.menu_rounded, color: AppTheme.textLight, size: 26),
+          icon: Icon(Icons.menu_rounded, color: isDark ? AppTheme.textLight : AppTheme.textDark, size: 26),
           tooltip: 'Main Menu',
           onPressed: widget.onOpenDrawer ?? () => Scaffold.of(context).openDrawer(),
         ),
         title: _isSearching
-            ? TextField(
+            ? SearchField(
                 controller: _searchController,
+                hintText: 'Search chats, contacts, or messages...',
                 autofocus: true,
-                style: const TextStyle(color: AppTheme.textLight),
-                decoration: const InputDecoration(
-                  hintText: 'Search chats, messages, or contacts...',
-                  border: InputBorder.none,
-                  filled: false,
-                ),
                 onChanged: (_) => setState(() {}),
+                onClear: () => setState(() => _searchController.clear()),
               )
-            : const Text(
+            : Text(
                 'GoChat',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                   letterSpacing: -0.5,
-                  color: AppTheme.textLight,
+                  color: isDark ? AppTheme.textLight : AppTheme.textDark,
                 ),
               ),
         actions: [
@@ -175,7 +175,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             const SizedBox(height: 4),
                             Text(
                               item.isMe ? 'My status' : item.userName.split(' ').first,
-                              style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -205,14 +208,28 @@ class _ChatListScreenState extends State<ChatListScreen> {
               ),
             ),
 
-            // Conversation Threads List
+            // Conversation Threads List with ConversationTile
             if (convs.isEmpty)
-              const SliverFillRemaining(
-                child: Center(
-                  child: Text(
-                    'No chats found',
-                    style: TextStyle(color: AppTheme.textMuted),
-                  ),
+              SliverFillRemaining(
+                child: EmptyStateView(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  title: 'No Conversations',
+                  description: _isSearching
+                      ? 'No messages match "${_searchController.text}"'
+                      : 'Start chatting with your contacts using their phone number or BBM PIN.',
+                  actionLabel: _isSearching ? 'Clear Search' : 'Start New Chat',
+                  onAction: () {
+                    if (_isSearching) {
+                      setState(() {
+                        _searchController.clear();
+                        _isSearching = false;
+                      });
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Starting new conversation')),
+                      );
+                    }
+                  },
                 ),
               )
             else
@@ -224,8 +241,36 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     final timeStr = lastMsg != null
                         ? DateFormat('hh:mm a').format(lastMsg.createdAt)
                         : '';
+                    final isTyping = widget.appState.isUserTyping(c.id);
 
-                    return InkWell(
+                    String msgPreview = 'No messages yet';
+                    if (lastMsg != null) {
+                      if (lastMsg.isPing) {
+                        msgPreview = '💥 PING!!!';
+                      } else if (lastMsg.type == MessageType.voice) {
+                        msgPreview = '🎙️ Voice Note';
+                      } else if (lastMsg.type == MessageType.poll) {
+                        msgPreview = '📊 Poll';
+                      } else if (lastMsg.type == MessageType.product) {
+                        msgPreview = '🛍️ Product';
+                      } else if (lastMsg.type == MessageType.canvas) {
+                        msgPreview = '🎨 Canvas';
+                      } else {
+                        msgPreview = lastMsg.content;
+                      }
+                    }
+
+                    return ConversationTile(
+                      name: c.title,
+                      avatarUrl: c.avatarUrl,
+                      lastMessage: msgPreview,
+                      time: timeStr,
+                      unreadCount: c.unreadCount,
+                      isOnline: c.isOnline,
+                      isMuted: c.isMuted,
+                      isPinned: c.isPinned,
+                      isTyping: isTyping,
+                      isGroup: c.type == ConversationType.group,
                       onTap: () {
                         Navigator.push(
                           context,
@@ -237,153 +282,15 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           ),
                         );
                       },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        child: Row(
-                          children: [
-                            // Avatar with online dot
-                            Stack(
-                              children: [
-                                CircleAvatar(
-                                  radius: 26,
-                                  backgroundColor: AppTheme.darkCard,
-                                  backgroundImage: c.avatarUrl.isNotEmpty
-                                      ? NetworkImage(c.avatarUrl)
-                                      : null,
-                                  child: c.avatarUrl.isEmpty
-                                      ? Icon(
-                                          c.type == ConversationType.group
-                                              ? Icons.group
-                                              : Icons.person,
-                                          color: AppTheme.iconColor,
-                                        )
-                                      : null,
-                                ),
-                                if (c.isOnline)
-                                  Positioned(
-                                    bottom: 0,
-                                    right: 0,
-                                    child: Container(
-                                      width: 13,
-                                      height: 13,
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.onlineGreen,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(color: AppTheme.darkBg, width: 2),
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(width: 14),
-
-                            // Title & Message snippet
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          c.title,
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppTheme.textLight,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      Text(
-                                        timeStr,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: c.unreadCount > 0
-                                              ? AppTheme.accent
-                                              : AppTheme.textMuted,
-                                          fontWeight: c.unreadCount > 0
-                                              ? FontWeight.bold
-                                              : FontWeight.normal,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      if (lastMsg?.isMe == true) ...[
-                                        Icon(
-                                          lastMsg?.status == MessageStatus.read
-                                              ? Icons.done_all
-                                              : Icons.check,
-                                          size: 14,
-                                          color: lastMsg?.status == MessageStatus.read
-                                              ? AppTheme.readBlue
-                                              : AppTheme.textMuted,
-                                        ),
-                                        const SizedBox(width: 4),
-                                      ],
-                                      if (lastMsg?.type == MessageType.voice)
-                                        const Row(
-                                          children: [
-                                            Icon(Icons.mic, size: 14, color: AppTheme.primary),
-                                            SizedBox(width: 3),
-                                            Text(
-                                              'Voice message',
-                                              style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
-                                            ),
-                                          ],
-                                        )
-                                      else if (lastMsg?.type == MessageType.poll)
-                                        const Row(
-                                          children: [
-                                            Icon(Icons.poll_rounded, size: 14, color: AppTheme.accent),
-                                            SizedBox(width: 3),
-                                            Text(
-                                              'Poll',
-                                              style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
-                                            ),
-                                          ],
-                                        )
-                                      else
-                                        Expanded(
-                                          child: Text(
-                                            lastMsg?.content ?? 'No messages yet',
-                                            style: const TextStyle(
-                                              fontSize: 13.5,
-                                              color: AppTheme.textMuted,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      if (c.unreadCount > 0)
-                                        Container(
-                                          padding: const EdgeInsets.all(6),
-                                          decoration: const BoxDecoration(
-                                            color: AppTheme.accent,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Text(
-                                            '${c.unreadCount}',
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.black,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      onLongPress: () {
+                        ConfirmDialog.show(
+                          context,
+                          title: c.title,
+                          message: 'Choose an action for this conversation.',
+                          confirmText: 'Mute',
+                          cancelText: 'Close',
+                        );
+                      },
                     );
                   },
                   childCount: convs.length,
