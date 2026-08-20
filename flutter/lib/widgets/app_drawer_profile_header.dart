@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../core/models/user.dart';
 import '../core/theme/app_theme.dart';
 
@@ -98,20 +99,44 @@ class AppDrawerProfileHeader extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 if (user?.pin.isNotEmpty == true) ...[
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      'PIN: ${user!.pin}',
-                      style: const TextStyle(
-                        color: AppTheme.primary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
+                  const SizedBox(height: 6),
+                  InkWell(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: user!.pin));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Copied PIN ${user!.pin} to clipboard!'),
+                          backgroundColor: AppTheme.primary,
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3), width: 0.5),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.vpn_key_rounded, color: AppTheme.primary, size: 12),
+                          const SizedBox(width: 4),
+                          Text(
+                            'PIN: ${user!.pin}',
+                            style: const TextStyle(
+                              color: AppTheme.primary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'monospace',
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.copy_rounded, color: AppTheme.primary, size: 12),
+                        ],
                       ),
                     ),
                   ),

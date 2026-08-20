@@ -4,6 +4,7 @@ import '../core/theme/app_theme.dart';
 import 'app_drawer_nav_item.dart';
 import 'app_drawer_profile_header.dart';
 import 'mini_app_modal.dart';
+import '../screens/chat/new_chat_by_pin_dialog.dart';
 import '../screens/qr/qr_scanner_screen.dart';
 
 class AppDrawer extends StatelessWidget {
@@ -168,10 +169,19 @@ class AppDrawer extends StatelessWidget {
                     },
                   ),
                   AppDrawerNavItem(
+                    icon: Icons.vpn_key_rounded,
+                    activeIcon: Icons.vpn_key,
+                    title: 'Start Chat by PIN',
+                    badgeText: 'PIN',
+                    onTap: () {
+                      Navigator.pop(context);
+                      NewChatByPinDialog.show(context, appState);
+                    },
+                  ),
+                  AppDrawerNavItem(
                     icon: Icons.qr_code_scanner_rounded,
                     activeIcon: Icons.qr_code_2_rounded,
-                    title: 'BBM PIN & QR Scanner',
-                    badgeText: 'PIN',
+                    title: 'BBM QR Code Scanner',
                     onTap: () {
                       Navigator.pop(context);
                       QrScannerScreen.open(context, appState);

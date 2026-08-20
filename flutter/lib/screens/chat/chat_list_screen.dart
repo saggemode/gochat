@@ -5,6 +5,7 @@ import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/widgets.dart';
 import 'chat_room_screen.dart';
+import 'new_chat_by_pin_dialog.dart';
 import '../qr/qr_scanner_screen.dart';
 import '../stories/story_viewer_screen.dart';
 
@@ -188,7 +189,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 ),
               ),
 
-            // Filter Chips
+            // Filter Chips + Quick PIN action
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
@@ -196,6 +197,17 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
+                      ActionChip(
+                        avatar: const Icon(Icons.vpn_key_rounded, size: 14, color: Colors.black),
+                        label: const Text(
+                          '+ Chat by PIN',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black),
+                        ),
+                        backgroundColor: AppTheme.primary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        onPressed: () => NewChatByPinDialog.show(context, widget.appState),
+                      ),
+                      const SizedBox(width: 8),
                       _buildFilterChip('All'),
                       _buildFilterChip('Unread'),
                       _buildFilterChip('Groups'),
@@ -214,8 +226,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   title: 'No Conversations',
                   description: _isSearching
                       ? 'No messages match "${_searchController.text}"'
-                      : 'Start chatting with your contacts using their phone number or BBM PIN.',
-                  actionLabel: _isSearching ? 'Clear Search' : 'Start New Chat',
+                      : 'Start chatting with your contacts using their BBM PIN or phone number.',
+                  actionLabel: _isSearching ? 'Clear Search' : 'Start Chat by PIN',
                   onAction: () {
                     if (_isSearching) {
                       setState(() {
@@ -223,9 +235,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         _isSearching = false;
                       });
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Starting new conversation')),
-                      );
+                      NewChatByPinDialog.show(context, widget.appState);
                     }
                   },
                 ),
@@ -299,11 +309,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'chat_list_fab',
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Starting new conversation / group')),
-          );
-        },
+        tooltip: 'Start Chat by PIN',
+        onPressed: () => NewChatByPinDialog.show(context, widget.appState),
         child: const Icon(Icons.message_rounded),
       ),
     );
