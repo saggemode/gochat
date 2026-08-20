@@ -89,9 +89,10 @@ func (s *CallServer) StartCall(ctx context.Context, req *callpb.StartCallRequest
 	}
 	eventJSON, _ := json.Marshal(eventPayload)
 
-	// Publish to Redis channel (starts with "chat:" so chat service matches it)
-	if err := s.redis.Publish(ctx, "chat:calls", string(eventJSON)).Err(); err != nil {
-		s.log.Warn("failed to publish call_initiated event", zap.Error(err))
+	if s.redis != nil {
+		if err := s.redis.Publish(ctx, "chat:calls", string(eventJSON)).Err(); err != nil {
+			s.log.Warn("failed to publish call_initiated event", zap.Error(err))
+		}
 	}
 
 	return &callpb.StartCallResponse{
@@ -140,8 +141,10 @@ func (s *CallServer) AcceptCall(ctx context.Context, req *callpb.AcceptCallReque
 	}
 	eventJSON, _ := json.Marshal(eventPayload)
 
-	if err := s.redis.Publish(ctx, "chat:calls", string(eventJSON)).Err(); err != nil {
-		s.log.Warn("failed to publish call_accepted event", zap.Error(err))
+	if s.redis != nil {
+		if err := s.redis.Publish(ctx, "chat:calls", string(eventJSON)).Err(); err != nil {
+			s.log.Warn("failed to publish call_accepted event", zap.Error(err))
+		}
 	}
 
 	return &callpb.AcceptCallResponse{
@@ -191,8 +194,10 @@ func (s *CallServer) RejectCall(ctx context.Context, req *callpb.RejectCallReque
 	}
 	eventJSON, _ := json.Marshal(eventPayload)
 
-	if err := s.redis.Publish(ctx, "chat:calls", string(eventJSON)).Err(); err != nil {
-		s.log.Warn("failed to publish call_rejected event", zap.Error(err))
+	if s.redis != nil {
+		if err := s.redis.Publish(ctx, "chat:calls", string(eventJSON)).Err(); err != nil {
+			s.log.Warn("failed to publish call_rejected event", zap.Error(err))
+		}
 	}
 
 	return &callpb.RejectCallResponse{
@@ -256,8 +261,10 @@ func (s *CallServer) EndCall(ctx context.Context, req *callpb.EndCallRequest) (*
 	}
 	eventJSON, _ := json.Marshal(eventPayload)
 
-	if err := s.redis.Publish(ctx, "chat:calls", string(eventJSON)).Err(); err != nil {
-		s.log.Warn("failed to publish call_ended event", zap.Error(err))
+	if s.redis != nil {
+		if err := s.redis.Publish(ctx, "chat:calls", string(eventJSON)).Err(); err != nil {
+			s.log.Warn("failed to publish call_ended event", zap.Error(err))
+		}
 	}
 
 	return &callpb.EndCallResponse{
@@ -294,7 +301,9 @@ func (s *CallServer) SendSignalingMessage(ctx context.Context, req *callpb.SendS
 			}
 			eventJSON, _ := json.Marshal(eventPayload)
 
-			_ = s.redis.Publish(ctx, "chat:calls", string(eventJSON)).Err()
+			if s.redis != nil {
+				_ = s.redis.Publish(ctx, "chat:calls", string(eventJSON)).Err()
+			}
 			return &callpb.SendSignalingMessageResponse{Success: true}, nil
 		}
 
@@ -322,7 +331,9 @@ func (s *CallServer) SendSignalingMessage(ctx context.Context, req *callpb.SendS
 			}
 			eventJSON, _ := json.Marshal(eventPayload)
 
-			_ = s.redis.Publish(ctx, "chat:calls", string(eventJSON)).Err()
+			if s.redis != nil {
+				_ = s.redis.Publish(ctx, "chat:calls", string(eventJSON)).Err()
+			}
 			return &callpb.SendSignalingMessageResponse{Success: true}, nil
 		}
 	}
@@ -347,8 +358,10 @@ func (s *CallServer) SendSignalingMessage(ctx context.Context, req *callpb.SendS
 	}
 	eventJSON, _ := json.Marshal(eventPayload)
 
-	if err := s.redis.Publish(ctx, "chat:calls", string(eventJSON)).Err(); err != nil {
-		return nil, status.Errorf(codes.Internal, "relay signaling: %v", err)
+	if s.redis != nil {
+		if err := s.redis.Publish(ctx, "chat:calls", string(eventJSON)).Err(); err != nil {
+			return nil, status.Errorf(codes.Internal, "relay signaling: %v", err)
+		}
 	}
 
 	return &callpb.SendSignalingMessageResponse{

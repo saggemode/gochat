@@ -34,7 +34,7 @@ func NewMinIOStorage(endpoint, accessKey, secretKey, bucket string, useSSL bool,
 	ctx := context.Background()
 
 	// Retry until MinIO is ready (handles slow Docker startup)
-	for attempt := 1; attempt <= 10; attempt++ {
+	for attempt := 1; attempt <= 2; attempt++ {
 		exists, err := client.BucketExists(ctx, bucket)
 		if err == nil {
 			if !exists {
@@ -62,10 +62,12 @@ func NewMinIOStorage(endpoint, accessKey, secretKey, bucket string, useSSL bool,
 		}
 
 		log.Warn("MinIO not ready, retrying...", zap.Int("attempt", attempt), zap.Error(err))
-		time.Sleep(time.Duration(attempt) * time.Second)
+		if attempt < 2 {
+			time.Sleep(200 * time.Millisecond)
+		}
 	}
 
-	return nil, fmt.Errorf("failed to connect to MinIO after 10 attempts")
+	return nil, fmt.Errorf("MinIO storage unavailable at %s", endpoint)
 }
 
 // UploadResult holds the result of a successful upload.

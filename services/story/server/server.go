@@ -85,8 +85,10 @@ func (s *StoryServer) PostStory(ctx context.Context, req *storypb.PostStoryReque
 	}
 	eventJSON, _ := json.Marshal(eventPayload)
 
-	if err := s.redis.Publish(ctx, "chat:stories", string(eventJSON)).Err(); err != nil {
-		s.log.Warn("failed to publish story_created event", zap.Error(err))
+	if s.redis != nil {
+		if err := s.redis.Publish(ctx, "chat:stories", string(eventJSON)).Err(); err != nil {
+			s.log.Warn("failed to publish story_created event", zap.Error(err))
+		}
 	}
 
 	return &storypb.PostStoryResponse{
@@ -123,8 +125,10 @@ func (s *StoryServer) DeleteStory(ctx context.Context, req *storypb.DeleteStoryR
 	}
 	eventJSON, _ := json.Marshal(eventPayload)
 
-	if err := s.redis.Publish(ctx, "chat:stories", string(eventJSON)).Err(); err != nil {
-		s.log.Warn("failed to publish story_deleted event", zap.Error(err))
+	if s.redis != nil {
+		if err := s.redis.Publish(ctx, "chat:stories", string(eventJSON)).Err(); err != nil {
+			s.log.Warn("failed to publish story_deleted event", zap.Error(err))
+		}
 	}
 
 	return &storypb.DeleteStoryResponse{

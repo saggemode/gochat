@@ -614,8 +614,10 @@ func (s *ChatServer) SendTypingIndicator(ctx context.Context, req *chatpb.SendTy
 	payload := `{"event":"typing","conv_id":"` + req.ConversationId +
 		`","actor_id":"` + req.UserId + `","is_typing":` + typingStr + `}`
 
-	if err := s.redis.Publish(ctx, channel, payload).Err(); err != nil {
-		return nil, status.Error(codes.Internal, "failed to publish typing indicator")
+	if s.redis != nil {
+		if err := s.redis.Publish(ctx, channel, payload).Err(); err != nil {
+			return nil, status.Error(codes.Internal, "failed to publish typing indicator")
+		}
 	}
 
 	return &chatpb.SendTypingIndicatorResponse{Success: true}, nil
@@ -643,10 +645,15 @@ func (s *ChatServer) GetUnreadCounts(ctx context.Context, req *chatpb.GetUnreadC
 // StreamMessages opens a server-side stream.
 // The gateway calls this once per connected user and fans out events over WebSocket.
 func (s *ChatServer) StreamMessages(req *chatpb.StreamMessagesRequest, stream chatpb.ChatService_StreamMessagesServer) error {
+	s.log.Info("user subscribed to message stream", zap.String("user_id", req.UserId))
+
+	if s.redis == nil {
+		<-stream.Context().Done()
+		return stream.Context().Err()
+	}
+
 	sub := s.redis.PSubscribe(stream.Context(), "chat:*")
 	defer sub.Close()
-
-	s.log.Info("user subscribed to message stream", zap.String("user_id", req.UserId))
 
 	for msg := range sub.Channel() {
 		// Parse the payload to build a MessageEvent
@@ -758,6 +765,9 @@ func (s *ChatServer) StreamMessages(req *chatpb.StreamMessagesRequest, stream ch
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 func (s *ChatServer) publishConvCreatedEvent(ctx context.Context, convID, actorID string) {
+	if s.redis == nil {
+		return
+	}
 	channel := "chat:" + convID
 	payload := `{"event":"conversation_created","conv_id":"` + convID + `","actor_id":"` + actorID + `"}`
 	if err := s.redis.Publish(ctx, channel, payload).Err(); err != nil {
@@ -766,6 +776,9 @@ func (s *ChatServer) publishConvCreatedEvent(ctx context.Context, convID, actorI
 }
 
 func (s *ChatServer) publishEvent(ctx context.Context, eventType, msgID, convID, actorID string) {
+	if s.redis == nil {
+		return
+	}
 	channel := "chat:" + convID
 	payload := `{"event":"` + eventType + `","msg_id":"` + msgID +
 		`","conv_id":"` + convID + `","actor_id":"` + actorID + `"}`

@@ -33,8 +33,8 @@ func NewRedis(ctx context.Context, addr, password string, db int, log *zap.Logge
 	}
 	client := redis.NewClient(opts)
 
-	backoff := 500 * time.Millisecond
-	for attempt := 1; attempt <= 5; attempt++ {
+	backoff := 100 * time.Millisecond
+	for attempt := 1; attempt <= 2; attempt++ {
 		if err := client.Ping(ctx).Err(); err == nil {
 			log.Info("Redis connected", zap.Int("attempt", attempt), zap.String("addr", addr))
 			return client, nil
@@ -46,12 +46,10 @@ func NewRedis(ctx context.Context, addr, password string, db int, log *zap.Logge
 				zap.Error(err),
 			)
 		}
-		time.Sleep(backoff)
-		backoff *= 2
-		if backoff > 4*time.Second {
-			backoff = 4 * time.Second
+		if attempt < 2 {
+			time.Sleep(backoff)
 		}
 	}
 
-	return nil, fmt.Errorf("failed to connect to Redis at %q after 5 attempts", addr)
+	return nil, fmt.Errorf("failed to connect to Redis at %q", addr)
 }
