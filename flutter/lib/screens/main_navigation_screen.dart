@@ -19,7 +19,6 @@ class MainNavigationScreen extends StatefulWidget {
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int _currentIndex = 0;
 
   @override
@@ -45,28 +44,31 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final unreadChats = widget.appState.conversations
         .fold(0, (sum, c) => sum + c.unreadCount);
 
-    final screens = [
-      ChatListScreen(
-        appState: widget.appState,
-        onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
-      ),
-      StoriesScreen(appState: widget.appState),
-      ChannelsScreen(appState: widget.appState),
-      CallsScreen(appState: widget.appState),
-      MarketplaceScreen(appState: widget.appState),
-      SettingsScreen(appState: widget.appState),
-    ];
-
     return Scaffold(
-      key: _scaffoldKey,
       drawer: AppDrawer(
         appState: widget.appState,
         currentIndex: _currentIndex,
         onSelectTab: (idx) => setState(() => _currentIndex = idx),
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: screens,
+      body: Builder(
+        builder: (ctx) {
+          final screens = [
+            ChatListScreen(
+              appState: widget.appState,
+              onOpenDrawer: () => Scaffold.of(ctx).openDrawer(),
+            ),
+            StoriesScreen(appState: widget.appState),
+            ChannelsScreen(appState: widget.appState),
+            CallsScreen(appState: widget.appState),
+            MarketplaceScreen(appState: widget.appState),
+            SettingsScreen(appState: widget.appState),
+          ];
+
+          return IndexedStack(
+            index: _currentIndex,
+            children: screens,
+          );
+        },
       ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(

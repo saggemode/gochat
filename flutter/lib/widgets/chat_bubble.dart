@@ -146,7 +146,7 @@ class ChatBubble extends StatelessWidget {
         : (isDark ? AppTheme.textLight : AppTheme.textDark);
 
     return Dismissible(
-      key: Key('msg_${message.id}'),
+      key: ValueKey('msg_${message.id}_${message.createdAt.microsecondsSinceEpoch}'),
       direction: DismissDirection.startToEnd,
       confirmDismiss: (dir) async {
         HapticFeedback.lightImpact();
