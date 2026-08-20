@@ -22,7 +22,7 @@ class AppDrawer extends StatelessWidget {
     final cartCount = appState.cart.length;
 
     return Drawer(
-      backgroundColor: AppTheme.darkBackground,
+      backgroundColor: AppTheme.darkBg,
       child: SafeArea(
         child: Column(
           children: [

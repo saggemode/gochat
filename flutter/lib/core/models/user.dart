@@ -25,6 +25,15 @@ class User {
     this.countryCode = '',
   }) : lastSeen = lastSeen ?? DateTime.now();
 
+  String get effectivePin {
+    if (pin.isNotEmpty) return pin.toUpperCase();
+    if (id.isNotEmpty) {
+      final clean = id.replaceAll('-', '').toUpperCase();
+      return clean.length >= 6 ? clean.substring(0, 6) : clean;
+    }
+    return '8492A1';
+  }
+
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id']?.toString() ?? '',
@@ -38,7 +47,7 @@ class User {
           ? DateTime.tryParse((json['last_seen'] ?? json['lastSeen']).toString()) ?? DateTime.now()
           : DateTime.now(),
       isBusiness: json['is_business'] == true || json['isBusiness'] == true,
-      pin: json['pin']?.toString() ?? '',
+      pin: json['pin']?.toString() ?? json['Pin']?.toString() ?? '',
       countryCode: json['country_code'] ?? json['countryCode'] ?? '',
     );
   }
@@ -54,6 +63,8 @@ class User {
       'is_online': isOnline,
       'last_seen': lastSeen.toIso8601String(),
       'is_business': isBusiness,
+      'pin': pin,
+      'country_code': countryCode,
     };
   }
 }
