@@ -54,7 +54,7 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
     final rawPin = _pinController.text.trim().toUpperCase();
     _debounceTimer?.cancel();
 
-    if (rawPin.length < 4) {
+    if (rawPin.length < 6) {
       if (_foundUser != null || _isSearching) {
         setState(() {
           _foundUser = null;
@@ -70,7 +70,7 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
       _error = null;
     });
 
-    _debounceTimer = Timer(const Duration(milliseconds: 280), () async {
+    _debounceTimer = Timer(const Duration(milliseconds: 200), () async {
       final user = await widget.appState.lookupUserByPin(rawPin);
       if (!mounted) return;
 

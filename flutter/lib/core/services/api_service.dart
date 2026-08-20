@@ -114,10 +114,14 @@ class ApiService {
   // ── Auth: Lookup User by BBM PIN ────────────────────────────────────────────
   static Future<User?> lookupUserByPin(String pin) async {
     final cleanPin = pin.trim().toUpperCase();
+    if (cleanPin.length < 6) return null;
+    final token = await StorageService.getToken();
+    if (token == null || token.isEmpty) return null;
+
     try {
       final res = await http
-          .get(Uri.parse('${ApiConstants.apiV1}/users/pin/$cleanPin'), headers: await _headers())
-          .timeout(const Duration(seconds: 5));
+          .get(Uri.parse('${ApiConstants.apiV1}/users/$cleanPin'), headers: await _headers())
+          .timeout(const Duration(seconds: 4));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         return User.fromJson(data['user'] ?? data);
