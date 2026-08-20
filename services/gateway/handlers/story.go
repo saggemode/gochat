@@ -83,11 +83,22 @@ func (h *StoryHandler) GetStories(c *gin.Context) {
 		return
 	}
 
+	if h.client == nil {
+		c.JSON(http.StatusOK, []*storypb.UserStories{})
+		return
+	}
+
 	resp, err := h.client.GetStories(c.Request.Context(), &storypb.GetStoriesRequest{
 		UserId: userID,
 	})
 	if err != nil {
-		h.handleGrpcError(c, err, "failed to retrieve active story feed")
+		h.log.Warn("failed to retrieve active story feed, returning empty list", zap.Error(err))
+		c.JSON(http.StatusOK, []*storypb.UserStories{})
+		return
+	}
+
+	if resp == nil || resp.Feed == nil {
+		c.JSON(http.StatusOK, []*storypb.UserStories{})
 		return
 	}
 
