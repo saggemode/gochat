@@ -127,6 +127,10 @@ func (r *UserRepository) CreateUser(ctx context.Context, phone, email, password,
 	var emailParam interface{}
 	if email != "" {
 		emailParam = email
+	} else {
+		// The schema enforces NOT NULL UNIQUE on email.
+		// Generate a unique placeholder so phone-only registration works.
+		emailParam = fmt.Sprintf("%s@phone.local", uuid.New().String())
 	}
 
 	var phoneParam interface{}
