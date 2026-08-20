@@ -1,8 +1,19 @@
+// Barrel export for all reusable widgets
 export 'app_drawer.dart';
-export 'app_drawer_profile_header.dart';
 export 'app_drawer_nav_item.dart';
+export 'app_drawer_profile_header.dart';
 export 'audio_player_bubble.dart';
 export 'chat_bubble.dart';
+export 'confirm_dialog.dart';
+export 'conversation_tile.dart';
+export 'custom_avatar.dart';
+export 'empty_state_view.dart';
+export 'glass_card.dart';
+export 'loading_overlay.dart';
 export 'mini_app_modal.dart';
 export 'poll_bubble.dart';
+export 'primary_button.dart';
+export 'search_field.dart';
+export 'section_header.dart';
+export 'status_badge.dart';
 export 'story_avatar.dart';
