@@ -34,6 +34,34 @@ class User {
     return '8492A1';
   }
 
+  User copyWith({
+    String? id,
+    String? displayName,
+    String? email,
+    String? phone,
+    String? avatarUrl,
+    String? statusText,
+    bool? isOnline,
+    DateTime? lastSeen,
+    bool? isBusiness,
+    String? pin,
+    String? countryCode,
+  }) {
+    return User(
+      id: id ?? this.id,
+      displayName: displayName ?? this.displayName,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      statusText: statusText ?? this.statusText,
+      isOnline: isOnline ?? this.isOnline,
+      lastSeen: lastSeen ?? this.lastSeen,
+      isBusiness: isBusiness ?? this.isBusiness,
+      pin: pin ?? this.pin,
+      countryCode: countryCode ?? this.countryCode,
+    );
+  }
+
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id']?.toString() ?? '',

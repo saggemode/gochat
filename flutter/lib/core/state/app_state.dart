@@ -376,6 +376,37 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  // ── Auth: Update Profile ───────────────────────────────────────────────────
+  Future<void> updateProfile({
+    String? displayName,
+    String? statusText,
+    String? avatarUrl,
+  }) async {
+    if (_currentUser == null) return;
+
+    _currentUser = _currentUser!.copyWith(
+      displayName: displayName ?? _currentUser!.displayName,
+      statusText: statusText ?? _currentUser!.statusText,
+      avatarUrl: avatarUrl ?? _currentUser!.avatarUrl,
+    );
+
+    await StorageService.saveUser(_currentUser!);
+    notifyListeners();
+
+    try {
+      final updatedUser = await ApiService.updateProfile(
+        displayName: displayName,
+        statusText: statusText,
+        avatarUrl: avatarUrl,
+      );
+      if (updatedUser != null) {
+        _currentUser = updatedUser;
+        await StorageService.saveUser(_currentUser!);
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
   // ── Auth: Logout ────────────────────────────────────────────────────────────
   Future<void> logout() async {
     await StorageService.clearAuth();

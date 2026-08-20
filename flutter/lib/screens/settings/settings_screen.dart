@@ -47,15 +47,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
-            onPressed: () {
-              if (nameController.text.trim().isNotEmpty) {
-                // Update local user state
-                setState(() {});
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Profile updated successfully')),
+            onPressed: () async {
+              final newName = nameController.text.trim();
+              final newStatus = statusController.text.trim();
+              if (newName.isNotEmpty) {
+                await widget.appState.updateProfile(
+                  displayName: newName,
+                  statusText: newStatus,
                 );
+                if (mounted) {
+                  setState(() {});
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Profile updated successfully')),
+                  );
+                }
               }
-              Navigator.pop(ctx);
+              if (ctx.mounted) {
+                Navigator.pop(ctx);
+              }
             },
             child: const Text('Save', style: TextStyle(color: Colors.white)),
           ),

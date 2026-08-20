@@ -115,12 +115,28 @@ class ApiService {
     }
   }
 
-  // ── Auth: Get User Profile ──────────────────────────────────────────────────
-  static Future<User?> getCurrentUser(String userId) async {
+  // ── Auth: Update Profile ───────────────────────────────────────────────────
+  static Future<User?> updateProfile({
+    String? displayName,
+    String? statusText,
+    String? avatarUrl,
+  }) async {
+    final token = await StorageService.getToken();
+    if (token == null || token.isEmpty) return null;
+
     try {
-      final res = await http
-          .get(Uri.parse('${ApiConstants.apiV1}/users/$userId'), headers: await _headers())
-          .timeout(const Duration(seconds: 8));
+      final body = <String, dynamic>{
+        if (displayName != null) 'display_name': displayName,
+        if (statusText != null) 'status_text': statusText,
+        if (avatarUrl != null) 'avatar_url': avatarUrl,
+      };
+
+      final res = await http.patch(
+        Uri.parse('${ApiConstants.apiV1}/users/me'),
+        headers: await _headers(),
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 8));
+
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         return User.fromJson(data['user'] ?? data);
