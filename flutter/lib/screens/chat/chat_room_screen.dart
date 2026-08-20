@@ -12,6 +12,7 @@ import '../../widgets/primary_button.dart';
 import '../calls/active_call_screen.dart';
 import 'chat_attachment_sheet.dart';
 import 'chat_input_bar.dart';
+import 'contact_profile_screen.dart';
 import 'create_poll_dialog.dart';
 
 class ChatRoomScreen extends StatefulWidget {
@@ -389,44 +390,54 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
       child: Scaffold(
         appBar: AppBar(
           titleSpacing: 0,
-          title: Row(
-            children: [
-              CustomAvatar(
-                imageUrl: widget.conversation.avatarUrl,
-                name: widget.conversation.title,
-                radius: 18,
-                isOnline: widget.conversation.isOnline,
-                showOnlineBadge: true,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.conversation.title,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      isTypingLive
-                          ? typingText
-                          : (widget.conversation.isOnline ? 'Online' : 'tap here for info'),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isTypingLive
-                            ? AppTheme.primary
-                            : (widget.conversation.isOnline ? AppTheme.onlineGreen : AppTheme.textMuted),
-                        fontWeight: (isTypingLive || widget.conversation.isOnline)
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
-                    ),
-                  ],
+          title: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              ContactProfileScreen.open(
+                context,
+                conversation: widget.conversation,
+                appState: widget.appState,
+              );
+            },
+            child: Row(
+              children: [
+                CustomAvatar(
+                  imageUrl: widget.conversation.avatarUrl,
+                  name: widget.conversation.title,
+                  radius: 18,
+                  isOnline: widget.conversation.isOnline,
+                  showOnlineBadge: true,
                 ),
-              ),
-            ],
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.conversation.title,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        isTypingLive
+                            ? typingText
+                            : (widget.conversation.isOnline ? 'Online' : 'tap here for info'),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isTypingLive
+                              ? AppTheme.primary
+                              : (widget.conversation.isOnline ? AppTheme.onlineGreen : AppTheme.textMuted),
+                          fontWeight: (isTypingLive || widget.conversation.isOnline)
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             IconButton(

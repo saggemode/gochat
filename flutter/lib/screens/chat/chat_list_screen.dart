@@ -5,6 +5,7 @@ import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/widgets.dart';
 import 'chat_room_screen.dart';
+import '../qr/qr_scanner_screen.dart';
 import '../stories/story_viewer_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
@@ -119,11 +120,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.qr_code_scanner_rounded),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('QR Code scanner ready for web linking')),
-              );
-            },
+            tooltip: 'Scan BBM PIN QR Code',
+            onPressed: () => QrScannerScreen.open(context, widget.appState),
           ),
           IconButton(
             icon: const Icon(Icons.more_vert),

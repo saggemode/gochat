@@ -4,6 +4,7 @@ import '../core/theme/app_theme.dart';
 import 'app_drawer_nav_item.dart';
 import 'app_drawer_profile_header.dart';
 import 'mini_app_modal.dart';
+import '../screens/qr/qr_scanner_screen.dart';
 
 class AppDrawer extends StatelessWidget {
   final AppState appState;
@@ -167,12 +168,13 @@ class AppDrawer extends StatelessWidget {
                     },
                   ),
                   AppDrawerNavItem(
-                    icon: Icons.verified_user_outlined,
-                    title: 'BBM PIN Lookup',
+                    icon: Icons.qr_code_scanner_rounded,
+                    activeIcon: Icons.qr_code_2_rounded,
+                    title: 'BBM PIN & QR Scanner',
                     badgeText: 'PIN',
                     onTap: () {
                       Navigator.pop(context);
-                      _showPinLookupDialog(context);
+                      QrScannerScreen.open(context, appState);
                     },
                   ),
                 ],
@@ -276,74 +278,6 @@ class AppDrawer extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showPinLookupDialog(BuildContext context) {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.darkSurface,
-        title: const Row(
-          children: [
-            Icon(Icons.tag_rounded, color: AppTheme.primary),
-            SizedBox(width: 8),
-            Text('Lookup User by PIN', style: TextStyle(color: AppTheme.textLight)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Enter a 6-character BBM PIN to instantly start a secure direct conversation.',
-              style: TextStyle(color: AppTheme.textMuted, fontSize: 12.5),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              maxLength: 6,
-              textCapitalization: TextCapitalization.characters,
-              style: const TextStyle(
-                color: Colors.white,
-                fontFamily: 'monospace',
-                fontSize: 18,
-                letterSpacing: 4,
-                fontWeight: FontWeight.bold,
-              ),
-              decoration: InputDecoration(
-                hintText: 'e.g. 8492A1',
-                counterText: '',
-                prefixIcon: const Icon(Icons.search, color: AppTheme.iconColor),
-                filled: true,
-                fillColor: AppTheme.darkCard,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
-            onPressed: () {
-              final pin = controller.text.trim().toUpperCase();
-              if (pin.isNotEmpty) {
-                Navigator.pop(ctx);
-                appState.createConversation('Contact ($pin)', []);
-                onSelectTab(0);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Connected with PIN $pin')),
-                );
-              }
-            },
-            child: const Text('Connect', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-          ),
-        ],
       ),
     );
   }

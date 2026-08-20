@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../core/theme/app_theme.dart';
 
 class AudioPlayerBubble extends StatefulWidget {
@@ -18,11 +20,11 @@ class AudioPlayerBubble extends StatefulWidget {
   State<AudioPlayerBubble> createState() => _AudioPlayerBubbleState();
 }
 
-class _AudioPlayerBubbleState extends State<AudioPlayerBubble>
-    with SingleTickerProviderStateMixin {
+class _AudioPlayerBubbleState extends State<AudioPlayerBubble> {
   bool _isPlaying = false;
-  double _currentProgress = 0.35; // 0.0 to 1.0
+  double _currentProgress = 0.0; // 0.0 to 1.0
   double _speed = 1.0; // 1.0, 1.5, 2.0
+  Timer? _playbackTimer;
   late List<double> _waveformAmplitudes;
 
   @override
@@ -36,13 +38,51 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble>
     });
   }
 
+  @override
+  void dispose() {
+    _playbackTimer?.cancel();
+    super.dispose();
+  }
+
   void _togglePlay() {
+    HapticFeedback.lightImpact();
     setState(() {
       _isPlaying = !_isPlaying;
+      if (_isPlaying) {
+        if (_currentProgress >= 1.0) {
+          _currentProgress = 0.0;
+        }
+        _startPlaybackTimer();
+      } else {
+        _playbackTimer?.cancel();
+      }
+    });
+  }
+
+  void _startPlaybackTimer() {
+    _playbackTimer?.cancel();
+    const intervalMs = 100;
+    final totalMs = (widget.durationSeconds * 1000) / _speed;
+    final stepProgress = intervalMs / totalMs;
+
+    _playbackTimer = Timer.periodic(const Duration(milliseconds: intervalMs), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        _currentProgress += stepProgress;
+        if (_currentProgress >= 1.0) {
+          _currentProgress = 1.0;
+          _isPlaying = false;
+          timer.cancel();
+        }
+      });
     });
   }
 
   void _toggleSpeed() {
+    HapticFeedback.selectionClick();
     setState(() {
       if (_speed == 1.0) {
         _speed = 1.5;
@@ -51,22 +91,26 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble>
       } else {
         _speed = 1.0;
       }
+      if (_isPlaying) {
+        _startPlaybackTimer();
+      }
     });
   }
 
   String _formatDuration(int totalSeconds, double progress) {
-    final remainingSeconds = (totalSeconds * (1.0 - progress)).round();
-    final mins = remainingSeconds ~/ 60;
-    final secs = remainingSeconds % 60;
+    final currentSeconds = (totalSeconds * progress).round();
+    final mins = currentSeconds ~/ 60;
+    final secs = currentSeconds % 60;
     return '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final playedColor = widget.isMe ? AppTheme.accent : AppTheme.primary;
     final unplayedColor = widget.isMe
-        ? Colors.white.withValues(alpha: 0.35)
-        : AppTheme.textMuted.withValues(alpha: 0.5);
+        ? (isDark ? Colors.white.withValues(alpha: 0.35) : Colors.black26)
+        : (isDark ? AppTheme.textMuted.withValues(alpha: 0.5) : Colors.black12);
 
     return Container(
       constraints: const BoxConstraints(maxWidth: 280),
@@ -87,12 +131,12 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble>
               ),
               child: Icon(
                 _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                color: widget.isMe ? Colors.white : AppTheme.primary,
+                color: widget.isMe ? (isDark ? Colors.white : Colors.black) : AppTheme.primary,
                 size: 28,
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
 
           // Waveform Canvas & Time
           Expanded(
@@ -100,7 +144,7 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble>
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Interactive Waveform
+                // Interactive Waveform with Scrubbing
                 GestureDetector(
                   onHorizontalDragUpdate: (details) {
                     final box = context.findRenderObject() as RenderBox?;
@@ -135,7 +179,7 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble>
                 ),
                 const SizedBox(height: 4),
 
-                // Timestamp & Speed toggle
+                // Timestamp & Speed Toggle
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -144,8 +188,8 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble>
                       style: TextStyle(
                         fontSize: 11,
                         color: widget.isMe
-                            ? Colors.white70
-                            : AppTheme.textMuted,
+                            ? (isDark ? Colors.white70 : Colors.black54)
+                            : (isDark ? AppTheme.textMuted : AppTheme.textMutedLight),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -155,16 +199,22 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble>
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: widget.isMe
-                              ? Colors.black26
-                              : AppTheme.darkSurface,
+                              ? (isDark ? Colors.black26 : Colors.black12)
+                              : (isDark ? AppTheme.darkSurface : const Color(0xFFF0F2F5)),
                           borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                            width: 0.5,
+                          ),
                         ),
                         child: Text(
                           '${_speed}x',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
-                            color: widget.isMe ? Colors.white : AppTheme.primary,
+                            color: widget.isMe
+                                ? (isDark ? Colors.white : Colors.black)
+                                : AppTheme.primary,
                           ),
                         ),
                       ),

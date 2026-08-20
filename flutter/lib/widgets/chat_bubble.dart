@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../core/models/message.dart';
 import '../core/theme/app_theme.dart';
+import '../screens/chat/media_lightbox_screen.dart';
 import 'audio_player_bubble.dart';
 import 'poll_bubble.dart';
 
@@ -372,20 +373,35 @@ class ChatBubble extends StatelessWidget {
                       ),
                     ),
                   )
-                // ── Image Attachment ──────────────────────────────────────────
+                // ── Image Attachment (Tap to Lightbox) ────────────────────────
                 else if (message.type == MessageType.image && message.mediaUrl != null)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.network(
-                      message.mediaUrl!,
-                      width: 240,
-                      height: 180,
-                      fit: BoxFit.cover,
-                      errorBuilder: (ctx, _, __) => Container(
-                        width: 240,
-                        height: 140,
-                        color: Colors.black26,
-                        child: const Icon(Icons.broken_image, color: AppTheme.iconColor),
+                  GestureDetector(
+                    onTap: () {
+                      MediaLightboxScreen.show(
+                        context,
+                        mediaUrl: message.mediaUrl!,
+                        title: message.senderName,
+                        caption: message.content.isNotEmpty && message.content != 'Shared an image' ? message.content : null,
+                        timestamp: message.createdAt,
+                        heroTag: 'img_${message.id}',
+                      );
+                    },
+                    child: Hero(
+                      tag: 'img_${message.id}',
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          message.mediaUrl!,
+                          width: 240,
+                          height: 180,
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, _, __) => Container(
+                            width: 240,
+                            height: 140,
+                            color: Colors.black26,
+                            child: const Icon(Icons.broken_image, color: AppTheme.iconColor),
+                          ),
+                        ),
                       ),
                     ),
                   )
