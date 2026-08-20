@@ -26,17 +26,17 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _showCountryPicker = false;
   String _countrySearch = '';
 
-  // OTP / Success Verification States
+  // OTP / Verification States
   bool _showOtp = false;
   String _otp = '';
   String? _generatedPin;
   String? _assignedUsername;
+  String _otpDestination = '';
 
   // Controllers
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
   final TextEditingController _loginIdentifierController = TextEditingController();
-  final TextEditingController _loginPasswordController = TextEditingController();
 
   bool _loading = false;
   String? _error;
@@ -52,11 +52,10 @@ class _LoginScreenState extends State<LoginScreen> {
     _phoneController.dispose();
     _otpController.dispose();
     _loginIdentifierController.dispose();
-    _loginPasswordController.dispose();
     super.dispose();
   }
 
-  // ── Register Handler ────────────────────────────────────────────────────────
+  // ── Register Handler (Passwordless) ─────────────────────────────────────────
   Future<void> _handleRegisterSubmit() async {
     final cleanPhone = _localPhone.replaceAll(RegExp(r'[^\d]'), '').replaceFirst(RegExp(r'^0+'), '');
     if (cleanPhone.isEmpty) {
@@ -88,23 +87,12 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _assignedUsername = assignedName;
         _generatedPin = pin;
+        _otpDestination = fullPhone;
         _showOtp = true;
         _loading = false;
       });
 
-      // Simulate same-device SMS OTP auto-fill & auto-verify after 700ms
-      _otpAutoFillTimer = Timer(const Duration(milliseconds: 700), () {
-        if (!mounted) return;
-        setState(() {
-          _otp = '849201';
-          _otpController.text = '849201';
-        });
-
-        _otpAutoRedirectTimer = Timer(const Duration(milliseconds: 500), () {
-          if (!mounted) return;
-          _navigateToChat();
-        });
-      });
+      _startAutoOtpFlow();
     } catch (e) {
       setState(() {
         _error = e.toString().replaceFirst('Exception: ', '');
@@ -113,10 +101,9 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // ── Login Handler ───────────────────────────────────────────────────────────
+  // ── Sign In Handler (Passwordless OTP) ──────────────────────────────────────
   Future<void> _handleLoginSubmit() async {
     final identifier = _loginIdentifierController.text.trim();
-    final password = _loginPasswordController.text.trim();
 
     if (identifier.isEmpty) {
       setState(() => _error = 'Please enter your phone number, email, or PIN');
@@ -129,19 +116,47 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await widget.appState.login(
-        identifier,
-        password.isNotEmpty ? password : 'GochatSecretPass123!',
-      );
+      await widget.appState.login(identifier, '');
 
-      if (!mounted) return;
-      _navigateToChat();
+      final user = widget.appState.currentUser;
+      final pin = (user?.pin.isNotEmpty == true)
+          ? user!.pin
+          : (user?.id.isNotEmpty == true ? user!.id.replaceAll('-', '').substring(0, 6).toUpperCase() : '8492A1');
+
+      setState(() {
+        _assignedUsername = user?.displayName;
+        _generatedPin = pin;
+        _otpDestination = user?.phone.isNotEmpty == true ? user!.phone : identifier;
+        _showOtp = true;
+        _loading = false;
+      });
+
+      _startAutoOtpFlow();
     } catch (e) {
       setState(() {
         _error = e.toString().replaceFirst('Exception: ', '');
         _loading = false;
       });
     }
+  }
+
+  void _startAutoOtpFlow() {
+    _otpAutoFillTimer?.cancel();
+    _otpAutoRedirectTimer?.cancel();
+
+    // Auto-detect and populate simulated 6-digit OTP after 700ms
+    _otpAutoFillTimer = Timer(const Duration(milliseconds: 700), () {
+      if (!mounted) return;
+      setState(() {
+        _otp = '849201';
+        _otpController.text = '849201';
+      });
+
+      _otpAutoRedirectTimer = Timer(const Duration(milliseconds: 600), () {
+        if (!mounted) return;
+        _navigateToChat();
+      });
+    });
   }
 
   void _navigateToChat() {
@@ -216,7 +231,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 20),
                       Text(
-                        _isRegister ? 'Get Started with GoChat' : 'Welcome to GoChat',
+                        _isRegister ? 'Get Started with GoChat' : 'Welcome Back to GoChat',
                         style: const TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.w800,
@@ -227,8 +242,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 6),
                       Text(
                         _isRegister
-                            ? 'Connect instantly via phone and your personal BBM PIN'
-                            : 'Sign in to access your chats, groups, channels & marketplace',
+                            ? 'Instant passwordless phone sign-up with SMS OTP verification'
+                            : 'Sign in with your Phone, Email, or PIN via instant SMS OTP',
                         textAlign: TextAlign.center,
                         style: const TextStyle(fontSize: 13, color: Color(0xFFA1A1AA)),
                       ),
@@ -273,7 +288,23 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
 
                             // Forms
-                            if (_isRegister && !_showOtp)
+                            if (_showOtp)
+                              OtpVerificationView(
+                                isLogin: !_isRegister,
+                                assignedUsername: _assignedUsername,
+                                generatedPin: _generatedPin,
+                                destination: _otpDestination,
+                                otp: _otp,
+                                otpController: _otpController,
+                                onOtpChanged: (val) {
+                                  setState(() => _otp = val);
+                                  if (val.length == 6) {
+                                    _navigateToChat();
+                                  }
+                                },
+                                onStartMessaging: _navigateToChat,
+                              )
+                            else if (_isRegister)
                               PhoneRegistrationForm(
                                 selectedCountry: _selectedCountry,
                                 phoneController: _phoneController,
@@ -298,26 +329,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 },
                                 onSubmit: _handleRegisterSubmit,
                               )
-                            else if (_isRegister && _showOtp)
-                              OtpVerificationView(
-                                assignedUsername: _assignedUsername,
-                                generatedPin: _generatedPin,
-                                selectedDialCode: _selectedCountry['dial']!,
-                                localPhone: _localPhone,
-                                otp: _otp,
-                                otpController: _otpController,
-                                onOtpChanged: (val) {
-                                  setState(() => _otp = val);
-                                  if (val.length == 6) {
-                                    _navigateToChat();
-                                  }
-                                },
-                                onStartMessaging: _navigateToChat,
-                              )
                             else
                               SignInForm(
                                 identifierController: _loginIdentifierController,
-                                passwordController: _loginPasswordController,
                                 loading: _loading,
                                 onSubmit: _handleLoginSubmit,
                               ),
@@ -325,35 +339,35 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 18),
 
                             // Toggle Sign In / Sign Up Link
-                            Center(
-                              child: TextButton(
-                                onPressed: () {
-                                  setState(() {
-                                    _isRegister = !_isRegister;
-                                    _showOtp = false;
-                                    _error = null;
-                                  });
-                                },
-                                child: RichText(
-                                  text: TextSpan(
-                                    style: const TextStyle(fontSize: 12.5),
-                                    children: [
-                                      TextSpan(
-                                        text: _isRegister ? 'Already registered? ' : 'New to GoChat? ',
-                                        style: const TextStyle(color: Color(0xFF71717A)),
-                                      ),
-                                      TextSpan(
-                                        text: _isRegister ? 'Sign In' : 'Create Account',
-                                        style: const TextStyle(
-                                          color: Color(0xFF34D399),
-                                          fontWeight: FontWeight.bold,
+                            if (!_showOtp)
+                              Center(
+                                child: TextButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _isRegister = !_isRegister;
+                                      _error = null;
+                                    });
+                                  },
+                                  child: RichText(
+                                    text: TextSpan(
+                                      style: const TextStyle(fontSize: 12.5),
+                                      children: [
+                                        TextSpan(
+                                          text: _isRegister ? 'Already have an account? ' : 'New to GoChat? ',
+                                          style: const TextStyle(color: Color(0xFF71717A)),
                                         ),
-                                      ),
-                                    ],
+                                        TextSpan(
+                                          text: _isRegister ? 'Sign In' : 'Create Account',
+                                          style: const TextStyle(
+                                            color: Color(0xFF34D399),
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),

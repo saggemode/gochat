@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 class OtpVerificationView extends StatelessWidget {
+  final bool isLogin;
   final String? assignedUsername;
   final String? generatedPin;
-  final String selectedDialCode;
-  final String localPhone;
+  final String destination;
   final String otp;
   final TextEditingController otpController;
   final ValueChanged<String> onOtpChanged;
@@ -12,10 +12,10 @@ class OtpVerificationView extends StatelessWidget {
 
   const OtpVerificationView({
     super.key,
-    required this.assignedUsername,
-    required this.generatedPin,
-    required this.selectedDialCode,
-    required this.localPhone,
+    this.isLogin = false,
+    this.assignedUsername,
+    this.generatedPin,
+    required this.destination,
     required this.otp,
     required this.otpController,
     required this.onOtpChanged,
@@ -29,14 +29,18 @@ class OtpVerificationView extends StatelessWidget {
         Center(
           child: Column(
             children: [
-              const Icon(Icons.vpn_key_rounded, color: Color(0xFF34D399), size: 40),
-              const SizedBox(height: 8),
-              const Text(
-                'Account Created!',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+              Icon(
+                isLogin ? Icons.mark_email_read_rounded : Icons.vpn_key_rounded,
+                color: const Color(0xFF34D399),
+                size: 40,
               ),
               const SizedBox(height: 8),
-              if (assignedUsername != null)
+              Text(
+                isLogin ? 'Verify Your Identity' : 'Account Created!',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              const SizedBox(height: 8),
+              if (!isLogin && assignedUsername != null)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                   decoration: BoxDecoration(
@@ -60,27 +64,29 @@ class OtpVerificationView extends StatelessWidget {
                     ],
                   ),
                 ),
-              const SizedBox(height: 6),
-              Text(
-                'Your unique BBM PIN: $generatedPin',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontFamily: 'monospace',
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF34D399),
-                  letterSpacing: 2,
+              if (generatedPin != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Your unique BBM PIN: $generatedPin',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontFamily: 'monospace',
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF34D399),
+                    letterSpacing: 2,
+                  ),
                 ),
-              ),
-              const Text(
-                'Share this PIN with friends to connect on GoChat',
-                style: TextStyle(fontSize: 10.5, color: Color(0xFF71717A)),
-              ),
+                const Text(
+                  'Share this PIN with friends to connect on GoChat',
+                  style: TextStyle(fontSize: 10.5, color: Color(0xFF71717A)),
+                ),
+              ],
             ],
           ),
         ),
         const SizedBox(height: 18),
 
-        // SMS Detection Box
+        // SMS / OTP Detection Box
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -105,7 +111,7 @@ class OtpVerificationView extends StatelessWidget {
                   Text(
                     otp.length == 6
                         ? 'SMS OTP Verified! Redirecting...'
-                        : 'Detecting SMS OTP on this device...',
+                        : 'Detecting SMS OTP code...',
                     style: const TextStyle(
                       color: Color(0xFF6EE7B7),
                       fontWeight: FontWeight.bold,
@@ -116,7 +122,7 @@ class OtpVerificationView extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Verification code for $selectedDialCode $localPhone',
+                'Verification code sent to $destination',
                 style: const TextStyle(fontSize: 11, color: Color(0xFF059669)),
               ),
             ],
