@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/models/models.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
+import '../../widgets/widgets.dart';
 import '../qr/qr_scanner_screen.dart';
 import 'chat_room_screen.dart';
 
@@ -27,13 +29,59 @@ class NewChatByPinDialog extends StatefulWidget {
 class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
   final _pinController = TextEditingController();
   final _nameController = TextEditingController();
+  Timer? _debounceTimer;
+
+  bool _isSearching = false;
+  User? _foundUser;
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    _pinController.addListener(_onPinChanged);
+  }
+
+  @override
   void dispose() {
+    _debounceTimer?.cancel();
+    _pinController.removeListener(_onPinChanged);
     _pinController.dispose();
     _nameController.dispose();
     super.dispose();
+  }
+
+  void _onPinChanged() {
+    final rawPin = _pinController.text.trim().toUpperCase();
+    _debounceTimer?.cancel();
+
+    if (rawPin.length < 4) {
+      if (_foundUser != null || _isSearching) {
+        setState(() {
+          _foundUser = null;
+          _isSearching = false;
+          _error = null;
+        });
+      }
+      return;
+    }
+
+    setState(() {
+      _isSearching = true;
+      _error = null;
+    });
+
+    _debounceTimer = Timer(const Duration(milliseconds: 280), () async {
+      final user = await widget.appState.lookupUserByPin(rawPin);
+      if (!mounted) return;
+
+      setState(() {
+        _isSearching = false;
+        _foundUser = user;
+        if (user != null) {
+          _nameController.text = user.displayName;
+        }
+      });
+    });
   }
 
   Future<void> _startChat() async {
@@ -48,7 +96,11 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
     }
 
     final customName = _nameController.text.trim();
-    final title = customName.isNotEmpty ? customName : 'BBM User ($rawPin)';
+    final title = customName.isNotEmpty
+        ? customName
+        : (_foundUser?.displayName ?? 'BBM User ($rawPin)');
+    final avatarUrl = _foundUser?.avatarUrl ??
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
 
     Conversation targetConv;
     final matchIndex = widget.appState.conversations.indexWhere(
@@ -59,6 +111,9 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
       targetConv = widget.appState.conversations[matchIndex];
     } else {
       targetConv = await widget.appState.createConversation(title, []);
+      if (avatarUrl.isNotEmpty) {
+        targetConv = targetConv.copyWith(avatarUrl: avatarUrl);
+      }
     }
 
     if (!mounted) return;
@@ -75,7 +130,7 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('💬 Chat started with PIN $rawPin'),
+        content: Text('💬 Chat started with $title'),
         backgroundColor: AppTheme.primary,
       ),
     );
@@ -131,7 +186,7 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       Text(
-                        'Connect instantly without sharing phone number',
+                        'Instant lookup & encrypted messaging',
                         style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
                       ),
                     ],
@@ -162,27 +217,130 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
                 hintText: 'e.g. 8492A1',
                 counterText: '',
                 prefixIcon: const Icon(Icons.tag_rounded, color: AppTheme.primary),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.paste_rounded, color: AppTheme.primary, size: 20),
-                  tooltip: 'Paste from clipboard',
-                  onPressed: () async {
-                    final data = await Clipboard.getData('text/plain');
-                    if (data != null && data.text != null) {
-                      setState(() {
-                        _pinController.text = data.text!.trim().toUpperCase();
-                      });
-                    }
-                  },
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_isSearching)
+                      const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary),
+                        ),
+                      )
+                    else if (_foundUser != null)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 6),
+                        child: Icon(Icons.check_circle_rounded, color: AppTheme.primary, size: 20),
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.paste_rounded, color: AppTheme.primary, size: 20),
+                      tooltip: 'Paste from clipboard',
+                      onPressed: () async {
+                        final data = await Clipboard.getData('text/plain');
+                        if (data != null && data.text != null) {
+                          _pinController.text = data.text!.trim().toUpperCase();
+                        }
+                      },
+                    ),
+                  ],
                 ),
               ),
               onSubmitted: (_) => _startChat(),
             ),
 
-            const SizedBox(height: 14),
+            // ── Auto-Populated Contact Preview Card ───────────────────────────
+            if (_foundUser != null) ...[
+              const SizedBox(height: 16),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.darkCard : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppTheme.primary.withValues(alpha: 0.4),
+                    width: 1.2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primary.withValues(alpha: 0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    CustomAvatar(
+                      imageUrl: _foundUser!.avatarUrl,
+                      name: _foundUser!.displayName,
+                      radius: 24,
+                      isOnline: _foundUser!.isOnline,
+                      showOnlineBadge: true,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  _foundUser!.displayName,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(Icons.verified, color: AppTheme.primary, size: 15),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _foundUser!.statusText,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.textMuted,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              StatusBadge(
+                                text: 'BBM: ${_foundUser!.pin}',
+                                type: BadgeType.primary,
+                              ),
+                              if (_foundUser!.phone.isNotEmpty) ...[
+                                const SizedBox(width: 6),
+                                Text(
+                                  _foundUser!.phone,
+                                  style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
 
-            // Optional Name Field
+            const SizedBox(height: 16),
+
+            // Optional Custom Display Name Field
             const Text(
-              'CONTACT NAME (OPTIONAL)',
+              'CONTACT NAME (AUTO-POPULATED)',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textMuted, letterSpacing: 1),
             ),
             const SizedBox(height: 6),
@@ -233,7 +391,12 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     icon: const Icon(Icons.chat_bubble_rounded, size: 18),
-                    label: const Text('Start Chat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    label: Text(
+                      _foundUser != null ? 'Chat with ${_foundUser!.displayName.split(' ').first}' : 'Start Chat',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     onPressed: _startChat,
                   ),
                 ),

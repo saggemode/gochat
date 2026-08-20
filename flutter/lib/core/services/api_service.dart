@@ -111,6 +111,21 @@ class ApiService {
     return null;
   }
 
+  // ── Auth: Lookup User by BBM PIN ────────────────────────────────────────────
+  static Future<User?> lookupUserByPin(String pin) async {
+    final cleanPin = pin.trim().toUpperCase();
+    try {
+      final res = await http
+          .get(Uri.parse('${ApiConstants.apiV1}/users/pin/$cleanPin'), headers: await _headers())
+          .timeout(const Duration(seconds: 5));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        return User.fromJson(data['user'] ?? data);
+      }
+    } catch (_) {}
+    return null;
+  }
+
   // ── Chat: Get Conversations ─────────────────────────────────────────────────
   static Future<List<Conversation>> getConversations() async {
     final res = await http

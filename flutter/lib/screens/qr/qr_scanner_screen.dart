@@ -52,33 +52,40 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
     return '8492A1';
   }
 
-  void _handleScannedPin(String pin) {
+  Future<void> _handleScannedPin(String pin) async {
     HapticFeedback.mediumImpact();
     final cleanPin = pin.replaceAll('gochat:pin:', '').trim().toUpperCase();
+    final user = await widget.appState.lookupUserByPin(cleanPin);
 
-    // Check if conversation already exists or create new
-    final existing = widget.appState.conversations.firstWhere(
+    final title = user?.displayName ?? 'BBM Contact ($cleanPin)';
+    final avatar = user?.avatarUrl ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
+
+    Conversation targetConv;
+    final matchIndex = widget.appState.conversations.indexWhere(
       (c) => c.title.toUpperCase().contains(cleanPin) || c.id.toUpperCase().contains(cleanPin),
-      orElse: () => Conversation(
-        id: 'conv_pin_$cleanPin',
-        title: 'BBM Contact ($cleanPin)',
-        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-        type: ConversationType.direct,
-        isOnline: true,
-      ),
     );
 
+    if (matchIndex != -1) {
+      targetConv = widget.appState.conversations[matchIndex];
+    } else {
+      targetConv = await widget.appState.createConversation(title, []);
+      if (avatar.isNotEmpty) {
+        targetConv = targetConv.copyWith(avatarUrl: avatar);
+      }
+    }
+
+    if (!mounted) return;
     Navigator.pop(context);
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ChatRoomScreen(conversation: existing, appState: widget.appState),
+        builder: (_) => ChatRoomScreen(conversation: targetConv, appState: widget.appState),
       ),
     );
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('🎉 Connected to BBM PIN: $cleanPin'),
+        content: Text('🎉 Connected with $title ($cleanPin)'),
         backgroundColor: AppTheme.primary,
       ),
     );
