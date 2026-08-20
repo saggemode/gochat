@@ -1,6 +1,6 @@
 class ApiConstants {
   // Live Render Gateway and local development fallback
-  static const String prodBaseUrl = 'https://gochat-3-ci6n.onrender.com';
+  static const String prodBaseUrl = 'https://gochat-kvpj.onrender.com';
   static const String localBaseUrl = 'http://localhost:8080';
   static const String androidEmulatorBaseUrl = 'http://10.0.2.2:8080';
 

@@ -28,7 +28,6 @@ class StatusBadge extends StatelessWidget {
       case BadgeType.neutral:
         return AppTheme.textMuted;
       case BadgeType.primary:
-      default:
         return AppTheme.primary;
     }
   }
