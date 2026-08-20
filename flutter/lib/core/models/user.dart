@@ -8,6 +8,8 @@ class User {
   final bool isOnline;
   final DateTime lastSeen;
   final bool isBusiness;
+  final String pin;
+  final String countryCode;
 
   User({
     required this.id,
@@ -19,21 +21,25 @@ class User {
     this.isOnline = false,
     DateTime? lastSeen,
     this.isBusiness = false,
+    this.pin = '',
+    this.countryCode = '',
   }) : lastSeen = lastSeen ?? DateTime.now();
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id']?.toString() ?? '',
-      displayName: json['display_name'] ?? json['name'] ?? 'User',
+      displayName: json['display_name'] ?? json['displayName'] ?? json['name'] ?? 'User',
       email: json['email'] ?? '',
       phone: json['phone'] ?? '',
-      avatarUrl: json['avatar_url'] ?? '',
-      statusText: json['status_text'] ?? 'Hey there! I am using GoChat.',
-      isOnline: json['is_online'] == true,
-      lastSeen: json['last_seen'] != null
-          ? DateTime.tryParse(json['last_seen'].toString()) ?? DateTime.now()
+      avatarUrl: json['avatar_url'] ?? json['avatarUrl'] ?? '',
+      statusText: json['status_text'] ?? json['statusText'] ?? 'Hey there! I am using GoChat.',
+      isOnline: json['is_online'] == true || json['isOnline'] == true,
+      lastSeen: json['last_seen'] != null || json['lastSeen'] != null
+          ? DateTime.tryParse((json['last_seen'] ?? json['lastSeen']).toString()) ?? DateTime.now()
           : DateTime.now(),
-      isBusiness: json['is_business'] == true,
+      isBusiness: json['is_business'] == true || json['isBusiness'] == true,
+      pin: json['pin']?.toString() ?? '',
+      countryCode: json['country_code'] ?? json['countryCode'] ?? '',
     );
   }
 

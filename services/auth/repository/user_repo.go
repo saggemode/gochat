@@ -437,8 +437,15 @@ func (r *UserRepository) CleanExpiredTokens(ctx context.Context) (int64, error) 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 func isUniqueViolation(err error) bool {
-	return err != nil && (fmt.Sprintf("%v", err) == "ERROR: duplicate key value violates unique constraint" ||
-		pgErrCode(err) == "23505")
+	if err == nil {
+		return false
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == "23505"
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "duplicate key") || strings.Contains(msg, "unique constraint") || strings.Contains(msg, "23505") || pgErrCode(err) == "23505"
 }
 
 func pgErrCode(err error) string {

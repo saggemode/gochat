@@ -157,7 +157,13 @@ class AppState extends ChangeNotifier {
   }
 
   // ── Auth: Register ──────────────────────────────────────────────────────────
-  Future<void> register(String email, String password, String displayName, {String phone = ''}) async {
+  Future<void> register({
+    String email = '',
+    String password = '',
+    String displayName = '',
+    String phone = '',
+    String countryCode = '',
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -168,6 +174,7 @@ class AppState extends ChangeNotifier {
         password: password,
         displayName: displayName,
         phone: phone,
+        countryCode: countryCode,
       );
 
       final token = res['access_token'] ?? res['token'] ?? '';

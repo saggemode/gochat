@@ -99,17 +99,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       await widget.appState.register(
-        '$fullPhone@gochat.io',
-        'GochatSecretPass123!',
-        'User ${fullPhone.substring(fullPhone.length > 4 ? fullPhone.length - 4 : 0)}',
         phone: fullPhone,
+        countryCode: _selectedCountry['code'] ?? 'NG',
       );
 
       final user = widget.appState.currentUser;
-      final assignedName = user?.displayName ?? 'GoChat User';
-      final pin = user?.id.isNotEmpty == true
-          ? user!.id.replaceAll('-', '').substring(0, 6).toUpperCase()
-          : '8492A1';
+      final assignedName = user?.displayName.isNotEmpty == true
+          ? user!.displayName
+          : 'User ${fullPhone.length > 4 ? fullPhone.substring(fullPhone.length - 4) : fullPhone}';
+      final pin = (user?.pin.isNotEmpty == true)
+          ? user!.pin
+          : (user?.id.isNotEmpty == true ? user!.id.replaceAll('-', '').substring(0, 6).toUpperCase() : '8492A1');
 
       setState(() {
         _assignedUsername = assignedName;

@@ -22,20 +22,23 @@ class ApiService {
 
   // ── Auth: Register ──────────────────────────────────────────────────────────
   static Future<Map<String, dynamic>> register({
-    required String email,
-    required String password,
-    required String displayName,
+    String email = '',
+    String password = '',
+    String displayName = '',
     String phone = '',
+    String countryCode = '',
   }) async {
+    final body = <String, dynamic>{};
+    if (email.isNotEmpty) body['email'] = email;
+    if (password.isNotEmpty) body['password'] = password;
+    if (displayName.isNotEmpty) body['display_name'] = displayName;
+    if (phone.isNotEmpty) body['phone'] = phone;
+    if (countryCode.isNotEmpty) body['country_code'] = countryCode;
+
     final res = await http.post(
       Uri.parse(ApiConstants.register),
       headers: await _headers(),
-      body: jsonEncode({
-        'email': email,
-        'password': password,
-        'display_name': displayName,
-        'phone': phone,
-      }),
+      body: jsonEncode(body),
     ).timeout(const Duration(seconds: 12));
 
     final data = jsonDecode(res.body);
