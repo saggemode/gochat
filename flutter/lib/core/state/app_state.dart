@@ -160,49 +160,82 @@ class AppState extends ChangeNotifier {
 
   // ── WebSocket Handler ───────────────────────────────────────────────────────
   void _handleIncomingWebSocket(Map<String, dynamic> data) {
-    final type = data['type'];
+    final eventType = (data['event_type'] ?? data['eventType'] ?? data['event'] ?? data['type'] ?? '').toString();
+    final rawMsg = data['message'] ?? data['Message'] ?? data['payload'] ?? data['data'];
 
-    // 1. Incoming Chat Message
-    if (type == 'chat_message' || type == 'message') {
-      final payload = data['payload'] ?? data['data'] ?? data;
+    // 1. Incoming Chat Message Event (EVENT_NEW_MESSAGE = 0 or 1, or explicit message payload)
+    final isMessageEvent = eventType == '0' ||
+        eventType == '1' ||
+        eventType == 'EVENT_NEW_MESSAGE' ||
+        eventType == 'new_message' ||
+        eventType == 'chat_message' ||
+        eventType == 'message' ||
+        (rawMsg is Map<String, dynamic> && (rawMsg.containsKey('content') || rawMsg.containsKey('conversation_id') || rawMsg.containsKey('conversationId')));
+
+    if (isMessageEvent) {
+      final Map<String, dynamic> payload = (rawMsg is Map<String, dynamic>)
+          ? rawMsg
+          : data;
       final msg = Message.fromJson(payload, currentUserId: _currentUser?.id ?? '');
 
-      if (!_messages.containsKey(msg.conversationId)) {
-        _messages[msg.conversationId] = [];
-      }
-      final existingIdx = _messages[msg.conversationId]!.indexWhere((m) => m.id == msg.id);
-      if (existingIdx == -1) {
-        _messages[msg.conversationId]!.add(msg);
-      } else {
-        _messages[msg.conversationId]![existingIdx] = msg;
-      }
+      if (msg.conversationId.isNotEmpty) {
+        if (!_messages.containsKey(msg.conversationId)) {
+          _messages[msg.conversationId] = [];
+        }
+        final existingIdx = _messages[msg.conversationId]!.indexWhere((m) => m.id == msg.id);
+        if (existingIdx == -1) {
+          _messages[msg.conversationId]!.add(msg);
+        } else {
+          _messages[msg.conversationId]![existingIdx] = msg;
+        }
 
-      // Update cached messages
-      StorageService.saveCachedMessages(msg.conversationId, _messages[msg.conversationId]!);
+        // Update cached messages
+        StorageService.saveCachedMessages(msg.conversationId, _messages[msg.conversationId]!);
 
-      // Update conversation in list
-      final convIdx = _conversations.indexWhere((c) => c.id == msg.conversationId);
-      if (convIdx != -1) {
-        _conversations[convIdx] = _conversations[convIdx].copyWith(
-          lastMessage: msg,
-          updatedAt: DateTime.now(),
-        );
+        // Update or insert conversation in list
+        final convIdx = _conversations.indexWhere((c) => c.id == msg.conversationId);
+        if (convIdx != -1) {
+          final updated = _conversations[convIdx].copyWith(
+            lastMessage: msg,
+            updatedAt: DateTime.now(),
+          );
+          _conversations.removeAt(convIdx);
+          _conversations.insert(0, updated);
+        } else {
+          // New conversation created by sender - add to receiver's list immediately
+          final newConv = Conversation(
+            id: msg.conversationId,
+            title: msg.senderName.isNotEmpty && msg.senderName != 'Me' ? msg.senderName : 'Chat',
+            lastMessage: msg,
+            type: ConversationType.direct,
+            updatedAt: DateTime.now(),
+          );
+          _conversations.insert(0, newConv);
+          // Sync full conversation details from server in background
+          ApiService.getConversations().then((convs) {
+            if (convs.isNotEmpty) {
+              _conversations = convs;
+              StorageService.saveCachedConversations(_conversations);
+              notifyListeners();
+            }
+          }).catchError((_) {});
+        }
         StorageService.saveCachedConversations(_conversations);
-      }
 
-      // If PING message received, trigger haptic and stream event
-      if (msg.isPing) {
-        HapticFeedback.vibrate();
-        _pingStreamController.add(msg.conversationId);
-      }
+        // If PING message received, trigger haptic and stream event
+        if (msg.isPing) {
+          HapticFeedback.vibrate();
+          _pingStreamController.add(msg.conversationId);
+        }
 
-      notifyListeners();
+        notifyListeners();
+      }
     }
     // 2. Incoming Live Typing Event
-    else if (type == 'typing') {
-      final convId = data['conversation_id']?.toString() ?? '';
-      final isTyping = data['is_typing'] == true;
-      final userName = data['user_name']?.toString() ?? 'Contact';
+    else if (eventType == '6' || eventType == 'EVENT_TYPING' || eventType == 'typing') {
+      final convId = (data['conversation_id'] ?? data['conversationId'] ?? data['conv_id'] ?? '').toString();
+      final isTyping = data['is_typing'] == true || data['isTyping'] == true;
+      final userName = (data['user_name'] ?? data['userName'] ?? data['actor_id'] ?? 'Contact').toString();
 
       if (convId.isNotEmpty) {
         if (!_typingUsers.containsKey(convId)) {
@@ -217,11 +250,13 @@ class AppState extends ChangeNotifier {
       }
     }
     // 3. Incoming PING Nudge Event
-    else if (type == 'ping') {
-      final convId = data['conversation_id']?.toString() ?? '';
-      HapticFeedback.vibrate();
-      _pingStreamController.add(convId);
-      notifyListeners();
+    else if (eventType == 'ping' || eventType == 'EVENT_PINNED' || data['is_ping'] == true) {
+      final convId = (data['conversation_id'] ?? data['conversationId'] ?? data['conv_id'] ?? '').toString();
+      if (convId.isNotEmpty) {
+        HapticFeedback.vibrate();
+        _pingStreamController.add(convId);
+        notifyListeners();
+      }
     }
   }
 

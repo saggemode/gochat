@@ -202,34 +202,55 @@ class Message {
   }
 
   factory Message.fromJson(Map<String, dynamic> json, {String currentUserId = ''}) {
-    final senderId = json['sender_id']?.toString() ?? '';
-    final msgType = _parseMessageType(json['type'] ?? json['media_type']);
-    final isPingVal = json['is_ping'] == true || msgType == MessageType.ping || (json['content']?.toString().contains('💥 PING') ?? false);
+    final senderId = (json['sender_id'] ?? json['senderId'] ?? json['SenderId'] ?? json['actor_id'] ?? json['actorId'] ?? '')
+        .toString();
+    final msgType = _parseMessageType(json['type'] ?? json['media_type'] ?? json['Type']);
+    final contentStr = (json['content'] ?? json['text'] ?? json['Content'] ?? '').toString();
+    final isPingVal = json['is_ping'] == true ||
+        json['isPing'] == true ||
+        msgType == MessageType.ping ||
+        contentStr.contains('💥 PING') ||
+        contentStr.contains('[PING]');
 
     return Message(
-      id: json['id']?.toString() ?? '',
-      conversationId: json['conversation_id']?.toString() ?? '',
+      id: (json['id'] ?? json['Id'] ?? 'msg_${DateTime.now().millisecondsSinceEpoch}').toString(),
+      conversationId: (json['conversation_id'] ?? json['conversationId'] ?? json['ConversationId'] ?? json['conv_id'] ?? '').toString(),
       senderId: senderId,
-      senderName: json['sender_name'] ?? 'User',
-      content: json['content'] ?? json['text'] ?? '',
+      senderName: (json['sender_name'] ?? json['senderName'] ?? json['SenderName'] ?? (currentUserId.isNotEmpty && senderId == currentUserId ? 'Me' : 'User')).toString(),
+      content: contentStr,
       type: isPingVal ? MessageType.ping : msgType,
-      status: _parseMessageStatus(json['status']),
-      mediaUrl: json['media_url'],
-      mediaThumbnail: json['thumbnail_url'],
-      mediaDuration: json['duration'],
-      mediaSize: json['file_size'],
+      status: _parseMessageStatus(json['status'] ?? json['Status']),
+      mediaUrl: json['media_url'] ?? json['mediaUrl'] ?? json['MediaUrl'],
+      mediaThumbnail: json['thumbnail_url'] ?? json['thumbnailUrl'] ?? json['ThumbnailUrl'],
+      mediaDuration: json['duration'] ?? json['media_duration'] ?? json['Duration'],
+      mediaSize: json['file_size'] ?? json['media_size'] ?? json['MediaSize'],
       pollData: json['poll_data'] != null ? PollData.fromJson(json['poll_data']) : null,
       productData: json['product_data'] is Map<String, dynamic> ? json['product_data'] : null,
       isPing: isPingVal,
-      replyToId: json['reply_to_id'],
-      replyToText: json['reply_to_text'],
-      replyToSenderName: json['reply_to_sender_name'],
+      replyToId: json['reply_to_id'] ?? json['replyToId'] ?? json['parent_id'] ?? json['ParentId'],
+      replyToText: json['reply_to_text'] ?? json['replyToText'],
+      replyToSenderName: json['reply_to_sender_name'] ?? json['replyToSenderName'],
       reactions: _parseReactions(json['reactions']),
-      createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
-          : DateTime.now(),
+      createdAt: _parseDateTime(json['created_at'] ?? json['createdAt'] ?? json['CreatedAt'] ?? json['send_at'] ?? json['SendAt']),
       isMe: currentUserId.isNotEmpty && senderId == currentUserId,
     );
+  }
+
+  static DateTime _parseDateTime(dynamic val) {
+    if (val == null) return DateTime.now();
+    if (val is int) {
+      if (val > 1000000000000) return DateTime.fromMillisecondsSinceEpoch(val);
+      return DateTime.fromMillisecondsSinceEpoch(val * 1000);
+    }
+    if (val is String) {
+      final asInt = int.tryParse(val);
+      if (asInt != null) {
+        if (asInt > 1000000000000) return DateTime.fromMillisecondsSinceEpoch(asInt);
+        return DateTime.fromMillisecondsSinceEpoch(asInt * 1000);
+      }
+      return DateTime.tryParse(val) ?? DateTime.now();
+    }
+    return DateTime.now();
   }
 
   Map<String, dynamic> toJson() {
@@ -258,26 +279,56 @@ class Message {
 
   static MessageType _parseMessageType(dynamic val) {
     if (val == null) return MessageType.text;
+    if (val is int) {
+      switch (val) {
+        case 1:
+          return MessageType.image;
+        case 2:
+          return MessageType.video;
+        case 3:
+          return MessageType.audio;
+        case 4:
+          return MessageType.voice;
+        case 5:
+          return MessageType.file;
+        case 6:
+          return MessageType.poll;
+        case 7:
+          return MessageType.product;
+        case 8:
+          return MessageType.ping;
+        default:
+          return MessageType.text;
+      }
+    }
     final str = val.toString().toLowerCase();
     switch (str) {
+      case '1':
       case 'image':
         return MessageType.image;
+      case '2':
       case 'video':
         return MessageType.video;
+      case '3':
       case 'audio':
+      case '4':
       case 'voice':
         return MessageType.voice;
+      case '5':
       case 'file':
       case 'document':
         return MessageType.file;
+      case '6':
       case 'poll':
         return MessageType.poll;
       case 'canvas':
         return MessageType.canvas;
       case 'game':
         return MessageType.game;
+      case '7':
       case 'product':
         return MessageType.product;
+      case '8':
       case 'ping':
         return MessageType.ping;
       default:
@@ -287,14 +338,32 @@ class Message {
 
   static MessageStatus _parseMessageStatus(dynamic val) {
     if (val == null) return MessageStatus.sent;
+    if (val is int) {
+      switch (val) {
+        case 0:
+          return MessageStatus.pending;
+        case 1:
+          return MessageStatus.sent;
+        case 2:
+          return MessageStatus.delivered;
+        case 3:
+          return MessageStatus.read;
+        default:
+          return MessageStatus.sent;
+      }
+    }
     final str = val.toString().toLowerCase();
     switch (str) {
+      case '0':
       case 'pending':
         return MessageStatus.pending;
+      case '1':
       case 'sent':
         return MessageStatus.sent;
+      case '2':
       case 'delivered':
         return MessageStatus.delivered;
+      case '3':
       case 'read':
         return MessageStatus.read;
       case 'failed':
