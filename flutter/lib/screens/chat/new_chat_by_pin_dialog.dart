@@ -36,7 +36,7 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
     super.dispose();
   }
 
-  void _startChat() {
+  Future<void> _startChat() async {
     final rawPin = _pinController.text.trim().toUpperCase();
     if (rawPin.isEmpty) {
       setState(() => _error = 'Please enter a BBM PIN');
@@ -50,29 +50,24 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
     final customName = _nameController.text.trim();
     final title = customName.isNotEmpty ? customName : 'BBM User ($rawPin)';
 
-    // Look for existing conversation or create new
-    final existing = widget.appState.conversations.firstWhere(
+    Conversation targetConv;
+    final matchIndex = widget.appState.conversations.indexWhere(
       (c) => c.title.toUpperCase().contains(rawPin) || c.id.toUpperCase().contains(rawPin),
-      orElse: () {
-        final newConv = Conversation(
-          id: 'conv_pin_$rawPin',
-          title: title,
-          avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-          type: ConversationType.direct,
-          isOnline: true,
-          unreadCount: 0,
-        );
-        widget.appState.createConversation(title, []);
-        return newConv;
-      },
     );
 
+    if (matchIndex != -1) {
+      targetConv = widget.appState.conversations[matchIndex];
+    } else {
+      targetConv = await widget.appState.createConversation(title, []);
+    }
+
+    if (!mounted) return;
     Navigator.pop(context);
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => ChatRoomScreen(
-          conversation: existing,
+          conversation: targetConv,
           appState: widget.appState,
         ),
       ),
