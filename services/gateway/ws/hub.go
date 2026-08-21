@@ -62,3 +62,34 @@ func (h *Hub) GetOnlineUsers() []string {
 	}
 	return users
 }
+
+// Broadcast sends a JSON payload to all active clients, optionally excluding a specific sender.
+func (h *Hub) Broadcast(message []byte, excludeUserID string) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	for client := range h.clients {
+		if excludeUserID != "" && client.userID == excludeUserID {
+			continue
+		}
+		select {
+		case client.send <- message:
+		default:
+		}
+	}
+}
+
+// SendToUser sends a JSON payload directly to a specific user's active client connections.
+func (h *Hub) SendToUser(userID string, message []byte) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	for client := range h.clients {
+		if client.userID == userID {
+			select {
+			case client.send <- message:
+			default:
+			}
+		}
+	}
+}

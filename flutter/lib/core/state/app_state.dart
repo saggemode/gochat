@@ -554,6 +554,30 @@ class AppState extends ChangeNotifier {
         _conversations.insert(0, updated);
         await StorageService.saveCachedConversations(_conversations);
       }
+      // Broadcast over WebSocket to all connected peers
+      wsService.send({
+        'type': 'new_message',
+        'event_type': 'EVENT_NEW_MESSAGE',
+        'conversation_id': convId,
+        'message': {
+          'id': msgToAdd.id,
+          'conversation_id': convId,
+          'sender_id': _currentUser?.id ?? 'u_me',
+          'sender_name': _currentUser?.displayName ?? 'Me',
+          'content': content,
+          'type': typeInt,
+          'media_url': mediaUrl,
+          'media_duration': mediaDuration,
+          'is_ping': isPing,
+          'poll_data': pollData?.toJson(),
+          'product_data': productData,
+          'reply_to_id': replyToId,
+          'reply_to_text': replyToText,
+          'reply_to_sender_name': replyToSenderName,
+          'created_at': msgToAdd.createdAt.toIso8601String(),
+        },
+      });
+
       notifyListeners();
     } catch (e) {
       // Optimistic client addition with offline/pending status
@@ -581,6 +605,31 @@ class AppState extends ChangeNotifier {
       }
       _messages[convId]!.add(optimisticMsg);
       await StorageService.saveCachedMessages(convId, _messages[convId]!);
+
+      // Broadcast over WebSocket
+      wsService.send({
+        'type': 'new_message',
+        'event_type': 'EVENT_NEW_MESSAGE',
+        'conversation_id': convId,
+        'message': {
+          'id': optimisticMsg.id,
+          'conversation_id': convId,
+          'sender_id': _currentUser?.id ?? 'u_me',
+          'sender_name': _currentUser?.displayName ?? 'Me',
+          'content': content,
+          'type': typeInt,
+          'media_url': mediaUrl,
+          'media_duration': mediaDuration,
+          'is_ping': isPing,
+          'poll_data': pollData?.toJson(),
+          'product_data': productData,
+          'reply_to_id': replyToId,
+          'reply_to_text': replyToText,
+          'reply_to_sender_name': replyToSenderName,
+          'created_at': optimisticMsg.createdAt.toIso8601String(),
+        },
+      });
+
       notifyListeners();
     }
   }

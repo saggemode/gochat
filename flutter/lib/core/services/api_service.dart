@@ -311,7 +311,7 @@ class ApiService {
     final user = await StorageService.getUser();
     final token = await StorageService.getToken();
 
-    if (token != null && token.isNotEmpty && !conversationId.startsWith('conv_')) {
+    if (token != null && token.isNotEmpty) {
       try {
         final res = await http.post(
           Uri.parse(ApiConstants.conversationMessages(conversationId)),

@@ -54,12 +54,34 @@ func (c *Client) readPump() {
 		return nil
 	})
 	for {
-		_, _, err := c.conn.ReadMessage()
+		_, rawMessage, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				c.log.Warn("websocket read error", zap.Error(err))
 			}
 			break
+		}
+
+		if len(rawMessage) > 0 {
+			var payload map[string]interface{}
+			if err := json.Unmarshal(rawMessage, &payload); err == nil {
+				// Inject sender id if missing
+				if _, ok := payload["sender_id"]; !ok || payload["sender_id"] == "" {
+					payload["sender_id"] = c.userID
+				}
+
+				// Check if targeted to a specific recipient user
+				targetUserID, hasTarget := payload["recipient_id"].(string)
+				if hasTarget && targetUserID != "" {
+					if b, err := json.Marshal(payload); err == nil {
+						c.hub.SendToUser(targetUserID, b)
+					}
+				} else {
+					if b, err := json.Marshal(payload); err == nil {
+						c.hub.Broadcast(b, c.userID)
+					}
+				}
+			}
 		}
 	}
 }
