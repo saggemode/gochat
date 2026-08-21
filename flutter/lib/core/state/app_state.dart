@@ -151,17 +151,48 @@ class AppState extends ChangeNotifier {
       _products = results[4] as List<Product>;
 
       // Persist conversations to offline storage
-      await StorageService.saveCachedConversations(_conversations);
+      if (_conversations.isNotEmpty) {
+        await StorageService.saveCachedConversations(_conversations);
+      } else {
+        final cached = await StorageService.getCachedConversations(currentUserId: _currentUser?.id ?? '');
+        if (cached.isNotEmpty) {
+          _conversations = cached;
+        }
+      }
 
       // Fetch messages for each active conversation & cache
       for (final conv in _conversations) {
         try {
           final msgs = await ApiService.getMessages(conv.id);
-          _messages[conv.id] = msgs;
-          await StorageService.saveCachedMessages(conv.id, msgs);
-        } catch (_) {}
+          if (msgs.isNotEmpty) {
+            _messages[conv.id] = msgs;
+            await StorageService.saveCachedMessages(conv.id, msgs);
+          } else {
+            final cached = await StorageService.getCachedMessages(conv.id, currentUserId: _currentUser?.id ?? '');
+            if (cached.isNotEmpty) {
+              _messages[conv.id] = cached;
+            }
+          }
+        } catch (_) {
+          final cached = await StorageService.getCachedMessages(conv.id, currentUserId: _currentUser?.id ?? '');
+          if (cached.isNotEmpty) {
+            _messages[conv.id] = cached;
+          }
+        }
       }
     } catch (e) {
+      // Offline fallback: load cached conversations & messages
+      final cachedConvs = await StorageService.getCachedConversations(currentUserId: _currentUser?.id ?? '');
+      if (cachedConvs.isNotEmpty) {
+        _conversations = cachedConvs;
+        for (final conv in _conversations) {
+          final cachedMsgs = await StorageService.getCachedMessages(conv.id, currentUserId: _currentUser?.id ?? '');
+          if (cachedMsgs.isNotEmpty) {
+            _messages[conv.id] = cachedMsgs;
+          }
+        }
+      }
+
       if (e.toString().contains('401')) {
         // Token expired or invalid — auto-renew credentials
         final newToken = await ApiService.ensureValidToken();
@@ -362,6 +393,19 @@ class AppState extends ChangeNotifier {
         _currentUser = User.fromJson(res['user']);
         await StorageService.saveUser(_currentUser!);
       }
+
+      // 1. Immediately hydrate local conversations and messages for instant rendering
+      final localConvs = await StorageService.getCachedConversations(currentUserId: _currentUser?.id ?? '');
+      if (localConvs.isNotEmpty) {
+        _conversations = localConvs;
+        for (final conv in _conversations) {
+          final cachedMsgs = await StorageService.getCachedMessages(conv.id, currentUserId: _currentUser?.id ?? '');
+          if (cachedMsgs.isNotEmpty) {
+            _messages[conv.id] = cachedMsgs;
+          }
+        }
+      }
+      notifyListeners();
 
       wsService.addListener(_handleIncomingWebSocket);
       await wsService.connect();
