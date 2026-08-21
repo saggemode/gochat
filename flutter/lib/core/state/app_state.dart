@@ -23,6 +23,8 @@ class AppState extends ChangeNotifier {
   List<Product> _products = [];
   final List<Product> _cart = [];
   StoreProfile? _myStore;
+  List<MarketplaceOrder> _sellerOrders = [];
+  List<StoreCoupon> _storeCoupons = [];
   CallRecord? _activeCall;
 
   User? get currentUser => _currentUser;
@@ -40,6 +42,8 @@ class AppState extends ChangeNotifier {
   List<Product> get cart => _cart;
   StoreProfile? get myStore => _myStore;
   bool get hasStore => _myStore != null;
+  List<MarketplaceOrder> get sellerOrders => _sellerOrders;
+  List<StoreCoupon> get storeCoupons => _storeCoupons;
   CallRecord? get activeCall => _activeCall;
   Stream<String> get onPingReceived => _pingStreamController.stream;
 
@@ -949,6 +953,63 @@ class AppState extends ChangeNotifier {
     _products.insert(0, resultProduct);
     notifyListeners();
     return resultProduct;
+  }
+
+  Future<Product> updateStoreProduct(Product product) async {
+    Product updated = product;
+    try {
+      updated = await ApiService.updateProduct(product);
+    } catch (_) {}
+    final idx = _products.indexWhere((p) => p.id == product.id);
+    if (idx != -1) {
+      _products[idx] = updated;
+    }
+    notifyListeners();
+    return updated;
+  }
+
+  Future<void> deleteStoreProduct(String productId) async {
+    try {
+      await ApiService.deleteProduct(productId);
+    } catch (_) {}
+    _products.removeWhere((p) => p.id == productId);
+    _cart.removeWhere((p) => p.id == productId);
+    notifyListeners();
+  }
+
+  Future<void> loadSellerOrders() async {
+    try {
+      final orders = await ApiService.getSellerOrders();
+      if (orders.isNotEmpty) {
+        _sellerOrders = orders;
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> loadStoreCoupons() async {
+    try {
+      final list = await ApiService.getStoreCoupons();
+      if (list.isNotEmpty) {
+        _storeCoupons = list;
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  Future<StoreCoupon> createStoreCoupon(StoreCoupon coupon) async {
+    StoreCoupon created = coupon;
+    try {
+      created = await ApiService.createStoreCoupon(coupon);
+    } catch (_) {}
+    _storeCoupons.insert(0, created);
+    notifyListeners();
+    return created;
+  }
+
+  void deleteStoreCoupon(String couponId) {
+    _storeCoupons.removeWhere((c) => c.id == couponId);
+    notifyListeners();
   }
 
   // ── WebRTC & Calls ──────────────────────────────────────────────────────────

@@ -1,14 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../constants/api_constants.dart';
-import '../models/user.dart';
-import '../models/conversation.dart';
-import '../models/message.dart';
-import '../models/story.dart';
-import '../models/call.dart';
-import '../models/channel.dart';
-import '../models/product.dart';
-import '../models/store_profile.dart';
+import '../models/models.dart';
 import 'storage_service.dart';
 
 class ApiService {
@@ -524,6 +517,93 @@ class ApiService {
       return Product.fromJson(data['product'] ?? data);
     }
     throw Exception(data['error'] ?? 'Failed to create product (${res.statusCode})');
+  }
+
+  static Future<Product> updateProduct(Product product) async {
+    try {
+      final res = await http.put(
+        Uri.parse('${ApiConstants.apiV1}/business/products/${product.id}'),
+        headers: await _headers(),
+        body: jsonEncode(product.toJson()),
+      ).timeout(const Duration(seconds: 15));
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final data = jsonDecode(res.body);
+        return Product.fromJson(data['product'] ?? data);
+      }
+    } catch (_) {}
+    return product;
+  }
+
+  static Future<bool> deleteProduct(String productId) async {
+    try {
+      final res = await http.delete(
+        Uri.parse('${ApiConstants.apiV1}/business/products/$productId'),
+        headers: await _headers(),
+      ).timeout(const Duration(seconds: 15));
+      return res.statusCode >= 200 && res.statusCode < 300;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  // ── Store Orders ────────────────────────────────────────────────────────────
+  static Future<List<MarketplaceOrder>> getSellerOrders() async {
+    try {
+      final res = await http
+          .get(Uri.parse('${ApiConstants.apiV1}/business/orders'), headers: await _headers())
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final list = data is List ? data : (data['orders'] as List? ?? []);
+        return list.map((e) => MarketplaceOrder.fromJson(e)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  static Future<List<MarketplaceOrder>> getBuyerOrders() async {
+    try {
+      final res = await http
+          .get(Uri.parse('${ApiConstants.apiV1}/marketplace/orders/buyer'), headers: await _headers())
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final list = data is List ? data : (data['orders'] as List? ?? []);
+        return list.map((e) => MarketplaceOrder.fromJson(e)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  // ── Store Coupons ───────────────────────────────────────────────────────────
+  static Future<List<StoreCoupon>> getStoreCoupons() async {
+    try {
+      final res = await http
+          .get(Uri.parse('${ApiConstants.apiV1}/business/coupons'), headers: await _headers())
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final list = data is List ? data : (data['coupons'] as List? ?? []);
+        return list.map((e) => StoreCoupon.fromJson(e)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  static Future<StoreCoupon> createStoreCoupon(StoreCoupon coupon) async {
+    try {
+      final res = await http.post(
+        Uri.parse('${ApiConstants.apiV1}/business/coupons'),
+        headers: await _headers(),
+        body: jsonEncode(coupon.toJson()),
+      ).timeout(const Duration(seconds: 15));
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final data = jsonDecode(res.body);
+        return StoreCoupon.fromJson(data['coupon'] ?? data);
+      }
+    } catch (_) {}
+    return coupon;
   }
 
   // ── Marketplace: Checkout Order ─────────────────────────────────────────────

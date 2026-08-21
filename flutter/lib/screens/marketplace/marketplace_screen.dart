@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/models/models.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
@@ -62,12 +63,16 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     return list;
   }
 
-  // ── Open DM with Seller ─────────────────────────────────────────────────────
-  Future<void> _chatWithSeller(Product product) async {
-    final sellerPin = product.sellerPin.isNotEmpty ? product.sellerPin : (widget.appState.currentUser?.pin ?? '1P0YE4WZ');
-    final user = await widget.appState.lookupUserByPin(sellerPin);
-    final targetTitle = user?.displayName ?? product.storeName;
-    final targetId = user?.id ?? sellerPin;
+  // ── Open DM with Seller / Buyer ─────────────────────────────────────────────
+  Future<void> _openChatWithUser({
+    required String pin,
+    required String fallbackName,
+    String? initialMessage,
+  }) async {
+    final cleanPin = pin.isNotEmpty ? pin : (widget.appState.currentUser?.pin ?? '1P0YE4WZ');
+    final user = await widget.appState.lookupUserByPin(cleanPin);
+    final targetTitle = user?.displayName ?? fallbackName;
+    final targetId = user?.id ?? cleanPin;
 
     Conversation? existingConv;
     final idx = widget.appState.conversations.indexWhere(
@@ -81,14 +86,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
         targetTitle,
         [targetId],
         invitationStatus: InvitationStatus.accepted,
-        partnerPin: sellerPin,
+        partnerPin: cleanPin,
       );
     }
 
-    await widget.appState.sendMessage(
-      existingConv.id,
-      '👋 Hi ${product.storeName}! I am interested in purchasing "${product.title}" listed for \$${product.price.toStringAsFixed(2)} on GoChat Marketplace.',
-    );
+    if (initialMessage != null && initialMessage.isNotEmpty) {
+      await widget.appState.sendMessage(existingConv.id, initialMessage);
+    }
 
     if (!mounted) return;
     Navigator.push(
@@ -96,6 +100,15 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       MaterialPageRoute(
         builder: (_) => ChatRoomScreen(conversation: existingConv!, appState: widget.appState),
       ),
+    );
+  }
+
+  // ── Open DM with Seller for Product ─────────────────────────────────────────
+  Future<void> _chatWithSeller(Product product) async {
+    await _openChatWithUser(
+      pin: product.sellerPin,
+      fallbackName: product.storeName,
+      initialMessage: '👋 Hi ${product.storeName}! I am interested in purchasing "${product.title}" listed for \$${product.price.toStringAsFixed(2)} on GoChat Marketplace.',
     );
   }
 
@@ -109,14 +122,17 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   }
 
   // ── Step 1: Create Store Profile Modal ──────────────────────────────────────
-  void _showCreateStoreModal() {
+  void _showCreateStoreModal({StoreProfile? existingStore}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final storeNameCtrl = TextEditingController(text: widget.appState.currentUser?.displayName != null ? '${widget.appState.currentUser!.displayName}\'s Store' : '');
-    final locationCtrl = TextEditingController();
-    final phoneCtrl = TextEditingController(text: widget.appState.currentUser?.phone ?? '');
-    final descCtrl = TextEditingController();
-    final logoCtrl = TextEditingController();
-    String category = 'Electronics';
+    final storeNameCtrl = TextEditingController(
+      text: existingStore?.storeName ?? (widget.appState.currentUser?.displayName != null ? '${widget.appState.currentUser!.displayName}\'s Store' : ''),
+    );
+    final locationCtrl = TextEditingController(text: existingStore?.address ?? '');
+    final phoneCtrl = TextEditingController(text: existingStore?.phone ?? (widget.appState.currentUser?.phone ?? ''));
+    final descCtrl = TextEditingController(text: existingStore?.description ?? '');
+    final logoCtrl = TextEditingController(text: existingStore?.logoUrl ?? '');
+    final bannerCtrl = TextEditingController(text: existingStore?.bannerUrl ?? '');
+    String category = existingStore?.category ?? 'Electronics';
 
     showModalBottomSheet(
       context: context,
@@ -149,21 +165,21 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.store_rounded, color: AppTheme.primary, size: 28),
-                    SizedBox(width: 10),
+                    const Icon(Icons.store_rounded, color: AppTheme.primary, size: 28),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Step 1: Set Up Your Store',
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                            existingStore != null ? 'Edit Store Settings' : 'Step 1: Set Up Your Store',
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                           ),
                           Text(
-                            'Create your merchant profile on GoChat',
-                            style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                            existingStore != null ? 'Update your merchant details' : 'Create your merchant profile on GoChat',
+                            style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
                           ),
                         ],
                       ),
@@ -182,24 +198,18 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: category,
-                        decoration: const InputDecoration(
-                          labelText: 'Industry / Category',
-                          prefixIcon: Icon(Icons.category_rounded),
-                        ),
-                        items: ['Electronics', 'Fashion', 'Gaming', 'Home', 'Services', 'Phones', 'General Retail']
-                            .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                            .toList(),
-                        onChanged: (val) {
-                          if (val != null) category = val;
-                        },
-                      ),
-                    ),
-                  ],
+                DropdownButtonFormField<String>(
+                  value: category,
+                  decoration: const InputDecoration(
+                    labelText: 'Industry / Category',
+                    prefixIcon: Icon(Icons.category_rounded),
+                  ),
+                  items: ['Electronics', 'Fashion', 'Gaming', 'Home', 'Services', 'Phones', 'General Retail']
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) category = val;
+                  },
                 ),
                 const SizedBox(height: 12),
 
@@ -235,6 +245,16 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 const SizedBox(height: 12),
 
                 TextField(
+                  controller: bannerCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Store Banner Image URL (Optional)',
+                    hintText: 'https://...',
+                    prefixIcon: Icon(Icons.panorama_rounded),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                TextField(
                   controller: descCtrl,
                   maxLines: 2,
                   decoration: const InputDecoration(
@@ -254,9 +274,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
                     icon: const Icon(Icons.check_circle_rounded),
-                    label: const Text(
-                      'Create My Store & Start Selling',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    label: Text(
+                      existingStore != null ? 'Save Changes' : 'Create My Store & Start Selling',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     onPressed: () async {
                       if (storeNameCtrl.text.trim().isEmpty || locationCtrl.text.trim().isEmpty) {
@@ -267,7 +287,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       }
 
                       final newStore = StoreProfile(
-                        id: 'store_${DateTime.now().millisecondsSinceEpoch}',
+                        id: existingStore?.id ?? 'store_${DateTime.now().millisecondsSinceEpoch}',
                         userId: widget.appState.currentUser?.id ?? '',
                         storeName: storeNameCtrl.text.trim(),
                         category: category,
@@ -275,16 +295,33 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                         phone: phoneCtrl.text.trim(),
                         description: descCtrl.text.trim(),
                         logoUrl: logoCtrl.text.trim(),
+                        bannerUrl: bannerCtrl.text.trim(),
                         ownerPin: widget.appState.currentUser?.pin ?? '',
                         isVerified: true,
-                        createdAt: DateTime.now(),
+                        createdAt: existingStore?.createdAt ?? DateTime.now(),
                       );
 
                       final nav = Navigator.of(ctx);
+                      final messenger = ScaffoldMessenger.of(context);
                       await widget.appState.createStore(newStore);
                       if (!mounted) return;
                       nav.pop();
-                      _showAddProductModal();
+                      if (existingStore == null) {
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text('🎉 Store "${newStore.storeName}" is live! Now add your first product.'),
+                            backgroundColor: AppTheme.primary,
+                          ),
+                        );
+                        _showAddOrEditProductModal();
+                      } else {
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text('🎉 Store details updated successfully!'),
+                            backgroundColor: AppTheme.primary,
+                          ),
+                        );
+                      }
                     },
                   ),
                 ),
@@ -296,15 +333,17 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     );
   }
 
-  // ── Step 2: Add Product Under Store Modal ────────────────────────────────────
-  void _showAddProductModal() {
+  // ── Step 2: Add / Edit Product Modal ────────────────────────────────────────
+  void _showAddOrEditProductModal({Product? productToEdit}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final titleCtrl = TextEditingController();
-    final priceCtrl = TextEditingController();
-    final originalPriceCtrl = TextEditingController();
-    final descCtrl = TextEditingController();
-    final imageCtrl = TextEditingController();
-    String category = widget.appState.myStore?.category ?? 'Electronics';
+    final isEditing = productToEdit != null;
+
+    final titleCtrl = TextEditingController(text: productToEdit?.title ?? '');
+    final priceCtrl = TextEditingController(text: isEditing ? productToEdit.price.toStringAsFixed(2) : '');
+    final originalPriceCtrl = TextEditingController(text: (isEditing && productToEdit.hasDiscount) ? productToEdit.originalPrice.toStringAsFixed(2) : '');
+    final descCtrl = TextEditingController(text: productToEdit?.description ?? '');
+    final imageCtrl = TextEditingController(text: productToEdit?.imageUrl ?? '');
+    String category = productToEdit?.category ?? (widget.appState.myStore?.category ?? 'Electronics');
 
     showModalBottomSheet(
       context: context,
@@ -339,15 +378,15 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    const Icon(Icons.add_shopping_cart_rounded, color: AppTheme.primary, size: 26),
+                    Icon(isEditing ? Icons.edit_note_rounded : Icons.add_shopping_cart_rounded, color: AppTheme.primary, size: 26),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Add Product to Store',
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          Text(
+                            isEditing ? 'Edit Product' : 'Add Product to Store',
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                           ),
                           Text(
                             'Selling from: ${widget.appState.myStore?.storeName ?? 'My Store'}',
@@ -443,8 +482,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
-                    icon: const Icon(Icons.publish_rounded),
-                    label: const Text('Publish Product Live', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    icon: Icon(isEditing ? Icons.save_rounded : Icons.publish_rounded),
+                    label: Text(
+                      isEditing ? 'Save Product Changes' : 'Publish Product Live',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
                     onPressed: () async {
                       if (titleCtrl.text.trim().isEmpty || priceCtrl.text.trim().isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -456,8 +498,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       final price = double.tryParse(priceCtrl.text.trim()) ?? 0.0;
                       final origPrice = double.tryParse(originalPriceCtrl.text.trim()) ?? (price * 1.25);
 
-                      final newProduct = Product(
-                        id: 'prod_${DateTime.now().millisecondsSinceEpoch}',
+                      final savedProduct = Product(
+                        id: productToEdit?.id ?? 'prod_${DateTime.now().millisecondsSinceEpoch}',
                         title: titleCtrl.text.trim(),
                         description: descCtrl.text.trim().isNotEmpty ? descCtrl.text.trim() : 'Available on GoChat Marketplace.',
                         price: price,
@@ -469,21 +511,29 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                         sellerLocation: widget.appState.myStore?.address ?? 'Lagos, Nigeria',
                         imageUrl: imageCtrl.text.trim().isNotEmpty
                             ? imageCtrl.text.trim()
-                            : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80',
-                        rating: 5.0,
-                        reviewsCount: 0,
+                            : (productToEdit?.imageUrl.isNotEmpty == true
+                                ? productToEdit!.imageUrl
+                                : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80'),
+                        rating: productToEdit?.rating ?? 5.0,
+                        reviewsCount: productToEdit?.reviewsCount ?? 0,
                         isVerifiedSeller: true,
                         inStock: true,
                       );
 
                       final nav = Navigator.of(ctx);
                       final messenger = ScaffoldMessenger.of(context);
-                      await widget.appState.createStoreProduct(newProduct);
+
+                      if (isEditing) {
+                        await widget.appState.updateStoreProduct(savedProduct);
+                      } else {
+                        await widget.appState.createStoreProduct(savedProduct);
+                      }
+
                       if (!mounted) return;
                       nav.pop();
                       messenger.showSnackBar(
                         SnackBar(
-                          content: Text('🎉 "${newProduct.title}" is now published on the Marketplace!'),
+                          content: Text(isEditing ? '✅ "${savedProduct.title}" updated!' : '🎉 "${savedProduct.title}" is now published on the Marketplace!'),
                           backgroundColor: AppTheme.primary,
                         ),
                       );
@@ -498,11 +548,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     );
   }
 
-  // ── Seller Dashboard Modal ──────────────────────────────────────────────────
-  void _showSellerDashboardModal() {
+  // ── Create Store Coupon Modal ───────────────────────────────────────────────
+  void _showCreateCouponModal() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final store = widget.appState.myStore;
-    final myProducts = widget.appState.products.where((p) => p.sellerPin == widget.appState.currentUser?.pin || p.sellerId == widget.appState.currentUser?.id).toList();
+    final codeCtrl = TextEditingController();
+    final valueCtrl = TextEditingController();
+    final minSpendCtrl = TextEditingController();
+    String discountType = 'percentage';
 
     showModalBottomSheet(
       context: context,
@@ -512,15 +564,17 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (ctx) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.85,
-          minChildSize: 0.5,
-          maxChildSize: 0.95,
-          expand: false,
-          builder: (_, scrollController) {
-            return ListView(
-              controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            left: 20,
+            right: 20,
+            top: 16,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Center(
                   child: Container(
@@ -533,192 +587,693 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                // Store Banner Card
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppTheme.primary.withValues(alpha: 0.2),
-                        isDark ? AppTheme.darkCard : Colors.grey.shade100,
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: const BoxDecoration(
-                          color: AppTheme.primary,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.store_rounded, color: Colors.black, size: 28),
+                const Row(
+                  children: [
+                    Icon(Icons.discount_rounded, color: AppTheme.primary, size: 26),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Create Promo Discount', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                          Text('Generate a discount code for your store buyers', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                        ],
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
+                    ),
+                  ],
+                ),
+                const Divider(height: 20),
+
+                TextField(
+                  controller: codeCtrl,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: const InputDecoration(
+                    labelText: 'Coupon Code *',
+                    hintText: 'e.g. FLASH20, SAVE10, SUMMER',
+                    prefixIcon: Icon(Icons.confirmation_number_rounded),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: discountType,
+                        decoration: const InputDecoration(labelText: 'Discount Type'),
+                        items: const [
+                          DropdownMenuItem(value: 'percentage', child: Text('Percentage (%)')),
+                          DropdownMenuItem(value: 'fixed', child: Text('Fixed Amount (\$)')),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) discountType = val;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: valueCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          labelText: discountType == 'percentage' ? 'Discount % *' : 'Amount (\$) *',
+                          hintText: discountType == 'percentage' ? 'e.g. 15' : 'e.g. 25.00',
+                          prefixIcon: const Icon(Icons.percent_rounded),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: minSpendCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Minimum Order Spend (\$) (Optional)',
+                    hintText: 'e.g. 50.00',
+                    prefixIcon: Icon(Icons.shopping_bag_outlined),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    icon: const Icon(Icons.check_circle_rounded),
+                    label: const Text('Create & Activate Coupon', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    onPressed: () async {
+                      if (codeCtrl.text.trim().isEmpty || valueCtrl.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please enter coupon code and discount value')),
+                        );
+                        return;
+                      }
+
+                      final val = double.tryParse(valueCtrl.text.trim()) ?? 10.0;
+                      final minSpend = double.tryParse(minSpendCtrl.text.trim()) ?? 0.0;
+
+                      final coupon = StoreCoupon(
+                        id: 'coup_${DateTime.now().millisecondsSinceEpoch}',
+                        code: codeCtrl.text.trim().toUpperCase(),
+                        type: discountType,
+                        value: val,
+                        minSpend: minSpend,
+                        maxUses: 100,
+                        expiresAt: DateTime.now().add(const Duration(days: 30)),
+                        isActive: true,
+                      );
+
+                      final nav = Navigator.of(ctx);
+                      final messenger = ScaffoldMessenger.of(context);
+                      await widget.appState.createStoreCoupon(coupon);
+                      if (!mounted) return;
+                      nav.pop();
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text('🎉 Promo coupon "${coupon.code}" is now active!'),
+                          backgroundColor: AppTheme.primary,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ── Full Shopify-Style Seller Dashboard Modal ───────────────────────────────
+  void _showSellerDashboardModal() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (modalContext, setModalState) {
+            final store = widget.appState.myStore;
+            final myProducts = widget.appState.products
+                .where((p) => p.sellerPin == widget.appState.currentUser?.pin || p.sellerId == widget.appState.currentUser?.id)
+                .toList();
+            final orders = widget.appState.sellerOrders;
+            final coupons = widget.appState.storeCoupons;
+
+            final totalRevenue = orders.fold(0.0, (sum, o) => sum + o.grandTotal);
+            final storeViews = myProducts.length * 18 + 42;
+
+            return DefaultTabController(
+              length: 5,
+              child: DraggableScrollableSheet(
+                initialChildSize: 0.9,
+                minChildSize: 0.5,
+                maxChildSize: 0.95,
+                expand: false,
+                builder: (_, scrollController) {
+                  return Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Text(
-                                  store?.storeName ?? 'My Store',
-                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            Center(
+                              child: Container(
+                                width: 40,
+                                height: 5,
+                                decoration: BoxDecoration(
+                                  color: isDark ? Colors.white24 : Colors.black12,
+                                  borderRadius: BorderRadius.circular(3),
                                 ),
-                                const SizedBox(width: 4),
-                                const Icon(Icons.verified_rounded, color: AppTheme.primary, size: 16),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+
+                            // Store Header Banner Card
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    AppTheme.primary.withValues(alpha: 0.2),
+                                    isDark ? AppTheme.darkCard : Colors.grey.shade100,
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: const BoxDecoration(
+                                      color: AppTheme.primary,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.storefront_rounded, color: Colors.black, size: 24),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Flexible(
+                                              child: Text(
+                                                store?.storeName ?? 'My Store',
+                                                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            const Icon(Icons.verified_rounded, color: AppTheme.primary, size: 16),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${store?.category ?? 'Retail'} • PIN: ${widget.appState.currentUser?.pin ?? '8492A1'}',
+                                          style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton.filledTonal(
+                                    style: IconButton.styleFrom(
+                                      backgroundColor: AppTheme.primary.withValues(alpha: 0.2),
+                                    ),
+                                    icon: const Icon(Icons.share_rounded, color: AppTheme.primary, size: 18),
+                                    tooltip: 'Share Store Link',
+                                    onPressed: () {
+                                      Clipboard.setData(ClipboardData(text: 'https://gochat.app/store/${widget.appState.currentUser?.pin}'));
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('📋 Store link copied to clipboard!')),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Tab Bar Navigation (Shopify Style)
+                            TabBar(
+                              isScrollable: true,
+                              indicatorColor: AppTheme.primary,
+                              labelColor: AppTheme.primary,
+                              unselectedLabelColor: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
+                              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              tabAlignment: TabAlignment.start,
+                              tabs: [
+                                const Tab(icon: Icon(Icons.analytics_rounded, size: 18), text: 'Overview'),
+                                Tab(icon: const Icon(Icons.inventory_2_rounded, size: 18), text: 'Products (${myProducts.length})'),
+                                Tab(icon: const Icon(Icons.receipt_long_rounded, size: 18), text: 'Orders (${orders.length})'),
+                                Tab(icon: const Icon(Icons.confirmation_number_rounded, size: 18), text: 'Coupons (${coupons.length})'),
+                                const Tab(icon: Icon(Icons.settings_rounded, size: 18), text: 'Settings'),
                               ],
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${store?.category ?? 'Retail'} • ${store?.address ?? 'Lagos, Nigeria'}',
-                              style: TextStyle(fontSize: 12, color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+
+                      // Tab Views Content
+                      Expanded(
+                        child: TabBarView(
+                          children: [
+                            // ── Tab 1: Overview & Analytics ─────────────────────
+                            ListView(
+                              controller: scrollController,
+                              padding: const EdgeInsets.all(20),
+                              children: [
+                                const Text('BUSINESS METRICS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textMuted, letterSpacing: 1)),
+                                const SizedBox(height: 12),
+
+                                // 4 Stat Metric Cards Grid
+                                GridView.count(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 12,
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  childAspectRatio: 1.5,
+                                  children: [
+                                    _buildMetricCard('GROSS REVENUE', '\$${totalRevenue.toStringAsFixed(2)}', Icons.attach_money_rounded, AppTheme.onlineGreen, isDark),
+                                    _buildMetricCard('STORE ORDERS', '${orders.length}', Icons.shopping_bag_rounded, Colors.amber, isDark),
+                                    _buildMetricCard('LISTED PRODUCTS', '${myProducts.length}', Icons.inventory_2_rounded, AppTheme.primary, isDark),
+                                    _buildMetricCard('STORE VIEWS', '$storeViews', Icons.visibility_rounded, Colors.purpleAccent, isDark),
+                                  ],
+                                ),
+                                const SizedBox(height: 20),
+
+                                // Quick Actions
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? AppTheme.darkCard : Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text('Quick Actions', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                      const SizedBox(height: 12),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: ElevatedButton.icon(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: AppTheme.primary,
+                                                foregroundColor: Colors.black,
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                              ),
+                                              icon: const Icon(Icons.add_rounded, size: 18),
+                                              label: const Text('+ Add Product', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                              onPressed: () {
+                                                Navigator.pop(ctx);
+                                                _showAddOrEditProductModal();
+                                              },
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: OutlinedButton.icon(
+                                              style: OutlinedButton.styleFrom(
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                              ),
+                                              icon: const Icon(Icons.discount_rounded, size: 16),
+                                              label: const Text('+ Create Coupon', style: TextStyle(fontSize: 12)),
+                                              onPressed: () {
+                                                Navigator.pop(ctx);
+                                                _showCreateCouponModal();
+                                              },
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'GOCHAT PIN: ${widget.appState.currentUser?.pin ?? '8492A1'}',
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primary),
+
+                            // ── Tab 2: Products List ────────────────────────────
+                            ListView(
+                              controller: scrollController,
+                              padding: const EdgeInsets.all(20),
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text('STORE INVENTORY (${myProducts.length})', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textMuted, letterSpacing: 1)),
+                                    ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppTheme.primary,
+                                        foregroundColor: Colors.black,
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                      icon: const Icon(Icons.add_rounded, size: 16),
+                                      label: const Text('Add Product', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                      onPressed: () {
+                                        Navigator.pop(ctx);
+                                        _showAddOrEditProductModal();
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 14),
+
+                                if (myProducts.isEmpty)
+                                  _buildEmptyTabState(Icons.inventory_2_outlined, 'No products listed yet', 'Add your first product to start receiving customer orders.', isDark)
+                                else
+                                  ListView.separated(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    itemCount: myProducts.length,
+                                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                                    itemBuilder: (_, index) {
+                                      final p = myProducts[index];
+                                      return Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: isDark ? AppTheme.darkCard : Colors.grey.shade100,
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            ClipRRect(
+                                              borderRadius: BorderRadius.circular(10),
+                                              child: Image.network(
+                                                p.imageUrl,
+                                                width: 54,
+                                                height: 54,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) => Container(
+                                                  width: 54,
+                                                  height: 54,
+                                                  color: Colors.grey.shade300,
+                                                  child: const Icon(Icons.shopping_bag),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(p.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                                  const SizedBox(height: 2),
+                                                  Text('\$${p.price.toStringAsFixed(2)} • ${p.category}', style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 13)),
+                                                ],
+                                              ),
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.edit_outlined, size: 20),
+                                              tooltip: 'Edit Product',
+                                              onPressed: () {
+                                                Navigator.pop(ctx);
+                                                _showAddOrEditProductModal(productToEdit: p);
+                                              },
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.dangerRed, size: 20),
+                                              tooltip: 'Delete Product',
+                                              onPressed: () async {
+                                                await widget.appState.deleteStoreProduct(p.id);
+                                                setModalState(() {});
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                              ],
+                            ),
+
+                            // ── Tab 3: Store Orders ─────────────────────────────
+                            ListView(
+                              controller: scrollController,
+                              padding: const EdgeInsets.all(20),
+                              children: [
+                                const Text('CUSTOMER ORDERS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textMuted, letterSpacing: 1)),
+                                const SizedBox(height: 14),
+
+                                if (orders.isEmpty)
+                                  _buildEmptyTabState(Icons.receipt_long_outlined, 'No store orders yet', 'When buyers purchase items from your store via Escrow, orders will show here.', isDark)
+                                else
+                                  ListView.separated(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    itemCount: orders.length,
+                                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                                    itemBuilder: (_, index) {
+                                      final o = orders[index];
+                                      return Container(
+                                        padding: const EdgeInsets.all(14),
+                                        decoration: BoxDecoration(
+                                          color: isDark ? AppTheme.darkCard : Colors.grey.shade100,
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Text(o.orderNumber, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                  decoration: BoxDecoration(
+                                                    color: AppTheme.onlineGreen.withValues(alpha: 0.15),
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                  child: Text(o.status, style: const TextStyle(color: AppTheme.onlineGreen, fontSize: 11, fontWeight: FontWeight.bold)),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text('Buyer: ${o.buyerName} (PIN: ${o.buyerPin.isNotEmpty ? o.buyerPin : 'Customer'})', style: TextStyle(fontSize: 12, color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight)),
+                                            Text('Amount: \$${o.grandTotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary, fontSize: 14)),
+                                            const SizedBox(height: 10),
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.end,
+                                              children: [
+                                                OutlinedButton.icon(
+                                                  style: OutlinedButton.styleFrom(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                                  ),
+                                                  icon: const Icon(Icons.chat_rounded, size: 14),
+                                                  label: const Text('Message Buyer', style: TextStyle(fontSize: 12)),
+                                                  onPressed: () {
+                                                    Navigator.pop(ctx);
+                                                    _openChatWithUser(pin: o.buyerPin, fallbackName: o.buyerName);
+                                                  },
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                              ],
+                            ),
+
+                            // ── Tab 4: Coupons & Promos ─────────────────────────
+                            ListView(
+                              controller: scrollController,
+                              padding: const EdgeInsets.all(20),
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text('STORE PROMOTIONS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textMuted, letterSpacing: 1)),
+                                    ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppTheme.primary,
+                                        foregroundColor: Colors.black,
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                      icon: const Icon(Icons.add_rounded, size: 16),
+                                      label: const Text('New Coupon', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                      onPressed: () {
+                                        Navigator.pop(ctx);
+                                        _showCreateCouponModal();
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 14),
+
+                                if (coupons.isEmpty)
+                                  _buildEmptyTabState(Icons.discount_outlined, 'No promo coupons active', 'Create discount promo codes to boost store sales.', isDark)
+                                else
+                                  ListView.separated(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    itemCount: coupons.length,
+                                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                                    itemBuilder: (_, index) {
+                                      final c = coupons[index];
+                                      return Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: isDark ? AppTheme.darkCard : Colors.grey.shade100,
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.primary.withValues(alpha: 0.15),
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                              child: Text(c.code, style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1)),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(c.type == 'percentage' ? '${c.value.toStringAsFixed(0)}% OFF' : '\$${c.value.toStringAsFixed(2)} OFF', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                                  Text(c.minSpend > 0 ? 'Min spend \$${c.minSpend.toStringAsFixed(0)}' : 'No min spend required', style: TextStyle(fontSize: 11, color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight)),
+                                                ],
+                                              ),
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.dangerRed, size: 20),
+                                              onPressed: () {
+                                                widget.appState.deleteStoreCoupon(c.id);
+                                                setModalState(() {});
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                              ],
+                            ),
+
+                            // ── Tab 5: Store Settings ───────────────────────────
+                            ListView(
+                              controller: scrollController,
+                              padding: const EdgeInsets.all(20),
+                              children: [
+                                const Text('MERCHANT PROFILE SETTINGS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textMuted, letterSpacing: 1)),
+                                const SizedBox(height: 14),
+
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? AppTheme.darkCard : Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Store Name: ${store?.storeName ?? 'My Store'}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                      const SizedBox(height: 6),
+                                      Text('Category: ${store?.category ?? 'General Retail'}', style: TextStyle(fontSize: 13, color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight)),
+                                      Text('Location: ${store?.address ?? 'Lagos, Nigeria'}', style: TextStyle(fontSize: 13, color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight)),
+                                      Text('Contact Phone: ${store?.phone ?? 'Not set'}', style: TextStyle(fontSize: 13, color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight)),
+                                      const SizedBox(height: 16),
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton.icon(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppTheme.primary,
+                                            foregroundColor: Colors.black,
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                          ),
+                                          icon: const Icon(Icons.edit_rounded, size: 18),
+                                          label: const Text('Edit Store Profile Details'),
+                                          onPressed: () {
+                                            Navigator.pop(ctx);
+                                            _showCreateStoreModal(existingStore: store);
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ),
                     ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Action Buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primary,
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        icon: const Icon(Icons.add_rounded, size: 20),
-                        label: const Text('Add Product', style: TextStyle(fontWeight: FontWeight.bold)),
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          _showAddProductModal();
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      icon: const Icon(Icons.edit_rounded, size: 16),
-                      label: const Text('Edit Store'),
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        _showCreateStoreModal();
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // My Store Products List
-                Text(
-                  'STORE INVENTORY (${myProducts.length})',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textMuted, letterSpacing: 1),
-                ),
-                const SizedBox(height: 10),
-
-                if (myProducts.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppTheme.darkCard : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      children: [
-                        const Icon(Icons.inventory_2_outlined, size: 48, color: AppTheme.textMuted),
-                        const SizedBox(height: 10),
-                        const Text('No products listed yet', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        const SizedBox(height: 4),
-                        const Text('Start adding products so GoChat buyers can discover and purchase from your store.', style: TextStyle(fontSize: 12, color: AppTheme.textMuted), textAlign: TextAlign.center),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primary,
-                            foregroundColor: Colors.black,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          icon: const Icon(Icons.add_rounded),
-                          label: const Text('Add First Product'),
-                          onPressed: () {
-                            Navigator.pop(ctx);
-                            _showAddProductModal();
-                          },
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: myProducts.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (_, index) {
-                      final p = myProducts[index];
-                      return Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: isDark ? AppTheme.darkCard : Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image.network(
-                                p.imageUrl,
-                                width: 50,
-                                height: 50,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  width: 50,
-                                  height: 50,
-                                  color: Colors.grey.shade300,
-                                  child: const Icon(Icons.shopping_bag),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(p.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                  const SizedBox(height: 2),
-                                  Text('\$${p.price.toStringAsFixed(2)} • ${p.category}', style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 13)),
-                                ],
-                              ),
-                            ),
-                            const Icon(Icons.check_circle_rounded, color: AppTheme.onlineGreen, size: 18),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-              ],
+                  );
+                },
+              ),
             );
           },
         );
       },
+    );
+  }
+
+  Widget _buildMetricCard(String label, String value, IconData icon, Color color, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkCard : Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.textMuted, letterSpacing: 0.5)),
+              Icon(icon, color: color, size: 18),
+            ],
+          ),
+          Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyTabState(IconData icon, String title, String subtitle, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkCard : Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 48, color: AppTheme.textMuted),
+          const SizedBox(height: 12),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 4),
+          Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted), textAlign: TextAlign.center),
+        ],
+      ),
     );
   }
 
@@ -1195,7 +1750,22 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                               ),
                               TextButton(
                                 onPressed: () {
-                                  if (promoCode == 'GOCHAT10' || promoCode == 'SAVE10') {
+                                  // Check against store coupons or fallback coupon
+                                  final matchingCoupon = widget.appState.storeCoupons.firstWhere(
+                                    (c) => c.code.toUpperCase() == promoCode,
+                                    orElse: () => StoreCoupon(id: '', code: '', value: 0),
+                                  );
+
+                                  if (matchingCoupon.code.isNotEmpty) {
+                                    setSheetState(() {
+                                      discount = matchingCoupon.type == 'percentage'
+                                          ? (subtotal * (matchingCoupon.value / 100))
+                                          : matchingCoupon.value;
+                                    });
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('🎉 Coupon "${matchingCoupon.code}" applied! \$${discount.toStringAsFixed(2)} saved.')),
+                                    );
+                                  } else if (promoCode == 'GOCHAT10' || promoCode == 'SAVE10') {
                                     setSheetState(() {
                                       discount = subtotal * 0.10;
                                     });
@@ -1204,7 +1774,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                                     );
                                   } else {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Invalid coupon code. Try "GOCHAT10"')),
+                                      const SnackBar(content: Text('Invalid coupon code.')),
                                     );
                                   }
                                 },
@@ -1406,9 +1976,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            icon: Icon(hasStore ? Icons.store_rounded : Icons.add_business_rounded, color: AppTheme.primary, size: 18),
+            icon: Icon(hasStore ? Icons.storefront_rounded : Icons.add_business_rounded, color: AppTheme.primary, size: 18),
             label: Text(
-              hasStore ? 'My Store' : 'Open Store',
+              hasStore ? 'Seller Dashboard' : 'Open Store',
               style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 12),
             ),
             onPressed: _openStoreManager,
