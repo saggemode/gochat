@@ -915,6 +915,20 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void toggleWishlist(String productId) {
+    HapticFeedback.selectionClick();
+    final idx = _products.indexWhere((p) => p.id == productId);
+    if (idx != -1) {
+      _products[idx] = _products[idx].copyWith(isWishlisted: !_products[idx].isWishlisted);
+      notifyListeners();
+    }
+  }
+
+  void addProduct(Product product) {
+    _products.insert(0, product);
+    notifyListeners();
+  }
+
   // ── WebRTC & Calls ──────────────────────────────────────────────────────────
   void startCall(CallRecord call) {
     _activeCall = call;
