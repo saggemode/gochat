@@ -547,6 +547,74 @@ class ApiService {
     }
   }
 
+  // ── Product Variants ───────────────────────────────────────────────────────
+  static Future<ProductVariant> createProductVariant(String productId, ProductVariant variant) async {
+    try {
+      final res = await http.post(
+        Uri.parse('${ApiConstants.apiV1}/business/products/$productId/variants'),
+        headers: await _headers(),
+        body: jsonEncode(variant.toJson()),
+      ).timeout(const Duration(seconds: 15));
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final data = jsonDecode(res.body);
+        return ProductVariant.fromJson(data);
+      }
+    } catch (_) {}
+    return variant;
+  }
+
+  static Future<List<ProductVariant>> listProductVariants(String productId) async {
+    try {
+      final res = await http
+          .get(Uri.parse('${ApiConstants.apiV1}/business/products/$productId/variants'), headers: await _headers())
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final list = data is List ? data : (data['variants'] as List? ?? []);
+        return list.map((e) => ProductVariant.fromJson(e)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  static Future<ProductVariant> updateProductVariant(String productId, String variantId, ProductVariant variant) async {
+    try {
+      final res = await http.put(
+        Uri.parse('${ApiConstants.apiV1}/business/products/$productId/variants/$variantId'),
+        headers: await _headers(),
+        body: jsonEncode(variant.toJson()),
+      ).timeout(const Duration(seconds: 15));
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final data = jsonDecode(res.body);
+        return ProductVariant.fromJson(data);
+      }
+    } catch (_) {}
+    return variant;
+  }
+
+  static Future<bool> deleteProductVariant(String productId, String variantId) async {
+    try {
+      final res = await http.delete(
+        Uri.parse('${ApiConstants.apiV1}/business/products/$productId/variants/$variantId'),
+        headers: await _headers(),
+      ).timeout(const Duration(seconds: 15));
+      return res.statusCode >= 200 && res.statusCode < 300;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  static Future<void> trackProductView(String productId) async {
+    try {
+      await http.post(
+        Uri.parse('${ApiConstants.apiV1}/marketplace/products/$productId/view'),
+        headers: await _headers(),
+      ).timeout(const Duration(seconds: 5));
+    } catch (_) {}
+  }
+
   // ── Store Orders ────────────────────────────────────────────────────────────
   static Future<List<MarketplaceOrder>> getSellerOrders() async {
     try {

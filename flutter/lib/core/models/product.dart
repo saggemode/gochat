@@ -1,3 +1,5 @@
+import 'product_variant.dart';
+
 class Product {
   final String id;
   final String title;
@@ -18,6 +20,7 @@ class Product {
   final bool inStock;
   final List<String> tags;
   final bool isWishlisted;
+  final List<ProductVariant> variants;
 
   Product({
     required this.id,
@@ -39,10 +42,12 @@ class Product {
     this.inStock = true,
     this.tags = const ['Verified Merchant', 'Fast Delivery'],
     this.isWishlisted = false,
+    this.variants = const [],
   });
 
   bool get hasDiscount => originalPrice > price && originalPrice > 0;
   int get discountPercent => hasDiscount ? (((originalPrice - price) / originalPrice) * 100).round() : 0;
+  bool get hasVariants => variants.isNotEmpty;
 
   Product copyWith({
     String? id,
@@ -64,6 +69,7 @@ class Product {
     bool? inStock,
     List<String>? tags,
     bool? isWishlisted,
+    List<ProductVariant>? variants,
   }) {
     return Product(
       id: id ?? this.id,
@@ -85,6 +91,7 @@ class Product {
       inStock: inStock ?? this.inStock,
       tags: tags ?? this.tags,
       isWishlisted: isWishlisted ?? this.isWishlisted,
+      variants: variants ?? this.variants,
     );
   }
 
@@ -99,6 +106,13 @@ class Product {
       parsedImages = (json['images'] as List).map((e) => e.toString()).toList();
     } else if (json['image_url'] != null && json['image_url'].toString().isNotEmpty) {
       parsedImages = [json['image_url'].toString()];
+    }
+
+    List<ProductVariant> parsedVariants = [];
+    if (json['variants'] is List) {
+      parsedVariants = (json['variants'] as List)
+          .map((v) => ProductVariant.fromJson(v as Map<String, dynamic>))
+          .toList();
     }
 
     return Product(
@@ -121,6 +135,7 @@ class Product {
       inStock: json['in_stock'] != false,
       tags: json['tags'] is List ? (json['tags'] as List).map((e) => e.toString()).toList() : ['Verified Merchant', 'Fast Delivery'],
       isWishlisted: json['is_wishlisted'] == true,
+      variants: parsedVariants,
     );
   }
 
@@ -145,6 +160,7 @@ class Product {
       'in_stock': inStock,
       'tags': tags,
       'is_wishlisted': isWishlisted,
+      'variants': variants.map((v) => v.toJson()).toList(),
     };
   }
 }

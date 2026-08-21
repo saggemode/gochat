@@ -1012,6 +1012,52 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── Product Variants Management ─────────────────────────────────────────────
+  Future<ProductVariant> addProductVariant(String productId, ProductVariant variant) async {
+    ProductVariant created = variant;
+    try {
+      created = await ApiService.createProductVariant(productId, variant);
+    } catch (_) {}
+
+    final pIdx = _products.indexWhere((p) => p.id == productId);
+    if (pIdx != -1) {
+      final currentList = List<ProductVariant>.from(_products[pIdx].variants);
+      currentList.add(created);
+      _products[pIdx] = _products[pIdx].copyWith(variants: currentList);
+      notifyListeners();
+    }
+    return created;
+  }
+
+  Future<void> deleteProductVariant(String productId, String variantId) async {
+    try {
+      await ApiService.deleteProductVariant(productId, variantId);
+    } catch (_) {}
+
+    final pIdx = _products.indexWhere((p) => p.id == productId);
+    if (pIdx != -1) {
+      final currentList = List<ProductVariant>.from(_products[pIdx].variants);
+      currentList.removeWhere((v) => v.id == variantId);
+      _products[pIdx] = _products[pIdx].copyWith(variants: currentList);
+      notifyListeners();
+    }
+  }
+
+  Future<List<ProductVariant>> loadProductVariants(String productId) async {
+    try {
+      final list = await ApiService.listProductVariants(productId);
+      if (list.isNotEmpty) {
+        final pIdx = _products.indexWhere((p) => p.id == productId);
+        if (pIdx != -1) {
+          _products[pIdx] = _products[pIdx].copyWith(variants: list);
+          notifyListeners();
+        }
+        return list;
+      }
+    } catch (_) {}
+    return [];
+  }
+
   // ── WebRTC & Calls ──────────────────────────────────────────────────────────
   void startCall(CallRecord call) {
     _activeCall = call;

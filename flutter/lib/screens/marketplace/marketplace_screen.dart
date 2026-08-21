@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/models/models.dart';
@@ -43,6 +44,26 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
     {'name': 'Home', 'icon': Icons.weekend_rounded},
     {'name': 'Services', 'icon': Icons.handyman_rounded},
     {'name': 'Phones', 'icon': Icons.smartphone_rounded},
+  ];
+
+  // Preset Sizes & Colors for Variant Builder
+  static const List<String> _presetSizes = [
+    'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL',
+    'US 7', 'US 8', 'US 9', 'US 10', 'US 11', 'US 12',
+    'EU 38', 'EU 40', 'EU 42', 'EU 44', '256GB', '512GB', '1TB'
+  ];
+
+  static const List<Map<String, dynamic>> _presetColors = [
+    {'name': 'Black', 'color': Color(0xFF18181B)},
+    {'name': 'White', 'color': Color(0xFFFFFFFF)},
+    {'name': 'Red', 'color': Color(0xFFEF4444)},
+    {'name': 'Blue', 'color': Color(0xFF3B82F6)},
+    {'name': 'Green', 'color': Color(0xFF10B981)},
+    {'name': 'Gold', 'color': Color(0xFFF59E0B)},
+    {'name': 'Silver', 'color': Color(0xFF9CA3AF)},
+    {'name': 'Space Gray', 'color': Color(0xFF4B5563)},
+    {'name': 'Rose Gold', 'color': Color(0xFFB76E79)},
+    {'name': 'Purple', 'color': Color(0xFF8B5CF6)},
   ];
 
   @override
@@ -203,7 +224,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
     _showAddOrEditProductModal();
   }
 
-  // ── Step 2: Add / Edit Product Modal ────────────────────────────────────────
+  // ── Step 2: Add / Edit Product Modal with Product Variants ──────────────────
   void _showAddOrEditProductModal({Product? productToEdit}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isEditing = productToEdit != null;
@@ -215,6 +236,15 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
     final imageCtrl = TextEditingController(text: productToEdit?.imageUrl ?? '');
     String category = productToEdit?.category ?? (widget.appState.myStore?.category ?? 'Electronics');
 
+    // Product Variants Local State
+    List<ProductVariant> localVariants = List<ProductVariant>.from(productToEdit?.variants ?? []);
+    bool showVariantForm = false;
+    String varSelectedSize = '';
+    String varSelectedColor = '';
+    final varSkuCtrl = TextEditingController();
+    final varPriceOverrideCtrl = TextEditingController();
+    final varStockCtrl = TextEditingController(text: '10');
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -223,196 +253,418 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-            left: 20,
-            right: 20,
-            top: 16,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.white24 : Colors.black12,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
+        return StatefulBuilder(
+          builder: (modalCtx, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+                left: 20,
+                right: 20,
+                top: 16,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(isEditing ? Icons.edit_note_rounded : Icons.add_shopping_cart_rounded, color: AppTheme.primary, size: 26),
-                    const SizedBox(width: 10),
-                    Expanded(
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white24 : Colors.black12,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Icon(isEditing ? Icons.edit_note_rounded : Icons.add_shopping_cart_rounded, color: AppTheme.primary, size: 26),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isEditing ? 'Edit Product' : 'Add Product to Store',
+                                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                'Selling from: ${widget.appState.myStore?.storeName ?? 'My Store'}',
+                                style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 20),
+
+                    TextField(
+                      controller: titleCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Product Name / Title *',
+                        hintText: 'e.g. iPhone 15 Pro Max 256GB',
+                        prefixIcon: Icon(Icons.title_rounded),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: priceCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: 'Selling Price (\$) *',
+                              hintText: 'e.g. 999.00',
+                              prefixIcon: Icon(Icons.attach_money_rounded),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: originalPriceCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: 'Original Price (Optional)',
+                              hintText: 'e.g. 1199.00',
+                              prefixIcon: Icon(Icons.money_off_rounded),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    DropdownButtonFormField<String>(
+                      value: category,
+                      decoration: const InputDecoration(
+                        labelText: 'Product Category',
+                        prefixIcon: Icon(Icons.category_rounded),
+                      ),
+                      items: ['Electronics', 'Fashion', 'Gaming', 'Home', 'Services', 'Phones', 'General Retail']
+                          .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null) setModalState(() => category = val);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    TextField(
+                      controller: imageCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Product Image URL',
+                        hintText: 'https://images.unsplash.com/...',
+                        prefixIcon: Icon(Icons.image_rounded),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    TextField(
+                      controller: descCtrl,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: 'Product Description & Specs',
+                        hintText: 'Condition, key features, packaging, warranty details...',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // ── PRODUCT VARIANTS SECTION ─────────────────────────────
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: isDark ? Colors.white12 : Colors.grey.shade300),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            isEditing ? 'Edit Product' : 'Add Product to Store',
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.auto_awesome_rounded, color: AppTheme.primary, size: 18),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Product Variants (${localVariants.length})',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  ),
+                                ],
+                              ),
+                              TextButton.icon(
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  backgroundColor: AppTheme.primary.withValues(alpha: 0.15),
+                                ),
+                                icon: Icon(showVariantForm ? Icons.close_rounded : Icons.add_rounded, size: 16, color: AppTheme.primary),
+                                label: Text(
+                                  showVariantForm ? 'Cancel' : '+ Add Variant',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primary),
+                                ),
+                                onPressed: () {
+                                  setModalState(() {
+                                    showVariantForm = !showVariantForm;
+                                  });
+                                },
+                              ),
+                            ],
                           ),
+                          const SizedBox(height: 4),
                           Text(
-                            'Selling from: ${widget.appState.myStore?.storeName ?? 'My Store'}',
-                            style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.bold),
+                            'Add size, storage (256GB/512GB), or color variations with individual prices & stock.',
+                            style: TextStyle(fontSize: 11, color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight),
                           ),
+
+                          // Active Variants Chips List
+                          if (localVariants.isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: localVariants.map((v) {
+                                final variantPrice = v.priceOverride != null ? '\$${v.priceOverride!.toStringAsFixed(0)}' : 'Default \$';
+                                return Chip(
+                                  backgroundColor: isDark ? AppTheme.darkCard : Colors.white,
+                                  avatar: const Icon(Icons.style_rounded, size: 14, color: AppTheme.primary),
+                                  label: Text(
+                                    '${v.title} ($variantPrice • Qty: ${v.stockQuantity})',
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                  ),
+                                  deleteIcon: const Icon(Icons.cancel_rounded, size: 16, color: AppTheme.dangerRed),
+                                  onDeleted: () {
+                                    setModalState(() {
+                                      localVariants.removeWhere((item) => item.id == v.id);
+                                    });
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                          ],
+
+                          // Interactive Variant Creation Form
+                          if (showVariantForm) ...[
+                            const Divider(height: 20),
+                            const Text('1. Pick Size or Option:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 6),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: _presetSizes.map((size) {
+                                final isSelected = varSelectedSize == size;
+                                return ChoiceChip(
+                                  label: Text(size, style: TextStyle(fontSize: 11, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                                  selected: isSelected,
+                                  selectedColor: AppTheme.primary,
+                                  onSelected: (val) {
+                                    setModalState(() => varSelectedSize = val ? size : '');
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 10),
+
+                            const Text('2. Pick Color:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 6),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: _presetColors.map((c) {
+                                final name = c['name'] as String;
+                                final color = c['color'] as Color;
+                                final isSelected = varSelectedColor == name;
+                                return ChoiceChip(
+                                  avatar: Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      color: color,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.grey, width: 0.5),
+                                    ),
+                                  ),
+                                  label: Text(name, style: TextStyle(fontSize: 11, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                                  selected: isSelected,
+                                  selectedColor: AppTheme.primary,
+                                  onSelected: (val) {
+                                    setModalState(() => varSelectedColor = val ? name : '');
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 12),
+
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: varPriceOverrideCtrl,
+                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    decoration: const InputDecoration(
+                                      labelText: 'Variant Price (\$) (Optional)',
+                                      hintText: 'e.g. 1099.00',
+                                      isDense: true,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: TextField(
+                                    controller: varStockCtrl,
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Stock Qty',
+                                      hintText: '10',
+                                      isDense: true,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppTheme.primary,
+                                  foregroundColor: Colors.black,
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                icon: const Icon(Icons.check_rounded, size: 16),
+                                label: const Text('Add This Variant', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                onPressed: () {
+                                  final titleParts = <String>[];
+                                  final attrs = <String, dynamic>{};
+
+                                  if (varSelectedSize.isNotEmpty) {
+                                    titleParts.add(varSelectedSize);
+                                    attrs['size'] = varSelectedSize;
+                                  }
+                                  if (varSelectedColor.isNotEmpty) {
+                                    titleParts.add(varSelectedColor);
+                                    attrs['color'] = varSelectedColor;
+                                  }
+
+                                  final varTitle = titleParts.isNotEmpty ? titleParts.join(' / ') : 'Variant ${localVariants.length + 1}';
+                                  final overridePrice = double.tryParse(varPriceOverrideCtrl.text.trim());
+                                  final stock = int.tryParse(varStockCtrl.text.trim()) ?? 10;
+
+                                  final newVariant = ProductVariant(
+                                    id: 'var_${DateTime.now().millisecondsSinceEpoch}',
+                                    productId: productToEdit?.id ?? '',
+                                    sku: varSkuCtrl.text.trim().isNotEmpty ? varSkuCtrl.text.trim() : 'SKU-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
+                                    title: varTitle,
+                                    attributes: attrs,
+                                    attributesJson: jsonEncode(attrs),
+                                    priceOverride: overridePrice,
+                                    stockQuantity: stock,
+                                    isActive: true,
+                                  );
+
+                                  setModalState(() {
+                                    localVariants.add(newVariant);
+                                    showVariantForm = false;
+                                    varSelectedSize = '';
+                                    varSelectedColor = '';
+                                    varPriceOverrideCtrl.clear();
+                                    varStockCtrl.text = '10';
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
-                  ],
-                ),
-                const Divider(height: 20),
+                    const SizedBox(height: 20),
 
-                TextField(
-                  controller: titleCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Product Name / Title *',
-                    hintText: 'e.g. iPhone 15 Pro Max 256GB',
-                    prefixIcon: Icon(Icons.title_rounded),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: priceCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(
-                          labelText: 'Selling Price (\$) *',
-                          hintText: 'e.g. 999.00',
-                          prefixIcon: Icon(Icons.attach_money_rounded),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: originalPriceCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(
-                          labelText: 'Original Price (Optional)',
-                          hintText: 'e.g. 1199.00',
-                          prefixIcon: Icon(Icons.money_off_rounded),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                DropdownButtonFormField<String>(
-                  value: category,
-                  decoration: const InputDecoration(
-                    labelText: 'Product Category',
-                    prefixIcon: Icon(Icons.category_rounded),
-                  ),
-                  items: ['Electronics', 'Fashion', 'Gaming', 'Home', 'Services', 'Phones', 'General Retail']
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) category = val;
-                  },
-                ),
-                const SizedBox(height: 12),
-
-                TextField(
-                  controller: imageCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Product Image URL',
-                    hintText: 'https://images.unsplash.com/...',
-                    prefixIcon: Icon(Icons.image_rounded),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                TextField(
-                  controller: descCtrl,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Product Description & Specs',
-                    hintText: 'Condition, key features, packaging, warranty details...',
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    icon: Icon(isEditing ? Icons.save_rounded : Icons.publish_rounded),
-                    label: Text(
-                      isEditing ? 'Save Product Changes' : 'Publish Product Live',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                    onPressed: () async {
-                      if (titleCtrl.text.trim().isEmpty || priceCtrl.text.trim().isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Please enter product title and selling price')),
-                        );
-                        return;
-                      }
-
-                      final price = double.tryParse(priceCtrl.text.trim()) ?? 0.0;
-                      final origPrice = double.tryParse(originalPriceCtrl.text.trim()) ?? (price * 1.25);
-
-                      final savedProduct = Product(
-                        id: productToEdit?.id ?? 'prod_${DateTime.now().millisecondsSinceEpoch}',
-                        title: titleCtrl.text.trim(),
-                        description: descCtrl.text.trim().isNotEmpty ? descCtrl.text.trim() : 'Available on GoChat Marketplace.',
-                        price: price,
-                        originalPrice: origPrice,
-                        category: category,
-                        storeName: widget.appState.myStore?.storeName ?? (widget.appState.currentUser?.displayName ?? 'My Store'),
-                        sellerId: widget.appState.currentUser?.id ?? '',
-                        sellerPin: widget.appState.currentUser?.pin ?? '',
-                        sellerLocation: widget.appState.myStore?.address ?? 'Lagos, Nigeria',
-                        imageUrl: imageCtrl.text.trim().isNotEmpty
-                            ? imageCtrl.text.trim()
-                            : (productToEdit?.imageUrl.isNotEmpty == true
-                                ? productToEdit!.imageUrl
-                                : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80'),
-                        rating: productToEdit?.rating ?? 5.0,
-                        reviewsCount: productToEdit?.reviewsCount ?? 0,
-                        isVerifiedSeller: true,
-                        inStock: true,
-                      );
-
-                      final nav = Navigator.of(ctx);
-                      final messenger = ScaffoldMessenger.of(context);
-
-                      if (isEditing) {
-                        await widget.appState.updateStoreProduct(savedProduct);
-                      } else {
-                        await widget.appState.createStoreProduct(savedProduct);
-                      }
-
-                      if (!mounted) return;
-                      nav.pop();
-                      messenger.showSnackBar(
-                        SnackBar(
-                          content: Text(isEditing ? '✅ "${savedProduct.title}" updated!' : '🎉 "${savedProduct.title}" is now published on the Marketplace!'),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
-                      );
-                    },
-                  ),
+                        icon: Icon(isEditing ? Icons.save_rounded : Icons.publish_rounded),
+                        label: Text(
+                          isEditing ? 'Save Product Changes' : 'Publish Product Live',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        onPressed: () async {
+                          if (titleCtrl.text.trim().isEmpty || priceCtrl.text.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Please enter product title and selling price')),
+                            );
+                            return;
+                          }
+
+                          final price = double.tryParse(priceCtrl.text.trim()) ?? 0.0;
+                          final origPrice = double.tryParse(originalPriceCtrl.text.trim()) ?? (price * 1.25);
+
+                          final savedProduct = Product(
+                            id: productToEdit?.id ?? 'prod_${DateTime.now().millisecondsSinceEpoch}',
+                            title: titleCtrl.text.trim(),
+                            description: descCtrl.text.trim().isNotEmpty ? descCtrl.text.trim() : 'Available on GoChat Marketplace.',
+                            price: price,
+                            originalPrice: origPrice,
+                            category: category,
+                            storeName: widget.appState.myStore?.storeName ?? (widget.appState.currentUser?.displayName ?? 'My Store'),
+                            sellerId: widget.appState.currentUser?.id ?? '',
+                            sellerPin: widget.appState.currentUser?.pin ?? '',
+                            sellerLocation: widget.appState.myStore?.address ?? 'Lagos, Nigeria',
+                            imageUrl: imageCtrl.text.trim().isNotEmpty
+                                ? imageCtrl.text.trim()
+                                : (productToEdit?.imageUrl.isNotEmpty == true
+                                    ? productToEdit!.imageUrl
+                                    : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80'),
+                            rating: productToEdit?.rating ?? 5.0,
+                            reviewsCount: productToEdit?.reviewsCount ?? 0,
+                            isVerifiedSeller: true,
+                            inStock: true,
+                            variants: localVariants,
+                          );
+
+                          final nav = Navigator.of(ctx);
+                          final messenger = ScaffoldMessenger.of(context);
+
+                          if (isEditing) {
+                            await widget.appState.updateStoreProduct(savedProduct);
+                          } else {
+                            await widget.appState.createStoreProduct(savedProduct);
+                          }
+
+                          // Save variants remotely if productId exists
+                          for (final variant in localVariants) {
+                            await widget.appState.addProductVariant(savedProduct.id, variant);
+                          }
+
+                          if (!mounted) return;
+                          nav.pop();
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(isEditing ? '✅ "${savedProduct.title}" updated!' : '🎉 "${savedProduct.title}" is now published with ${localVariants.length} variants!'),
+                              backgroundColor: AppTheme.primary,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -1001,7 +1253,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                                     children: [
                                       Text(p.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
                                       const SizedBox(height: 2),
-                                      Text('\$${p.price.toStringAsFixed(2)} • ${p.category}', style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 13)),
+                                      Text('\$${p.price.toStringAsFixed(2)} • ${p.category} ${p.hasVariants ? '(${p.variants.length} variations)' : ''}', style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 13)),
                                     ],
                                   ),
                                 ),
@@ -1671,9 +1923,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
     );
   }
 
-  // ── Product Detail Bottom Sheet ─────────────────────────────────────────────
+  // ── Product Detail Bottom Sheet with Interactive Variant Selector ───────────
   void _showProductDetail(Product product) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    ProductVariant? selectedVariant = product.hasVariants ? product.variants.first : null;
+    double currentPrice = selectedVariant?.priceOverride ?? product.price;
 
     showModalBottomSheet(
       context: context,
@@ -1683,290 +1937,356 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (ctx) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.85,
-          minChildSize: 0.5,
-          maxChildSize: 0.95,
-          expand: false,
-          builder: (_, scrollController) {
-            return ListView(
-              controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.white24 : Colors.black12,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: AspectRatio(
-                    aspectRatio: 16 / 10,
-                    child: Image.network(
-                      product.imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: isDark ? AppTheme.darkCard : Colors.grey.shade200,
-                        child: const Icon(Icons.shopping_bag_outlined, size: 64, color: AppTheme.primary),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                Row(
+        return StatefulBuilder(
+          builder: (detailCtx, setDetailState) {
+            return DraggableScrollableSheet(
+              initialChildSize: 0.85,
+              minChildSize: 0.5,
+              maxChildSize: 0.95,
+              expand: false,
+              builder: (_, scrollController) {
+                return ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        product.category.toUpperCase(),
-                        style: const TextStyle(
-                          color: AppTheme.primary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white24 : Colors.black12,
+                          borderRadius: BorderRadius.circular(3),
                         ),
                       ),
                     ),
-                    if (product.hasDiscount) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.dangerRed.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '-${product.discountPercent}% OFF',
-                          style: const TextStyle(
-                            color: AppTheme.dangerRed,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
+                    const SizedBox(height: 16),
+
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: AspectRatio(
+                        aspectRatio: 16 / 10,
+                        child: Image.network(
+                          selectedVariant?.imageUrl.isNotEmpty == true ? selectedVariant!.imageUrl : product.imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: isDark ? AppTheme.darkCard : Colors.grey.shade200,
+                            child: const Icon(Icons.shopping_bag_outlined, size: 64, color: AppTheme.primary),
                           ),
                         ),
                       ),
-                    ],
-                    const Spacer(),
-                    IconButton(
-                      icon: Icon(
-                        product.isWishlisted ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                        color: product.isWishlisted ? AppTheme.dangerRed : AppTheme.textMuted,
-                      ),
-                      onPressed: () {
-                        widget.appState.toggleWishlist(product.id);
-                        Navigator.pop(ctx);
-                        _showProductDetail(widget.appState.products.firstWhere((p) => p.id == product.id, orElse: () => product.copyWith(isWishlisted: !product.isWishlisted)));
-                      },
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
+                    const SizedBox(height: 16),
 
-                Text(
-                  product.title,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 10),
-
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text(
-                      '\$${product.price.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primary,
-                      ),
-                    ),
-                    if (product.hasDiscount) ...[
-                      const SizedBox(width: 10),
-                      Text(
-                        '\$${product.originalPrice.toStringAsFixed(2)}',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
-                          decoration: TextDecoration.lineThrough,
-                        ),
-                      ),
-                    ],
-                    const Spacer(),
                     Row(
                       children: [
-                        const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${product.rating} (${product.reviewsCount})',
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            product.category.toUpperCase(),
+                            style: const TextStyle(
+                              color: AppTheme.primary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                        if (product.hasDiscount) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.dangerRed.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '-${product.discountPercent}% OFF',
+                              style: const TextStyle(
+                                color: AppTheme.dangerRed,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                        const Spacer(),
+                        IconButton(
+                          icon: Icon(
+                            product.isWishlisted ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                            color: product.isWishlisted ? AppTheme.dangerRed : AppTheme.textMuted,
+                          ),
+                          onPressed: () {
+                            widget.appState.toggleWishlist(product.id);
+                            Navigator.pop(ctx);
+                            _showProductDetail(widget.appState.products.firstWhere((p) => p.id == product.id, orElse: () => product.copyWith(isWishlisted: !product.isWishlisted)));
+                          },
                         ),
                       ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 12),
+                    const SizedBox(height: 8),
 
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppTheme.darkCard : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppTheme.primary.withValues(alpha: 0.3),
-                      width: 1,
+                    Text(
+                      product.title,
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primary.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
+                    const SizedBox(height: 10),
+
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          '\$${currentPrice.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primary,
+                          ),
                         ),
-                        child: const Icon(Icons.store_rounded, color: AppTheme.primary, size: 22),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
+                        if (product.hasDiscount) ...[
+                          const SizedBox(width: 10),
+                          Text(
+                            '\$${product.originalPrice.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        ],
+                        const Spacer(),
+                        Row(
+                          children: [
+                            const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${product.rating} (${product.reviewsCount})',
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+
+                    // ── INTERACTIVE PRODUCT VARIANT SELECTOR ─────────────────
+                    if (product.hasVariants) ...[
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  product.storeName,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                const Row(
+                                  children: [
+                                    Icon(Icons.style_rounded, size: 16, color: AppTheme.primary),
+                                    SizedBox(width: 6),
+                                    Text('Choose Option / Variation:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                  ],
                                 ),
-                                const SizedBox(width: 4),
-                                const Icon(Icons.verified_rounded, color: AppTheme.primary, size: 16),
+                                if (selectedVariant != null)
+                                  Text(
+                                    'Stock: ${selectedVariant!.stockQuantity} left',
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.onlineGreen),
+                                  ),
                               ],
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'PIN: ${product.sellerPin.isNotEmpty ? product.sellerPin : '1P0YE4WZ'} • ${product.sellerLocation}',
-                              style: TextStyle(fontSize: 12, color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: product.variants.map((v) {
+                                final isSelected = selectedVariant?.id == v.id;
+                                final vPrice = v.priceOverride != null ? ' (\$$v.priceOverride)' : '';
+                                return ChoiceChip(
+                                  avatar: const Icon(Icons.check_circle_rounded, size: 14, color: AppTheme.primary),
+                                  label: Text('${v.title}$vPrice', style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                                  selected: isSelected,
+                                  selectedColor: AppTheme.primary,
+                                  backgroundColor: isDark ? AppTheme.darkCard : Colors.white,
+                                  onSelected: (_) {
+                                    setDetailState(() {
+                                      selectedVariant = v;
+                                      currentPrice = v.priceOverride ?? product.price;
+                                    });
+                                  },
+                                );
+                              }).toList(),
                             ),
                           ],
                         ),
                       ),
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        icon: const Icon(Icons.chat_bubble_outline_rounded, size: 14),
-                        label: const Text('Inquire', style: TextStyle(fontSize: 12)),
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          _chatWithSeller(product);
-                        },
-                      ),
                     ],
-                  ),
-                ),
-                const SizedBox(height: 18),
 
-                const Text(
-                  'ABOUT THIS ITEM',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textMuted, letterSpacing: 1),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  product.description,
-                  style: TextStyle(
-                    fontSize: 14,
-                    height: 1.5,
-                    color: isDark ? Colors.white70 : Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 16),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 12),
 
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 8,
-                  children: product.tags.map((tag) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(10),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppTheme.darkCard : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: AppTheme.primary.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.store_rounded, color: AppTheme.primary, size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      product.storeName,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    const Icon(Icons.verified_rounded, color: AppTheme.primary, size: 16),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'PIN: ${product.sellerPin.isNotEmpty ? product.sellerPin : '1P0YE4WZ'} • ${product.sellerLocation}',
+                                  style: TextStyle(fontSize: 12, color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight),
+                                ),
+                              ],
+                            ),
+                          ),
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            icon: const Icon(Icons.chat_bubble_outline_rounded, size: 14),
+                            label: const Text('Inquire', style: TextStyle(fontSize: 12)),
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _chatWithSeller(product);
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                    const SizedBox(height: 18),
+
+                    const Text(
+                      'ABOUT THIS ITEM',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textMuted, letterSpacing: 1),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      product.description,
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.5,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 8,
+                      children: product.tags.map((tag) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.check_circle_outline_rounded, size: 14, color: AppTheme.primary),
+                            const SizedBox(width: 6),
+                            Text(tag, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      )).toList(),
+                    ),
+                    const SizedBox(height: 28),
+
+                    Row(
                       children: [
-                        const Icon(Icons.check_circle_outline_rounded, size: 14, color: AppTheme.primary),
-                        const SizedBox(width: 6),
-                        Text(tag, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            icon: const Icon(Icons.chat_rounded, size: 18),
+                            label: const Text('Chat Seller', style: TextStyle(fontWeight: FontWeight.bold)),
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _chatWithSeller(product);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primary,
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              elevation: 2,
+                            ),
+                            icon: const Icon(Icons.shopping_cart_checkout_rounded, size: 20),
+                            label: Text(
+                              selectedVariant != null ? 'Add ${selectedVariant!.title} to Cart' : 'Add to Cart',
+                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                            ),
+                            onPressed: () {
+                              final itemToAdd = selectedVariant != null
+                                  ? product.copyWith(price: currentPrice, title: '${product.title} (${selectedVariant!.title})')
+                                  : product;
+
+                              widget.appState.addToCart(itemToAdd);
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Added "${itemToAdd.title}" to cart!'),
+                                  backgroundColor: AppTheme.primary,
+                                  action: SnackBarAction(
+                                    label: 'VIEW CART',
+                                    textColor: Colors.black,
+                                    onPressed: _showCartSheet,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                       ],
                     ),
-                  )).toList(),
-                ),
-                const SizedBox(height: 28),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        ),
-                        icon: const Icon(Icons.chat_rounded, size: 18),
-                        label: const Text('Chat Seller', style: TextStyle(fontWeight: FontWeight.bold)),
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          _chatWithSeller(product);
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primary,
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          elevation: 2,
-                        ),
-                        icon: const Icon(Icons.shopping_cart_checkout_rounded, size: 20),
-                        label: const Text(
-                          'Add to Cart',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        onPressed: () {
-                          widget.appState.addToCart(product);
-                          Navigator.pop(ctx);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Added "${product.title}" to cart!'),
-                              backgroundColor: AppTheme.primary,
-                              action: SnackBarAction(
-                                label: 'VIEW CART',
-                                textColor: Colors.black,
-                                onPressed: _showCartSheet,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
                   ],
-                ),
-              ],
+                );
+              },
             );
           },
         );
