@@ -96,9 +96,14 @@ class Conversation {
       invStatus = InvitationStatus.declined;
     }
 
+    var title = (json['title'] ?? json['name'] ?? 'Chat').toString();
+    if (title.contains('BBM')) {
+      title = title.replaceAll('BBM', 'GOCHAT');
+    }
+
     return Conversation(
       id: json['id']?.toString() ?? '',
-      title: json['title'] ?? json['name'] ?? 'Chat',
+      title: title,
       avatarUrl: json['avatar_url'] ?? '',
       type: json['type'] == 'group'
           ? ConversationType.group

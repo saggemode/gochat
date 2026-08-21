@@ -63,9 +63,13 @@ class User {
   }
 
   factory User.fromJson(Map<String, dynamic> json) {
+    var name = (json['display_name'] ?? json['displayName'] ?? json['name'] ?? 'User').toString();
+    if (name.contains('BBM')) {
+      name = name.replaceAll('BBM', 'GOCHAT');
+    }
     return User(
       id: json['id']?.toString() ?? '',
-      displayName: json['display_name'] ?? json['displayName'] ?? json['name'] ?? 'User',
+      displayName: name,
       email: json['email'] ?? '',
       phone: json['phone'] ?? '',
       avatarUrl: json['avatar_url'] ?? json['avatarUrl'] ?? '',
