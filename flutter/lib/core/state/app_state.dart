@@ -136,13 +136,27 @@ class AppState extends ChangeNotifier {
     if (_currentUser == null) return;
 
     try {
-      final results = await Future.wait([
-        ApiService.getConversations(),
-        ApiService.getStories(),
-        ApiService.getChannels(),
-        ApiService.getCalls(),
-        ApiService.getProducts(),
-      ]);
+      // Retry up to 3 times for Render cold-start timeouts
+      List<dynamic> results = [];
+      for (int attempt = 0; attempt < 3; attempt++) {
+        try {
+          results = await Future.wait([
+            ApiService.getConversations(),
+            ApiService.getStories(),
+            ApiService.getChannels(),
+            ApiService.getCalls(),
+            ApiService.getProducts(),
+          ]);
+          break; // Success, exit retry loop
+        } catch (retryError) {
+          if (attempt < 2) {
+            await Future.delayed(Duration(seconds: 2 * (attempt + 1)));
+          } else {
+            rethrow;
+          }
+        }
+      }
+      if (results.isEmpty) return;
 
       _conversations = results[0] as List<Conversation>;
       _stories = results[1] as List<UserStories>;

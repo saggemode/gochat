@@ -106,7 +106,7 @@ class ApiService {
         Uri.parse(ApiConstants.register),
         headers: await _headers(requireAuth: false),
         body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 30));
 
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final data = jsonDecode(res.body);
@@ -157,7 +157,7 @@ class ApiService {
         'email': cleanIdentifier,
         'password': safePassword,
       }),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(const Duration(seconds: 30));
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
       final data = jsonDecode(res.body);
@@ -230,7 +230,7 @@ class ApiService {
   static Future<List<Conversation>> getConversations() async {
     final res = await http
         .get(Uri.parse(ApiConstants.conversations), headers: await _headers())
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 30));
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
@@ -378,7 +378,7 @@ class ApiService {
   static Future<List<UserStories>> getStories() async {
     final res = await http
         .get(Uri.parse(ApiConstants.stories), headers: await _headers())
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 30));
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
@@ -414,7 +414,7 @@ class ApiService {
         'caption': caption,
         'media_type': mediaType,
       }),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(const Duration(seconds: 30));
 
     if (res.statusCode < 200 || res.statusCode >= 300) {
       final data = jsonDecode(res.body);
@@ -440,7 +440,7 @@ class ApiService {
   static Future<List<Channel>> getChannels() async {
     final res = await http
         .get(Uri.parse(ApiConstants.channels), headers: await _headers())
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 30));
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
@@ -464,7 +464,7 @@ class ApiService {
   static Future<List<Product>> getProducts() async {
     final res = await http
         .get(Uri.parse(ApiConstants.products), headers: await _headers())
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 30));
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
@@ -486,7 +486,7 @@ class ApiService {
         'product_ids': productIds,
         'total_amount': totalAmount,
       }),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(const Duration(seconds: 30));
 
     final data = jsonDecode(res.body);
     if (res.statusCode >= 200 && res.statusCode < 300) {
