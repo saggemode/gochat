@@ -148,7 +148,7 @@ class ApiService {
     required String password,
   }) async {
     final cleanIdentifier = email.trim();
-    final safePassword = password.isNotEmpty ? password : 'GoChat@Password123!';
+    final safePassword = password.isNotEmpty ? password : '';
 
     final res = await http.post(
       Uri.parse(ApiConstants.login),
