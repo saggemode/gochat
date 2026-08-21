@@ -210,7 +210,7 @@ class ApiService {
   // ── Auth: Lookup User by BBM PIN ────────────────────────────────────────────
   static Future<User?> lookupUserByPin(String pin) async {
     final cleanPin = pin.trim().toUpperCase();
-    if (cleanPin.length < 6) return null;
+    if (cleanPin.length < 4) return null;
     final token = await StorageService.getToken();
     if (token == null || token.isEmpty) return null;
 

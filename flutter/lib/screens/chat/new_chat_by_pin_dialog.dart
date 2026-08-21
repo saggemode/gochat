@@ -218,15 +218,15 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
               controller: _pinController,
               autofocus: true,
               textCapitalization: TextCapitalization.characters,
-              maxLength: 8,
+              maxLength: 16,
               style: const TextStyle(
                 fontSize: 18,
                 fontFamily: 'monospace',
                 fontWeight: FontWeight.bold,
-                letterSpacing: 3,
+                letterSpacing: 2,
               ),
               decoration: InputDecoration(
-                hintText: 'e.g. 8492A1',
+                hintText: 'e.g. 1P0YE4WZ or Phone',
                 counterText: '',
                 prefixIcon: const Icon(Icons.tag_rounded, color: AppTheme.primary),
                 suffixIcon: Row(
