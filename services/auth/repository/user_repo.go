@@ -166,8 +166,8 @@ func (r *UserRepository) CreateUser(ctx context.Context, phone, email, password,
 func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*User, error) {
 	user := &User{}
 	err := r.db.QueryRow(ctx, `
-		SELECT id, COALESCE(email, ''), password_hash, display_name, avatar_url, status_text,
-		       is_online, last_seen, created_at, updated_at, COALESCE(phone, ''), phone_verified, pin, country_code
+		SELECT id, COALESCE(email, ''), COALESCE(password_hash, ''), COALESCE(display_name, 'GoChat User'), COALESCE(avatar_url, ''), COALESCE(status_text, ''),
+		       COALESCE(is_online, false), COALESCE(last_seen, created_at, NOW()), COALESCE(created_at, NOW()), COALESCE(updated_at, NOW()), COALESCE(phone, ''), COALESCE(phone_verified, false), COALESCE(pin, '8492A1'), COALESCE(country_code, 'NG')
 		FROM users WHERE email = $1
 	`, email).Scan(
 		&user.ID, &user.Email, &user.PasswordHash, &user.DisplayName,
@@ -207,15 +207,14 @@ func (r *UserRepository) GetUserByIdentifier(ctx context.Context, identifier str
 
 	user := &User{}
 	err := r.db.QueryRow(ctx, `
-		SELECT id, COALESCE(email, ''), password_hash, display_name, avatar_url, status_text,
-		       is_online, last_seen, created_at, updated_at, COALESCE(phone, ''), phone_verified, pin, country_code
+		SELECT id, COALESCE(email, ''), COALESCE(password_hash, ''), COALESCE(display_name, 'GoChat User'), COALESCE(avatar_url, ''), COALESCE(status_text, ''),
+		       COALESCE(is_online, false), COALESCE(last_seen, created_at, NOW()), COALESCE(created_at, NOW()), COALESCE(updated_at, NOW()), COALESCE(phone, ''), COALESCE(phone_verified, false), COALESCE(pin, '8492A1'), COALESCE(country_code, 'NG')
 		FROM users 
 		WHERE LOWER(email) = LOWER($1) 
 		   OR phone = $1 
-		   OR phone = $2 
-		   OR (LENGTH($3) >= 6 AND REGEXP_REPLACE(phone, '[^0-9]', '', 'g') LIKE '%' || $3)
-		   OR (LENGTH($4) >= 6 AND REGEXP_REPLACE(phone, '[^0-9]', '', 'g') LIKE '%' || $4)
-		   OR (LENGTH($4) >= 6 AND $4 LIKE '%' || REGEXP_REPLACE(phone, '[^0-9]', '', 'g'))
+		   OR ($2 <> '' AND phone = $2) 
+		   OR (LENGTH($3) >= 6 AND COALESCE(phone, '') LIKE '%' || $3)
+		   OR (LENGTH($4) >= 6 AND COALESCE(phone, '') LIKE '%' || $4)
 		   OR LOWER(display_name) = LOWER($1) 
 		   OR UPPER(pin) = UPPER($1)
 		LIMIT 1
@@ -237,8 +236,8 @@ func (r *UserRepository) GetUserByIdentifier(ctx context.Context, identifier str
 func (r *UserRepository) GetUserByID(ctx context.Context, id uuid.UUID) (*User, error) {
 	user := &User{}
 	err := r.db.QueryRow(ctx, `
-		SELECT id, COALESCE(email, ''), password_hash, display_name, avatar_url, status_text,
-		       is_online, last_seen, created_at, updated_at, COALESCE(phone, ''), phone_verified, pin, country_code
+		SELECT id, COALESCE(email, ''), COALESCE(password_hash, ''), COALESCE(display_name, 'GoChat User'), COALESCE(avatar_url, ''), COALESCE(status_text, ''),
+		       COALESCE(is_online, false), COALESCE(last_seen, created_at, NOW()), COALESCE(created_at, NOW()), COALESCE(updated_at, NOW()), COALESCE(phone, ''), COALESCE(phone_verified, false), COALESCE(pin, '8492A1'), COALESCE(country_code, 'NG')
 		FROM users WHERE id = $1
 	`, id).Scan(
 		&user.ID, &user.Email, &user.PasswordHash, &user.DisplayName,
@@ -257,8 +256,8 @@ func (r *UserRepository) GetUserByID(ctx context.Context, id uuid.UUID) (*User, 
 // GetUsersByIDs batch-fetches multiple users.
 func (r *UserRepository) GetUsersByIDs(ctx context.Context, ids []uuid.UUID) ([]*User, error) {
 	rows, err := r.db.Query(ctx, `
-		SELECT id, COALESCE(email, ''), password_hash, display_name, avatar_url, status_text,
-		       is_online, last_seen, created_at, updated_at, COALESCE(phone, ''), phone_verified, pin, country_code
+		SELECT id, COALESCE(email, ''), COALESCE(password_hash, ''), COALESCE(display_name, 'GoChat User'), COALESCE(avatar_url, ''), COALESCE(status_text, ''),
+		       COALESCE(is_online, false), COALESCE(last_seen, created_at, NOW()), COALESCE(created_at, NOW()), COALESCE(updated_at, NOW()), COALESCE(phone, ''), COALESCE(phone_verified, false), COALESCE(pin, '8492A1'), COALESCE(country_code, 'NG')
 		FROM users WHERE id = ANY($1)
 	`, ids)
 	if err != nil {
@@ -287,14 +286,14 @@ func (r *UserRepository) GetUsersByIdentifiers(ctx context.Context, identifiers 
 	if len(identifiers) == 0 {
 		// Fetch all users for global discovery (capped for safety)
 		rows, err = r.db.Query(ctx, `
-			SELECT id, COALESCE(email, ''), password_hash, display_name, avatar_url, status_text,
-			       is_online, last_seen, created_at, updated_at, COALESCE(phone, ''), phone_verified, pin, country_code
+			SELECT id, COALESCE(email, ''), COALESCE(password_hash, ''), COALESCE(display_name, 'GoChat User'), COALESCE(avatar_url, ''), COALESCE(status_text, ''),
+			       COALESCE(is_online, false), COALESCE(last_seen, created_at, NOW()), COALESCE(created_at, NOW()), COALESCE(updated_at, NOW()), COALESCE(phone, ''), COALESCE(phone_verified, false), COALESCE(pin, '8492A1'), COALESCE(country_code, 'NG')
 			FROM users ORDER BY created_at DESC LIMIT 200
 		`)
 	} else {
 		rows, err = r.db.Query(ctx, `
-			SELECT id, COALESCE(email, ''), password_hash, display_name, avatar_url, status_text,
-			       is_online, last_seen, created_at, updated_at, COALESCE(phone, ''), phone_verified, pin, country_code
+			SELECT id, COALESCE(email, ''), COALESCE(password_hash, ''), COALESCE(display_name, 'GoChat User'), COALESCE(avatar_url, ''), COALESCE(status_text, ''),
+			       COALESCE(is_online, false), COALESCE(last_seen, created_at, NOW()), COALESCE(created_at, NOW()), COALESCE(updated_at, NOW()), COALESCE(phone, ''), COALESCE(phone_verified, false), COALESCE(pin, '8492A1'), COALESCE(country_code, 'NG')
 			FROM users 
 			WHERE LOWER(email) = ANY(SELECT LOWER(x) FROM unnest($1::text[]) x)
 			   OR phone = ANY($1)

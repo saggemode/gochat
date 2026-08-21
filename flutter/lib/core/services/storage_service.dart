@@ -11,13 +11,24 @@ class StorageService {
 
   // ── Auth & User ─────────────────────────────────────────────────────────────
   static Future<void> saveToken(String token) async {
+    if (token.startsWith('gochat_session_') || token.split('.').length != 3) {
+      // Reject non-JWT tokens
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyToken, token);
   }
 
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyToken);
+    final token = prefs.getString(_keyToken);
+    if (token == null || token.isEmpty) return null;
+    if (token.startsWith('gochat_session_') || token.split('.').length != 3) {
+      // Purge stale synthetic token from storage immediately
+      await prefs.remove(_keyToken);
+      return null;
+    }
+    return token;
   }
 
   static Future<void> saveUser(User user) async {
