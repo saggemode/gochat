@@ -101,9 +101,12 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
         : (_foundUser?.displayName ?? 'BBM User ($rawPin)');
     final avatarUrl = _foundUser?.avatarUrl ?? '';
 
+    final recipientId = _foundUser?.id ?? '';
+    final memberIds = recipientId.isNotEmpty ? [recipientId] : [rawPin];
+
     Conversation targetConv;
     final matchIndex = widget.appState.conversations.indexWhere(
-      (c) => c.title.toUpperCase().contains(rawPin) || c.id.toUpperCase().contains(rawPin),
+      (c) => c.title.toUpperCase().contains(rawPin) || c.id.toUpperCase().contains(rawPin) || (recipientId.isNotEmpty && c.id == recipientId),
     );
 
     if (matchIndex != -1) {
@@ -111,7 +114,7 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
     } else {
       targetConv = await widget.appState.createConversation(
         title,
-        [],
+        memberIds,
         invitationStatus: InvitationStatus.pendingOutgoing,
         partnerPin: rawPin,
       );

@@ -60,18 +60,31 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
     final title = user?.displayName ?? 'BBM Contact ($cleanPin)';
     final avatar = user?.avatarUrl ?? '';
 
+    final recipientId = user?.id ?? '';
+    final memberIds = recipientId.isNotEmpty ? [recipientId] : [cleanPin];
+
     Conversation targetConv;
     final matchIndex = widget.appState.conversations.indexWhere(
-      (c) => c.title.toUpperCase().contains(cleanPin) || c.id.toUpperCase().contains(cleanPin),
+      (c) => c.title.toUpperCase().contains(cleanPin) || c.id.toUpperCase().contains(cleanPin) || (recipientId.isNotEmpty && c.id == recipientId),
     );
 
     if (matchIndex != -1) {
       targetConv = widget.appState.conversations[matchIndex];
     } else {
-      targetConv = await widget.appState.createConversation(title, []);
+      targetConv = await widget.appState.createConversation(
+        title,
+        memberIds,
+        invitationStatus: InvitationStatus.pendingOutgoing,
+        partnerPin: cleanPin,
+      );
       if (avatar.isNotEmpty) {
         targetConv = targetConv.copyWith(avatarUrl: avatar);
       }
+      // Send initial invitation request message
+      await widget.appState.sendMessage(
+        targetConv.id,
+        '👋 Hi! I scanned your QR code on GoChat ($cleanPin).',
+      );
     }
 
     if (!mounted) return;

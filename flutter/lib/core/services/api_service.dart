@@ -11,6 +11,8 @@ import '../models/product.dart';
 import 'storage_service.dart';
 
 class ApiService {
+  static bool _isAuthenticating = false;
+
   static bool isValidJwt(String? token) {
     if (token == null || token.isEmpty) return false;
     if (token.startsWith('gochat_session_')) return false;
@@ -24,22 +26,27 @@ class ApiService {
       return currentToken;
     }
 
-    // Try to auto-login to acquire a genuine JWT from the backend
-    final user = await StorageService.getUser();
-    if (user != null) {
-      final identifier = user.phone.isNotEmpty
-          ? user.phone
-          : (user.email.isNotEmpty ? user.email : user.pin);
-      if (identifier.isNotEmpty) {
-        try {
+    if (_isAuthenticating) return null;
+    _isAuthenticating = true;
+
+    try {
+      final user = await StorageService.getUser();
+      if (user != null) {
+        final identifier = user.phone.isNotEmpty
+            ? user.phone
+            : (user.email.isNotEmpty ? user.email : user.pin);
+        if (identifier.isNotEmpty) {
           final res = await login(email: identifier, password: '');
           final newToken = res['access_token'] ?? res['token'] ?? '';
           if (isValidJwt(newToken)) {
             await StorageService.saveToken(newToken);
             return newToken;
           }
-        } catch (_) {}
+        }
       }
+    } catch (_) {
+    } finally {
+      _isAuthenticating = false;
     }
     return null;
   }
@@ -51,10 +58,7 @@ class ApiService {
     };
 
     if (requireAuth) {
-      var token = await StorageService.getToken();
-      if (!isValidJwt(token)) {
-        token = await ensureValidToken();
-      }
+      final token = await StorageService.getToken();
       if (token != null && token.isNotEmpty && isValidJwt(token)) {
         headers['Authorization'] = 'Bearer $token';
       }
