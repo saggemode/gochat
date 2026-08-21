@@ -21,6 +21,12 @@ func NewPostgres(ctx context.Context, dsn string, log *zap.Logger) (*pgxpool.Poo
 	// Disable prepared statements for PgBouncer transaction pooling compatibility
 	cfg.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 
+	// Set default schema search_path on every pooled connection
+	cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		_, err := conn.Exec(ctx, "SET search_path TO core, auth, authz, chat, grp, story, call, channel, social, miniapp, business, media, public;")
+		return err
+	}
+
 	// High-performance connection pool settings
 	cfg.MaxConns = 50
 	cfg.MinConns = 5
