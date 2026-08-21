@@ -107,15 +107,7 @@ class StoriesScreen extends StatelessWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.camera_alt_rounded, color: AppTheme.primary),
-                  onPressed: () {
-                    appState.addStory(
-                      'https://images.unsplash.com/photo-1518770660439-4636190af475?w=600',
-                      'New status update from Flutter app ✨',
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('🎉 Status update published!')),
-                    );
-                  },
+                  onPressed: () => _promptNewStory(context),
                 ),
               ],
             ),
@@ -171,16 +163,73 @@ class StoriesScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'stories_fab',
-        onPressed: () {
-          appState.addStory(
-            'https://images.unsplash.com/photo-1518770660439-4636190af475?w=600',
-            'New status story ✨',
-          );
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('📸 Status story posted')),
-          );
-        },
+        onPressed: () => _promptNewStory(context),
         child: const Icon(Icons.camera_alt_rounded),
+      ),
+    );
+  }
+
+  void _promptNewStory(BuildContext context) {
+    final captionController = TextEditingController();
+    final urlController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.darkSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('New Status Update', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: captionController,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'What\'s on your mind?',
+                labelStyle: TextStyle(color: Colors.white70),
+                hintText: 'Enter your status...',
+                hintStyle: TextStyle(color: Colors.white30),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: urlController,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Image / Media URL (optional)',
+                labelStyle: TextStyle(color: Colors.white70),
+                hintText: 'https://...',
+                hintStyle: TextStyle(color: Colors.white30),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+            onPressed: () {
+              final text = captionController.text.trim();
+              final url = urlController.text.trim();
+              if (text.isNotEmpty || url.isNotEmpty) {
+                appState.addStory(
+                  url,
+                  text.isNotEmpty ? text : 'Status update',
+                );
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('🎉 Status update published!')),
+                );
+              }
+            },
+            child: const Text('Post', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }

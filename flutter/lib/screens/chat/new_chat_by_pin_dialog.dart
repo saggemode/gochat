@@ -99,8 +99,7 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
     final title = customName.isNotEmpty
         ? customName
         : (_foundUser?.displayName ?? 'BBM User ($rawPin)');
-    final avatarUrl = _foundUser?.avatarUrl ??
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
+    final avatarUrl = _foundUser?.avatarUrl ?? '';
 
     Conversation targetConv;
     final matchIndex = widget.appState.conversations.indexWhere(

@@ -689,7 +689,7 @@ class AppState extends ChangeNotifier {
       final fallbackConv = Conversation(
         id: localId,
         title: name,
-        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+        avatarUrl: '',
         type: isGroup ? ConversationType.group : ConversationType.direct,
         invitationStatus: invitationStatus,
         partnerPin: partnerPin,
@@ -758,7 +758,7 @@ class AppState extends ChangeNotifier {
     final cleanPin = pin.trim().toUpperCase();
     if (cleanPin.length < 4) return null;
 
-    // 1. Try remote API lookup
+    // 1. Try remote API lookup against backend database
     final remoteUser = await ApiService.lookupUserByPin(cleanPin);
     if (remoteUser != null) return remoteUser;
 
@@ -776,56 +776,7 @@ class AppState extends ChangeNotifier {
       }
     }
 
-    // 3. Known BBM directory profiles
-    final mockProfiles = {
-      '8492A1': {
-        'name': 'Sarah Connor',
-        'avatar': 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-        'status': 'Leading resistance 🚀 | Encrypted messaging',
-        'phone': '+1 (555) 019-2834',
-      },
-      '92B104': {
-        'name': 'Michael Scott',
-        'avatar': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-        'status': 'Regional Manager 👔 | Dunder Mifflin',
-        'phone': '+1 (555) 839-1092',
-      },
-      '49A28C': {
-        'name': 'Emma Watson',
-        'avatar': 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
-        'status': 'Coffee lover ☕️ | Designer',
-        'phone': '+44 7700 900142',
-      },
-      '77F219': {
-        'name': 'David Miller',
-        'avatar': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
-        'status': 'Go Backend Architect 💻',
-        'phone': '+1 (555) 302-8472',
-      },
-    };
-
-    if (mockProfiles.containsKey(cleanPin)) {
-      final p = mockProfiles[cleanPin]!;
-      return User(
-        id: 'u_pin_$cleanPin',
-        displayName: p['name']!,
-        avatarUrl: p['avatar']!,
-        statusText: p['status']!,
-        phone: p['phone']!,
-        pin: cleanPin,
-        isOnline: true,
-      );
-    }
-
-    // 4. Synthesized profile for any PIN
-    return User(
-      id: 'u_pin_$cleanPin',
-      displayName: 'BBM Contact ($cleanPin)',
-      avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-      statusText: 'Hey there! I am using GoChat via BBM PIN.',
-      pin: cleanPin,
-      isOnline: true,
-    );
+    return null;
   }
 
   // ── Chat: Poll Voting ───────────────────────────────────────────────────────

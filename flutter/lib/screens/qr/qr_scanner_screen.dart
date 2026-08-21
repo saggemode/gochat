@@ -58,7 +58,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
     final user = await widget.appState.lookupUserByPin(cleanPin);
 
     final title = user?.displayName ?? 'BBM Contact ($cleanPin)';
-    final avatar = user?.avatarUrl ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
+    final avatar = user?.avatarUrl ?? '';
 
     Conversation targetConv;
     final matchIndex = widget.appState.conversations.indexWhere(
