@@ -22,6 +22,7 @@ class AppState extends ChangeNotifier {
   List<Channel> _channels = [];
   List<Product> _products = [];
   final List<Product> _cart = [];
+  StoreProfile? _myStore;
   CallRecord? _activeCall;
 
   User? get currentUser => _currentUser;
@@ -37,6 +38,8 @@ class AppState extends ChangeNotifier {
   List<Channel> get channels => _channels;
   List<Product> get products => _products;
   List<Product> get cart => _cart;
+  StoreProfile? get myStore => _myStore;
+  bool get hasStore => _myStore != null;
   CallRecord? get activeCall => _activeCall;
   Stream<String> get onPingReceived => _pingStreamController.stream;
 
@@ -96,6 +99,7 @@ class AppState extends ChangeNotifier {
       if (cachedUser != null) {
         _currentUser = cachedUser;
       }
+      _myStore = await StorageService.getMyStore();
 
       // Check if token is invalid or old synthetic session
       if (!ApiService.isValidJwt(token)) {
@@ -924,9 +928,27 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  void addProduct(Product product) {
-    _products.insert(0, product);
+  Future<StoreProfile> createStore(StoreProfile store) async {
+    try {
+      final created = await ApiService.createBusinessProfile(store);
+      _myStore = created;
+    } catch (_) {
+      _myStore = store;
+    }
+    await StorageService.saveMyStore(_myStore!);
     notifyListeners();
+    return _myStore!;
+  }
+
+  Future<Product> createStoreProduct(Product product) async {
+    Product resultProduct = product;
+    try {
+      final created = await ApiService.createProduct(product);
+      resultProduct = created;
+    } catch (_) {}
+    _products.insert(0, resultProduct);
+    notifyListeners();
+    return resultProduct;
   }
 
   // ── WebRTC & Calls ──────────────────────────────────────────────────────────

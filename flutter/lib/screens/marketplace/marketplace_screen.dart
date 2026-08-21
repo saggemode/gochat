@@ -30,36 +30,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     {'name': 'Phones', 'icon': Icons.smartphone_rounded},
   ];
 
-  final List<Map<String, dynamic>> _heroBanners = [
-    {
-      'title': '⚡ Flash Sale - Up to 40% OFF',
-      'subtitle': 'Verified electronics & gadgets on GoChat',
-      'tag': 'HOT DEAL',
-      'color': Color(0xFF00A884),
-      'icon': Icons.bolt_rounded,
-    },
-    {
-      'title': '🛡️ GoChat Escrow Protected',
-      'subtitle': '100% money-back guarantee on all orders',
-      'tag': 'SECURE',
-      'color': Color(0xFF3B82F6),
-      'icon': Icons.shield_rounded,
-    },
-    {
-      'title': '🚀 Direct Seller Messaging',
-      'subtitle': 'Inquire & negotiate directly via GoChat PIN',
-      'tag': 'FAST DM',
-      'color': Color(0xFF8B5CF6),
-      'icon': Icons.chat_rounded,
-    },
-  ];
-
   List<Product> get _filteredProducts {
     var list = List<Product>.from(widget.appState.products);
-
-    if (list.isEmpty) {
-      list = _getDefaultProducts();
-    }
 
     if (_selectedCategory != 'All') {
       list = list.where((p) => p.category.toLowerCase().contains(_selectedCategory.toLowerCase())).toList();
@@ -90,103 +62,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     return list;
   }
 
-  List<Product> _getDefaultProducts() {
-    return [
-      Product(
-        id: 'prod_1',
-        title: 'iPhone 15 Pro Max 256GB - Titanium',
-        description: 'Brand new, sealed in box. 1 year international warranty. Unlocked for all GSM networks with 5G support.',
-        price: 1199.0,
-        originalPrice: 1399.0,
-        category: 'Electronics',
-        storeName: 'Apple Hub Lagos',
-        sellerPin: '1P0YE4WZ',
-        sellerLocation: 'Victoria Island, Lagos',
-        rating: 4.9,
-        reviewsCount: 340,
-        imageUrl: 'https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=600&auto=format&fit=crop&q=80',
-        tags: ['Verified Store', '1-Day Delivery', 'Warranty'],
-      ),
-      Product(
-        id: 'prod_2',
-        title: 'Sony WH-1000XM5 Wireless Headphones',
-        description: 'Industry-leading noise cancellation, 30-hour battery life, premium sound quality with Hi-Res Audio.',
-        price: 349.0,
-        originalPrice: 399.0,
-        category: 'Electronics',
-        storeName: 'SoundWave Electronics',
-        sellerPin: 'LQZM9Z1P',
-        sellerLocation: 'Ikeja, Lagos',
-        rating: 4.8,
-        reviewsCount: 185,
-        imageUrl: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=600&auto=format&fit=crop&q=80',
-        tags: ['Noise Canceling', 'Authentic'],
-      ),
-      Product(
-        id: 'prod_3',
-        title: 'Nike Air Max 270 Sneakers - Triple Black',
-        description: 'Original Nike sneakers, breathable mesh upper, Max Air 270 unit for all-day comfort. Available in sizes 40-46.',
-        price: 159.0,
-        originalPrice: 199.0,
-        category: 'Fashion',
-        storeName: 'Kicks & Drips NG',
-        sellerPin: 'IX13BWHK',
-        sellerLocation: 'Abuja, FCT',
-        rating: 4.7,
-        reviewsCount: 92,
-        imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80',
-        tags: ['Original', 'Free Return'],
-      ),
-      Product(
-        id: 'prod_4',
-        title: 'MacBook Air 15" M2 Chip 512GB SSD',
-        description: 'Supercharged by M2 chip, 15.3-inch Liquid Retina display, 18-hour battery life, 1080p FaceTime HD camera.',
-        price: 1299.0,
-        originalPrice: 1499.0,
-        category: 'Electronics',
-        storeName: 'TechDepot West Africa',
-        sellerPin: '9VD2CPR3',
-        sellerLocation: 'Port Harcourt, Rivers',
-        rating: 5.0,
-        reviewsCount: 210,
-        imageUrl: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&auto=format&fit=crop&q=80',
-        tags: ['Official Warranty', 'Best Seller'],
-      ),
-      Product(
-        id: 'prod_5',
-        title: 'Sony PlayStation 5 Slim Digital Edition',
-        description: 'Includes 1 DualSense Wireless Controller, 1TB SSD storage, 4K 120Hz HDR gaming support.',
-        price: 499.0,
-        originalPrice: 549.0,
-        category: 'Gaming',
-        storeName: 'GameZone NG',
-        sellerPin: 'Q4LHQ7QD',
-        sellerLocation: 'Lekki Phase 1, Lagos',
-        rating: 4.9,
-        reviewsCount: 450,
-        imageUrl: 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=600&auto=format&fit=crop&q=80',
-        tags: ['Brand New', 'Escrow Protected'],
-      ),
-      Product(
-        id: 'prod_6',
-        title: 'Luxury Chronograph Designer Watch',
-        description: 'Stainless steel waterproof wrist watch with sapphire crystal glass and luminous dial hands.',
-        price: 189.0,
-        originalPrice: 280.0,
-        category: 'Fashion',
-        storeName: 'Crown Horology',
-        sellerPin: '1P0YE4WZ',
-        sellerLocation: 'Lagos, Nigeria',
-        rating: 4.6,
-        reviewsCount: 78,
-        imageUrl: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=600&auto=format&fit=crop&q=80',
-        tags: ['Waterproof', 'Luxury'],
-      ),
-    ];
-  }
-
+  // ── Open DM with Seller ─────────────────────────────────────────────────────
   Future<void> _chatWithSeller(Product product) async {
-    final sellerPin = product.sellerPin.isNotEmpty ? product.sellerPin : '1P0YE4WZ';
+    final sellerPin = product.sellerPin.isNotEmpty ? product.sellerPin : (widget.appState.currentUser?.pin ?? '1P0YE4WZ');
     final user = await widget.appState.lookupUserByPin(sellerPin);
     final targetTitle = user?.displayName ?? product.storeName;
     final targetId = user?.id ?? sellerPin;
@@ -221,6 +99,630 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     );
   }
 
+  // ── Store Dashboard / Setup Modal ───────────────────────────────────────────
+  void _openStoreManager() {
+    if (widget.appState.hasStore) {
+      _showSellerDashboardModal();
+    } else {
+      _showCreateStoreModal();
+    }
+  }
+
+  // ── Step 1: Create Store Profile Modal ──────────────────────────────────────
+  void _showCreateStoreModal() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final storeNameCtrl = TextEditingController(text: widget.appState.currentUser?.displayName != null ? '${widget.appState.currentUser!.displayName}\'s Store' : '');
+    final locationCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController(text: widget.appState.currentUser?.phone ?? '');
+    final descCtrl = TextEditingController();
+    final logoCtrl = TextEditingController();
+    String category = 'Electronics';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            left: 20,
+            right: 20,
+            top: 16,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : Colors.black12,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Row(
+                  children: [
+                    Icon(Icons.store_rounded, color: AppTheme.primary, size: 28),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Step 1: Set Up Your Store',
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            'Create your merchant profile on GoChat',
+                            style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24),
+
+                TextField(
+                  controller: storeNameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Store / Business Name *',
+                    hintText: 'e.g. Lagos Tech Mart',
+                    prefixIcon: Icon(Icons.storefront_rounded),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: category,
+                        decoration: const InputDecoration(
+                          labelText: 'Industry / Category',
+                          prefixIcon: Icon(Icons.category_rounded),
+                        ),
+                        items: ['Electronics', 'Fashion', 'Gaming', 'Home', 'Services', 'Phones', 'General Retail']
+                            .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                            .toList(),
+                        onChanged: (val) {
+                          if (val != null) category = val;
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: locationCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Store Location / Address *',
+                    hintText: 'e.g. 14 Broad Street, Lagos, Nigeria',
+                    prefixIcon: Icon(Icons.location_on_rounded),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'Business Phone / WhatsApp',
+                    hintText: '+234...',
+                    prefixIcon: Icon(Icons.phone_rounded),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: logoCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Store Logo URL (Optional)',
+                    hintText: 'https://...',
+                    prefixIcon: Icon(Icons.image_rounded),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: descCtrl,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Store Bio / Description',
+                    hintText: 'Tell buyers what you sell, return policy, delivery info...',
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    icon: const Icon(Icons.check_circle_rounded),
+                    label: const Text(
+                      'Create My Store & Start Selling',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    onPressed: () async {
+                      if (storeNameCtrl.text.trim().isEmpty || locationCtrl.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please enter store name and location')),
+                        );
+                        return;
+                      }
+
+                      final newStore = StoreProfile(
+                        id: 'store_${DateTime.now().millisecondsSinceEpoch}',
+                        userId: widget.appState.currentUser?.id ?? '',
+                        storeName: storeNameCtrl.text.trim(),
+                        category: category,
+                        address: locationCtrl.text.trim(),
+                        phone: phoneCtrl.text.trim(),
+                        description: descCtrl.text.trim(),
+                        logoUrl: logoCtrl.text.trim(),
+                        ownerPin: widget.appState.currentUser?.pin ?? '',
+                        isVerified: true,
+                        createdAt: DateTime.now(),
+                      );
+
+                      final nav = Navigator.of(ctx);
+                      await widget.appState.createStore(newStore);
+                      if (!mounted) return;
+                      nav.pop();
+                      _showAddProductModal();
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ── Step 2: Add Product Under Store Modal ────────────────────────────────────
+  void _showAddProductModal() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titleCtrl = TextEditingController();
+    final priceCtrl = TextEditingController();
+    final originalPriceCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final imageCtrl = TextEditingController();
+    String category = widget.appState.myStore?.category ?? 'Electronics';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            left: 20,
+            right: 20,
+            top: 16,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : Colors.black12,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    const Icon(Icons.add_shopping_cart_rounded, color: AppTheme.primary, size: 26),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Add Product to Store',
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            'Selling from: ${widget.appState.myStore?.storeName ?? 'My Store'}',
+                            style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 20),
+
+                TextField(
+                  controller: titleCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Product Name / Title *',
+                    hintText: 'e.g. iPhone 15 Pro Max 256GB',
+                    prefixIcon: Icon(Icons.title_rounded),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: priceCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Selling Price (\$) *',
+                          hintText: 'e.g. 999.00',
+                          prefixIcon: Icon(Icons.attach_money_rounded),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: originalPriceCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Original Price (Optional)',
+                          hintText: 'e.g. 1199.00',
+                          prefixIcon: Icon(Icons.money_off_rounded),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                DropdownButtonFormField<String>(
+                  value: category,
+                  decoration: const InputDecoration(
+                    labelText: 'Product Category',
+                    prefixIcon: Icon(Icons.category_rounded),
+                  ),
+                  items: ['Electronics', 'Fashion', 'Gaming', 'Home', 'Services', 'Phones', 'General Retail']
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) category = val;
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: imageCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Product Image URL',
+                    hintText: 'https://images.unsplash.com/...',
+                    prefixIcon: Icon(Icons.image_rounded),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: descCtrl,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Product Description & Specs',
+                    hintText: 'Condition, key features, packaging, warranty details...',
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    icon: const Icon(Icons.publish_rounded),
+                    label: const Text('Publish Product Live', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    onPressed: () async {
+                      if (titleCtrl.text.trim().isEmpty || priceCtrl.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please enter product title and selling price')),
+                        );
+                        return;
+                      }
+
+                      final price = double.tryParse(priceCtrl.text.trim()) ?? 0.0;
+                      final origPrice = double.tryParse(originalPriceCtrl.text.trim()) ?? (price * 1.25);
+
+                      final newProduct = Product(
+                        id: 'prod_${DateTime.now().millisecondsSinceEpoch}',
+                        title: titleCtrl.text.trim(),
+                        description: descCtrl.text.trim().isNotEmpty ? descCtrl.text.trim() : 'Available on GoChat Marketplace.',
+                        price: price,
+                        originalPrice: origPrice,
+                        category: category,
+                        storeName: widget.appState.myStore?.storeName ?? (widget.appState.currentUser?.displayName ?? 'My Store'),
+                        sellerId: widget.appState.currentUser?.id ?? '',
+                        sellerPin: widget.appState.currentUser?.pin ?? '',
+                        sellerLocation: widget.appState.myStore?.address ?? 'Lagos, Nigeria',
+                        imageUrl: imageCtrl.text.trim().isNotEmpty
+                            ? imageCtrl.text.trim()
+                            : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80',
+                        rating: 5.0,
+                        reviewsCount: 0,
+                        isVerifiedSeller: true,
+                        inStock: true,
+                      );
+
+                      final nav = Navigator.of(ctx);
+                      final messenger = ScaffoldMessenger.of(context);
+                      await widget.appState.createStoreProduct(newProduct);
+                      if (!mounted) return;
+                      nav.pop();
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text('🎉 "${newProduct.title}" is now published on the Marketplace!'),
+                          backgroundColor: AppTheme.primary,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ── Seller Dashboard Modal ──────────────────────────────────────────────────
+  void _showSellerDashboardModal() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final store = widget.appState.myStore;
+    final myProducts = widget.appState.products.where((p) => p.sellerPin == widget.appState.currentUser?.pin || p.sellerId == widget.appState.currentUser?.id).toList();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (_, scrollController) {
+            return ListView(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : Colors.black12,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Store Banner Card
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppTheme.primary.withValues(alpha: 0.2),
+                        isDark ? AppTheme.darkCard : Colors.grey.shade100,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: const BoxDecoration(
+                          color: AppTheme.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.store_rounded, color: Colors.black, size: 28),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  store?.storeName ?? 'My Store',
+                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.verified_rounded, color: AppTheme.primary, size: 16),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${store?.category ?? 'Retail'} • ${store?.address ?? 'Lagos, Nigeria'}',
+                              style: TextStyle(fontSize: 12, color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'GOCHAT PIN: ${widget.appState.currentUser?.pin ?? '8492A1'}',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Action Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        icon: const Icon(Icons.add_rounded, size: 20),
+                        label: const Text('Add Product', style: TextStyle(fontWeight: FontWeight.bold)),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _showAddProductModal();
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      icon: const Icon(Icons.edit_rounded, size: 16),
+                      label: const Text('Edit Store'),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _showCreateStoreModal();
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // My Store Products List
+                Text(
+                  'STORE INVENTORY (${myProducts.length})',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textMuted, letterSpacing: 1),
+                ),
+                const SizedBox(height: 10),
+
+                if (myProducts.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppTheme.darkCard : Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.inventory_2_outlined, size: 48, color: AppTheme.textMuted),
+                        const SizedBox(height: 10),
+                        const Text('No products listed yet', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        const SizedBox(height: 4),
+                        const Text('Start adding products so GoChat buyers can discover and purchase from your store.', style: TextStyle(fontSize: 12, color: AppTheme.textMuted), textAlign: TextAlign.center),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primary,
+                            foregroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          icon: const Icon(Icons.add_rounded),
+                          label: const Text('Add First Product'),
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _showAddProductModal();
+                          },
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: myProducts.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (_, index) {
+                      final p = myProducts[index];
+                      return Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppTheme.darkCard : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.network(
+                                p.imageUrl,
+                                width: 50,
+                                height: 50,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 50,
+                                  height: 50,
+                                  color: Colors.grey.shade300,
+                                  child: const Icon(Icons.shopping_bag),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(p.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  const SizedBox(height: 2),
+                                  Text('\$${p.price.toStringAsFixed(2)} • ${p.category}', style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 13)),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.check_circle_rounded, color: AppTheme.onlineGreen, size: 18),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ── Product Detail Bottom Sheet ─────────────────────────────────────────────
   void _showProductDetail(Product product) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -523,6 +1025,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     );
   }
 
+  // ── Cart & Checkout Sheet ───────────────────────────────────────────────────
   void _showCartSheet() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     String promoCode = '';
@@ -857,174 +1360,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     );
   }
 
-  void _showSellProductModal() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final titleCtrl = TextEditingController();
-    final priceCtrl = TextEditingController();
-    final descCtrl = TextEditingController();
-    final imageCtrl = TextEditingController();
-    String category = 'Electronics';
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-            left: 20,
-            right: 20,
-            top: 16,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white24 : Colors.black12,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Row(
-                children: [
-                  Icon(Icons.storefront_rounded, color: AppTheme.primary, size: 24),
-                  SizedBox(width: 8),
-                  Text(
-                    'Sell an Item on GoChat',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              TextField(
-                controller: titleCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Product Title',
-                  hintText: 'e.g. Samsung Galaxy S24 Ultra',
-                  prefixIcon: Icon(Icons.title_rounded),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: priceCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(
-                        labelText: 'Price (\$)',
-                        hintText: 'e.g. 299.99',
-                        prefixIcon: Icon(Icons.attach_money_rounded),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: category,
-                      decoration: const InputDecoration(
-                        labelText: 'Category',
-                        prefixIcon: Icon(Icons.category_rounded),
-                      ),
-                      items: ['Electronics', 'Fashion', 'Gaming', 'Home', 'Services', 'Phones']
-                          .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                          .toList(),
-                      onChanged: (val) {
-                        if (val != null) category = val;
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              TextField(
-                controller: imageCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Image URL (Optional)',
-                  hintText: 'https://...',
-                  prefixIcon: Icon(Icons.image_rounded),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              TextField(
-                controller: descCtrl,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Description & Specs',
-                  hintText: 'Describe condition, warranty, features...',
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  icon: const Icon(Icons.check_circle_rounded),
-                  label: const Text('Publish Product', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  onPressed: () {
-                    if (titleCtrl.text.trim().isEmpty || priceCtrl.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please enter product title and price')),
-                      );
-                      return;
-                    }
-                    final price = double.tryParse(priceCtrl.text.trim()) ?? 100.0;
-                    final newProduct = Product(
-                      id: 'user_prod_${DateTime.now().millisecondsSinceEpoch}',
-                      title: titleCtrl.text.trim(),
-                      description: descCtrl.text.trim().isNotEmpty ? descCtrl.text.trim() : 'Listed on GoChat Marketplace.',
-                      price: price,
-                      originalPrice: price * 1.2,
-                      category: category,
-                      storeName: widget.appState.currentUser?.displayName ?? 'My Store',
-                      sellerPin: widget.appState.currentUser?.pin ?? '1P0YE4WZ',
-                      imageUrl: imageCtrl.text.trim().isNotEmpty
-                          ? imageCtrl.text.trim()
-                          : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80',
-                      rating: 5.0,
-                      reviewsCount: 1,
-                      isVerifiedSeller: true,
-                    );
-                    widget.appState.addProduct(newProduct);
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('🎉 Product listed live on GoChat Marketplace!')),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final products = _filteredProducts;
     final cartCount = widget.appState.cart.length;
+    final hasStore = widget.appState.hasStore;
 
     return Scaffold(
       backgroundColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
@@ -1059,11 +1400,20 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 ),
             ],
           ),
-          IconButton(
-            icon: const Icon(Icons.add_business_rounded),
-            tooltip: 'Sell on GoChat',
-            onPressed: _showSellProductModal,
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              backgroundColor: AppTheme.primary.withValues(alpha: 0.15),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            icon: Icon(hasStore ? Icons.store_rounded : Icons.add_business_rounded, color: AppTheme.primary, size: 18),
+            label: Text(
+              hasStore ? 'My Store' : 'Open Store',
+              style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+            onPressed: _openStoreManager,
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: CustomScrollView(
@@ -1095,78 +1445,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     contentPadding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                 ),
-              ),
-            ),
-          ),
-
-          SliverToBoxAdapter(
-            child: Container(
-              height: 110,
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: PageView.builder(
-                itemCount: _heroBanners.length,
-                itemBuilder: (_, index) {
-                  final banner = _heroBanners[index];
-                  return Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          (banner['color'] as Color).withValues(alpha: 0.9),
-                          (banner['color'] as Color).withValues(alpha: 0.65),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: (banner['color'] as Color).withValues(alpha: 0.3),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.3),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  banner['tag'],
-                                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                banner['title'],
-                                style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                banner['subtitle'],
-                                style: const TextStyle(color: Colors.white70, fontSize: 11),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(banner['icon'] as IconData, color: Colors.white, size: 34),
-                      ],
-                    ),
-                  );
-                },
               ),
             ),
           ),
@@ -1236,10 +1514,48 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
             SliverFillRemaining(
               hasScrollBody: false,
               child: Center(
-                child: EmptyStateView(
-                  icon: Icons.search_off_rounded,
-                  title: 'No Products Found',
-                  description: 'Try changing your search term or selecting another category.',
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.storefront_rounded, size: 60, color: AppTheme.primary),
+                      ),
+                      const SizedBox(height: 18),
+                      const Text(
+                        'Marketplace is Open!',
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'No items listed yet. Set up your store and be the first to publish products to GoChat buyers!',
+                        style: TextStyle(fontSize: 14, color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 2,
+                        ),
+                        icon: const Icon(Icons.add_business_rounded, size: 20),
+                        label: Text(
+                          hasStore ? 'Add Products to ${widget.appState.myStore?.storeName}' : 'Open My Store Now',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                        onPressed: _openStoreManager,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             )

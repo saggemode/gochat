@@ -47,6 +47,25 @@ class StorageService {
     }
   }
 
+  // ── Store Profile Caching ──────────────────────────────────────────────────
+  static const String _keyMyStore = 'my_store_profile';
+
+  static Future<void> saveMyStore(StoreProfile store) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyMyStore, jsonEncode(store.toJson()));
+  }
+
+  static Future<StoreProfile?> getMyStore() async {
+    final prefs = await SharedPreferences.getInstance();
+    final str = prefs.getString(_keyMyStore);
+    if (str == null || str.isEmpty) return null;
+    try {
+      return StoreProfile.fromJson(jsonDecode(str));
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ── Theme Preference ────────────────────────────────────────────────────────
   static Future<void> saveThemeMode(String mode) async {
     final prefs = await SharedPreferences.getInstance();

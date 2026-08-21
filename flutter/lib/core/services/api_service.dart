@@ -8,6 +8,7 @@ import '../models/story.dart';
 import '../models/call.dart';
 import '../models/channel.dart';
 import '../models/product.dart';
+import '../models/store_profile.dart';
 import 'storage_service.dart';
 
 class ApiService {
@@ -463,7 +464,7 @@ class ApiService {
   // ── Marketplace: Get Products ───────────────────────────────────────────────
   static Future<List<Product>> getProducts() async {
     final res = await http
-        .get(Uri.parse(ApiConstants.products), headers: await _headers())
+        .get(Uri.parse(ApiConstants.products), headers: await _headers(requireAuth: false))
         .timeout(const Duration(seconds: 30));
 
     if (res.statusCode == 200) {
@@ -472,6 +473,57 @@ class ApiService {
       return rawList.map((e) => Product.fromJson(e)).toList();
     }
     return [];
+  }
+
+  // ── Business: Store Profile & Products ───────────────────────────────────────
+  static Future<StoreProfile?> getBusinessProfile() async {
+    try {
+      final res = await http
+          .get(Uri.parse('${ApiConstants.apiV1}/business/profile'), headers: await _headers())
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['profile'] != null || data['business_name'] != null) {
+          return StoreProfile.fromJson(data['profile'] ?? data);
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  static Future<StoreProfile> createBusinessProfile(StoreProfile store) async {
+    final res = await http.post(
+      Uri.parse('${ApiConstants.apiV1}/business/profile'),
+      headers: await _headers(),
+      body: jsonEncode(store.toJson()),
+    ).timeout(const Duration(seconds: 30));
+
+    final data = jsonDecode(res.body);
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return StoreProfile.fromJson(data['profile'] ?? data);
+    }
+    throw Exception(data['error'] ?? 'Failed to create business profile (${res.statusCode})');
+  }
+
+  static Future<Product> createProduct(Product product) async {
+    final res = await http.post(
+      Uri.parse('${ApiConstants.apiV1}/business/products'),
+      headers: await _headers(),
+      body: jsonEncode({
+        'title': product.title,
+        'description': product.description,
+        'price': product.price,
+        'category': product.category,
+        'image_url': product.imageUrl,
+        'in_stock': product.inStock,
+      }),
+    ).timeout(const Duration(seconds: 30));
+
+    final data = jsonDecode(res.body);
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return Product.fromJson(data['product'] ?? data);
+    }
+    throw Exception(data['error'] ?? 'Failed to create product (${res.statusCode})');
   }
 
   // ── Marketplace: Checkout Order ─────────────────────────────────────────────
