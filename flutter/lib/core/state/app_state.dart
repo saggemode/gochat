@@ -368,18 +368,15 @@ class AppState extends ChangeNotifier {
       await refreshData();
     } catch (e) {
       _errorMessage = e.toString();
-      // Graceful fallback for offline / server cold boot
-      if (_currentUser == null) {
-        final fallbackId = 'user_${email.replaceAll(RegExp(r'[^\w]'), '')}';
-        final cleanId = fallbackId.length >= 6 ? fallbackId.substring(fallbackId.length - 6).toUpperCase() : '8492A1';
-        _currentUser = User(
-          id: fallbackId,
-          displayName: email.contains('@') ? email.split('@').first : email,
-          email: email.contains('@') ? email : '',
-          phone: !email.contains('@') ? email : '',
-          pin: cleanId,
-        );
-        await StorageService.saveUser(_currentUser!);
+      // If offline, check if matching user is already cached
+      final cachedUser = await StorageService.getUser();
+      if (cachedUser != null &&
+          (cachedUser.email == email ||
+           cachedUser.phone == email ||
+           cachedUser.pin == email.toUpperCase())) {
+        _currentUser = cachedUser;
+      } else {
+        rethrow;
       }
     } finally {
       _isLoading = false;
