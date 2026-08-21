@@ -228,7 +228,17 @@ class AppState extends ChangeNotifier {
         // Update or insert conversation in list
         final convIdx = _conversations.indexWhere((c) => c.id == msg.conversationId);
         if (convIdx != -1) {
+          final currentTitle = _conversations[convIdx].title;
+          final shouldUpdateTitle = (currentTitle.startsWith('User_') ||
+                  currentTitle.startsWith('GOCHAT User') ||
+                  currentTitle == 'Contact' ||
+                  currentTitle.startsWith('BBM User')) &&
+              msg.senderName.isNotEmpty &&
+              msg.senderName != 'Me' &&
+              !msg.senderName.startsWith('User_');
+
           final updated = _conversations[convIdx].copyWith(
+            title: shouldUpdateTitle ? msg.senderName : currentTitle,
             lastMessage: msg,
             updatedAt: DateTime.now(),
           );
@@ -267,7 +277,34 @@ class AppState extends ChangeNotifier {
         notifyListeners();
       }
     }
-    // 2. Incoming Invitation Accepted Event
+    // 2. Incoming Profile Update Event
+    else if (eventType == 'user_profile_updated' || eventType == 'EVENT_USER_PROFILE_UPDATED') {
+      final userData = data['user'] ?? data['payload'] ?? data['data'];
+      if (userData is Map<String, dynamic>) {
+        final userId = userData['id']?.toString() ?? '';
+        final newName = userData['display_name']?.toString() ?? '';
+        final newAvatar = userData['avatar_url']?.toString() ?? '';
+
+        if (userId.isNotEmpty && newName.isNotEmpty) {
+          bool changed = false;
+          for (int i = 0; i < _conversations.length; i++) {
+            final conv = _conversations[i];
+            if (conv.memberIds.contains(userId) || conv.id == userId || conv.partnerPin == userData['pin']) {
+              _conversations[i] = conv.copyWith(
+                title: newName,
+                avatarUrl: newAvatar.isNotEmpty ? newAvatar : conv.avatarUrl,
+              );
+              changed = true;
+            }
+          }
+          if (changed) {
+            StorageService.saveCachedConversations(_conversations);
+            notifyListeners();
+          }
+        }
+      }
+    }
+    // 3. Incoming Invitation Accepted Event
     else if (eventType == 'invitation_accepted' || data['type'] == 'invitation_accepted') {
       final convId = (data['conversation_id'] ?? data['conversationId'] ?? data['conv_id'] ?? '').toString();
       final idx = _conversations.indexWhere((c) => c.id == convId);
@@ -438,6 +475,19 @@ class AppState extends ChangeNotifier {
         notifyListeners();
       }
     } catch (_) {}
+
+    // Broadcast profile update to connected contacts
+    wsService.send({
+      'type': 'user_profile_updated',
+      'event_type': 'EVENT_USER_PROFILE_UPDATED',
+      'user': {
+        'id': _currentUser!.id,
+        'display_name': _currentUser!.displayName,
+        'status_text': _currentUser!.statusText,
+        'avatar_url': _currentUser!.avatarUrl,
+        'pin': _currentUser!.pin,
+      },
+    });
   }
 
   // ── Auth: Logout ────────────────────────────────────────────────────────────
