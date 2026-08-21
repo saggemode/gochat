@@ -325,19 +325,22 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 4),
-                          Row(
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               StatusBadge(
-                                text: 'GOCHAT: ${_foundUser!.pin}',
+                                text: 'PIN: ${_foundUser!.pin}',
                                 type: BadgeType.primary,
                               ),
-                              if (_foundUser!.phone.isNotEmpty) ...[
-                                const SizedBox(width: 6),
+                              if (_foundUser!.phone.isNotEmpty)
                                 Text(
                                   _foundUser!.phone,
                                   style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ],
                             ],
                           ),
                         ],
