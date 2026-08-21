@@ -95,18 +95,12 @@ class AppState extends ChangeNotifier {
     if (cachedUser != null || (token != null && token.isNotEmpty)) {
       if (cachedUser != null) {
         _currentUser = cachedUser;
-      } else {
-        _currentUser = User(
-          id: 'user_${DateTime.now().millisecondsSinceEpoch}',
-          displayName: 'GoChat User',
-          pin: '8492A1',
-        );
-        await StorageService.saveUser(_currentUser!);
       }
 
-      if (token == null || token.isEmpty) {
-        token = 'gochat_session_${_currentUser!.id}';
-        await StorageService.saveToken(token);
+      // Check if token is invalid or old synthetic session
+      if (!ApiService.isValidJwt(token)) {
+        // Auto-reauthenticate in background to get real JWT from backend
+        token = await ApiService.ensureValidToken();
       }
 
       // Instant offline load from cache
@@ -125,10 +119,12 @@ class AppState extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
 
-      // Connect WebSocket & fetch latest live data from server
-      wsService.addListener(_handleIncomingWebSocket);
-      await wsService.connect();
-      await refreshData();
+      // Connect WebSocket & fetch latest live data from server if authenticated
+      if (token != null && ApiService.isValidJwt(token)) {
+        wsService.addListener(_handleIncomingWebSocket);
+        await wsService.connect();
+        await refreshData();
+      }
     } else {
       _isLoading = false;
       notifyListeners();
@@ -166,7 +162,29 @@ class AppState extends ChangeNotifier {
         } catch (_) {}
       }
     } catch (e) {
-      _errorMessage = e.toString();
+      if (e.toString().contains('401')) {
+        // Token expired or invalid — auto-renew credentials
+        final newToken = await ApiService.ensureValidToken();
+        if (newToken != null && ApiService.isValidJwt(newToken)) {
+          await wsService.connect();
+          try {
+            final retry = await Future.wait([
+              ApiService.getConversations(),
+              ApiService.getStories(),
+              ApiService.getChannels(),
+              ApiService.getCalls(),
+              ApiService.getProducts(),
+            ]);
+            _conversations = retry[0] as List<Conversation>;
+            _stories = retry[1] as List<UserStories>;
+            _channels = retry[2] as List<Channel>;
+            _calls = retry[3] as List<CallRecord>;
+            _products = retry[4] as List<Product>;
+          } catch (_) {}
+        }
+      } else {
+        _errorMessage = e.toString();
+      }
     }
 
     _isLoading = false;

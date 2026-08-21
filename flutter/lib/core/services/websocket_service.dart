@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../constants/api_constants.dart';
+import 'api_service.dart';
 import 'storage_service.dart';
 
 typedef WebSocketMessageCallback = void Function(Map<String, dynamic> data);
@@ -11,6 +12,7 @@ class WebSocketService {
   bool _isConnected = false;
   final List<WebSocketMessageCallback> _listeners = [];
   Timer? _reconnectTimer;
+  int _reconnectAttempts = 0;
 
   bool get isConnected => _isConnected;
 
@@ -26,16 +28,27 @@ class WebSocketService {
     if (_isConnected) return;
 
     try {
-      final token = await StorageService.getToken();
+      // 1. Ensure token is a valid JWT before attempting handshake
+      var token = await StorageService.getToken();
+      if (!ApiService.isValidJwt(token)) {
+        token = await ApiService.ensureValidToken();
+      }
+
+      if (token == null || !ApiService.isValidJwt(token)) {
+        // No valid auth credentials available yet; pause reconnecting until user logs in
+        return;
+      }
+
       final uri = Uri.parse(ApiConstants.wsUrl).replace(
         queryParameters: {
-          if (token != null && token.isNotEmpty) 'token': token,
+          'token': token,
         },
       );
 
       _channel = WebSocketChannel.connect(uri);
       await _channel!.ready;
       _isConnected = true;
+      _reconnectAttempts = 0;
 
       _channel?.stream.listen(
         (message) {
@@ -49,7 +62,7 @@ class WebSocketService {
           } catch (_) {}
         },
         onError: (_) {
-          _handleDisconnect();
+          _handleDisconnect(needsReauth: true);
         },
         onDone: () {
           _handleDisconnect();
@@ -57,7 +70,7 @@ class WebSocketService {
         cancelOnError: true,
       );
     } catch (_) {
-      _handleDisconnect();
+      _handleDisconnect(needsReauth: true);
     }
   }
 
@@ -69,11 +82,18 @@ class WebSocketService {
     }
   }
 
-  void _handleDisconnect() {
+  void _handleDisconnect({bool needsReauth = false}) {
     _isConnected = false;
     _channel = null;
     _reconnectTimer?.cancel();
-    _reconnectTimer = Timer(const Duration(seconds: 5), () {
+
+    _reconnectAttempts++;
+    final delaySeconds = (_reconnectAttempts > 5) ? 15 : 5;
+
+    _reconnectTimer = Timer(Duration(seconds: delaySeconds), () async {
+      if (needsReauth) {
+        await ApiService.ensureValidToken();
+      }
       connect();
     });
   }
@@ -83,5 +103,6 @@ class WebSocketService {
     _channel?.sink.close();
     _isConnected = false;
     _channel = null;
+    _reconnectAttempts = 0;
   }
 }

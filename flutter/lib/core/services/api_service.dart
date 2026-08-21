@@ -11,13 +11,55 @@ import '../models/product.dart';
 import 'storage_service.dart';
 
 class ApiService {
-  static Future<Map<String, String>> _headers() async {
-    final token = await StorageService.getToken();
-    return {
+  static bool isValidJwt(String? token) {
+    if (token == null || token.isEmpty) return false;
+    if (token.startsWith('gochat_session_')) return false;
+    final parts = token.split('.');
+    return parts.length == 3;
+  }
+
+  static Future<String?> ensureValidToken() async {
+    final currentToken = await StorageService.getToken();
+    if (isValidJwt(currentToken)) {
+      return currentToken;
+    }
+
+    // Try to auto-login to acquire a genuine JWT from the backend
+    final user = await StorageService.getUser();
+    if (user != null) {
+      final identifier = user.phone.isNotEmpty
+          ? user.phone
+          : (user.email.isNotEmpty ? user.email : user.pin);
+      if (identifier.isNotEmpty) {
+        try {
+          final res = await login(email: identifier, password: '');
+          final newToken = res['access_token'] ?? res['token'] ?? '';
+          if (isValidJwt(newToken)) {
+            await StorageService.saveToken(newToken);
+            return newToken;
+          }
+        } catch (_) {}
+      }
+    }
+    return null;
+  }
+
+  static Future<Map<String, String>> _headers({bool requireAuth = true}) async {
+    final headers = <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
     };
+
+    if (requireAuth) {
+      var token = await StorageService.getToken();
+      if (!isValidJwt(token)) {
+        token = await ensureValidToken();
+      }
+      if (token != null && token.isNotEmpty && isValidJwt(token)) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+    }
+    return headers;
   }
 
   // ── Auth: Register ──────────────────────────────────────────────────────────
@@ -37,8 +79,10 @@ class ApiService {
     // 1. Check if user already exists on the backend by attempting login first
     if (identifier.isNotEmpty) {
       try {
-        final existingSession = await login(email: identifier, password: '');
-        if (existingSession['user'] != null || (existingSession['access_token'] != null || existingSession['token'] != null)) {
+        final existingSession = await login(email: identifier, password: password);
+        final token = existingSession['access_token'] ?? existingSession['token'] ?? '';
+        if (isValidJwt(token) && existingSession['user'] != null) {
+          await StorageService.saveToken(token);
           return existingSession;
         }
       } catch (_) {}
@@ -48,6 +92,7 @@ class ApiService {
     final body = <String, dynamic>{
       if (cleanPhone.isNotEmpty) 'phone': cleanPhone,
       if (email.isNotEmpty) 'email': email,
+      'password': password.isNotEmpty ? password : 'GoChat@Password123!',
       'display_name': safeName,
       'country_code': countryCode.isNotEmpty ? countryCode : 'NG',
     };
@@ -55,25 +100,33 @@ class ApiService {
     try {
       final res = await http.post(
         Uri.parse(ApiConstants.register),
-        headers: await _headers(),
+        headers: await _headers(requireAuth: false),
         body: jsonEncode(body),
       ).timeout(const Duration(seconds: 10));
 
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        return jsonDecode(res.body);
+        final data = jsonDecode(res.body);
+        final token = data['access_token'] ?? data['token'] ?? '';
+        if (isValidJwt(token)) {
+          await StorageService.saveToken(token);
+        }
+        return data;
       }
     } catch (_) {}
 
-    // 3. If registration responded with conflict/already exists, fallback to login
+    // 3. Fallback: auto-login creates account if not exists
     if (identifier.isNotEmpty) {
       try {
-        return await login(email: identifier, password: '');
+        final loginRes = await login(email: identifier, password: password);
+        final token = loginRes['access_token'] ?? loginRes['token'] ?? '';
+        if (isValidJwt(token)) {
+          await StorageService.saveToken(token);
+        }
+        return loginRes;
       } catch (_) {}
     }
 
-    // 4. Return synthesized session
     return {
-      'token': 'gochat_session_${DateTime.now().millisecondsSinceEpoch}',
       'user': {
         'id': 'user_${cleanPhone.isNotEmpty ? cleanPhone.replaceAll('+', '') : DateTime.now().millisecondsSinceEpoch}',
         'display_name': safeName,
@@ -95,7 +148,7 @@ class ApiService {
 
     final res = await http.post(
       Uri.parse(ApiConstants.login),
-      headers: await _headers(),
+      headers: await _headers(requireAuth: false),
       body: jsonEncode({
         'email': cleanIdentifier,
         'password': safePassword,
@@ -103,7 +156,12 @@ class ApiService {
     ).timeout(const Duration(seconds: 10));
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
-      return jsonDecode(res.body);
+      final data = jsonDecode(res.body);
+      final token = data['access_token'] ?? data['token'] ?? '';
+      if (isValidJwt(token)) {
+        await StorageService.saveToken(token);
+      }
+      return data;
     }
 
     try {
