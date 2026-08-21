@@ -67,7 +67,7 @@ class OtpVerificationView extends StatelessWidget {
               if (generatedPin != null) ...[
                 const SizedBox(height: 6),
                 Text(
-                  'Your unique BBM PIN: $generatedPin',
+                  'Your unique GOCHAT PIN: $generatedPin',
                   style: const TextStyle(
                     fontSize: 13,
                     fontFamily: 'monospace',

@@ -121,7 +121,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.qr_code_scanner_rounded),
-            tooltip: 'Scan BBM PIN QR Code',
+            tooltip: 'Scan GOCHAT QR Code',
             onPressed: () => QrScannerScreen.open(context, widget.appState),
           ),
           IconButton(
@@ -275,7 +275,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   title: 'No Conversations',
                   description: _isSearching
                       ? 'No messages match "${_searchController.text}"'
-                      : 'Start chatting with your contacts using their BBM PIN or phone number.',
+                      : 'Start chatting with your contacts using their GOCHAT PIN or phone number.',
                   actionLabel: _isSearching ? 'Clear Search' : 'Start Chat by PIN',
                   onAction: () {
                     if (_isSearching) {

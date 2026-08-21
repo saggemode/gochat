@@ -181,7 +181,7 @@ class AppDrawer extends StatelessWidget {
                   AppDrawerNavItem(
                     icon: Icons.qr_code_scanner_rounded,
                     activeIcon: Icons.qr_code_2_rounded,
-                    title: 'BBM QR Code Scanner',
+                    title: 'GOCHAT QR Code Scanner',
                     onTap: () {
                       Navigator.pop(context);
                       QrScannerScreen.open(context, appState);

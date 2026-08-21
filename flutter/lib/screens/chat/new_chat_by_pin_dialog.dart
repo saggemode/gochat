@@ -87,7 +87,7 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
   Future<void> _startChat() async {
     final rawPin = _pinController.text.trim().toUpperCase();
     if (rawPin.isEmpty) {
-      setState(() => _error = 'Please enter a BBM PIN');
+      setState(() => _error = 'Please enter a GOCHAT PIN');
       return;
     }
     if (rawPin.length < 4) {
@@ -98,7 +98,7 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
     final customName = _nameController.text.trim();
     final title = customName.isNotEmpty
         ? customName
-        : (_foundUser?.displayName ?? 'BBM User ($rawPin)');
+        : (_foundUser?.displayName ?? 'GOCHAT User ($rawPin)');
     final avatarUrl = _foundUser?.avatarUrl ?? '';
 
     final recipientId = _foundUser?.id ?? '';
@@ -124,7 +124,7 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
       // Send initial invitation request message
       await widget.appState.sendMessage(
         targetConv.id,
-        '👋 Hi! I added you on GoChat via BBM PIN ($rawPin).',
+        '👋 Hi! I added you on GoChat via PIN ($rawPin).',
       );
     }
 
@@ -194,7 +194,7 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Start Chat by BBM PIN',
+                        'Start Chat by GOCHAT PIN',
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       Text(
@@ -210,7 +210,7 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
 
             // PIN Field
             const Text(
-              'RECIPIENT BBM PIN',
+              'RECIPIENT GOCHAT PIN',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textMuted, letterSpacing: 1),
             ),
             const SizedBox(height: 6),
@@ -328,7 +328,7 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
                           Row(
                             children: [
                               StatusBadge(
-                                text: 'BBM: ${_foundUser!.pin}',
+                                text: 'GOCHAT: ${_foundUser!.pin}',
                                 type: BadgeType.primary,
                               ),
                               if (_foundUser!.phone.isNotEmpty) ...[

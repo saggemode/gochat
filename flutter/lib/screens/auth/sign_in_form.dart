@@ -18,7 +18,7 @@ class SignInForm extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'PHONE NUMBER, EMAIL, OR BBM PIN',
+          'PHONE NUMBER, EMAIL, OR GOCHAT PIN',
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,

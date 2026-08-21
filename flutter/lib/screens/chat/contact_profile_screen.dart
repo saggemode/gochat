@@ -201,7 +201,7 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
                     _buildActionButton(Icons.vibration_rounded, 'PING!', () {
                       widget.appState.sendPing(widget.conversation.id);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('💥 BBM PING! sent')),
+                        const SnackBar(content: Text('💥 GOCHAT PING! sent')),
                       );
                     }),
                     _buildActionButton(Icons.search_rounded, 'Search', () => Navigator.pop(context)),
@@ -211,7 +211,7 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
 
               const Divider(),
 
-              // ── BBM PIN Card ────────────────────────────────────────────────
+              // ── GOCHAT PIN Card ─────────────────────────────────────────────
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 padding: const EdgeInsets.all(16),
@@ -231,7 +231,7 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
                         const Icon(Icons.vpn_key_rounded, color: AppTheme.primary, size: 20),
                         const SizedBox(width: 8),
                         Text(
-                          isGroup ? 'GROUP BBM PIN' : 'BBM PIN',
+                          isGroup ? 'GROUP GOCHAT PIN' : 'GOCHAT PIN',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,

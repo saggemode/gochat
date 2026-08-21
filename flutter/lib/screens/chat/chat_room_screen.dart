@@ -150,7 +150,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
     widget.appState.sendPing(widget.conversation.id);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('💥 BBM PING! Nudge Sent'),
+        content: Text('💥 GOCHAT PING! Nudge Sent'),
         duration: Duration(seconds: 1),
       ),
     );
@@ -442,7 +442,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
           actions: [
             IconButton(
               icon: const Icon(Icons.vibration_rounded, color: Colors.amber),
-              tooltip: 'BBM PING!',
+              tooltip: 'GOCHAT PING!',
               onPressed: _handleSendPing,
             ),
             IconButton(
@@ -468,7 +468,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
                 }
               },
               itemBuilder: (ctx) => [
-                const PopupMenuItem(value: 'ping', child: Text('💥 Send BBM PING!')),
+                const PopupMenuItem(value: 'ping', child: Text('💥 Send GOCHAT PING!')),
                 const PopupMenuItem(value: 'product', child: Text('🛍️ Share Product')),
                 const PopupMenuItem(value: 'canvas', child: Text('🎨 Open Shared Canvas')),
                 const PopupMenuItem(value: 'poll', child: Text('📊 Create Live Poll')),
@@ -617,7 +617,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
                                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                     ),
                                     Text(
-                                      'wants to connect with you via BBM PIN',
+                                      'wants to connect with you via GOCHAT PIN',
                                       style: TextStyle(
                                         fontSize: 11,
                                         color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,

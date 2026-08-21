@@ -57,7 +57,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
     final cleanPin = pin.replaceAll('gochat:pin:', '').trim().toUpperCase();
     final user = await widget.appState.lookupUserByPin(cleanPin);
 
-    final title = user?.displayName ?? 'BBM Contact ($cleanPin)';
+    final title = user?.displayName ?? 'GOCHAT Contact ($cleanPin)';
     final avatar = user?.avatarUrl ?? '';
 
     final recipientId = user?.id ?? '';
@@ -110,7 +110,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppTheme.darkSurface : Colors.white,
-        title: const Text('Enter BBM PIN'),
+        title: const Text('Enter GOCHAT PIN'),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -213,7 +213,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
       children: [
         const SizedBox(height: 20),
         const Text(
-          'Point camera at a GoChat BBM QR code',
+          'Point camera at a GoChat QR code',
           style: TextStyle(color: Colors.white70, fontSize: 13),
         ),
         const Spacer(),
@@ -356,7 +356,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
               ),
               const SizedBox(height: 4),
               Text(
-                'BBM PIN: $_myPin',
+                'GOCHAT PIN: $_myPin',
                 style: const TextStyle(
                   fontSize: 14,
                   fontFamily: 'monospace',

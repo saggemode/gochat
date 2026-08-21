@@ -111,7 +111,7 @@ class ChatInputBar extends StatelessWidget {
                   ),
                   IconButton(
                     icon: const Icon(Icons.vibration_rounded, color: Colors.amber, size: 22),
-                    tooltip: 'BBM PING! Nudge',
+                    tooltip: 'GOCHAT PING! Nudge',
                     onPressed: onPingPressed,
                   ),
                   Expanded(

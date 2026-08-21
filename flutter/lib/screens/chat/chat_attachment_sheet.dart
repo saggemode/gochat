@@ -91,7 +91,7 @@ class ChatAttachmentSheet extends StatelessWidget {
               _buildOption(
                 context,
                 Icons.vibration_rounded,
-                'BBM PING!',
+                'GOCHAT PING!',
                 Colors.redAccent,
                 () {
                   Navigator.pop(context);
