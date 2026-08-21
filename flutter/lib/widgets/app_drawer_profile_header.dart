@@ -124,17 +124,21 @@ class AppDrawerProfileHeader extends StatelessWidget {
                         children: [
                           const Icon(Icons.vpn_key_rounded, color: AppTheme.primary, size: 12),
                           const SizedBox(width: 4),
-                          Text(
-                            'PIN: ${user!.pin}',
-                            style: const TextStyle(
-                              color: AppTheme.primary,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'monospace',
-                              letterSpacing: 1,
+                          Flexible(
+                            child: Text(
+                              'PIN: ${user!.pin}',
+                              style: const TextStyle(
+                                color: AppTheme.primary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'monospace',
+                                letterSpacing: 1,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 4),
                           const Icon(Icons.copy_rounded, color: AppTheme.primary, size: 12),
                         ],
                       ),
