@@ -54,8 +54,8 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
     final rawPin = _pinController.text.trim().toUpperCase();
     _debounceTimer?.cancel();
 
-    if (rawPin.length < 6) {
-      if (_foundUser != null || _isSearching) {
+    if (rawPin.length < 4) {
+      if (_foundUser != null || _isSearching || _error != null) {
         setState(() {
           _foundUser = null;
           _isSearching = false;
@@ -70,7 +70,7 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
       _error = null;
     });
 
-    _debounceTimer = Timer(const Duration(milliseconds: 200), () async {
+    _debounceTimer = Timer(const Duration(milliseconds: 250), () async {
       final user = await widget.appState.lookupUserByPin(rawPin);
       if (!mounted) return;
 
@@ -79,21 +79,21 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
         _foundUser = user;
         if (user != null) {
           _nameController.text = user.displayName;
+          _error = null;
+        } else if (rawPin.length >= 6) {
+          _error = 'No user found with PIN "$rawPin"';
         }
       });
     });
   }
 
   Future<void> _startChat() async {
+    if (_foundUser == null || _isSearching) {
+      setState(() => _error = 'Please enter a valid GOCHAT PIN');
+      return;
+    }
+
     final rawPin = _pinController.text.trim().toUpperCase();
-    if (rawPin.isEmpty) {
-      setState(() => _error = 'Please enter a GOCHAT PIN');
-      return;
-    }
-    if (rawPin.length < 4) {
-      setState(() => _error = 'PIN must be at least 4 characters');
-      return;
-    }
 
     final customName = _nameController.text.trim();
     final title = customName.isNotEmpty
@@ -397,19 +397,48 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
                   flex: 2,
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
-                      foregroundColor: Colors.black,
+                      backgroundColor: _foundUser != null
+                          ? AppTheme.primary
+                          : (isDark ? Colors.white12 : Colors.grey.shade300),
+                      foregroundColor: _foundUser != null
+                          ? Colors.black
+                          : (isDark ? Colors.white38 : Colors.grey.shade600),
+                      disabledBackgroundColor: isDark ? Colors.white12 : Colors.grey.shade300,
+                      disabledForegroundColor: isDark ? Colors.white38 : Colors.grey.shade600,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: _foundUser != null ? 2 : 0,
                     ),
-                    icon: const Icon(Icons.chat_bubble_rounded, size: 18),
+                    icon: _isSearching
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary),
+                          )
+                        : Icon(
+                            Icons.chat_bubble_rounded,
+                            size: 18,
+                            color: _foundUser != null
+                                ? Colors.black
+                                : (isDark ? Colors.white38 : Colors.grey.shade600),
+                          ),
                     label: Text(
-                      _foundUser != null ? 'Chat with ${_foundUser!.displayName.split(' ').first}' : 'Start Chat',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      _isSearching
+                          ? 'Searching PIN...'
+                          : (_foundUser != null
+                              ? 'Chat with ${_foundUser!.displayName.split(' ').first}'
+                              : 'Enter Valid PIN'),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: _foundUser != null
+                            ? Colors.black
+                            : (isDark ? Colors.white38 : Colors.grey.shade600),
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    onPressed: _startChat,
+                    onPressed: (_foundUser != null && !_isSearching) ? _startChat : null,
                   ),
                 ),
               ],
