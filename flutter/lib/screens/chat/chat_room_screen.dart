@@ -20,6 +20,7 @@ import 'chat_input_bar.dart';
 import 'chat_theme_customizer_sheet.dart';
 import 'contact_profile_screen.dart';
 import 'create_poll_dialog.dart';
+import '../stories/story_viewer_screen.dart';
 
 class ChatRoomScreen extends StatefulWidget {
   final Conversation conversation;
@@ -490,6 +491,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
     final typingText = widget.appState.getTypingText(widget.conversation.id);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final contactStories = widget.appState.getStoriesForConversation(widget.conversation);
+    final hasStory = contactStories != null && contactStories.stories.isNotEmpty;
+
     return AnimatedBuilder(
       animation: _shakeAnimation,
       builder: (context, child) {
@@ -499,26 +503,43 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       child: Scaffold(
         appBar: AppBar(
           titleSpacing: 0,
-          title: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () {
-              ContactProfileScreen.open(
-                context,
-                conversation: widget.conversation,
-                appState: widget.appState,
-              );
-            },
-            child: Row(
-              children: [
-                CustomAvatar(
-                  imageUrl: widget.conversation.avatarUrl,
-                  name: widget.conversation.title,
-                  radius: 18,
-                  isOnline: widget.conversation.isOnline,
-                  showOnlineBadge: true,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
+          title: Row(
+            children: [
+              CustomAvatar(
+                imageUrl: widget.conversation.avatarUrl,
+                name: widget.conversation.title,
+                radius: 18,
+                isOnline: widget.conversation.isOnline,
+                showOnlineBadge: true,
+                hasStory: hasStory,
+                onTap: hasStory
+                    ? () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => StoryViewerScreen(userStories: contactStories),
+                          ),
+                        );
+                      }
+                    : () {
+                        ContactProfileScreen.open(
+                          context,
+                          conversation: widget.conversation,
+                          appState: widget.appState,
+                        );
+                      },
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    ContactProfileScreen.open(
+                      context,
+                      conversation: widget.conversation,
+                      appState: widget.appState,
+                    );
+                  },
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -535,17 +556,17 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                         isTypingLive
                             ? typingText
                             : (widget.conversation.isOnline
-                                  ? 'Online'
-                                  : 'tap here for info'),
+                                  ? (hasStory ? '🟢 Online · Has Status' : 'Online')
+                                  : (hasStory ? '📸 Tap photo to view status' : 'tap here for info')),
                         style: TextStyle(
                           fontSize: 11,
                           color: isTypingLive
                               ? AppTheme.primary
                               : (widget.conversation.isOnline
                                     ? AppTheme.onlineGreen
-                                    : AppTheme.textMuted),
+                                    : (hasStory ? AppTheme.primary : AppTheme.textMuted)),
                           fontWeight:
-                              (isTypingLive || widget.conversation.isOnline)
+                              (isTypingLive || widget.conversation.isOnline || hasStory)
                               ? FontWeight.bold
                               : FontWeight.normal,
                         ),
@@ -553,8 +574,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
           actions: [
             IconButton(

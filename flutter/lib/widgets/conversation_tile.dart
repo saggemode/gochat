@@ -13,6 +13,8 @@ class ConversationTile extends StatelessWidget {
   final bool isPinned;
   final bool isTyping;
   final bool isGroup;
+  final bool hasStory;
+  final VoidCallback? onAvatarTap;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
@@ -28,6 +30,8 @@ class ConversationTile extends StatelessWidget {
     this.isPinned = false,
     this.isTyping = false,
     this.isGroup = false,
+    this.hasStory = false,
+    this.onAvatarTap,
     this.onTap,
     this.onLongPress,
   });
@@ -47,13 +51,15 @@ class ConversationTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
-              // Avatar
+              // Avatar with live story ring
               CustomAvatar(
                 imageUrl: avatarUrl,
                 name: name,
                 radius: 26,
                 isOnline: isOnline,
                 showOnlineBadge: !isGroup,
+                hasStory: hasStory,
+                onTap: onAvatarTap,
               ),
               const SizedBox(width: 14),
 

@@ -321,6 +321,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       }
                     }
 
+                    final convStories = widget.appState.getStoriesForConversation(c);
+                    final hasStory = convStories != null && convStories.stories.isNotEmpty;
+
                     return ConversationTile(
                       name: c.title,
                       avatarUrl: c.avatarUrl,
@@ -332,6 +335,17 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       isPinned: c.isPinned,
                       isTyping: isTyping,
                       isGroup: c.type == ConversationType.group,
+                      hasStory: hasStory,
+                      onAvatarTap: hasStory
+                          ? () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => StoryViewerScreen(userStories: convStories),
+                                ),
+                              );
+                            }
+                          : null,
                       onTap: () {
                         Navigator.push(
                           context,

@@ -436,8 +436,15 @@ class AppState extends ChangeNotifier {
           invitationStatus: InvitationStatus.accepted,
         );
         StorageService.saveCachedConversations(_conversations);
+        fetchStories(); // Refresh stories to show new contact's status immediately
         notifyListeners();
       }
+    }
+    // 4. Incoming Story Event
+    else if (eventType == 'story_created' ||
+        eventType == 'chat:stories' ||
+        data['type'] == 'story_created') {
+      fetchStories();
     }
     // 3. Incoming Live Typing Event
     else if (eventType == '6' ||
@@ -997,8 +1004,38 @@ class AppState extends ChangeNotifier {
         '🤝 Contact invitation accepted! You can now chat.',
       );
 
+      // Refresh stories so this contact's status shows up immediately
+      fetchStories();
+
       notifyListeners();
     }
+  }
+
+  // ── Stories / Status Helpers ────────────────────────────────────────────────
+  Future<void> fetchStories() async {
+    try {
+      final s = await ApiService.getStories();
+      if (s.isNotEmpty) {
+        _stories = s;
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  UserStories? getStoriesForUser(String userId) {
+    if (userId.isEmpty) return null;
+    return _stories.where((s) => s.userId == userId).firstOrNull;
+  }
+
+  UserStories? getStoriesForConversation(Conversation conv) {
+    final otherId = conv.memberIds.firstWhere(
+      (id) => id.isNotEmpty && id != _currentUser?.id,
+      orElse: () => conv.id,
+    );
+    return _stories.where((s) =>
+      s.userId == otherId ||
+      (s.userName.isNotEmpty && s.userName.toLowerCase() == conv.title.toLowerCase())
+    ).firstOrNull;
   }
 
   // ── Chat: Decline Contact Invitation ─────────────────────────────────────────
