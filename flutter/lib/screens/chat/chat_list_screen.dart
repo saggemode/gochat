@@ -298,17 +298,22 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     final timeStr = lastMsg != null
                         ? DateFormat('hh:mm a').format(lastMsg.createdAt)
                         : '';
+                    final isRecording = widget.appState.isUserRecordingAudio(c.id);
                     final isTyping = widget.appState.isUserTyping(c.id);
 
                     String msgPreview = 'No messages yet';
-                    if (c.invitationStatus == InvitationStatus.pendingIncoming) {
+                    if (isRecording) {
+                      msgPreview = '🎙️ recording audio...';
+                    } else if (isTyping) {
+                      msgPreview = 'typing...';
+                    } else if (c.invitationStatus == InvitationStatus.pendingIncoming) {
                       msgPreview = '🤝 Incoming invitation · Tap to accept';
                     } else if (c.invitationStatus == InvitationStatus.pendingOutgoing) {
                       msgPreview = '⏳ Invitation sent · Waiting for acceptance';
                     } else if (lastMsg != null) {
                       if (lastMsg.isPing) {
                         msgPreview = '💥 PING!!!';
-                      } else if (lastMsg.type == MessageType.voice) {
+                      } else if (lastMsg.type == MessageType.voice || lastMsg.type == MessageType.audio) {
                         msgPreview = '🎙️ Voice Note';
                       } else if (lastMsg.type == MessageType.poll) {
                         msgPreview = '📊 Poll';

@@ -288,9 +288,9 @@ class Message {
         case 3:
           return MessageType.audio;
         case 4:
-          return MessageType.voice;
-        case 5:
           return MessageType.file;
+        case 5:
+          return MessageType.voice;
         case 6:
           return MessageType.poll;
         case 7:
@@ -311,13 +311,15 @@ class Message {
         return MessageType.video;
       case '3':
       case 'audio':
+        return MessageType.audio;
       case '4':
-      case 'voice':
-        return MessageType.voice;
-      case '5':
       case 'file':
       case 'document':
         return MessageType.file;
+      case '5':
+      case 'voice':
+      case 'voice_note':
+        return MessageType.voice;
       case '6':
       case 'poll':
         return MessageType.poll;

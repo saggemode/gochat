@@ -17,6 +17,8 @@ class AppState extends ChangeNotifier {
   final Map<String, List<Message>> _messages = {};
   final Map<String, Set<String>> _typingUsers =
       {}; // convId -> set of userNames typing
+  final Map<String, Set<String>> _recordingUsers =
+      {}; // convId -> set of userNames recording audio
   final StreamController<String> _pingStreamController =
       StreamController<String>.broadcast();
   final StreamController<CallRecord> _incomingCallController =
@@ -476,6 +478,47 @@ class AppState extends ChangeNotifier {
         notifyListeners();
       }
     }
+    // 4. Incoming Recording Audio Event
+    else if (eventType == 'recording_audio' ||
+        eventType == 'EVENT_RECORDING_AUDIO' ||
+        data['type'] == 'recording_audio') {
+      final convId =
+          (data['conversation_id'] ??
+                  data['conversationId'] ??
+                  data['conv_id'] ??
+                  '')
+              .toString();
+      final isRecording =
+          data['is_recording'] == true || data['isRecording'] == true;
+      final userName =
+          (data['user_name'] ??
+                  data['userName'] ??
+                  data['actor_id'] ??
+                  'Contact')
+              .toString();
+      final senderId =
+          (data['user_id'] ?? data['userId'] ?? data['sender_id'] ?? '')
+              .toString();
+
+      // Ignore own recording broadcast
+      if (_currentUser?.id.isNotEmpty == true &&
+          senderId.isNotEmpty &&
+          senderId == _currentUser?.id) {
+        return;
+      }
+
+      if (convId.isNotEmpty) {
+        if (!_recordingUsers.containsKey(convId)) {
+          _recordingUsers[convId] = {};
+        }
+        if (isRecording) {
+          _recordingUsers[convId]!.add(userName);
+        } else {
+          _recordingUsers[convId]!.remove(userName);
+        }
+        notifyListeners();
+      }
+    }
     // 4. Incoming PING Nudge Event
     else if (eventType == 'ping' ||
         eventType == 'EVENT_PINNED' ||
@@ -741,6 +784,28 @@ class AppState extends ChangeNotifier {
     });
   }
 
+  // ── Chat: Send Live Recording Audio Event ──────────────────────────────────
+  void sendRecordingAudioEvent(String convId, bool isRecording) {
+    wsService.send({
+      'type': 'recording_audio',
+      'event_type': 'EVENT_RECORDING_AUDIO',
+      'conversation_id': convId,
+      'is_recording': isRecording,
+      'user_name': _currentUser?.displayName ?? 'User',
+      'user_id': _currentUser?.id ?? '',
+    });
+  }
+
+  bool isUserRecordingAudio(String convId) =>
+      _recordingUsers[convId]?.isNotEmpty == true;
+
+  String getRecordingAudioText(String convId) {
+    final users = _recordingUsers[convId];
+    if (users == null || users.isEmpty) return '';
+    if (users.length == 1) return '🎙️ recording audio...';
+    return '🎙️ ${users.length} people recording audio...';
+  }
+
   // ── Chat: Send BBM "PING!" Nudge ────────────────────────────────────────────
   Future<void> sendPing(String convId) async {
     HapticFeedback.heavyImpact();
@@ -786,11 +851,12 @@ class AppState extends ChangeNotifier {
     int typeInt = 0;
     if (type == MessageType.image) typeInt = 1;
     if (type == MessageType.video) typeInt = 2;
-    if (type == MessageType.voice || type == MessageType.audio) typeInt = 3;
+    if (type == MessageType.audio) typeInt = 3;
     if (type == MessageType.file) typeInt = 4;
-    if (type == MessageType.poll) typeInt = 5;
-    if (type == MessageType.product) typeInt = 6;
-    if (type == MessageType.ping) typeInt = 7;
+    if (type == MessageType.voice) typeInt = 5;
+    if (type == MessageType.poll) typeInt = 6;
+    if (type == MessageType.product) typeInt = 7;
+    if (type == MessageType.ping) typeInt = 8;
 
     try {
       final realMsg = await ApiService.sendMessage(
@@ -801,7 +867,9 @@ class AppState extends ChangeNotifier {
       );
 
       final msgToAdd = realMsg.copyWith(
-        mediaDuration: mediaDuration,
+        type: type,
+        mediaUrl: mediaUrl ?? realMsg.mediaUrl,
+        mediaDuration: mediaDuration ?? realMsg.mediaDuration,
         pollData: pollData,
         productData: productData,
         isPing: isPing,
@@ -840,7 +908,8 @@ class AppState extends ChangeNotifier {
           'sender_id': _currentUser?.id ?? 'u_me',
           'sender_name': _currentUser?.displayName ?? 'Me',
           'content': content,
-          'type': typeInt,
+          'type': type.name,
+          'media_type': type.name,
           'media_url': mediaUrl,
           'media_duration': mediaDuration,
           'is_ping': isPing,
@@ -863,7 +932,7 @@ class AppState extends ChangeNotifier {
         senderName: _currentUser?.displayName ?? 'Me',
         content: content,
         type: isPing ? MessageType.ping : type,
-        status: MessageStatus.delivered,
+        status: MessageStatus.pending,
         mediaUrl: mediaUrl,
         mediaDuration: mediaDuration,
         pollData: pollData,
@@ -872,16 +941,28 @@ class AppState extends ChangeNotifier {
         replyToId: replyToId,
         replyToText: replyToText,
         replyToSenderName: replyToSenderName,
-        isMe: true,
         createdAt: DateTime.now(),
+        isMe: true,
       );
+
       if (!_messages.containsKey(convId)) {
         _messages[convId] = [];
       }
       _messages[convId]!.add(optimisticMsg);
       await StorageService.saveCachedMessages(convId, _messages[convId]!);
 
-      // Broadcast over WebSocket
+      final idx = _conversations.indexWhere((c) => c.id == convId);
+      if (idx != -1) {
+        _conversations[idx] = _conversations[idx].copyWith(
+          lastMessage: optimisticMsg,
+          updatedAt: DateTime.now(),
+        );
+        final updated = _conversations.removeAt(idx);
+        _conversations.insert(0, updated);
+        await StorageService.saveCachedConversations(_conversations);
+      }
+
+      // Also broadcast optimistic message over WebSocket for immediate peer sync
       wsService.send({
         'type': 'new_message',
         'event_type': 'EVENT_NEW_MESSAGE',
@@ -892,7 +973,8 @@ class AppState extends ChangeNotifier {
           'sender_id': _currentUser?.id ?? 'u_me',
           'sender_name': _currentUser?.displayName ?? 'Me',
           'content': content,
-          'type': typeInt,
+          'type': type.name,
+          'media_type': type.name,
           'media_url': mediaUrl,
           'media_duration': mediaDuration,
           'is_ping': isPing,

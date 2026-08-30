@@ -10,7 +10,9 @@ class ChatInputBar extends StatefulWidget {
   final Message? replyingTo;
   final VoidCallback onCancelReply;
   final VoidCallback onAttachmentPressed;
-  final Future<void> Function() onVoiceNotePressed;
+  final Future<void> Function(VoiceRecordingResult result)? onVoiceNoteRecorded;
+  final Future<void> Function()? onVoiceNotePressed;
+  final ValueChanged<bool>? onRecordingStateChanged;
   final VoidCallback onPingPressed;
   final VoidCallback onSendPressed;
   final ValueChanged<String> onChanged;
@@ -22,7 +24,9 @@ class ChatInputBar extends StatefulWidget {
     this.replyingTo,
     required this.onCancelReply,
     required this.onAttachmentPressed,
-    required this.onVoiceNotePressed,
+    this.onVoiceNoteRecorded,
+    this.onVoiceNotePressed,
+    this.onRecordingStateChanged,
     required this.onPingPressed,
     required this.onSendPressed,
     required this.onChanged,
@@ -76,6 +80,8 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
       return;
     }
 
+    widget.onRecordingStateChanged?.call(true);
+
     _durationSub?.cancel();
     _durationSub = _recorder.durationStream.listen((secs) {
       if (mounted) {
@@ -101,6 +107,7 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
     _pulseController.stop();
     _pulseController.reset();
     _durationSub?.cancel();
+    widget.onRecordingStateChanged?.call(false);
 
     if (_isCancelling) {
       await _recorder.cancelRecording();
@@ -114,14 +121,22 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
 
     setState(() => _isRecording = false);
 
-    // Delegate actual send to parent
-    await widget.onVoiceNotePressed();
+    // Stop and retrieve the recording result
+    final result = await _recorder.stopRecording();
+    if (result != null) {
+      if (widget.onVoiceNoteRecorded != null) {
+        await widget.onVoiceNoteRecorded!(result);
+      } else if (widget.onVoiceNotePressed != null) {
+        await widget.onVoiceNotePressed!();
+      }
+    }
   }
 
   Future<void> _cancelRecording() async {
     _pulseController.stop();
     _pulseController.reset();
     _durationSub?.cancel();
+    widget.onRecordingStateChanged?.call(false);
     await _recorder.cancelRecording();
     setState(() {
       _isRecording = false;

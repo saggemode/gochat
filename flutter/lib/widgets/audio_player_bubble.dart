@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
+import '../core/constants/api_constants.dart';
 import '../core/theme/app_theme.dart';
 
 class AudioPlayerBubble extends StatefulWidget {
@@ -77,13 +79,46 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble> {
         });
       });
 
-      // Load audio
-      final duration = await _player!.setUrl(widget.audioUrl!);
+      final rawUrl = widget.audioUrl?.trim() ?? '';
+      if (rawUrl.isEmpty) {
+        _hasRealAudio = false;
+        return;
+      }
+
+      // 1. Check if local file path
+      final isLocalFile = !rawUrl.startsWith('http://') && !rawUrl.startsWith('https://');
+      if (isLocalFile) {
+        final file = File(rawUrl);
+        if (await file.exists()) {
+          final dur = await _player!.setFilePath(rawUrl);
+          if (dur != null && mounted) {
+            setState(() {
+              _totalDuration = dur;
+              _hasRealAudio = true;
+            });
+          }
+          return;
+        }
+      }
+
+      // 2. Remote URL: handle relative paths or localhost
+      String targetUrl = rawUrl;
+      if (targetUrl.startsWith('/')) {
+        targetUrl = '${ApiConstants.baseUrl}$targetUrl';
+      } else if (targetUrl.startsWith('http://localhost') || targetUrl.startsWith('http://127.0.0.1')) {
+        targetUrl = targetUrl.replaceFirst('http://localhost:8080', ApiConstants.baseUrl)
+                             .replaceFirst('http://127.0.0.1:8080', ApiConstants.baseUrl);
+      }
+
+      final duration = await _player!.setUrl(targetUrl);
       if (duration != null && mounted) {
-        setState(() => _totalDuration = duration);
+        setState(() {
+          _totalDuration = duration;
+          _hasRealAudio = true;
+        });
       }
     } catch (e) {
-      debugPrint('[AudioPlayerBubble] Failed to init player: $e');
+      debugPrint('[AudioPlayerBubble] Error initializing audio player: $e');
       _hasRealAudio = false;
     }
   }
@@ -107,14 +142,19 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble> {
   }
 
   void _toggleRealPlay() async {
-    if (_isPlaying) {
-      await _player!.pause();
-    } else {
-      if (_currentProgress >= 1.0) {
-        await _player!.seek(Duration.zero);
+    try {
+      if (_isPlaying) {
+        await _player!.pause();
+      } else {
+        if (_currentProgress >= 1.0) {
+          await _player!.seek(Duration.zero);
+        }
+        await _player!.setSpeed(_speed);
+        await _player!.play();
       }
-      await _player!.setSpeed(_speed);
-      await _player!.play();
+    } catch (e) {
+      debugPrint('[AudioPlayerBubble] Real play failed, falling back to simulated play: $e');
+      _toggleFallbackPlay();
     }
   }
 

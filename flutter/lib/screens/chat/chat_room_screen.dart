@@ -147,31 +147,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
     _scrollToBottom();
   }
 
-  Future<void> _handleSendVoiceNote() async {
-    final recorder = VoiceRecorderService();
-    final result = await recorder.stopRecording();
-
-    if (result == null) {
-      // Recording was cancelled or failed
-      return;
-    }
+  Future<void> _handleSendVoiceNote(VoiceRecordingResult result) async {
+    // Stop the live recording indicator
+    widget.appState.sendRecordingAudioEvent(widget.conversation.id, false);
 
     final messenger = ScaffoldMessenger.of(context);
-
-    // Show uploading indicator
-    messenger.showSnackBar(
-      const SnackBar(
-        content: Row(
-          children: [
-            SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)),
-            SizedBox(width: 12),
-            Text('Sending voice note...'),
-          ],
-        ),
-        backgroundColor: AppTheme.primary,
-        duration: Duration(seconds: 10),
-      ),
-    );
 
     // Upload the recorded file to /api/v1/media/upload
     String? mediaUrl;
@@ -182,10 +162,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       );
     } catch (_) {}
 
-    messenger.hideCurrentSnackBar();
+    // Fallback to local file path for zero-delay playback
+    mediaUrl ??= result.filePath;
 
     // Send the voice message with real URL and duration
-    widget.appState.sendMessage(
+    await widget.appState.sendMessage(
       widget.conversation.id,
       '🎙️ Voice Note (${VoiceRecorderService.formatDuration(result.durationSeconds)})',
       type: MessageType.voice,
@@ -493,6 +474,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
 
     final contactStories = widget.appState.getStoriesForConversation(widget.conversation);
     final hasStory = contactStories != null && contactStories.stories.isNotEmpty;
+    final isRecordingAudio = widget.appState.isUserRecordingAudio(widget.conversation.id);
+    final recordingText = widget.appState.getRecordingAudioText(widget.conversation.id);
 
     return AnimatedBuilder(
       animation: _shakeAnimation,
@@ -553,20 +536,24 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        isTypingLive
-                            ? typingText
-                            : (widget.conversation.isOnline
-                                  ? (hasStory ? '🟢 Online · Has Status' : 'Online')
-                                  : (hasStory ? '📸 Tap photo to view status' : 'tap here for info')),
+                        isRecordingAudio
+                            ? recordingText
+                            : (isTypingLive
+                                  ? typingText
+                                  : (widget.conversation.isOnline
+                                        ? (hasStory ? '🟢 Online · Has Status' : 'Online')
+                                        : (hasStory ? '📸 Tap photo to view status' : 'tap here for info'))),
                         style: TextStyle(
                           fontSize: 11,
-                          color: isTypingLive
+                          color: isRecordingAudio
                               ? AppTheme.primary
-                              : (widget.conversation.isOnline
-                                    ? AppTheme.onlineGreen
-                                    : (hasStory ? AppTheme.primary : AppTheme.textMuted)),
+                              : (isTypingLive
+                                    ? AppTheme.primary
+                                    : (widget.conversation.isOnline
+                                          ? AppTheme.onlineGreen
+                                          : (hasStory ? AppTheme.primary : AppTheme.textMuted))),
                           fontWeight:
-                              (isTypingLive || widget.conversation.isOnline || hasStory)
+                              (isRecordingAudio || isTypingLive || widget.conversation.isOnline || hasStory)
                               ? FontWeight.bold
                               : FontWeight.normal,
                         ),
@@ -936,7 +923,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                     replyingTo: _replyingTo,
                     onCancelReply: () => setState(() => _replyingTo = null),
                     onAttachmentPressed: _showAttachmentSheet,
-                    onVoiceNotePressed: _handleSendVoiceNote,
+                    onVoiceNoteRecorded: _handleSendVoiceNote,
+                    onRecordingStateChanged: (isRec) {
+                      widget.appState.sendRecordingAudioEvent(
+                        widget.conversation.id,
+                        isRec,
+                      );
+                    },
                     onPingPressed: _handleSendPing,
                     onSendPressed: _handleSend,
                     onChanged: _handleTypingChanged,
