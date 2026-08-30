@@ -2,18 +2,22 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/models/chat_theme.dart';
 import '../../core/models/models.dart';
 import '../../core/services/api_service.dart';
+import '../../core/services/chat_theme_service.dart';
 import '../../core/services/voice_recorder_service.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/chat_bubble.dart';
+import '../../widgets/chat_doodle_painter.dart';
 import '../../widgets/custom_avatar.dart';
 import '../../widgets/mini_app_modal.dart';
 import '../../widgets/primary_button.dart';
 import '../calls/active_call_screen.dart';
 import 'chat_attachment_sheet.dart';
 import 'chat_input_bar.dart';
+import 'chat_theme_customizer_sheet.dart';
 import 'contact_profile_screen.dart';
 import 'create_poll_dialog.dart';
 
@@ -39,6 +43,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
   Message? _replyingTo;
   Timer? _typingDebounceTimer;
   StreamSubscription<String>? _pingSubscription;
+  ChatTheme _activeTheme = ChatTheme.defaultEmerald;
 
   // Screen Shake Animation for BBM PING!
   late AnimationController _shakeController;
@@ -48,6 +53,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
   void initState() {
     super.initState();
     widget.appState.addListener(_onStateChange);
+
+    // Load active custom wallpaper and theme for this chat
+    ChatThemeService().getThemeForConversation(widget.conversation.id).then((t) {
+      if (mounted) setState(() => _activeTheme = t);
+    });
 
     _shakeController = AnimationController(
       duration: const Duration(milliseconds: 600),
@@ -433,6 +443,22 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
     );
   }
 
+  void _openThemeCustomizer() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ChatThemeCustomizerSheet(
+        conversationId: widget.conversation.id,
+        conversationName: widget.conversation.title,
+        currentTheme: _activeTheme,
+        onThemeChanged: (newTheme) {
+          setState(() => _activeTheme = newTheme);
+        },
+      ),
+    );
+  }
+
   Future<void> _startCall(CallType type) async {
     final recipientId = widget.conversation.memberIds.firstWhere(
       (id) => id.isNotEmpty && id != widget.appState.currentUser?.id,
@@ -532,6 +558,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
           ),
           actions: [
             IconButton(
+              icon: const Icon(Icons.palette_outlined),
+              tooltip: 'Wallpaper & Theme',
+              onPressed: _openThemeCustomizer,
+            ),
+            IconButton(
               icon: const Icon(Icons.vibration_rounded, color: Colors.amber),
               tooltip: 'GOCHAT PING!',
               onPressed: _handleSendPing,
@@ -548,7 +579,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
               color: isDark ? AppTheme.darkCard : Colors.white,
               iconColor: isDark ? AppTheme.iconColor : AppTheme.iconColorLight,
               onSelected: (val) {
-                if (val == 'canvas') {
+                if (val == 'theme') {
+                  _openThemeCustomizer();
+                } else if (val == 'canvas') {
                   _openMiniAppModal();
                 } else if (val == 'poll') {
                   _openCreatePollDialog();
@@ -559,6 +592,16 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                 }
               },
               itemBuilder: (ctx) => [
+                const PopupMenuItem(
+                  value: 'theme',
+                  child: Row(
+                    children: [
+                      Icon(Icons.palette_outlined, size: 18, color: AppTheme.primary),
+                      SizedBox(width: 10),
+                      Text('Wallpaper & Theme'),
+                    ],
+                  ),
+                ),
                 const PopupMenuItem(
                   value: 'ping',
                   child: Text('💥 Send GOCHAT PING!'),
@@ -579,54 +622,95 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
             ),
           ],
         ),
-        body: Container(
-          decoration: BoxDecoration(
-            color: isDark ? AppTheme.darkBg : AppTheme.lightBg,
-          ),
-          child: Column(
-            children: [
-              // ── Messages Stream ───────────────────────────────────────────
-              Expanded(
-                child: messages.isEmpty
-                    ? Center(
-                        child: Text(
-                          'Send a message to start the conversation',
-                          style: TextStyle(
-                            color: isDark
-                                ? AppTheme.textMuted
-                                : AppTheme.textMutedLight,
-                            fontSize: 13,
-                          ),
-                        ),
-                      )
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        itemCount: messages.length,
-                        itemBuilder: (ctx, idx) {
-                          final msg = messages[idx];
-                          return ChatBubble(
-                            message: msg,
-                            currentUserId: myId,
-                            onVotePoll: (optId) => widget.appState.votePoll(
-                              widget.conversation.id,
-                              msg.id,
-                              optId,
-                            ),
-                            onReact: (emoji) => widget.appState.toggleReaction(
-                              widget.conversation.id,
-                              msg.id,
-                              emoji,
-                            ),
-                            onReply: () {
-                              setState(() => _replyingTo = msg);
-                            },
-                            onOpenCanvas: _openMiniAppModal,
-                            onBuyProduct: _showBuyProductSheet,
-                          );
-                        },
+        body: Stack(
+          children: [
+            // ── Background Wallpaper / Gradient ──────────────────────────────
+            if (_activeTheme.wallpaperImageUrl != null && _activeTheme.wallpaperImageUrl!.isNotEmpty)
+              Positioned.fill(
+                child: Image.network(
+                  _activeTheme.wallpaperImageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: _activeTheme.bgGradient,
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
+                    ),
+                  ),
+                ),
+              )
+            else
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: _activeTheme.bgGradient,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                ),
               ),
+
+            // ── Doodle Pattern Overlay ────────────────────────────────────────
+            if (_activeTheme.showDoodlePattern)
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: ChatDoodlePainter(
+                    color: Colors.white,
+                    opacity: _activeTheme.doodleOpacity,
+                  ),
+                ),
+              ),
+
+            // ── Foreground Chat Messages & Input ──────────────────────────────
+            Column(
+              children: [
+                // ── Messages Stream ─────────────────────────────────────────
+                Expanded(
+                  child: messages.isEmpty
+                      ? Center(
+                          child: Text(
+                            'Send a message to start the conversation',
+                            style: TextStyle(
+                              color: isDark
+                                  ? AppTheme.textMuted
+                                  : AppTheme.textMutedLight,
+                              fontSize: 13,
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          itemCount: messages.length,
+                          itemBuilder: (ctx, idx) {
+                            final msg = messages[idx];
+                            return ChatBubble(
+                              message: msg,
+                              currentUserId: myId,
+                              chatTheme: _activeTheme,
+                              onVotePoll: (optId) => widget.appState.votePoll(
+                                widget.conversation.id,
+                                msg.id,
+                                optId,
+                              ),
+                              onReact: (emoji) => widget.appState.toggleReaction(
+                                widget.conversation.id,
+                                msg.id,
+                                emoji,
+                              ),
+                              onReply: () {
+                                setState(() => _replyingTo = msg);
+                              },
+                              onOpenCanvas: _openMiniAppModal,
+                              onBuyProduct: _showBuyProductSheet,
+                            );
+                          },
+                        ),
+                ),
 
               // ── Dynamic Input / Invitation Approval Bar ──────────────────
               Builder(
@@ -840,8 +924,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
               ),
             ],
           ),
-        ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

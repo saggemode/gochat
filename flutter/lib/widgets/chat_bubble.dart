@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import '../core/models/chat_theme.dart';
 import '../core/models/message.dart';
 import '../core/theme/app_theme.dart';
 import '../screens/chat/media_lightbox_screen.dart';
@@ -10,6 +11,7 @@ import 'poll_bubble.dart';
 class ChatBubble extends StatelessWidget {
   final Message message;
   final String currentUserId;
+  final ChatTheme? chatTheme;
   final Function(String optionId)? onVotePoll;
   final Function(String emoji)? onReact;
   final VoidCallback? onReply;
@@ -20,6 +22,7 @@ class ChatBubble extends StatelessWidget {
     super.key,
     required this.message,
     required this.currentUserId,
+    this.chatTheme,
     this.onVotePoll,
     this.onReact,
     this.onReply,
@@ -58,65 +61,20 @@ class ChatBubble extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder, width: 0.5),
             boxShadow: const [
-              BoxShadow(
-                color: Colors.black45,
-                blurRadius: 20,
-                offset: Offset(0, 8),
-              ),
+              BoxShadow(color: Colors.black38, blurRadius: 16, offset: Offset(0, 4)),
             ],
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Emoji Row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: ['👍', '❤️', '😂', '😮', '😢', '🙏', '🔥', '🎉'].map((emoji) {
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      onReact?.call(emoji);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      child: Text(
-                        emoji,
-                        style: const TextStyle(fontSize: 26),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 12),
-              const Divider(height: 1),
-              const SizedBox(height: 6),
-
-              // Action Options
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  TextButton.icon(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      onReply?.call();
-                    },
-                    icon: const Icon(Icons.reply_rounded, size: 18, color: AppTheme.primary),
-                    label: const Text('Reply', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
-                  ),
-                  TextButton.icon(
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: message.content));
-                      Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Message copied to clipboard'), duration: Duration(seconds: 1)),
-                      );
-                    },
-                    icon: Icon(Icons.copy_rounded, size: 18, color: isDark ? AppTheme.textLight : AppTheme.textDark),
-                    label: Text('Copy', style: TextStyle(color: isDark ? AppTheme.textLight : AppTheme.textDark)),
-                  ),
-                ],
-              ),
-            ],
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: ['❤️', '👍', '😂', '😮', '😢', '🙏', '🔥', '🎉'].map((emoji) {
+              return GestureDetector(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  onReact?.call(emoji);
+                },
+                child: Text(emoji, style: const TextStyle(fontSize: 28)),
+              );
+            }).toList(),
           ),
         );
       },
@@ -125,28 +83,93 @@ class ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isMe = message.isMe;
+    final isMe = message.isMe || (currentUserId.isNotEmpty && message.senderId == currentUserId);
     final timeStr = DateFormat('hh:mm a').format(message.createdAt);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Background color based on theme and ping type
+    final shape = chatTheme?.bubbleShape ?? BubbleShape.classic;
+
+    // Determine Bubble Color & Gradient
+    Gradient? bubbleGradient;
     Color bubbleColor;
-    if (message.isPing) {
-      bubbleColor = isMe
-          ? const Color(0xFF7F1D1D) // Dark red for sender
-          : const Color(0xFF991B1B); // Vivid red for receiver
-    } else if (isMe) {
-      bubbleColor = isDark ? AppTheme.senderBubbleDark : AppTheme.senderBubbleLight;
+    Color textColor;
+
+    if (isMe) {
+      if (chatTheme != null) {
+        bubbleGradient = LinearGradient(
+          colors: chatTheme!.senderGradient,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+        bubbleColor = chatTheme!.senderGradient.first;
+        textColor = chatTheme!.senderTextColor;
+      } else {
+        bubbleColor = isDark ? AppTheme.senderBubbleDark : AppTheme.senderBubbleLight;
+        textColor = isDark ? AppTheme.textLight : AppTheme.textDark;
+      }
     } else {
-      bubbleColor = isDark ? AppTheme.receiverBubbleDark : AppTheme.receiverBubbleLight;
+      if (chatTheme != null) {
+        bubbleColor = chatTheme!.receiverColor;
+        textColor = chatTheme!.receiverTextColor;
+      } else {
+        bubbleColor = isDark ? AppTheme.receiverBubbleDark : AppTheme.receiverBubbleLight;
+        textColor = isDark ? AppTheme.textLight : AppTheme.textDark;
+      }
     }
 
-    final textColor = isMe
-        ? (isDark ? AppTheme.textLight : AppTheme.textDark)
-        : (isDark ? AppTheme.textLight : AppTheme.textDark);
+    // Determine Border Radius based on shape
+    BorderRadius borderRadius;
+    switch (shape) {
+      case BubbleShape.glassmorphism:
+        borderRadius = BorderRadius.circular(18);
+        break;
+      case BubbleShape.minimalFlat:
+        borderRadius = BorderRadius.circular(8);
+        break;
+      case BubbleShape.neonGlow:
+        borderRadius = BorderRadius.circular(16);
+        break;
+      case BubbleShape.classic:
+        borderRadius = BorderRadius.only(
+          topLeft: const Radius.circular(16),
+          topRight: const Radius.circular(16),
+          bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(4),
+          bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(16),
+        );
+        break;
+    }
+
+    // Determine Border & Glow
+    Border? border;
+    List<BoxShadow> shadows = [];
+
+    if (message.isPing) {
+      border = Border.all(color: Colors.redAccent, width: 1.5);
+      shadows.add(BoxShadow(color: Colors.red.withValues(alpha: 0.3), blurRadius: 8));
+    } else if (shape == BubbleShape.neonGlow && chatTheme?.neonGlowColor != null) {
+      border = Border.all(
+        color: isMe ? chatTheme!.neonGlowColor! : chatTheme!.neonGlowColor!.withValues(alpha: 0.4),
+        width: 1.2,
+      );
+      if (isMe) {
+        shadows.add(BoxShadow(
+          color: chatTheme!.neonGlowColor!.withValues(alpha: 0.35),
+          blurRadius: 8,
+        ));
+      }
+    } else if (shape == BubbleShape.glassmorphism) {
+      border = Border.all(color: Colors.white.withValues(alpha: isMe ? 0.25 : 0.12), width: 1);
+      shadows.add(BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 6));
+    } else {
+      shadows.add(BoxShadow(
+        color: isDark ? Colors.black26 : Colors.black12,
+        blurRadius: 3,
+        offset: const Offset(0, 1),
+      ));
+    }
 
     return Dismissible(
-      key: ValueKey('msg_${message.id}_${message.createdAt.microsecondsSinceEpoch}'),
+      key: Key('reply_${message.id}'),
       direction: DismissDirection.startToEnd,
       confirmDismiss: (dir) async {
         HapticFeedback.lightImpact();
@@ -171,25 +194,11 @@ class ChatBubble extends StatelessWidget {
             ),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: bubbleColor,
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(16),
-                topRight: const Radius.circular(16),
-                bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(4),
-                bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(16),
-              ),
-              border: message.isPing
-                  ? Border.all(color: Colors.redAccent, width: 1.5)
-                  : null,
-              boxShadow: [
-                BoxShadow(
-                  color: message.isPing
-                      ? Colors.red.withValues(alpha: 0.3)
-                      : (isDark ? Colors.black26 : Colors.black12),
-                  blurRadius: message.isPing ? 8 : 3,
-                  offset: const Offset(0, 1),
-                ),
-              ],
+              gradient: bubbleGradient,
+              color: bubbleGradient == null ? bubbleColor : null,
+              borderRadius: borderRadius,
+              border: border,
+              boxShadow: shadows,
             ),
             child: Column(
               crossAxisAlignment:
