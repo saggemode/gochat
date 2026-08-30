@@ -125,7 +125,8 @@ class AppState extends ChangeNotifier {
         token = await ApiService.ensureValidToken();
       }
 
-      // Instant offline load from cache
+      // Instant offline load from SQLite database & cache
+      await MediaStorageService().init();
       final cachedConvs = await StorageService.getCachedConversations(
         currentUserId: _currentUser?.id ?? '',
       );
@@ -150,12 +151,33 @@ class AppState extends ChangeNotifier {
       if (token != null && ApiService.isValidJwt(token)) {
         wsService.addListener(_handleIncomingWebSocket);
         await wsService.connect();
+        await _flushOutbox();
         await refreshData();
       }
     } else {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  /// Flush any pending messages in SQLite outbox queue
+  Future<void> _flushOutbox() async {
+    try {
+      await SyncOutboxService().flush(
+        db: DatabaseService(),
+        wsService: wsService,
+        onMessageSent: (updatedMsg) {
+          final convMsgs = _messages[updatedMsg.conversationId];
+          if (convMsgs != null) {
+            final idx = convMsgs.indexWhere((m) => m.id == updatedMsg.id);
+            if (idx != -1) {
+              convMsgs[idx] = updatedMsg;
+              notifyListeners();
+            }
+          }
+        },
+      );
+    } catch (_) {}
   }
 
   // ── Refresh Live Data ───────────────────────────────────────────────────────
@@ -950,6 +972,20 @@ class AppState extends ChangeNotifier {
       }
       _messages[convId]!.add(optimisticMsg);
       await StorageService.saveCachedMessages(convId, _messages[convId]!);
+
+      // Save to SQLite Outbox queue for automatic background flush
+      await DatabaseService().addToOutbox(
+        messageId: optimisticMsg.id,
+        conversationId: convId,
+        payload: {
+          'content': content,
+          'type': typeInt,
+          'media_url': mediaUrl,
+          'media_duration': mediaDuration,
+          'poll_data': pollData?.toJson(),
+          'product_data': productData,
+        },
+      );
 
       final idx = _conversations.indexWhere((c) => c.id == convId);
       if (idx != -1) {

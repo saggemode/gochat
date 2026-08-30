@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
+import 'database_service.dart';
 
 class StorageService {
   static const String _keyToken = 'auth_token';
@@ -77,9 +78,11 @@ class StorageService {
     return prefs.getString(_keyThemeMode);
   }
 
-  // ── Offline Conversation Caching ────────────────────────────────────────────
+  // ── Offline Conversation Caching (SQLite) ──────────────────────────────────
   static Future<void> saveCachedConversations(List<Conversation> conversations) async {
     try {
+      await DatabaseService().saveConversations(conversations);
+      // Also backup to SharedPreferences as redundancy
       final prefs = await SharedPreferences.getInstance();
       final data = conversations.map((c) => c.toJson()).toList();
       await prefs.setString(_keyConversations, jsonEncode(data));
@@ -88,6 +91,10 @@ class StorageService {
 
   static Future<List<Conversation>> getCachedConversations({String currentUserId = ''}) async {
     try {
+      final dbConvs = await DatabaseService().getConversations(currentUserId: currentUserId);
+      if (dbConvs.isNotEmpty) return dbConvs;
+
+      // Fallback to SharedPreferences if DB empty
       final prefs = await SharedPreferences.getInstance();
       final str = prefs.getString(_keyConversations);
       if (str == null || str.isEmpty) return [];
@@ -100,9 +107,10 @@ class StorageService {
     }
   }
 
-  // ── Offline Message Caching ─────────────────────────────────────────────────
+  // ── Offline Message Caching (SQLite) ───────────────────────────────────────
   static Future<void> saveCachedMessages(String convId, List<Message> messages) async {
     try {
+      await DatabaseService().saveMessages(convId, messages);
       final prefs = await SharedPreferences.getInstance();
       final data = messages.map((m) => m.toJson()).toList();
       await prefs.setString('$_keyMessagesPrefix$convId', jsonEncode(data));
@@ -111,6 +119,9 @@ class StorageService {
 
   static Future<List<Message>> getCachedMessages(String convId, {String currentUserId = ''}) async {
     try {
+      final dbMsgs = await DatabaseService().getMessages(convId, currentUserId: currentUserId);
+      if (dbMsgs.isNotEmpty) return dbMsgs;
+
       final prefs = await SharedPreferences.getInstance();
       final str = prefs.getString('$_keyMessagesPrefix$convId');
       if (str == null || str.isEmpty) return [];

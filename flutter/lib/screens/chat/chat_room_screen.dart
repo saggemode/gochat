@@ -6,6 +6,7 @@ import '../../core/models/chat_theme.dart';
 import '../../core/models/models.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/chat_theme_service.dart';
+import '../../core/services/media_storage_service.dart';
 import '../../core/services/voice_recorder_service.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
@@ -153,17 +154,20 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
 
     final messenger = ScaffoldMessenger.of(context);
 
+    // Save to permanent GoChat Media/Voice Notes directory
+    final permanentPath = await MediaStorageService().saveVoiceNote(result.filePath);
+
     // Upload the recorded file to /api/v1/media/upload
     String? mediaUrl;
     try {
       mediaUrl = await ApiService.uploadMedia(
-        result.filePath,
+        permanentPath,
         mimeType: 'audio/mp4',
       );
     } catch (_) {}
 
-    // Fallback to local file path for zero-delay playback
-    mediaUrl ??= result.filePath;
+    // Fallback to permanent local file path for instant zero-delay playback
+    mediaUrl ??= permanentPath;
 
     // Send the voice message with real URL and duration
     await widget.appState.sendMessage(
