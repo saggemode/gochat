@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/models.dart';
@@ -14,8 +15,14 @@ class AppState extends ChangeNotifier {
 
   List<Conversation> _conversations = [];
   final Map<String, List<Message>> _messages = {};
-  final Map<String, Set<String>> _typingUsers = {}; // convId -> set of userNames typing
-  final StreamController<String> _pingStreamController = StreamController<String>.broadcast();
+  final Map<String, Set<String>> _typingUsers =
+      {}; // convId -> set of userNames typing
+  final StreamController<String> _pingStreamController =
+      StreamController<String>.broadcast();
+  final StreamController<CallRecord> _incomingCallController =
+      StreamController<CallRecord>.broadcast();
+  final StreamController<Map<String, dynamic>> _callSignalingController =
+      StreamController<Map<String, dynamic>>.broadcast();
 
   List<UserStories> _stories = [];
   List<CallRecord> _calls = [];
@@ -46,6 +53,9 @@ class AppState extends ChangeNotifier {
   List<StoreCoupon> get storeCoupons => _storeCoupons;
   CallRecord? get activeCall => _activeCall;
   Stream<String> get onPingReceived => _pingStreamController.stream;
+  Stream<CallRecord> get onIncomingCall => _incomingCallController.stream;
+  Stream<Map<String, dynamic>> get onCallSignaling =>
+      _callSignalingController.stream;
 
   List<Message> getMessagesFor(String convId) {
     return _messages[convId] ?? [];
@@ -66,7 +76,9 @@ class AppState extends ChangeNotifier {
   // ── Theme Mode ──────────────────────────────────────────────────────────────
   Future<void> setThemeMode(ThemeMode mode) async {
     _themeMode = mode;
-    final modeStr = mode == ThemeMode.light ? 'light' : (mode == ThemeMode.system ? 'system' : 'dark');
+    final modeStr = mode == ThemeMode.light
+        ? 'light'
+        : (mode == ThemeMode.system ? 'system' : 'dark');
     await StorageService.saveThemeMode(modeStr);
     notifyListeners();
   }
@@ -112,12 +124,17 @@ class AppState extends ChangeNotifier {
       }
 
       // Instant offline load from cache
-      final cachedConvs = await StorageService.getCachedConversations(currentUserId: _currentUser?.id ?? '');
+      final cachedConvs = await StorageService.getCachedConversations(
+        currentUserId: _currentUser?.id ?? '',
+      );
       if (cachedConvs.isNotEmpty) {
         _conversations = cachedConvs;
         // Preload cached messages
         for (final c in cachedConvs) {
-          final cachedMsgs = await StorageService.getCachedMessages(c.id, currentUserId: _currentUser?.id ?? '');
+          final cachedMsgs = await StorageService.getCachedMessages(
+            c.id,
+            currentUserId: _currentUser?.id ?? '',
+          );
           if (cachedMsgs.isNotEmpty) {
             _messages[c.id] = cachedMsgs;
           }
@@ -176,7 +193,9 @@ class AppState extends ChangeNotifier {
       if (_conversations.isNotEmpty) {
         await StorageService.saveCachedConversations(_conversations);
       } else {
-        final cached = await StorageService.getCachedConversations(currentUserId: _currentUser?.id ?? '');
+        final cached = await StorageService.getCachedConversations(
+          currentUserId: _currentUser?.id ?? '',
+        );
         if (cached.isNotEmpty) {
           _conversations = cached;
         }
@@ -190,13 +209,19 @@ class AppState extends ChangeNotifier {
             _messages[conv.id] = msgs;
             await StorageService.saveCachedMessages(conv.id, msgs);
           } else {
-            final cached = await StorageService.getCachedMessages(conv.id, currentUserId: _currentUser?.id ?? '');
+            final cached = await StorageService.getCachedMessages(
+              conv.id,
+              currentUserId: _currentUser?.id ?? '',
+            );
             if (cached.isNotEmpty) {
               _messages[conv.id] = cached;
             }
           }
         } catch (_) {
-          final cached = await StorageService.getCachedMessages(conv.id, currentUserId: _currentUser?.id ?? '');
+          final cached = await StorageService.getCachedMessages(
+            conv.id,
+            currentUserId: _currentUser?.id ?? '',
+          );
           if (cached.isNotEmpty) {
             _messages[conv.id] = cached;
           }
@@ -204,11 +229,16 @@ class AppState extends ChangeNotifier {
       }
     } catch (e) {
       // Offline fallback: load cached conversations & messages
-      final cachedConvs = await StorageService.getCachedConversations(currentUserId: _currentUser?.id ?? '');
+      final cachedConvs = await StorageService.getCachedConversations(
+        currentUserId: _currentUser?.id ?? '',
+      );
       if (cachedConvs.isNotEmpty) {
         _conversations = cachedConvs;
         for (final conv in _conversations) {
-          final cachedMsgs = await StorageService.getCachedMessages(conv.id, currentUserId: _currentUser?.id ?? '');
+          final cachedMsgs = await StorageService.getCachedMessages(
+            conv.id,
+            currentUserId: _currentUser?.id ?? '',
+          );
           if (cachedMsgs.isNotEmpty) {
             _messages[conv.id] = cachedMsgs;
           }
@@ -246,29 +276,45 @@ class AppState extends ChangeNotifier {
 
   // ── WebSocket Handler ───────────────────────────────────────────────────────
   void _handleIncomingWebSocket(Map<String, dynamic> data) {
-    final eventType = (data['event_type'] ?? data['eventType'] ?? data['event'] ?? data['type'] ?? '').toString();
-    final rawMsg = data['message'] ?? data['Message'] ?? data['payload'] ?? data['data'];
+    final eventType =
+        (data['event_type'] ??
+                data['eventType'] ??
+                data['event'] ??
+                data['type'] ??
+                '')
+            .toString();
+    final rawMsg =
+        data['message'] ?? data['Message'] ?? data['payload'] ?? data['data'];
 
     // 1. Incoming Chat Message Event (EVENT_NEW_MESSAGE = 0 or 1, or explicit message payload)
-    final isMessageEvent = eventType == '0' ||
+    final isMessageEvent =
+        eventType == '0' ||
         eventType == '1' ||
         eventType == 'EVENT_NEW_MESSAGE' ||
         eventType == 'new_message' ||
         eventType == 'chat_message' ||
         eventType == 'message' ||
-        (rawMsg is Map<String, dynamic> && (rawMsg.containsKey('content') || rawMsg.containsKey('conversation_id') || rawMsg.containsKey('conversationId')));
+        (rawMsg is Map<String, dynamic> &&
+            (rawMsg.containsKey('content') ||
+                rawMsg.containsKey('conversation_id') ||
+                rawMsg.containsKey('conversationId')));
 
     if (isMessageEvent) {
       final Map<String, dynamic> payload = (rawMsg is Map<String, dynamic>)
           ? rawMsg
           : data;
-      final msg = Message.fromJson(payload, currentUserId: _currentUser?.id ?? '');
+      final msg = Message.fromJson(
+        payload,
+        currentUserId: _currentUser?.id ?? '',
+      );
 
       if (msg.conversationId.isNotEmpty) {
         if (!_messages.containsKey(msg.conversationId)) {
           _messages[msg.conversationId] = [];
         }
-        final existingIdx = _messages[msg.conversationId]!.indexWhere((m) => m.id == msg.id);
+        final existingIdx = _messages[msg.conversationId]!.indexWhere(
+          (m) => m.id == msg.id,
+        );
         if (existingIdx == -1) {
           _messages[msg.conversationId]!.add(msg);
         } else {
@@ -276,13 +322,19 @@ class AppState extends ChangeNotifier {
         }
 
         // Update cached messages
-        StorageService.saveCachedMessages(msg.conversationId, _messages[msg.conversationId]!);
+        StorageService.saveCachedMessages(
+          msg.conversationId,
+          _messages[msg.conversationId]!,
+        );
 
         // Update or insert conversation in list
-        final convIdx = _conversations.indexWhere((c) => c.id == msg.conversationId);
+        final convIdx = _conversations.indexWhere(
+          (c) => c.id == msg.conversationId,
+        );
         if (convIdx != -1) {
           final currentTitle = _conversations[convIdx].title;
-          final shouldUpdateTitle = (currentTitle.startsWith('User_') ||
+          final shouldUpdateTitle =
+              (currentTitle.startsWith('User_') ||
                   currentTitle.startsWith('GOCHAT User') ||
                   currentTitle == 'Contact' ||
                   currentTitle.startsWith('BBM User')) &&
@@ -299,25 +351,34 @@ class AppState extends ChangeNotifier {
           _conversations.insert(0, updated);
         } else {
           // New conversation created by sender - add to receiver's list as incoming invitation if not from me
-          final isFromMe = msg.isMe || (_currentUser?.id.isNotEmpty == true && msg.senderId == _currentUser?.id);
+          final isFromMe =
+              msg.isMe ||
+              (_currentUser?.id.isNotEmpty == true &&
+                  msg.senderId == _currentUser?.id);
           final newConv = Conversation(
             id: msg.conversationId,
-            title: msg.senderName.isNotEmpty && msg.senderName != 'Me' ? msg.senderName : 'Contact',
+            title: msg.senderName.isNotEmpty && msg.senderName != 'Me'
+                ? msg.senderName
+                : 'Contact',
             lastMessage: msg,
             type: ConversationType.direct,
-            invitationStatus: isFromMe ? InvitationStatus.pendingOutgoing : InvitationStatus.pendingIncoming,
+            invitationStatus: isFromMe
+                ? InvitationStatus.pendingOutgoing
+                : InvitationStatus.pendingIncoming,
             invitationSenderId: msg.senderId,
             updatedAt: DateTime.now(),
           );
           _conversations.insert(0, newConv);
           // Sync full conversation details from server in background
-          ApiService.getConversations().then((convs) {
-            if (convs.isNotEmpty) {
-              _conversations = convs;
-              StorageService.saveCachedConversations(_conversations);
-              notifyListeners();
-            }
-          }).catchError((_) {});
+          ApiService.getConversations()
+              .then((convs) {
+                if (convs.isNotEmpty) {
+                  _conversations = convs;
+                  StorageService.saveCachedConversations(_conversations);
+                  notifyListeners();
+                }
+              })
+              .catchError((_) {});
         }
         StorageService.saveCachedConversations(_conversations);
 
@@ -331,7 +392,8 @@ class AppState extends ChangeNotifier {
       }
     }
     // 2. Incoming Profile Update Event
-    else if (eventType == 'user_profile_updated' || eventType == 'EVENT_USER_PROFILE_UPDATED') {
+    else if (eventType == 'user_profile_updated' ||
+        eventType == 'EVENT_USER_PROFILE_UPDATED') {
       final userData = data['user'] ?? data['payload'] ?? data['data'];
       if (userData is Map<String, dynamic>) {
         final userId = userData['id']?.toString() ?? '';
@@ -342,7 +404,9 @@ class AppState extends ChangeNotifier {
           bool changed = false;
           for (int i = 0; i < _conversations.length; i++) {
             final conv = _conversations[i];
-            if (conv.memberIds.contains(userId) || conv.id == userId || conv.partnerPin == userData['pin']) {
+            if (conv.memberIds.contains(userId) ||
+                conv.id == userId ||
+                conv.partnerPin == userData['pin']) {
               _conversations[i] = conv.copyWith(
                 title: newName,
                 avatarUrl: newAvatar.isNotEmpty ? newAvatar : conv.avatarUrl,
@@ -358,8 +422,14 @@ class AppState extends ChangeNotifier {
       }
     }
     // 3. Incoming Invitation Accepted Event
-    else if (eventType == 'invitation_accepted' || data['type'] == 'invitation_accepted') {
-      final convId = (data['conversation_id'] ?? data['conversationId'] ?? data['conv_id'] ?? '').toString();
+    else if (eventType == 'invitation_accepted' ||
+        data['type'] == 'invitation_accepted') {
+      final convId =
+          (data['conversation_id'] ??
+                  data['conversationId'] ??
+                  data['conv_id'] ??
+                  '')
+              .toString();
       final idx = _conversations.indexWhere((c) => c.id == convId);
       if (idx != -1) {
         _conversations[idx] = _conversations[idx].copyWith(
@@ -370,10 +440,22 @@ class AppState extends ChangeNotifier {
       }
     }
     // 3. Incoming Live Typing Event
-    else if (eventType == '6' || eventType == 'EVENT_TYPING' || eventType == 'typing') {
-      final convId = (data['conversation_id'] ?? data['conversationId'] ?? data['conv_id'] ?? '').toString();
+    else if (eventType == '6' ||
+        eventType == 'EVENT_TYPING' ||
+        eventType == 'typing') {
+      final convId =
+          (data['conversation_id'] ??
+                  data['conversationId'] ??
+                  data['conv_id'] ??
+                  '')
+              .toString();
       final isTyping = data['is_typing'] == true || data['isTyping'] == true;
-      final userName = (data['user_name'] ?? data['userName'] ?? data['actor_id'] ?? 'Contact').toString();
+      final userName =
+          (data['user_name'] ??
+                  data['userName'] ??
+                  data['actor_id'] ??
+                  'Contact')
+              .toString();
 
       if (convId.isNotEmpty) {
         if (!_typingUsers.containsKey(convId)) {
@@ -388,12 +470,76 @@ class AppState extends ChangeNotifier {
       }
     }
     // 4. Incoming PING Nudge Event
-    else if (eventType == 'ping' || eventType == 'EVENT_PINNED' || data['is_ping'] == true) {
-      final convId = (data['conversation_id'] ?? data['conversationId'] ?? data['conv_id'] ?? '').toString();
+    else if (eventType == 'ping' ||
+        eventType == 'EVENT_PINNED' ||
+        data['is_ping'] == true) {
+      final convId =
+          (data['conversation_id'] ??
+                  data['conversationId'] ??
+                  data['conv_id'] ??
+                  '')
+              .toString();
       if (convId.isNotEmpty) {
         HapticFeedback.vibrate();
         _pingStreamController.add(convId);
         notifyListeners();
+      }
+    }
+    // 5. Incoming Call Events (call_initiated, call_accepted, call_rejected, call_ended, call_signaling)
+    else if (eventType.startsWith('call_') ||
+        data.containsKey('call_payload')) {
+      Map<String, dynamic> callPayload = {};
+      if (data['call_payload'] != null) {
+        if (data['call_payload'] is Map<String, dynamic>) {
+          callPayload = data['call_payload'] as Map<String, dynamic>;
+        } else if (data['call_payload'] is String) {
+          try {
+            callPayload =
+                jsonDecode(data['call_payload'] as String)
+                    as Map<String, dynamic>;
+          } catch (_) {}
+        }
+      } else if (data['call'] is Map<String, dynamic>) {
+        callPayload = data['call'] as Map<String, dynamic>;
+      } else {
+        callPayload = data;
+      }
+
+      if (eventType == 'call_initiated') {
+        final incomingCall = CallRecord.fromJson(
+          callPayload,
+          currentUserId: _currentUser?.id ?? '',
+        );
+        _activeCall = incomingCall;
+        _calls.removeWhere((c) => c.id == incomingCall.id);
+        _calls.insert(0, incomingCall);
+        HapticFeedback.vibrate();
+        _incomingCallController.add(incomingCall);
+        notifyListeners();
+      } else if (eventType == 'call_accepted') {
+        if (_activeCall != null) {
+          _activeCall = _activeCall!.copyWith(status: CallStatus.active);
+          final idx = _calls.indexWhere((c) => c.id == _activeCall!.id);
+          if (idx != -1) {
+            _calls[idx] = _activeCall!;
+          }
+          notifyListeners();
+        }
+      } else if (eventType == 'call_rejected' || eventType == 'call_ended') {
+        if (_activeCall != null) {
+          final isRejected = eventType == 'call_rejected';
+          _activeCall = _activeCall!.copyWith(
+            status: isRejected ? CallStatus.rejected : CallStatus.ended,
+          );
+          final idx = _calls.indexWhere((c) => c.id == _activeCall!.id);
+          if (idx != -1) {
+            _calls[idx] = _activeCall!;
+          }
+          _activeCall = null;
+          notifyListeners();
+        }
+      } else if (eventType == 'call_signaling') {
+        _callSignalingController.add(callPayload);
       }
     }
   }
@@ -417,11 +563,16 @@ class AppState extends ChangeNotifier {
       }
 
       // 1. Immediately hydrate local conversations and messages for instant rendering
-      final localConvs = await StorageService.getCachedConversations(currentUserId: _currentUser?.id ?? '');
+      final localConvs = await StorageService.getCachedConversations(
+        currentUserId: _currentUser?.id ?? '',
+      );
       if (localConvs.isNotEmpty) {
         _conversations = localConvs;
         for (final conv in _conversations) {
-          final cachedMsgs = await StorageService.getCachedMessages(conv.id, currentUserId: _currentUser?.id ?? '');
+          final cachedMsgs = await StorageService.getCachedMessages(
+            conv.id,
+            currentUserId: _currentUser?.id ?? '',
+          );
           if (cachedMsgs.isNotEmpty) {
             _messages[conv.id] = cachedMsgs;
           }
@@ -438,8 +589,8 @@ class AppState extends ChangeNotifier {
       final cachedUser = await StorageService.getUser();
       if (cachedUser != null &&
           (cachedUser.email == email ||
-           cachedUser.phone == email ||
-           cachedUser.pin == email.toUpperCase())) {
+              cachedUser.phone == email ||
+              cachedUser.pin == email.toUpperCase())) {
         _currentUser = cachedUser;
       } else {
         rethrow;
@@ -489,10 +640,14 @@ class AppState extends ChangeNotifier {
       // Graceful fallback for offline / server cold boot
       if (_currentUser == null) {
         final fallbackId = 'user_${DateTime.now().millisecondsSinceEpoch}';
-        final cleanPin = fallbackId.substring(fallbackId.length - 6).toUpperCase();
+        final cleanPin = fallbackId
+            .substring(fallbackId.length - 6)
+            .toUpperCase();
         final assignedName = displayName.isNotEmpty
             ? displayName
-            : (phone.isNotEmpty ? 'User ${phone.length > 4 ? phone.substring(phone.length - 4) : phone}' : 'GoChat User');
+            : (phone.isNotEmpty
+                  ? 'User ${phone.length > 4 ? phone.substring(phone.length - 4) : phone}'
+                  : 'GoChat User');
         _currentUser = User(
           id: fallbackId,
           displayName: assignedName,
@@ -877,7 +1032,8 @@ class AppState extends ChangeNotifier {
 
     // 2. Check local conversations
     for (final conv in _conversations) {
-      if (conv.title.toUpperCase().contains(cleanPin) || conv.id.toUpperCase().contains(cleanPin)) {
+      if (conv.title.toUpperCase().contains(cleanPin) ||
+          conv.id.toUpperCase().contains(cleanPin)) {
         return User(
           id: conv.id,
           displayName: conv.title,
@@ -893,7 +1049,11 @@ class AppState extends ChangeNotifier {
   }
 
   // ── Chat: Poll Voting ───────────────────────────────────────────────────────
-  Future<void> votePoll(String convId, String messageId, String optionId) async {
+  Future<void> votePoll(
+    String convId,
+    String messageId,
+    String optionId,
+  ) async {
     try {
       await ApiService.votePoll(pollId: messageId, optionId: optionId);
       final msgs = await ApiService.getMessages(convId);
@@ -927,7 +1087,9 @@ class AppState extends ChangeNotifier {
     HapticFeedback.selectionClick();
     final idx = _products.indexWhere((p) => p.id == productId);
     if (idx != -1) {
-      _products[idx] = _products[idx].copyWith(isWishlisted: !_products[idx].isWishlisted);
+      _products[idx] = _products[idx].copyWith(
+        isWishlisted: !_products[idx].isWishlisted,
+      );
       notifyListeners();
     }
   }
@@ -1013,7 +1175,10 @@ class AppState extends ChangeNotifier {
   }
 
   // ── Product Variants Management ─────────────────────────────────────────────
-  Future<ProductVariant> addProductVariant(String productId, ProductVariant variant) async {
+  Future<ProductVariant> addProductVariant(
+    String productId,
+    ProductVariant variant,
+  ) async {
     ProductVariant created = variant;
     try {
       created = await ApiService.createProductVariant(productId, variant);
@@ -1058,16 +1223,167 @@ class AppState extends ChangeNotifier {
     return [];
   }
 
-  // ── WebRTC & Calls ──────────────────────────────────────────────────────────
-  void startCall(CallRecord call) {
-    _activeCall = call;
-    _calls.insert(0, call);
-    notifyListeners();
+  // ── Order Fulfillment & Status ──────────────────────────────────────────────
+  Future<void> updateOrderStatus(String orderId, String newStatus) async {
+    try {
+      await ApiService.updateOrderStatus(orderId, newStatus);
+    } catch (_) {}
+
+    final idx = _sellerOrders.indexWhere((o) => o.id == orderId);
+    if (idx != -1) {
+      final updated = MarketplaceOrder(
+        id: _sellerOrders[idx].id,
+        orderNumber: _sellerOrders[idx].orderNumber,
+        buyerId: _sellerOrders[idx].buyerId,
+        buyerName: _sellerOrders[idx].buyerName,
+        buyerPhone: _sellerOrders[idx].buyerPhone,
+        buyerPin: _sellerOrders[idx].buyerPin,
+        sellerId: _sellerOrders[idx].sellerId,
+        storeName: _sellerOrders[idx].storeName,
+        grandTotal: _sellerOrders[idx].grandTotal,
+        status: newStatus,
+        items: _sellerOrders[idx].items,
+        createdAt: _sellerOrders[idx].createdAt,
+        shippingAddress: _sellerOrders[idx].shippingAddress,
+      );
+      _sellerOrders[idx] = updated;
+      notifyListeners();
+    }
   }
 
-  void endCall() {
-    _activeCall = null;
+  Future<void> addProductReview(
+    String productId,
+    double rating,
+    String comment,
+  ) async {
+    try {
+      await ApiService.createReview(productId, rating, comment);
+    } catch (_) {}
+  }
+
+  Future<void> askProductQuestion(String productId, String question) async {
+    try {
+      await ApiService.askProductQuestion(productId, question);
+    } catch (_) {}
+  }
+
+  // ── WebRTC & Calls ──────────────────────────────────────────────────────────
+  Future<CallRecord> startCall({
+    required String receiverId,
+    required String receiverName,
+    String receiverAvatar = '',
+    CallType type = CallType.audio,
+  }) async {
+    final optimisticCall = CallRecord(
+      id: 'call_${DateTime.now().millisecondsSinceEpoch}',
+      callerId: _currentUser?.id ?? 'u_me',
+      callerName: _currentUser?.displayName ?? 'Me',
+      callerAvatar: _currentUser?.avatarUrl ?? '',
+      receiverId: receiverId,
+      receiverName: receiverName,
+      receiverAvatar: receiverAvatar,
+      type: type,
+      direction: CallDirection.outgoing,
+      status: CallStatus.dialing,
+      timestamp: DateTime.now(),
+    );
+
+    _activeCall = optimisticCall;
+    _calls.removeWhere((c) => c.id == optimisticCall.id);
+    _calls.insert(0, optimisticCall);
     notifyListeners();
+
+    try {
+      final backendCall = await ApiService.startCall(
+        receiverId: receiverId,
+        type: type == CallType.video ? 'video' : 'voice',
+      );
+      _activeCall = backendCall.copyWith(
+        receiverName: receiverName,
+        receiverAvatar: receiverAvatar,
+      );
+      final idx = _calls.indexWhere(
+        (c) => c.id == optimisticCall.id || c.id == backendCall.id,
+      );
+      if (idx != -1) {
+        _calls[idx] = _activeCall!;
+      } else {
+        _calls.insert(0, _activeCall!);
+      }
+      notifyListeners();
+      return _activeCall!;
+    } catch (_) {
+      return optimisticCall;
+    }
+  }
+
+  Future<void> acceptCall(String callId) async {
+    if (_activeCall != null) {
+      _activeCall = _activeCall!.copyWith(status: CallStatus.active);
+      final idx = _calls.indexWhere((c) => c.id == callId);
+      if (idx != -1) {
+        _calls[idx] = _activeCall!;
+      }
+      notifyListeners();
+    }
+    try {
+      final res = await ApiService.acceptCall(callId);
+      if (_activeCall != null && _activeCall!.id == callId) {
+        _activeCall = res;
+        final idx = _calls.indexWhere((c) => c.id == callId);
+        if (idx != -1) _calls[idx] = res;
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> rejectCall(String callId, {bool isBusy = false}) async {
+    if (_activeCall != null && _activeCall!.id == callId) {
+      _activeCall = _activeCall!.copyWith(
+        status: isBusy ? CallStatus.busy : CallStatus.rejected,
+      );
+      final idx = _calls.indexWhere((c) => c.id == callId);
+      if (idx != -1) _calls[idx] = _activeCall!;
+      _activeCall = null;
+      notifyListeners();
+    }
+    try {
+      await ApiService.rejectCall(callId, isBusy: isBusy);
+    } catch (_) {}
+  }
+
+  Future<void> endCall([String? callId]) async {
+    final targetId = callId ?? _activeCall?.id;
+    if (_activeCall != null) {
+      _activeCall = _activeCall!.copyWith(status: CallStatus.ended);
+      final idx = _calls.indexWhere((c) => c.id == _activeCall!.id);
+      if (idx != -1) _calls[idx] = _activeCall!;
+      _activeCall = null;
+      notifyListeners();
+    }
+    if (targetId != null && targetId.isNotEmpty) {
+      try {
+        await ApiService.endCall(targetId);
+      } catch (_) {}
+    }
+  }
+
+  Future<void> sendSignalingMessage({
+    required String callId,
+    required String receiverId,
+    required String type,
+    String? sdp,
+    String? candidate,
+  }) async {
+    try {
+      await ApiService.sendSignalingMessage(
+        callId: callId,
+        receiverId: receiverId,
+        type: type,
+        sdp: sdp,
+        candidate: candidate,
+      );
+    } catch (_) {}
   }
 
   // ── Stories & Status Updates ───────────────────────────────────────────────
@@ -1083,13 +1399,16 @@ class AppState extends ChangeNotifier {
     if (myIdx != -1) {
       _stories[myIdx].stories.insert(0, newStory);
     } else {
-      _stories.insert(0, UserStories(
-        userId: _currentUser?.id ?? 'u_me',
-        userName: _currentUser?.displayName ?? 'My status',
-        userAvatar: _currentUser?.avatarUrl ?? '',
-        stories: [newStory],
-        isMe: true,
-      ));
+      _stories.insert(
+        0,
+        UserStories(
+          userId: _currentUser?.id ?? 'u_me',
+          userName: _currentUser?.displayName ?? 'My status',
+          userAvatar: _currentUser?.avatarUrl ?? '',
+          stories: [newStory],
+          isMe: true,
+        ),
+      );
     }
     notifyListeners();
   }
@@ -1097,6 +1416,8 @@ class AppState extends ChangeNotifier {
   @override
   void dispose() {
     _pingStreamController.close();
+    _incomingCallController.close();
+    _callSignalingController.close();
     wsService.disconnect();
     super.dispose();
   }

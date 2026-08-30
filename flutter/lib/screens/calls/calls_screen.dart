@@ -14,32 +14,48 @@ class CallsScreen extends StatelessWidget {
   Widget _buildDirectionIcon(CallDirection dir) {
     switch (dir) {
       case CallDirection.incoming:
-        return const Icon(Icons.call_received_rounded, size: 16, color: AppTheme.onlineGreen);
+        return const Icon(
+          Icons.call_received_rounded,
+          size: 16,
+          color: AppTheme.onlineGreen,
+        );
       case CallDirection.outgoing:
-        return const Icon(Icons.call_made_rounded, size: 16, color: AppTheme.onlineGreen);
+        return const Icon(
+          Icons.call_made_rounded,
+          size: 16,
+          color: AppTheme.onlineGreen,
+        );
       case CallDirection.missed:
-        return const Icon(Icons.call_missed_rounded, size: 16, color: AppTheme.dangerRed);
+        return const Icon(
+          Icons.call_missed_rounded,
+          size: 16,
+          color: AppTheme.dangerRed,
+        );
     }
   }
 
-  void _startCall(BuildContext context, CallRecord record, CallType type) {
-    final newCall = CallRecord(
-      id: 'call_${DateTime.now().millisecondsSinceEpoch}',
-      callerId: record.callerId,
-      callerName: record.callerName,
-      callerAvatar: record.callerAvatar,
+  Future<void> _startCall(
+    BuildContext context,
+    CallRecord record,
+    CallType type,
+  ) async {
+    final myId = appState.currentUser?.id ?? '';
+    final targetId = (record.callerId == myId && record.receiverId.isNotEmpty)
+        ? record.receiverId
+        : (record.callerId.isNotEmpty ? record.callerId : record.receiverId);
+
+    final call = await appState.startCall(
+      receiverId: targetId,
+      receiverName: record.partnerName,
+      receiverAvatar: record.partnerAvatar,
       type: type,
-      direction: CallDirection.outgoing,
-      timestamp: DateTime.now(),
     );
-    appState.startCall(newCall);
+
+    if (!context.mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ActiveCallScreen(
-          callRecord: appState.activeCall!,
-          appState: appState,
-        ),
+        builder: (_) => ActiveCallScreen(callRecord: call, appState: appState),
       ),
     );
   }
@@ -74,7 +90,11 @@ class CallsScreen extends StatelessWidget {
                 color: AppTheme.primary,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.link_rounded, color: Colors.black, size: 24),
+              child: const Icon(
+                Icons.link_rounded,
+                color: Colors.black,
+                size: 24,
+              ),
             ),
             title: Text(
               'Create call link',
@@ -92,7 +112,9 @@ class CallsScreen extends StatelessWidget {
             ),
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('🔗 Call link generated & copied to clipboard')),
+                const SnackBar(
+                  content: Text('🔗 Call link generated & copied to clipboard'),
+                ),
               );
             },
           ),
@@ -105,12 +127,15 @@ class CallsScreen extends StatelessWidget {
               child: EmptyStateView(
                 icon: Icons.phone_missed_rounded,
                 title: 'No Recent Calls',
-                description: 'To start a voice or video call with a contact, open a chat room and tap the call icon.',
+                description:
+                    'To start a voice or video call with a contact, open a chat room and tap the call icon.',
               ),
             )
           else
             ...calls.map((call) {
-              final dateStr = DateFormat('MMM dd, hh:mm a').format(call.timestamp);
+              final dateStr = DateFormat(
+                'MMM dd, hh:mm a',
+              ).format(call.timestamp);
               return ListTile(
                 leading: CustomAvatar(
                   imageUrl: call.callerAvatar,
@@ -132,14 +157,18 @@ class CallsScreen extends StatelessWidget {
                       dateStr,
                       style: TextStyle(
                         fontSize: 12,
-                        color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
+                        color: isDark
+                            ? AppTheme.textMuted
+                            : AppTheme.textMutedLight,
                       ),
                     ),
                   ],
                 ),
                 trailing: IconButton(
                   icon: Icon(
-                    call.type == CallType.video ? Icons.videocam_rounded : Icons.call_rounded,
+                    call.type == CallType.video
+                        ? Icons.videocam_rounded
+                        : Icons.call_rounded,
                     color: AppTheme.primary,
                   ),
                   onPressed: () => _startCall(context, call, call.type),

@@ -40,6 +40,7 @@ import (
 	"gochat/services/gateway/ws"
 
 	"encoding/json"
+	"strings"
 
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc/resolver"
@@ -206,8 +207,8 @@ func main() {
 	// Media service requires a larger message size limit for client streaming uploads
 	mediaOpts := []grpc.DialOption{
 		grpc.WithDefaultCallOptions(
-			grpc.MaxCallRecvMsgSize(110 * 1024 * 1024),
-			grpc.MaxCallSendMsgSize(110 * 1024 * 1024),
+			grpc.MaxCallRecvMsgSize(110*1024*1024),
+			grpc.MaxCallSendMsgSize(110*1024*1024),
 		),
 	}
 	mediaConn, err := dialService("media-service", cfg.MediaGRPCAddr, mediaOpts...)
@@ -278,7 +279,7 @@ func main() {
 	r.GET("/healthz", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "healthy", "service": "api-gateway"})
 	})
-//hhshshh
+	//hhshshh
 	// ── Interactive API Documentation ─────────────────────────────────────────
 	r.GET("/openapi.json", docsHandler.OpenAPIJSON)
 	r.GET("/docs", docsHandler.SwaggerUI)
@@ -689,6 +690,19 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 			case msg := <-pubsub.Channel():
 				var payload map[string]string
 				if err := json.Unmarshal([]byte(msg.Payload), &payload); err != nil {
+					continue
+				}
+
+				// Handle real-time Call events (e.g. from call-service published to "chat:calls")
+				if strings.HasPrefix(payload["event"], "call_") {
+					targetUserID := payload["target_user_id"]
+					if targetUserID != "" {
+						hub.SendToUser(targetUserID, []byte(msg.Payload))
+						log.Debug("Forwarded call event to target user",
+							zap.String("event", payload["event"]),
+							zap.String("target_user_id", targetUserID),
+						)
+					}
 					continue
 				}
 

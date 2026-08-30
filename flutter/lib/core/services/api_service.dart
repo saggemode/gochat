@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart' show MediaType;
 import '../constants/api_constants.dart';
 import '../models/models.dart';
 import 'storage_service.dart';
@@ -71,14 +72,20 @@ class ApiService {
     final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
     final safeName = displayName.isNotEmpty
         ? displayName
-        : (cleanPhone.isNotEmpty ? 'User ${cleanPhone.length > 4 ? cleanPhone.substring(cleanPhone.length - 4) : cleanPhone}' : 'GoChat User');
+        : (cleanPhone.isNotEmpty
+              ? 'User ${cleanPhone.length > 4 ? cleanPhone.substring(cleanPhone.length - 4) : cleanPhone}'
+              : 'GoChat User');
     final identifier = cleanPhone.isNotEmpty ? cleanPhone : email;
 
     // 1. Check if user already exists on the backend by attempting login first
     if (identifier.isNotEmpty) {
       try {
-        final existingSession = await login(email: identifier, password: password);
-        final token = existingSession['access_token'] ?? existingSession['token'] ?? '';
+        final existingSession = await login(
+          email: identifier,
+          password: password,
+        );
+        final token =
+            existingSession['access_token'] ?? existingSession['token'] ?? '';
         if (isValidJwt(token) && existingSession['user'] != null) {
           await StorageService.saveToken(token);
           return existingSession;
@@ -96,11 +103,13 @@ class ApiService {
     };
 
     try {
-      final res = await http.post(
-        Uri.parse(ApiConstants.register),
-        headers: await _headers(requireAuth: false),
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 30));
+      final res = await http
+          .post(
+            Uri.parse(ApiConstants.register),
+            headers: await _headers(requireAuth: false),
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final data = jsonDecode(res.body);
@@ -126,11 +135,14 @@ class ApiService {
 
     return {
       'user': {
-        'id': 'user_${cleanPhone.isNotEmpty ? cleanPhone.replaceAll('+', '') : DateTime.now().millisecondsSinceEpoch}',
+        'id':
+            'user_${cleanPhone.isNotEmpty ? cleanPhone.replaceAll('+', '') : DateTime.now().millisecondsSinceEpoch}',
         'display_name': safeName,
         'phone': cleanPhone,
         'email': email,
-        'pin': cleanPhone.length >= 6 ? cleanPhone.substring(cleanPhone.length - 6).toUpperCase() : '8492A1',
+        'pin': cleanPhone.length >= 6
+            ? cleanPhone.substring(cleanPhone.length - 6).toUpperCase()
+            : '8492A1',
         'status_text': 'Hey there! I am using GoChat.',
       },
     };
@@ -144,14 +156,16 @@ class ApiService {
     final cleanIdentifier = email.trim();
     final safePassword = password.isNotEmpty ? password : '';
 
-    final res = await http.post(
-      Uri.parse(ApiConstants.login),
-      headers: await _headers(requireAuth: false),
-      body: jsonEncode({
-        'email': cleanIdentifier,
-        'password': safePassword,
-      }),
-    ).timeout(const Duration(seconds: 30));
+    final res = await http
+        .post(
+          Uri.parse(ApiConstants.login),
+          headers: await _headers(requireAuth: false),
+          body: jsonEncode({
+            'email': cleanIdentifier,
+            'password': safePassword,
+          }),
+        )
+        .timeout(const Duration(seconds: 30));
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
       final data = jsonDecode(res.body);
@@ -164,7 +178,9 @@ class ApiService {
 
     try {
       final data = jsonDecode(res.body);
-      throw Exception(data['error'] ?? data['message'] ?? 'Login failed (${res.statusCode})');
+      throw Exception(
+        data['error'] ?? data['message'] ?? 'Login failed (${res.statusCode})',
+      );
     } catch (e) {
       if (e is Exception) rethrow;
       throw Exception('Server error (${res.statusCode})');
@@ -187,11 +203,13 @@ class ApiService {
         if (avatarUrl != null) 'avatar_url': avatarUrl,
       };
 
-      final res = await http.patch(
-        Uri.parse('${ApiConstants.apiV1}/users/me'),
-        headers: await _headers(),
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 8));
+      final res = await http
+          .patch(
+            Uri.parse('${ApiConstants.apiV1}/users/me'),
+            headers: await _headers(),
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 8));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -210,7 +228,10 @@ class ApiService {
 
     try {
       final res = await http
-          .get(Uri.parse('${ApiConstants.apiV1}/users/$cleanPin'), headers: await _headers())
+          .get(
+            Uri.parse('${ApiConstants.apiV1}/users/$cleanPin'),
+            headers: await _headers(),
+          )
           .timeout(const Duration(seconds: 4));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -228,7 +249,9 @@ class ApiService {
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
-      final rawList = data is List ? data : (data['conversations'] as List? ?? []);
+      final rawList = data is List
+          ? data
+          : (data['conversations'] as List? ?? []);
       return rawList.map((e) => Conversation.fromJson(e)).toList();
     }
     throw Exception('Failed to fetch conversations (${res.statusCode})');
@@ -243,16 +266,18 @@ class ApiService {
     final token = await StorageService.getToken();
     if (token != null && token.isNotEmpty) {
       try {
-        final res = await http.post(
-          Uri.parse(ApiConstants.conversations),
-          headers: await _headers(),
-          body: jsonEncode({
-            'name': name,
-            'member_ids': memberIds,
-            'type': isGroup ? 1 : 0,
-            'is_group': isGroup,
-          }),
-        ).timeout(const Duration(seconds: 6));
+        final res = await http
+            .post(
+              Uri.parse(ApiConstants.conversations),
+              headers: await _headers(),
+              body: jsonEncode({
+                'name': name,
+                'member_ids': memberIds,
+                'type': isGroup ? 1 : 0,
+                'is_group': isGroup,
+              }),
+            )
+            .timeout(const Duration(seconds: 6));
 
         final data = jsonDecode(res.body);
         if (res.statusCode >= 200 && res.statusCode < 300) {
@@ -277,7 +302,9 @@ class ApiService {
     final user = await StorageService.getUser();
     final token = await StorageService.getToken();
 
-    if (token != null && token.isNotEmpty && !conversationId.startsWith('conv_')) {
+    if (token != null &&
+        token.isNotEmpty &&
+        !conversationId.startsWith('conv_')) {
       try {
         final res = await http
             .get(
@@ -288,7 +315,9 @@ class ApiService {
 
         if (res.statusCode == 200) {
           final data = jsonDecode(res.body);
-          final rawList = data is List ? data : (data['messages'] as List? ?? []);
+          final rawList = data is List
+              ? data
+              : (data['messages'] as List? ?? []);
           return rawList
               .map((e) => Message.fromJson(e, currentUserId: user?.id ?? ''))
               .toList();
@@ -297,6 +326,57 @@ class ApiService {
     }
 
     return await StorageService.getCachedMessages(conversationId);
+  }
+
+  // ── Media: Upload File ────────────────────────────────────────────────────
+  /// Uploads a file (voice note, image, etc.) to /api/v1/media/upload.
+  /// Returns the public URL of the uploaded media, or null on failure.
+  static Future<String?> uploadMedia(String filePath, {String? mimeType}) async {
+    try {
+      final token = await StorageService.getToken();
+      if (token == null || token.isEmpty) return null;
+
+      final uri = Uri.parse('${ApiConstants.apiV1}/media/upload');
+      final request = http.MultipartRequest('POST', uri);
+      request.headers['Authorization'] = 'Bearer $token';
+
+      final multipartFile = await http.MultipartFile.fromPath(
+        'file',
+        filePath,
+        contentType: mimeType != null
+            ? _parseMediaType(mimeType)
+            : null,
+      );
+      request.files.add(multipartFile);
+
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 60),
+      );
+      final responseBody = await streamedResponse.stream.bytesToString();
+      final data = jsonDecode(responseBody);
+
+      if (streamedResponse.statusCode >= 200 && streamedResponse.statusCode < 300) {
+        // Backend returns MediaMeta with 'url' field
+        final url = data['url'] ?? data['Url'] ?? data['URL'];
+        if (url != null && url.toString().isNotEmpty) {
+          return url.toString();
+        }
+      }
+    } catch (e) {
+      // ignore upload errors silently
+    }
+    return null;
+  }
+
+  /// Parse a MIME type string into a MediaType for http_parser.
+  static MediaType? _parseMediaType(String mime) {
+    try {
+      final parts = mime.split('/');
+      if (parts.length == 2) {
+        return MediaType(parts[0], parts[1]);
+      }
+    } catch (_) {}
+    return null;
   }
 
   // ── Chat: Send Message ──────────────────────────────────────────────────────
@@ -311,19 +391,24 @@ class ApiService {
 
     if (token != null && token.isNotEmpty) {
       try {
-        final res = await http.post(
-          Uri.parse(ApiConstants.conversationMessages(conversationId)),
-          headers: await _headers(),
-          body: jsonEncode({
-            'content': content,
-            'type': type,
-            if (mediaUrl != null) 'media_url': mediaUrl,
-          }),
-        ).timeout(const Duration(seconds: 6));
+        final res = await http
+            .post(
+              Uri.parse(ApiConstants.conversationMessages(conversationId)),
+              headers: await _headers(),
+              body: jsonEncode({
+                'content': content,
+                'type': type,
+                if (mediaUrl != null) 'media_url': mediaUrl,
+              }),
+            )
+            .timeout(const Duration(seconds: 6));
 
         final data = jsonDecode(res.body);
         if (res.statusCode >= 200 && res.statusCode < 300) {
-          return Message.fromJson(data['message'] ?? data, currentUserId: user?.id ?? '');
+          return Message.fromJson(
+            data['message'] ?? data,
+            currentUserId: user?.id ?? '',
+          );
         }
       } catch (_) {}
     }
@@ -356,11 +441,13 @@ class ApiService {
     required String pollId,
     required String optionId,
   }) async {
-    final res = await http.post(
-      Uri.parse(ApiConstants.pollVote(pollId)),
-      headers: await _headers(),
-      body: jsonEncode({'option_id': optionId}),
-    ).timeout(const Duration(seconds: 8));
+    final res = await http
+        .post(
+          Uri.parse(ApiConstants.pollVote(pollId)),
+          headers: await _headers(),
+          body: jsonEncode({'option_id': optionId}),
+        )
+        .timeout(const Duration(seconds: 8));
 
     if (res.statusCode < 200 || res.statusCode >= 300) {
       final data = jsonDecode(res.body);
@@ -400,15 +487,17 @@ class ApiService {
     required String caption,
     String mediaType = 'image',
   }) async {
-    final res = await http.post(
-      Uri.parse(ApiConstants.stories),
-      headers: await _headers(),
-      body: jsonEncode({
-        'media_url': mediaUrl,
-        'caption': caption,
-        'media_type': mediaType,
-      }),
-    ).timeout(const Duration(seconds: 30));
+    final res = await http
+        .post(
+          Uri.parse(ApiConstants.stories),
+          headers: await _headers(),
+          body: jsonEncode({
+            'media_url': mediaUrl,
+            'caption': caption,
+            'media_type': mediaType,
+          }),
+        )
+        .timeout(const Duration(seconds: 30));
 
     if (res.statusCode < 200 || res.statusCode >= 300) {
       final data = jsonDecode(res.body);
@@ -416,16 +505,132 @@ class ApiService {
     }
   }
 
+  // ── Calls: Start Call ───────────────────────────────────────────────────────
+  static Future<CallRecord> startCall({
+    required String receiverId,
+    String type = 'voice',
+  }) async {
+    final user = await StorageService.getUser();
+    final res = await http
+        .post(
+          Uri.parse('${ApiConstants.apiV1}/calls'),
+          headers: await _headers(),
+          body: jsonEncode({'receiver_id': receiverId, 'type': type}),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    final data = jsonDecode(res.body);
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return CallRecord.fromJson(data, currentUserId: user?.id ?? '');
+    }
+    throw Exception(
+      data['error'] ?? 'Failed to start call (${res.statusCode})',
+    );
+  }
+
+  // ── Calls: Accept Call ──────────────────────────────────────────────────────
+  static Future<CallRecord> acceptCall(String callId) async {
+    final user = await StorageService.getUser();
+    final res = await http
+        .post(
+          Uri.parse('${ApiConstants.apiV1}/calls/$callId/accept'),
+          headers: await _headers(),
+          body: jsonEncode({}),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    final data = jsonDecode(res.body);
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return CallRecord.fromJson(data, currentUserId: user?.id ?? '');
+    }
+    throw Exception(
+      data['error'] ?? 'Failed to accept call (${res.statusCode})',
+    );
+  }
+
+  // ── Calls: Reject Call ──────────────────────────────────────────────────────
+  static Future<CallRecord> rejectCall(
+    String callId, {
+    bool isBusy = false,
+  }) async {
+    final user = await StorageService.getUser();
+    final res = await http
+        .post(
+          Uri.parse('${ApiConstants.apiV1}/calls/$callId/reject'),
+          headers: await _headers(),
+          body: jsonEncode({'is_busy': isBusy}),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    final data = jsonDecode(res.body);
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return CallRecord.fromJson(data, currentUserId: user?.id ?? '');
+    }
+    throw Exception(
+      data['error'] ?? 'Failed to reject call (${res.statusCode})',
+    );
+  }
+
+  // ── Calls: End Call ─────────────────────────────────────────────────────────
+  static Future<CallRecord> endCall(String callId) async {
+    final user = await StorageService.getUser();
+    final res = await http
+        .post(
+          Uri.parse('${ApiConstants.apiV1}/calls/$callId/end'),
+          headers: await _headers(),
+          body: jsonEncode({}),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    final data = jsonDecode(res.body);
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return CallRecord.fromJson(data, currentUserId: user?.id ?? '');
+    }
+    throw Exception(data['error'] ?? 'Failed to end call (${res.statusCode})');
+  }
+
+  // ── Calls: Send WebRTC Signaling Message ────────────────────────────────────
+  static Future<bool> sendSignalingMessage({
+    required String callId,
+    required String receiverId,
+    required String type,
+    String? sdp,
+    String? candidate,
+  }) async {
+    final payload = <String, dynamic>{'receiver_id': receiverId, 'type': type};
+    if (sdp != null) payload['sdp'] = sdp;
+    if (candidate != null) payload['candidate'] = candidate;
+
+    final res = await http
+        .post(
+          Uri.parse('${ApiConstants.apiV1}/calls/$callId/signaling'),
+          headers: await _headers(),
+          body: jsonEncode(payload),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return true;
+    }
+    return false;
+  }
+
   // ── Calls: Get History ──────────────────────────────────────────────────────
   static Future<List<CallRecord>> getCallHistory() async {
+    final user = await StorageService.getUser();
     final res = await http
-        .get(Uri.parse('${ApiConstants.apiV1}/calls/history'), headers: await _headers())
+        .get(
+          Uri.parse('${ApiConstants.apiV1}/calls/history'),
+          headers: await _headers(),
+        )
         .timeout(const Duration(seconds: 8));
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
       final rawList = data is List ? data : (data['calls'] as List? ?? []);
-      return rawList.map((e) => CallRecord.fromJson(e)).toList();
+      return rawList
+          .map((e) => CallRecord.fromJson(e, currentUserId: user?.id ?? ''))
+          .toList();
     }
     return [];
   }
@@ -457,7 +662,10 @@ class ApiService {
   // ── Marketplace: Get Products ───────────────────────────────────────────────
   static Future<List<Product>> getProducts() async {
     final res = await http
-        .get(Uri.parse(ApiConstants.products), headers: await _headers(requireAuth: false))
+        .get(
+          Uri.parse(ApiConstants.products),
+          headers: await _headers(requireAuth: false),
+        )
         .timeout(const Duration(seconds: 30));
 
     if (res.statusCode == 200) {
@@ -472,7 +680,10 @@ class ApiService {
   static Future<StoreProfile?> getBusinessProfile() async {
     try {
       final res = await http
-          .get(Uri.parse('${ApiConstants.apiV1}/business/profile'), headers: await _headers())
+          .get(
+            Uri.parse('${ApiConstants.apiV1}/business/profile'),
+            headers: await _headers(),
+          )
           .timeout(const Duration(seconds: 15));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -485,47 +696,57 @@ class ApiService {
   }
 
   static Future<StoreProfile> createBusinessProfile(StoreProfile store) async {
-    final res = await http.post(
-      Uri.parse('${ApiConstants.apiV1}/business/profile'),
-      headers: await _headers(),
-      body: jsonEncode(store.toJson()),
-    ).timeout(const Duration(seconds: 30));
+    final res = await http
+        .post(
+          Uri.parse('${ApiConstants.apiV1}/business/profile'),
+          headers: await _headers(),
+          body: jsonEncode(store.toJson()),
+        )
+        .timeout(const Duration(seconds: 30));
 
     final data = jsonDecode(res.body);
     if (res.statusCode >= 200 && res.statusCode < 300) {
       return StoreProfile.fromJson(data['profile'] ?? data);
     }
-    throw Exception(data['error'] ?? 'Failed to create business profile (${res.statusCode})');
+    throw Exception(
+      data['error'] ?? 'Failed to create business profile (${res.statusCode})',
+    );
   }
 
   static Future<Product> createProduct(Product product) async {
-    final res = await http.post(
-      Uri.parse('${ApiConstants.apiV1}/business/products'),
-      headers: await _headers(),
-      body: jsonEncode({
-        'title': product.title,
-        'description': product.description,
-        'price': product.price,
-        'category': product.category,
-        'image_url': product.imageUrl,
-        'in_stock': product.inStock,
-      }),
-    ).timeout(const Duration(seconds: 30));
+    final res = await http
+        .post(
+          Uri.parse('${ApiConstants.apiV1}/business/products'),
+          headers: await _headers(),
+          body: jsonEncode({
+            'title': product.title,
+            'description': product.description,
+            'price': product.price,
+            'category': product.category,
+            'image_url': product.imageUrl,
+            'in_stock': product.inStock,
+          }),
+        )
+        .timeout(const Duration(seconds: 30));
 
     final data = jsonDecode(res.body);
     if (res.statusCode >= 200 && res.statusCode < 300) {
       return Product.fromJson(data['product'] ?? data);
     }
-    throw Exception(data['error'] ?? 'Failed to create product (${res.statusCode})');
+    throw Exception(
+      data['error'] ?? 'Failed to create product (${res.statusCode})',
+    );
   }
 
   static Future<Product> updateProduct(Product product) async {
     try {
-      final res = await http.put(
-        Uri.parse('${ApiConstants.apiV1}/business/products/${product.id}'),
-        headers: await _headers(),
-        body: jsonEncode(product.toJson()),
-      ).timeout(const Duration(seconds: 15));
+      final res = await http
+          .put(
+            Uri.parse('${ApiConstants.apiV1}/business/products/${product.id}'),
+            headers: await _headers(),
+            body: jsonEncode(product.toJson()),
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final data = jsonDecode(res.body);
@@ -537,10 +758,12 @@ class ApiService {
 
   static Future<bool> deleteProduct(String productId) async {
     try {
-      final res = await http.delete(
-        Uri.parse('${ApiConstants.apiV1}/business/products/$productId'),
-        headers: await _headers(),
-      ).timeout(const Duration(seconds: 15));
+      final res = await http
+          .delete(
+            Uri.parse('${ApiConstants.apiV1}/business/products/$productId'),
+            headers: await _headers(),
+          )
+          .timeout(const Duration(seconds: 15));
       return res.statusCode >= 200 && res.statusCode < 300;
     } catch (_) {
       return true;
@@ -548,13 +771,20 @@ class ApiService {
   }
 
   // ── Product Variants ───────────────────────────────────────────────────────
-  static Future<ProductVariant> createProductVariant(String productId, ProductVariant variant) async {
+  static Future<ProductVariant> createProductVariant(
+    String productId,
+    ProductVariant variant,
+  ) async {
     try {
-      final res = await http.post(
-        Uri.parse('${ApiConstants.apiV1}/business/products/$productId/variants'),
-        headers: await _headers(),
-        body: jsonEncode(variant.toJson()),
-      ).timeout(const Duration(seconds: 15));
+      final res = await http
+          .post(
+            Uri.parse(
+              '${ApiConstants.apiV1}/business/products/$productId/variants',
+            ),
+            headers: await _headers(),
+            body: jsonEncode(variant.toJson()),
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final data = jsonDecode(res.body);
@@ -564,10 +794,17 @@ class ApiService {
     return variant;
   }
 
-  static Future<List<ProductVariant>> listProductVariants(String productId) async {
+  static Future<List<ProductVariant>> listProductVariants(
+    String productId,
+  ) async {
     try {
       final res = await http
-          .get(Uri.parse('${ApiConstants.apiV1}/business/products/$productId/variants'), headers: await _headers())
+          .get(
+            Uri.parse(
+              '${ApiConstants.apiV1}/business/products/$productId/variants',
+            ),
+            headers: await _headers(),
+          )
           .timeout(const Duration(seconds: 15));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -578,13 +815,21 @@ class ApiService {
     return [];
   }
 
-  static Future<ProductVariant> updateProductVariant(String productId, String variantId, ProductVariant variant) async {
+  static Future<ProductVariant> updateProductVariant(
+    String productId,
+    String variantId,
+    ProductVariant variant,
+  ) async {
     try {
-      final res = await http.put(
-        Uri.parse('${ApiConstants.apiV1}/business/products/$productId/variants/$variantId'),
-        headers: await _headers(),
-        body: jsonEncode(variant.toJson()),
-      ).timeout(const Duration(seconds: 15));
+      final res = await http
+          .put(
+            Uri.parse(
+              '${ApiConstants.apiV1}/business/products/$productId/variants/$variantId',
+            ),
+            headers: await _headers(),
+            body: jsonEncode(variant.toJson()),
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final data = jsonDecode(res.body);
@@ -594,12 +839,19 @@ class ApiService {
     return variant;
   }
 
-  static Future<bool> deleteProductVariant(String productId, String variantId) async {
+  static Future<bool> deleteProductVariant(
+    String productId,
+    String variantId,
+  ) async {
     try {
-      final res = await http.delete(
-        Uri.parse('${ApiConstants.apiV1}/business/products/$productId/variants/$variantId'),
-        headers: await _headers(),
-      ).timeout(const Duration(seconds: 15));
+      final res = await http
+          .delete(
+            Uri.parse(
+              '${ApiConstants.apiV1}/business/products/$productId/variants/$variantId',
+            ),
+            headers: await _headers(),
+          )
+          .timeout(const Duration(seconds: 15));
       return res.statusCode >= 200 && res.statusCode < 300;
     } catch (_) {
       return true;
@@ -608,10 +860,14 @@ class ApiService {
 
   static Future<void> trackProductView(String productId) async {
     try {
-      await http.post(
-        Uri.parse('${ApiConstants.apiV1}/marketplace/products/$productId/view'),
-        headers: await _headers(),
-      ).timeout(const Duration(seconds: 5));
+      await http
+          .post(
+            Uri.parse(
+              '${ApiConstants.apiV1}/marketplace/products/$productId/view',
+            ),
+            headers: await _headers(),
+          )
+          .timeout(const Duration(seconds: 5));
     } catch (_) {}
   }
 
@@ -619,7 +875,10 @@ class ApiService {
   static Future<List<MarketplaceOrder>> getSellerOrders() async {
     try {
       final res = await http
-          .get(Uri.parse('${ApiConstants.apiV1}/business/orders'), headers: await _headers())
+          .get(
+            Uri.parse('${ApiConstants.apiV1}/business/orders'),
+            headers: await _headers(),
+          )
           .timeout(const Duration(seconds: 15));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -633,7 +892,10 @@ class ApiService {
   static Future<List<MarketplaceOrder>> getBuyerOrders() async {
     try {
       final res = await http
-          .get(Uri.parse('${ApiConstants.apiV1}/marketplace/orders/buyer'), headers: await _headers())
+          .get(
+            Uri.parse('${ApiConstants.apiV1}/marketplace/orders/buyer'),
+            headers: await _headers(),
+          )
           .timeout(const Duration(seconds: 15));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -648,7 +910,10 @@ class ApiService {
   static Future<List<StoreCoupon>> getStoreCoupons() async {
     try {
       final res = await http
-          .get(Uri.parse('${ApiConstants.apiV1}/business/coupons'), headers: await _headers())
+          .get(
+            Uri.parse('${ApiConstants.apiV1}/business/coupons'),
+            headers: await _headers(),
+          )
           .timeout(const Duration(seconds: 15));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -661,11 +926,13 @@ class ApiService {
 
   static Future<StoreCoupon> createStoreCoupon(StoreCoupon coupon) async {
     try {
-      final res = await http.post(
-        Uri.parse('${ApiConstants.apiV1}/business/coupons'),
-        headers: await _headers(),
-        body: jsonEncode(coupon.toJson()),
-      ).timeout(const Duration(seconds: 15));
+      final res = await http
+          .post(
+            Uri.parse('${ApiConstants.apiV1}/business/coupons'),
+            headers: await _headers(),
+            body: jsonEncode(coupon.toJson()),
+          )
+          .timeout(const Duration(seconds: 15));
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final data = jsonDecode(res.body);
         return StoreCoupon.fromJson(data['coupon'] ?? data);
@@ -674,19 +941,221 @@ class ApiService {
     return coupon;
   }
 
+  static Future<bool> updateOrderStatus(String orderId, String status) async {
+    try {
+      final res = await http
+          .put(
+            Uri.parse('${ApiConstants.apiV1}/business/orders/$orderId/status'),
+            headers: await _headers(),
+            body: jsonEncode({'status': status}),
+          )
+          .timeout(const Duration(seconds: 15));
+      return res.statusCode >= 200 && res.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> updateOrderTracking(
+    String orderId, {
+    required String trackingNumber,
+    String? carrier,
+    String? trackingUrl,
+  }) async {
+    try {
+      final res = await http
+          .put(
+            Uri.parse(
+              '${ApiConstants.apiV1}/business/orders/$orderId/tracking',
+            ),
+            headers: await _headers(),
+            body: jsonEncode({
+              'tracking_number': trackingNumber,
+              'tracking_carrier': carrier ?? 'Standard Delivery',
+              'tracking_url': trackingUrl ?? '',
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+      return res.statusCode >= 200 && res.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<Map<String, dynamic>> validateCoupon(
+    String businessId,
+    String code,
+    double subtotal,
+  ) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse(ApiConstants.validateCoupon),
+            headers: await _headers(),
+            body: jsonEncode({
+              'business_id': businessId,
+              'code': code,
+              'subtotal': subtotal,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body);
+      }
+    } catch (_) {}
+    return {'valid': false};
+  }
+
+  static Future<bool> toggleWishlist(String productId) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse(
+              '${ApiConstants.apiV1}/marketplace/products/$productId/wishlist',
+            ),
+            headers: await _headers(),
+          )
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        return data['is_wishlisted'] == true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  static Future<List<Product>> getWishlist() async {
+    try {
+      final res = await http
+          .get(Uri.parse(ApiConstants.wishlist), headers: await _headers())
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final list = data is List ? data : (data['products'] as List? ?? []);
+        return list.map((e) => Product.fromJson(e)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  static Future<bool> createReview(
+    String productId,
+    double rating,
+    String comment,
+  ) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse(
+              '${ApiConstants.apiV1}/marketplace/products/$productId/reviews',
+            ),
+            headers: await _headers(),
+            body: jsonEncode({'rating': rating, 'comment': comment}),
+          )
+          .timeout(const Duration(seconds: 15));
+      return res.statusCode >= 200 && res.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> listReviews(
+    String productId,
+  ) async {
+    try {
+      final res = await http
+          .get(
+            Uri.parse(
+              '${ApiConstants.apiV1}/marketplace/products/$productId/reviews',
+            ),
+            headers: await _headers(),
+          )
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final list = data is List ? data : (data['reviews'] as List? ?? []);
+        return List<Map<String, dynamic>>.from(list);
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  static Future<bool> askProductQuestion(
+    String productId,
+    String question,
+  ) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse(
+              '${ApiConstants.apiV1}/marketplace/products/$productId/questions',
+            ),
+            headers: await _headers(),
+            body: jsonEncode({'question': question}),
+          )
+          .timeout(const Duration(seconds: 15));
+      return res.statusCode >= 200 && res.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> answerProductQuestion(
+    String questionId,
+    String answer,
+  ) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse(
+              '${ApiConstants.apiV1}/marketplace/questions/$questionId/answer',
+            ),
+            headers: await _headers(),
+            body: jsonEncode({'answer': answer}),
+          )
+          .timeout(const Duration(seconds: 15));
+      return res.statusCode >= 200 && res.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getProductQuestions(
+    String productId,
+  ) async {
+    try {
+      final res = await http
+          .get(
+            Uri.parse(
+              '${ApiConstants.apiV1}/marketplace/products/$productId/questions',
+            ),
+            headers: await _headers(),
+          )
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final list = data is List ? data : (data['questions'] as List? ?? []);
+        return List<Map<String, dynamic>>.from(list);
+      }
+    } catch (_) {}
+    return [];
+  }
+
   // ── Marketplace: Checkout Order ─────────────────────────────────────────────
   static Future<Map<String, dynamic>> checkoutOrder({
     required List<String> productIds,
     required double totalAmount,
   }) async {
-    final res = await http.post(
-      Uri.parse('${ApiConstants.apiV1}/marketplace/orders'),
-      headers: await _headers(),
-      body: jsonEncode({
-        'product_ids': productIds,
-        'total_amount': totalAmount,
-      }),
-    ).timeout(const Duration(seconds: 30));
+    final res = await http
+        .post(
+          Uri.parse('${ApiConstants.apiV1}/marketplace/orders'),
+          headers: await _headers(),
+          body: jsonEncode({
+            'product_ids': productIds,
+            'total_amount': totalAmount,
+          }),
+        )
+        .timeout(const Duration(seconds: 30));
 
     final data = jsonDecode(res.body);
     if (res.statusCode >= 200 && res.statusCode < 300) {

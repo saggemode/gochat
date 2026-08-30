@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:just_audio/just_audio.dart';
 import '../core/theme/app_theme.dart';
 
 class AudioPlayerBubble extends StatefulWidget {
@@ -23,9 +24,16 @@ class AudioPlayerBubble extends StatefulWidget {
 class _AudioPlayerBubbleState extends State<AudioPlayerBubble> {
   bool _isPlaying = false;
   double _currentProgress = 0.0; // 0.0 to 1.0
-  double _speed = 1.0; // 1.0, 1.5, 2.0
-  Timer? _playbackTimer;
+  double _speed = 1.0;
+  Timer? _fallbackTimer;
   late List<double> _waveformAmplitudes;
+
+  // Real audio player
+  AudioPlayer? _player;
+  StreamSubscription<Duration>? _positionSub;
+  StreamSubscription<PlayerState>? _stateSub;
+  Duration _totalDuration = Duration.zero;
+  bool _hasRealAudio = false;
 
   @override
   void initState() {
@@ -36,36 +44,101 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble> {
       final base = sin(index / 4.0).abs() * 0.7 + 0.3;
       return (base * rnd.nextDouble() * 0.8 + 0.2).clamp(0.15, 1.0);
     });
+
+    _hasRealAudio = widget.audioUrl != null && widget.audioUrl!.isNotEmpty;
+    if (_hasRealAudio) {
+      _initPlayer();
+    }
+  }
+
+  Future<void> _initPlayer() async {
+    try {
+      _player = AudioPlayer();
+
+      // Listen to position updates
+      _positionSub = _player!.positionStream.listen((pos) {
+        if (!mounted) return;
+        if (_totalDuration.inMilliseconds > 0) {
+          setState(() {
+            _currentProgress = (pos.inMilliseconds / _totalDuration.inMilliseconds).clamp(0.0, 1.0);
+          });
+        }
+      });
+
+      // Listen to player state
+      _stateSub = _player!.playerStateStream.listen((state) {
+        if (!mounted) return;
+        setState(() {
+          _isPlaying = state.playing;
+          if (state.processingState == ProcessingState.completed) {
+            _currentProgress = 1.0;
+            _isPlaying = false;
+          }
+        });
+      });
+
+      // Load audio
+      final duration = await _player!.setUrl(widget.audioUrl!);
+      if (duration != null && mounted) {
+        setState(() => _totalDuration = duration);
+      }
+    } catch (e) {
+      debugPrint('[AudioPlayerBubble] Failed to init player: $e');
+      _hasRealAudio = false;
+    }
   }
 
   @override
   void dispose() {
-    _playbackTimer?.cancel();
+    _fallbackTimer?.cancel();
+    _positionSub?.cancel();
+    _stateSub?.cancel();
+    _player?.dispose();
     super.dispose();
   }
 
   void _togglePlay() {
     HapticFeedback.lightImpact();
+    if (_hasRealAudio && _player != null) {
+      _toggleRealPlay();
+    } else {
+      _toggleFallbackPlay();
+    }
+  }
+
+  void _toggleRealPlay() async {
+    if (_isPlaying) {
+      await _player!.pause();
+    } else {
+      if (_currentProgress >= 1.0) {
+        await _player!.seek(Duration.zero);
+      }
+      await _player!.setSpeed(_speed);
+      await _player!.play();
+    }
+  }
+
+  void _toggleFallbackPlay() {
     setState(() {
       _isPlaying = !_isPlaying;
       if (_isPlaying) {
         if (_currentProgress >= 1.0) {
           _currentProgress = 0.0;
         }
-        _startPlaybackTimer();
+        _startFallbackTimer();
       } else {
-        _playbackTimer?.cancel();
+        _fallbackTimer?.cancel();
       }
     });
   }
 
-  void _startPlaybackTimer() {
-    _playbackTimer?.cancel();
+  void _startFallbackTimer() {
+    _fallbackTimer?.cancel();
     const intervalMs = 100;
     final totalMs = (widget.durationSeconds * 1000) / _speed;
     final stepProgress = intervalMs / totalMs;
 
-    _playbackTimer = Timer.periodic(const Duration(milliseconds: intervalMs), (timer) {
+    _fallbackTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
@@ -91,10 +164,22 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble> {
       } else {
         _speed = 1.0;
       }
-      if (_isPlaying) {
-        _startPlaybackTimer();
+      if (_hasRealAudio && _player != null) {
+        _player!.setSpeed(_speed);
+      } else if (_isPlaying) {
+        _startFallbackTimer();
       }
     });
+  }
+
+  void _seekTo(double progress) {
+    setState(() => _currentProgress = progress.clamp(0.0, 1.0));
+    if (_hasRealAudio && _player != null) {
+      final totalMs = _totalDuration.inMilliseconds > 0
+          ? _totalDuration.inMilliseconds
+          : widget.durationSeconds * 1000;
+      _player!.seek(Duration(milliseconds: (totalMs * progress).round()));
+    }
   }
 
   String _formatDuration(int totalSeconds, double progress) {
@@ -102,6 +187,11 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble> {
     final mins = currentSeconds ~/ 60;
     final secs = currentSeconds % 60;
     return '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+  }
+
+  int get _effectiveDuration {
+    if (_totalDuration.inSeconds > 0) return _totalDuration.inSeconds;
+    return widget.durationSeconds;
   }
 
   @override
@@ -150,9 +240,7 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble> {
                     final box = context.findRenderObject() as RenderBox?;
                     if (box != null) {
                       final local = box.globalToLocal(details.globalPosition);
-                      setState(() {
-                        _currentProgress = (local.dx / 180).clamp(0.0, 1.0);
-                      });
+                      _seekTo(local.dx / 180);
                     }
                   },
                   child: SizedBox(
@@ -184,7 +272,7 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      _formatDuration(widget.durationSeconds, _currentProgress),
+                      _formatDuration(_effectiveDuration, _currentProgress),
                       style: TextStyle(
                         fontSize: 11,
                         color: widget.isMe

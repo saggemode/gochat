@@ -17,11 +17,18 @@ class ContactProfileScreen extends StatefulWidget {
     required this.appState,
   });
 
-  static void open(BuildContext context, {required Conversation conversation, required AppState appState}) {
+  static void open(
+    BuildContext context, {
+    required Conversation conversation,
+    required AppState appState,
+  }) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ContactProfileScreen(conversation: conversation, appState: appState),
+        builder: (_) => ContactProfileScreen(
+          conversation: conversation,
+          appState: appState,
+        ),
       ),
     );
   }
@@ -45,25 +52,25 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
     return id.length >= 6 ? id.substring(0, 6).toUpperCase() : '8492A1';
   }
 
-  void _startCall(CallType type) {
-    widget.appState.startCall(
-      CallRecord(
-        id: 'call_${DateTime.now().millisecondsSinceEpoch}',
-        callerId: widget.conversation.id,
-        callerName: widget.conversation.title,
-        callerAvatar: widget.conversation.avatarUrl,
-        type: type,
-        direction: CallDirection.outgoing,
-        timestamp: DateTime.now(),
-      ),
+  Future<void> _startCall(CallType type) async {
+    final recipientId = widget.conversation.memberIds.firstWhere(
+      (id) => id.isNotEmpty && id != widget.appState.currentUser?.id,
+      orElse: () => widget.conversation.id,
     );
+
+    final call = await widget.appState.startCall(
+      receiverId: recipientId,
+      receiverName: widget.conversation.title,
+      receiverAvatar: widget.conversation.avatarUrl,
+      type: type,
+    );
+
+    if (!mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ActiveCallScreen(
-          callRecord: widget.appState.activeCall!,
-          appState: widget.appState,
-        ),
+        builder: (_) =>
+            ActiveCallScreen(callRecord: call, appState: widget.appState),
       ),
     );
   }
@@ -72,14 +79,21 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppTheme.darkSurface : Colors.white,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.darkSurface
+            : Colors.white,
         title: const Text('Disappearing Messages'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: ['Off', '24 Hours', '7 Days', '90 Days'].map((opt) {
             return ListTile(
               title: Text(opt),
-              trailing: _disappearingTimer == opt ? const Icon(Icons.check_circle_rounded, color: AppTheme.primary) : null,
+              trailing: _disappearingTimer == opt
+                  ? const Icon(
+                      Icons.check_circle_rounded,
+                      color: AppTheme.primary,
+                    )
+                  : null,
               onTap: () {
                 setState(() => _disappearingTimer = opt);
                 Navigator.pop(ctx);
@@ -95,7 +109,9 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppTheme.darkSurface : Colors.white,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.darkSurface
+            : Colors.white,
         title: const Row(
           children: [
             Icon(Icons.lock_rounded, color: AppTheme.primary),
@@ -114,12 +130,20 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               color: Colors.white,
-              child: const Icon(Icons.qr_code_2_rounded, size: 140, color: Colors.black),
+              child: const Icon(
+                Icons.qr_code_2_rounded,
+                size: 140,
+                color: Colors.black,
+              ),
             ),
             const SizedBox(height: 12),
             const Text(
               'Fingerprint: 8492-2094-1182-3849\n4920-1928-3019-8472',
-              style: TextStyle(fontFamily: 'monospace', fontSize: 11, color: AppTheme.textMuted),
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 11,
+                color: AppTheme.textMuted,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -128,7 +152,13 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Verified', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Verified',
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -140,7 +170,11 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
     final isGroup = widget.conversation.type == ConversationType.group;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final messages = widget.appState.getMessagesFor(widget.conversation.id);
-    final mediaMessages = messages.where((m) => m.type == MessageType.image || m.type == MessageType.video).toList();
+    final mediaMessages = messages
+        .where(
+          (m) => m.type == MessageType.image || m.type == MessageType.video,
+        )
+        .toList();
 
     return Scaffold(
       body: CustomScrollView(
@@ -152,7 +186,10 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
                 widget.conversation.title,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
               ),
               background: Stack(
                 fit: StackFit.expand,
@@ -161,13 +198,18 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
                     Image.network(
                       widget.conversation.avatarUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(color: AppTheme.darkSurface),
+                      errorBuilder: (_, __, ___) =>
+                          Container(color: AppTheme.darkSurface),
                     )
                   else
                     Container(
                       color: AppTheme.darkCard,
                       child: const Center(
-                        child: Icon(Icons.person, size: 90, color: AppTheme.iconColor),
+                        child: Icon(
+                          Icons.person,
+                          size: 90,
+                          color: AppTheme.iconColor,
+                        ),
                       ),
                     ),
                   Container(
@@ -192,19 +234,34 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
             delegate: SliverChildListDelegate([
               // Quick Actions Bar
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 16,
+                  horizontal: 20,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildActionButton(Icons.call_rounded, 'Audio', () => _startCall(CallType.audio)),
-                    _buildActionButton(Icons.videocam_rounded, 'Video', () => _startCall(CallType.video)),
+                    _buildActionButton(
+                      Icons.call_rounded,
+                      'Audio',
+                      () => _startCall(CallType.audio),
+                    ),
+                    _buildActionButton(
+                      Icons.videocam_rounded,
+                      'Video',
+                      () => _startCall(CallType.video),
+                    ),
                     _buildActionButton(Icons.vibration_rounded, 'PING!', () {
                       widget.appState.sendPing(widget.conversation.id);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('💥 GOCHAT PING! sent')),
                       );
                     }),
-                    _buildActionButton(Icons.search_rounded, 'Search', () => Navigator.pop(context)),
+                    _buildActionButton(
+                      Icons.search_rounded,
+                      'Search',
+                      () => Navigator.pop(context),
+                    ),
                   ],
                 ),
               ),
@@ -228,21 +285,31 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.vpn_key_rounded, color: AppTheme.primary, size: 20),
+                        const Icon(
+                          Icons.vpn_key_rounded,
+                          color: AppTheme.primary,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           isGroup ? 'GROUP GOCHAT PIN' : 'GOCHAT PIN',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
-                            color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
+                            color: isDark
+                                ? AppTheme.textMuted
+                                : AppTheme.textMutedLight,
                             letterSpacing: 1,
                           ),
                         ),
                         const Spacer(),
                         StatusBadge(
-                          text: widget.conversation.isOnline ? 'ONLINE' : 'ACTIVE',
-                          type: widget.conversation.isOnline ? BadgeType.success : BadgeType.neutral,
+                          text: widget.conversation.isOnline
+                              ? 'ONLINE'
+                              : 'ACTIVE',
+                          type: widget.conversation.isOnline
+                              ? BadgeType.success
+                              : BadgeType.neutral,
                         ),
                       ],
                     ),
@@ -263,21 +330,35 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
                         Row(
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.copy_rounded, color: AppTheme.primary, size: 20),
+                              icon: const Icon(
+                                Icons.copy_rounded,
+                                color: AppTheme.primary,
+                                size: 20,
+                              ),
                               tooltip: 'Copy PIN',
                               onPressed: () {
                                 Clipboard.setData(ClipboardData(text: _pin));
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('PIN $_pin copied to clipboard')),
+                                  SnackBar(
+                                    content: Text(
+                                      'PIN $_pin copied to clipboard',
+                                    ),
+                                  ),
                                 );
                               },
                             ),
                             IconButton(
-                              icon: const Icon(Icons.share_rounded, color: AppTheme.primary, size: 20),
+                              icon: const Icon(
+                                Icons.share_rounded,
+                                color: AppTheme.primary,
+                                size: 20,
+                              ),
                               tooltip: 'Share PIN',
                               onPressed: () {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Sharing GoChat PIN $_pin')),
+                                  SnackBar(
+                                    content: Text('Sharing GoChat PIN $_pin'),
+                                  ),
                                 );
                               },
                             ),
@@ -309,7 +390,10 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
                       children: [
                         const Text(
                           'Media, Links, and Docs',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         TextButton(
                           onPressed: () {
@@ -325,7 +409,10 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
                           },
                           child: Text(
                             '${mediaMessages.length} >',
-                            style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                              color: AppTheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],
@@ -367,7 +454,10 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
               const SectionHeader(title: 'SETTINGS & PRIVACY'),
 
               ListTile(
-                leading: const Icon(Icons.notifications_none_rounded, color: AppTheme.primary),
+                leading: const Icon(
+                  Icons.notifications_none_rounded,
+                  color: AppTheme.primary,
+                ),
                 title: const Text('Mute Notifications'),
                 trailing: Switch(
                   value: _isMuted,
@@ -377,17 +467,32 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
               ),
 
               ListTile(
-                leading: const Icon(Icons.timer_outlined, color: AppTheme.primary),
+                leading: const Icon(
+                  Icons.timer_outlined,
+                  color: AppTheme.primary,
+                ),
                 title: const Text('Disappearing Messages'),
-                subtitle: Text(_disappearingTimer, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                subtitle: Text(
+                  _disappearingTimer,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textMuted,
+                  ),
+                ),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: _showDisappearingDialog,
               ),
 
               ListTile(
-                leading: const Icon(Icons.lock_outline_rounded, color: AppTheme.primary),
+                leading: const Icon(
+                  Icons.lock_outline_rounded,
+                  color: AppTheme.primary,
+                ),
                 title: const Text('Encryption Verification'),
-                subtitle: const Text('End-to-end encrypted security fingerprint', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                subtitle: const Text(
+                  'End-to-end encrypted security fingerprint',
+                  style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                ),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: _showEncryptionVerification,
               ),
@@ -398,9 +503,18 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
                 ListTile(
                   leading: CircleAvatar(
                     backgroundColor: AppTheme.primary.withValues(alpha: 0.2),
-                    child: const Icon(Icons.person_add_rounded, color: AppTheme.primary),
+                    child: const Icon(
+                      Icons.person_add_rounded,
+                      color: AppTheme.primary,
+                    ),
                   ),
-                  title: const Text('Add Participants', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
+                  title: const Text(
+                    'Add Participants',
+                    style: TextStyle(
+                      color: AppTheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Add participant modal')),
@@ -417,13 +531,24 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
 
               // ── Danger Actions ──────────────────────────────────────────────
               ListTile(
-                leading: const Icon(Icons.block_rounded, color: AppTheme.dangerRed),
-                title: Text(isGroup ? 'Exit Group' : 'Block Contact', style: const TextStyle(color: AppTheme.dangerRed, fontWeight: FontWeight.bold)),
+                leading: const Icon(
+                  Icons.block_rounded,
+                  color: AppTheme.dangerRed,
+                ),
+                title: Text(
+                  isGroup ? 'Exit Group' : 'Block Contact',
+                  style: const TextStyle(
+                    color: AppTheme.dangerRed,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 onTap: () {
                   ConfirmDialog.show(
                     context,
                     title: isGroup ? 'Exit Group?' : 'Block Contact?',
-                    message: isGroup ? 'You will no longer receive messages in this group.' : 'This contact will not be able to call or message you.',
+                    message: isGroup
+                        ? 'You will no longer receive messages in this group.'
+                        : 'This contact will not be able to call or message you.',
                     confirmText: isGroup ? 'Exit' : 'Block',
                     isDangerous: true,
                   );
@@ -446,10 +571,14 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
         width: 72,
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark ? AppTheme.darkCard : Colors.white,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppTheme.darkCard
+              : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: Theme.of(context).brightness == Brightness.dark ? AppTheme.darkBorder : AppTheme.lightBorder,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppTheme.darkBorder
+                : AppTheme.lightBorder,
             width: 0.5,
           ),
         ),
@@ -470,7 +599,10 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
   Widget _buildMemberTile(String name, String role, bool isMe) {
     return ListTile(
       leading: CustomAvatar(name: name, radius: 20),
-      title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+      title: Text(
+        name,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      ),
       trailing: StatusBadge(
         text: role.toUpperCase(),
         type: role == 'Admin' ? BadgeType.primary : BadgeType.neutral,

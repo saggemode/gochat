@@ -24,7 +24,8 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isVideo = widget.callRecord.type == CallType.video && !_isVideoDisabled;
+    final isVideo =
+        widget.callRecord.type == CallType.video && !_isVideoDisabled;
 
     return Scaffold(
       backgroundColor: isVideo ? Colors.black : const Color(0xFF0F1B21),
@@ -37,7 +38,8 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
                 child: Image.network(
                   widget.callRecord.callerAvatar,
                   fit: BoxFit.cover,
-                  errorBuilder: (ctx, _, __) => Container(color: AppTheme.darkSurface),
+                  errorBuilder: (ctx, _, __) =>
+                      Container(color: AppTheme.darkSurface),
                 ),
               )
             else
@@ -49,16 +51,24 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.4), width: 4),
+                        border: Border.all(
+                          color: AppTheme.primary.withValues(alpha: 0.4),
+                          width: 4,
+                        ),
                       ),
                       child: CircleAvatar(
                         radius: 60,
                         backgroundColor: AppTheme.darkCard,
-                        backgroundImage: widget.callRecord.callerAvatar.isNotEmpty
+                        backgroundImage:
+                            widget.callRecord.callerAvatar.isNotEmpty
                             ? NetworkImage(widget.callRecord.callerAvatar)
                             : null,
                         child: widget.callRecord.callerAvatar.isEmpty
-                            ? const Icon(Icons.person, size: 60, color: AppTheme.iconColor)
+                            ? const Icon(
+                                Icons.person,
+                                size: 60,
+                                color: AppTheme.iconColor,
+                              )
                             : null,
                       ),
                     ),
@@ -93,11 +103,18 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.keyboard_arrow_down, size: 30, color: Colors.white),
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down,
+                      size: 30,
+                      color: Colors.white,
+                    ),
                     onPressed: () => Navigator.pop(context),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black45,
                       borderRadius: BorderRadius.circular(20),
@@ -106,12 +123,18 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
                       children: [
                         Icon(Icons.lock, size: 14, color: AppTheme.primary),
                         SizedBox(width: 4),
-                        Text('Protected by E2EE', style: TextStyle(fontSize: 11, color: Colors.white70)),
+                        Text(
+                          'Protected by E2EE',
+                          style: TextStyle(fontSize: 11, color: Colors.white70),
+                        ),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.person_add_rounded, color: Colors.white),
+                    icon: const Icon(
+                      Icons.person_add_rounded,
+                      color: Colors.white,
+                    ),
                     onPressed: () {},
                   ),
                 ],
@@ -124,7 +147,10 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
               left: 20,
               right: 20,
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 16,
+                  horizontal: 20,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.65),
                   borderRadius: BorderRadius.circular(32),
@@ -134,18 +160,26 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _buildCallButton(
-                      icon: _isSpeakerOn ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+                      icon: _isSpeakerOn
+                          ? Icons.volume_up_rounded
+                          : Icons.volume_off_rounded,
                       isActive: _isSpeakerOn,
                       onTap: () => setState(() => _isSpeakerOn = !_isSpeakerOn),
                     ),
                     if (widget.callRecord.type == CallType.video)
                       _buildCallButton(
-                        icon: _isVideoDisabled ? Icons.videocam_off_rounded : Icons.videocam_rounded,
+                        icon: _isVideoDisabled
+                            ? Icons.videocam_off_rounded
+                            : Icons.videocam_rounded,
                         isActive: !_isVideoDisabled,
-                        onTap: () => setState(() => _isVideoDisabled = !_isVideoDisabled),
+                        onTap: () => setState(
+                          () => _isVideoDisabled = !_isVideoDisabled,
+                        ),
                       ),
                     _buildCallButton(
-                      icon: _isMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
+                      icon: _isMuted
+                          ? Icons.mic_off_rounded
+                          : Icons.mic_rounded,
                       isActive: !_isMuted,
                       onTap: () => setState(() => _isMuted = !_isMuted),
                     ),
@@ -162,7 +196,11 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
                           color: AppTheme.dangerRed,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.call_end_rounded, color: Colors.white, size: 28),
+                        child: const Icon(
+                          Icons.call_end_rounded,
+                          color: Colors.white,
+                          size: 28,
+                        ),
                       ),
                     ),
                   ],

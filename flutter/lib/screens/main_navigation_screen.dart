@@ -41,8 +41,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final unreadChats = widget.appState.conversations
-        .fold(0, (sum, c) => sum + c.unreadCount);
+    final unreadChats = widget.appState.conversations.fold(
+      0,
+      (sum, c) => sum + c.unreadCount,
+    );
 
     return Scaffold(
       drawer: AppDrawer(
@@ -64,15 +66,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             SettingsScreen(appState: widget.appState),
           ];
 
-          return IndexedStack(
-            index: _currentIndex,
-            children: screens,
-          );
+          return IndexedStack(index: _currentIndex, children: screens);
         },
       ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: AppTheme.darkBorder, width: 0.5)),
+          border: Border(
+            top: BorderSide(color: AppTheme.darkBorder, width: 0.5),
+          ),
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
@@ -86,7 +87,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 textColor: Colors.black,
                 child: const Icon(Icons.chat_rounded),
               ),
-              activeIcon: const Icon(Icons.chat_rounded, color: AppTheme.primary),
+              activeIcon: const Icon(
+                Icons.chat_rounded,
+                color: AppTheme.primary,
+              ),
               label: 'Chats',
             ),
             const BottomNavigationBarItem(

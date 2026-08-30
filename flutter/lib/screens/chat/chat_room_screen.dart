@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/models/models.dart';
+import '../../core/services/api_service.dart';
+import '../../core/services/voice_recorder_service.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/chat_bubble.dart';
@@ -29,7 +31,8 @@ class ChatRoomScreen extends StatefulWidget {
   State<ChatRoomScreen> createState() => _ChatRoomScreenState();
 }
 
-class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProviderStateMixin {
+class _ChatRoomScreenState extends State<ChatRoomScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isTyping = false;
@@ -50,9 +53,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-    _shakeAnimation = Tween<double>(begin: 0.0, end: 12.0)
-        .chain(CurveTween(curve: Curves.elasticIn))
-        .animate(_shakeController);
+    _shakeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 12.0,
+    ).chain(CurveTween(curve: Curves.elasticIn)).animate(_shakeController);
 
     // Listen for incoming PING! events for this conversation
     _pingSubscription = widget.appState.onPingReceived.listen((convId) {
@@ -132,15 +136,58 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
     _scrollToBottom();
   }
 
-  void _handleSendVoiceNote() {
+  Future<void> _handleSendVoiceNote() async {
+    final recorder = VoiceRecorderService();
+    final result = await recorder.stopRecording();
+
+    if (result == null) {
+      // Recording was cancelled or failed
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+
+    // Show uploading indicator
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)),
+            SizedBox(width: 12),
+            Text('Sending voice note...'),
+          ],
+        ),
+        backgroundColor: AppTheme.primary,
+        duration: Duration(seconds: 10),
+      ),
+    );
+
+    // Upload the recorded file to /api/v1/media/upload
+    String? mediaUrl;
+    try {
+      mediaUrl = await ApiService.uploadMedia(
+        result.filePath,
+        mimeType: 'audio/mp4',
+      );
+    } catch (_) {}
+
+    messenger.hideCurrentSnackBar();
+
+    // Send the voice message with real URL and duration
     widget.appState.sendMessage(
       widget.conversation.id,
-      'Voice Note (0:45)',
+      '🎙️ Voice Note (${VoiceRecorderService.formatDuration(result.durationSeconds)})',
       type: MessageType.voice,
-      mediaDuration: 45,
+      mediaUrl: mediaUrl,
+      mediaDuration: result.durationSeconds,
     );
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('🎙️ Voice Note sent with wave spectrum')),
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('🎙️ Voice note sent (${VoiceRecorderService.formatDuration(result.durationSeconds)})'),
+        backgroundColor: AppTheme.primary,
+        duration: const Duration(seconds: 2),
+      ),
     );
     _scrollToBottom();
   }
@@ -176,8 +223,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
     final products = widget.appState.products;
     showModalBottomSheet(
       context: context,
-      backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppTheme.darkSurface : Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? AppTheme.darkSurface
+          : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) {
         return Container(
           padding: const EdgeInsets.all(16),
@@ -193,7 +244,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
               if (products.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(20),
-                  child: Center(child: Text('No products available in marketplace')),
+                  child: Center(
+                    child: Text('No products available in marketplace'),
+                  ),
                 )
               else
                 Flexible(
@@ -211,15 +264,35 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
                             width: 44,
                             height: 44,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.shopping_bag),
+                            errorBuilder: (_, __, ___) =>
+                                const Icon(Icons.shopping_bag),
                           ),
                         ),
-                        title: Text(prod.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                        subtitle: Text('\$${prod.price.toStringAsFixed(2)}', style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
-                        trailing: const Icon(Icons.send_rounded, color: AppTheme.primary, size: 20),
+                        title: Text(
+                          prod.title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '\$${prod.price.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            color: AppTheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        trailing: const Icon(
+                          Icons.send_rounded,
+                          color: AppTheme.primary,
+                          size: 20,
+                        ),
                         onTap: () {
                           Navigator.pop(ctx);
-                          widget.appState.sendProductCard(widget.conversation.id, prod);
+                          widget.appState.sendProductCard(
+                            widget.conversation.id,
+                            prod,
+                          );
                           _scrollToBottom();
                         },
                       );
@@ -236,8 +309,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
   void _showBuyProductSheet(Map<String, dynamic> product) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppTheme.darkSurface : Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? AppTheme.darkSurface
+          : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (ctx) {
         return Padding(
           padding: const EdgeInsets.all(20),
@@ -254,7 +331,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
                       width: 64,
                       height: 64,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.shopping_bag, size: 40),
+                      errorBuilder: (_, __, ___) =>
+                          const Icon(Icons.shopping_bag, size: 40),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -264,12 +342,19 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
                       children: [
                         Text(
                           product['title'] ?? 'Product',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '\$${(product['price'] ?? 0).toString()}',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primary),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primary,
+                          ),
                         ),
                       ],
                     ),
@@ -310,7 +395,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
           widget.conversation.id,
           'Shared an image',
           type: MessageType.image,
-          mediaUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=600',
+          mediaUrl:
+              'https://images.unsplash.com/photo-1518770660439-4636190af475?w=600',
         );
         _scrollToBottom();
       },
@@ -347,25 +433,25 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
     );
   }
 
-  void _startCall(CallType type) {
-    widget.appState.startCall(
-      CallRecord(
-        id: 'call_${DateTime.now().millisecondsSinceEpoch}',
-        callerId: widget.conversation.id,
-        callerName: widget.conversation.title,
-        callerAvatar: widget.conversation.avatarUrl,
-        type: type,
-        direction: CallDirection.outgoing,
-        timestamp: DateTime.now(),
-      ),
+  Future<void> _startCall(CallType type) async {
+    final recipientId = widget.conversation.memberIds.firstWhere(
+      (id) => id.isNotEmpty && id != widget.appState.currentUser?.id,
+      orElse: () => widget.conversation.id,
     );
+
+    final call = await widget.appState.startCall(
+      receiverId: recipientId,
+      receiverName: widget.conversation.title,
+      receiverAvatar: widget.conversation.avatarUrl,
+      type: type,
+    );
+
+    if (!mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ActiveCallScreen(
-          callRecord: widget.appState.activeCall!,
-          appState: widget.appState,
-        ),
+        builder: (_) =>
+            ActiveCallScreen(callRecord: call, appState: widget.appState),
       ),
     );
   }
@@ -382,10 +468,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
       animation: _shakeAnimation,
       builder: (context, child) {
         final dx = sin(_shakeController.value * pi * 8) * _shakeAnimation.value;
-        return Transform.translate(
-          offset: Offset(dx, 0),
-          child: child,
-        );
+        return Transform.translate(offset: Offset(dx, 0), child: child);
       },
       child: Scaffold(
         appBar: AppBar(
@@ -415,20 +498,28 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
                     children: [
                       Text(
                         widget.conversation.title,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         isTypingLive
                             ? typingText
-                            : (widget.conversation.isOnline ? 'Online' : 'tap here for info'),
+                            : (widget.conversation.isOnline
+                                  ? 'Online'
+                                  : 'tap here for info'),
                         style: TextStyle(
                           fontSize: 11,
                           color: isTypingLive
                               ? AppTheme.primary
-                              : (widget.conversation.isOnline ? AppTheme.onlineGreen : AppTheme.textMuted),
-                          fontWeight: (isTypingLive || widget.conversation.isOnline)
+                              : (widget.conversation.isOnline
+                                    ? AppTheme.onlineGreen
+                                    : AppTheme.textMuted),
+                          fontWeight:
+                              (isTypingLive || widget.conversation.isOnline)
                               ? FontWeight.bold
                               : FontWeight.normal,
                         ),
@@ -468,10 +559,22 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
                 }
               },
               itemBuilder: (ctx) => [
-                const PopupMenuItem(value: 'ping', child: Text('💥 Send GOCHAT PING!')),
-                const PopupMenuItem(value: 'product', child: Text('🛍️ Share Product')),
-                const PopupMenuItem(value: 'canvas', child: Text('🎨 Open Shared Canvas')),
-                const PopupMenuItem(value: 'poll', child: Text('📊 Create Live Poll')),
+                const PopupMenuItem(
+                  value: 'ping',
+                  child: Text('💥 Send GOCHAT PING!'),
+                ),
+                const PopupMenuItem(
+                  value: 'product',
+                  child: Text('🛍️ Share Product'),
+                ),
+                const PopupMenuItem(
+                  value: 'canvas',
+                  child: Text('🎨 Open Shared Canvas'),
+                ),
+                const PopupMenuItem(
+                  value: 'poll',
+                  child: Text('📊 Create Live Poll'),
+                ),
               ],
             ),
           ],
@@ -489,7 +592,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
                         child: Text(
                           'Send a message to start the conversation',
                           style: TextStyle(
-                            color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
+                            color: isDark
+                                ? AppTheme.textMuted
+                                : AppTheme.textMutedLight,
                             fontSize: 13,
                           ),
                         ),
@@ -503,10 +608,16 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
                           return ChatBubble(
                             message: msg,
                             currentUserId: myId,
-                            onVotePoll: (optId) =>
-                                widget.appState.votePoll(widget.conversation.id, msg.id, optId),
-                            onReact: (emoji) =>
-                                widget.appState.toggleReaction(widget.conversation.id, msg.id, emoji),
+                            onVotePoll: (optId) => widget.appState.votePoll(
+                              widget.conversation.id,
+                              msg.id,
+                              optId,
+                            ),
+                            onReact: (emoji) => widget.appState.toggleReaction(
+                              widget.conversation.id,
+                              msg.id,
+                              emoji,
+                            ),
                             onReply: () {
                               setState(() => _replyingTo = msg);
                             },
@@ -526,15 +637,21 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
                   );
 
                   // 1. Sender awaiting recipient's acceptance
-                  if (liveConv.invitationStatus == InvitationStatus.pendingOutgoing) {
+                  if (liveConv.invitationStatus ==
+                      InvitationStatus.pendingOutgoing) {
                     return Container(
                       width: double.infinity,
                       margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
                         color: isDark ? AppTheme.darkCard : Colors.white,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.35)),
+                        border: Border.all(
+                          color: AppTheme.primary.withValues(alpha: 0.35),
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: AppTheme.primary.withValues(alpha: 0.08),
@@ -551,7 +668,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
                               color: AppTheme.primary.withValues(alpha: 0.15),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.hourglass_top_rounded, color: AppTheme.primary, size: 20),
+                            child: const Icon(
+                              Icons.hourglass_top_rounded,
+                              color: AppTheme.primary,
+                              size: 20,
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -561,14 +682,20 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
                               children: [
                                 const Text(
                                   'Invitation Pending',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primary),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: AppTheme.primary,
+                                  ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   'Waiting for ${liveConv.title} to accept your request before sending more messages.',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
+                                    color: isDark
+                                        ? AppTheme.textMuted
+                                        : AppTheme.textMutedLight,
                                   ),
                                 ),
                               ],
@@ -580,7 +707,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
                   }
 
                   // 2. Recipient needs to accept/decline contact request
-                  if (liveConv.invitationStatus == InvitationStatus.pendingIncoming) {
+                  if (liveConv.invitationStatus ==
+                      InvitationStatus.pendingIncoming) {
                     return Container(
                       width: double.infinity,
                       margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -588,7 +716,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
                       decoration: BoxDecoration(
                         color: isDark ? AppTheme.darkCard : Colors.white,
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: Colors.amber.withValues(alpha: 0.5), width: 1.5),
+                        border: Border.all(
+                          color: Colors.amber.withValues(alpha: 0.5),
+                          width: 1.5,
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.amber.withValues(alpha: 0.12),
@@ -614,13 +745,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
                                   children: [
                                     Text(
                                       liveConv.title,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
                                     ),
                                     Text(
                                       'wants to connect with you via GOCHAT PIN',
                                       style: TextStyle(
                                         fontSize: 11,
-                                        color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
+                                        color: isDark
+                                            ? AppTheme.textMuted
+                                            : AppTheme.textMutedLight,
                                       ),
                                     ),
                                   ],
@@ -635,12 +771,21 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
                                 child: OutlinedButton(
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: Colors.redAccent,
-                                    side: const BorderSide(color: Colors.redAccent, width: 1.2),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    side: const BorderSide(
+                                      color: Colors.redAccent,
+                                      width: 1.2,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 10,
+                                    ),
                                   ),
                                   onPressed: () {
-                                    widget.appState.declineInvitation(liveConv.id);
+                                    widget.appState.declineInvitation(
+                                      liveConv.id,
+                                    );
                                     Navigator.pop(context);
                                   },
                                   child: const Text('Decline'),
@@ -652,13 +797,24 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with SingleTickerProvid
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppTheme.primary,
                                     foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 10,
+                                    ),
                                   ),
                                   onPressed: () {
-                                    widget.appState.acceptInvitation(liveConv.id);
+                                    widget.appState.acceptInvitation(
+                                      liveConv.id,
+                                    );
                                   },
-                                  child: const Text('Accept & Chat', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  child: const Text(
+                                    'Accept & Chat',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],

@@ -1323,8 +1323,29 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                                 Text('Amount: \$${o.grandTotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary, fontSize: 14)),
                                 const SizedBox(height: 10),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
+                                    DropdownButton<String>(
+                                      value: ['PENDING', 'PAID', 'SHIPPED', 'DELIVERED', 'CANCELLED'].contains(o.status) ? o.status : 'PAID',
+                                      isDense: true,
+                                      underline: const SizedBox(),
+                                      items: ['PENDING', 'PAID', 'SHIPPED', 'DELIVERED', 'CANCELLED']
+                                          .map((s) => DropdownMenuItem(
+                                                value: s,
+                                                child: Text(s, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                              ))
+                                          .toList(),
+                                      onChanged: (newStatus) async {
+                                        if (newStatus != null) {
+                                          final messenger = ScaffoldMessenger.of(context);
+                                          await widget.appState.updateOrderStatus(o.id, newStatus);
+                                          setState(() {});
+                                          messenger.showSnackBar(
+                                            SnackBar(content: Text('Order #${o.orderNumber} status updated to $newStatus')),
+                                          );
+                                        }
+                                      },
+                                    ),
                                     OutlinedButton.icon(
                                       style: OutlinedButton.styleFrom(
                                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -2227,7 +2248,40 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                         ),
                       )).toList(),
                     ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 16),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            icon: const Icon(Icons.rate_review_outlined, size: 16),
+                            label: const Text('Write Review', style: TextStyle(fontSize: 12)),
+                            onPressed: () {
+                              _showReviewDialog(product);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            icon: const Icon(Icons.help_outline_rounded, size: 16),
+                            label: const Text('Ask Question', style: TextStyle(fontSize: 12)),
+                            onPressed: () {
+                              _showAskQuestionDialog(product);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
 
                     Row(
                       children: [
@@ -2291,6 +2345,109 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
           },
         );
       },
+    );
+  }
+
+  void _showReviewDialog(Product product) {
+    double rating = 5.0;
+    final commentCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('Review "${product.title}"', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  final starVal = index + 1.0;
+                  return IconButton(
+                    icon: Icon(
+                      starVal <= rating ? Icons.star_rounded : Icons.star_border_rounded,
+                      color: Colors.amber,
+                      size: 32,
+                    ),
+                    onPressed: () => setDialogState(() => rating = starVal),
+                  );
+                }),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: commentCtrl,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Your Experience / Feedback',
+                  hintText: 'Great quality, fast delivery, as described...',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.black),
+              onPressed: () async {
+                final nav = Navigator.of(ctx);
+                final messenger = ScaffoldMessenger.of(context);
+                await widget.appState.addProductReview(product.id, rating, commentCtrl.text.trim());
+                nav.pop();
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('🎉 Thank you for your review!')),
+                );
+              },
+              child: const Text('Submit Review'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAskQuestionDialog(Product product) {
+    final questionCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Ask Seller About "${product.title}"', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        content: TextField(
+          controller: questionCtrl,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            labelText: 'Your Question',
+            hintText: 'Is this available in other colors? How long is shipping?',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.black),
+            onPressed: () async {
+              if (questionCtrl.text.trim().isNotEmpty) {
+                final nav = Navigator.of(ctx);
+                final messenger = ScaffoldMessenger.of(context);
+                await widget.appState.askProductQuestion(product.id, questionCtrl.text.trim());
+                nav.pop();
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('📬 Question sent to seller!')),
+                );
+              }
+            },
+            child: const Text('Send Question'),
+          ),
+        ],
+      ),
     );
   }
 

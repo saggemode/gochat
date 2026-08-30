@@ -28,10 +28,19 @@ class ApiConstants {
   static const String channels = '$apiV1/channels';
   static String channelFeed(String channelId) => '$apiV1/channels/$channelId/feed';
 
+  // Business & Merchant endpoints
+  static const String businessProfile = '$apiV1/business/profile';
+  static const String businessProducts = '$apiV1/business/products';
+  static const String businessOrders = '$apiV1/business/orders';
+  static const String businessCoupons = '$apiV1/business/coupons';
+
   // Marketplace & Store endpoints
   static const String products = '$apiV1/marketplace/products';
   static const String categories = '$apiV1/marketplace/categories';
-  static const String checkout = '$apiV1/marketplace/checkout';
+  static const String cart = '$apiV1/marketplace/cart';
+  static const String orders = '$apiV1/marketplace/orders';
+  static const String wishlist = '$apiV1/marketplace/wishlist';
+  static const String validateCoupon = '$apiV1/marketplace/coupons/validate';
 
   // WebSocket URL
   static String get wsUrl {
