@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -180,10 +182,20 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       );
     } catch (_) {}
 
-    // Fallback to permanent local file path for instant zero-delay playback
+    // If server upload returned null or is unreachable, encode as Base64 Data URI
+    // so any recipient device on WebSocket or network can decode and play the audio directly
+    if (mediaUrl == null || mediaUrl.isEmpty) {
+      try {
+        final bytes = await File(permanentPath).readAsBytes();
+        if (bytes.isNotEmpty) {
+          mediaUrl = 'data:audio/mp4;base64,${base64Encode(bytes)}';
+        }
+      } catch (_) {}
+    }
+
     mediaUrl ??= permanentPath;
 
-    // Send the voice message with real URL and duration
+    // Send the voice message with real URL / Base64 and duration
     await widget.appState.sendMessage(
       widget.conversation.id,
       '🎙️ Voice Note (${VoiceRecorderService.formatDuration(result.durationSeconds)})',
@@ -649,7 +661,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         finalMediaUrl = uploadedUrl;
         debugPrint('[ChatRoom] Image uploaded: $uploadedUrl');
       } else {
-        debugPrint('[ChatRoom] Upload failed, sending with local path as fallback');
+        // Fallback to Base64 Data URI so recipient can render the image directly
+        try {
+          final bytes = await File(permanentPath).readAsBytes();
+          if (bytes.isNotEmpty) {
+            finalMediaUrl = 'data:image/$ext;base64,${base64Encode(bytes)}';
+          }
+        } catch (_) {}
       }
 
       // Send with the remote URL so the recipient can load it

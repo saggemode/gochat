@@ -117,6 +117,26 @@ class MediaStorageService {
     }
   }
 
+  /// Save raw voice note bytes directly to the permanent `GoChat Voice Notes` folder
+  Future<String> saveVoiceNoteBytes(Uint8List bytes) async {
+    if (kIsWeb) return '';
+    await init();
+
+    try {
+      final targetFolder = _getCategoryPath(MediaCategory.voiceNotes);
+      final newFileName = _generateFileName(MediaCategory.voiceNotes, '.m4a');
+      final targetPath = p.join(targetFolder, newFileName);
+
+      final file = File(targetPath);
+      await file.writeAsBytes(bytes);
+      debugPrint('[MediaStorageService] Saved voice note bytes to: $targetPath');
+      return targetPath;
+    } catch (e) {
+      debugPrint('[MediaStorageService] Error saving voice note bytes: $e');
+      return '';
+    }
+  }
+
   /// Save an image to the permanent `GoChat Images` folder
   Future<String> saveImage(String sourceTempPath, {String ext = '.jpg'}) async {
     if (kIsWeb) return sourceTempPath;
@@ -136,6 +156,26 @@ class MediaStorageService {
     } catch (e) {
       debugPrint('[MediaStorageService] Error saving image: $e');
       return sourceTempPath;
+    }
+  }
+
+  /// Save raw image bytes directly to the permanent `GoChat Images` folder
+  Future<String> saveImageBytes(Uint8List bytes, {String ext = '.jpg'}) async {
+    if (kIsWeb) return '';
+    await init();
+
+    try {
+      final targetFolder = _getCategoryPath(MediaCategory.images);
+      final newFileName = _generateFileName(MediaCategory.images, ext);
+      final targetPath = p.join(targetFolder, newFileName);
+
+      final file = File(targetPath);
+      await file.writeAsBytes(bytes);
+      debugPrint('[MediaStorageService] Saved image bytes to: $targetPath');
+      return targetPath;
+    } catch (e) {
+      debugPrint('[MediaStorageService] Error saving image bytes: $e');
+      return '';
     }
   }
 

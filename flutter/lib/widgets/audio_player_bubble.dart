@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import '../core/constants/api_constants.dart';
+import '../core/services/media_storage_service.dart';
 import '../core/theme/app_theme.dart';
 
 class AudioPlayerBubble extends StatefulWidget {
@@ -85,7 +87,29 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble> {
         return;
       }
 
-      // 1. Check if local file path
+      // 1. Handle Base64 Data URI (e.g. data:audio/mp4;base64,...)
+      if (rawUrl.startsWith('data:audio') || rawUrl.startsWith('data:') || rawUrl.contains(';base64,')) {
+        try {
+          final b64Index = rawUrl.indexOf('base64,');
+          final b64Data = b64Index != -1 ? rawUrl.substring(b64Index + 7) : rawUrl;
+          final bytes = base64Decode(b64Data.trim());
+          final savedPath = await MediaStorageService().saveVoiceNoteBytes(bytes);
+          if (savedPath.isNotEmpty) {
+            final dur = await _player!.setFilePath(savedPath);
+            if (dur != null && mounted) {
+              setState(() {
+                _totalDuration = dur;
+                _hasRealAudio = true;
+              });
+            }
+            return;
+          }
+        } catch (e) {
+          debugPrint('[AudioPlayerBubble] Error decoding base64 audio: $e');
+        }
+      }
+
+      // 2. Check if local file path
       final isLocalFile = !rawUrl.startsWith('http://') && !rawUrl.startsWith('https://');
       if (isLocalFile) {
         final file = File(rawUrl);
@@ -101,7 +125,7 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble> {
         }
       }
 
-      // 2. Remote URL: handle relative paths or localhost
+      // 3. Remote URL: handle relative paths or localhost
       String targetUrl = rawUrl;
       if (targetUrl.startsWith('/')) {
         targetUrl = '${ApiConstants.baseUrl}$targetUrl';

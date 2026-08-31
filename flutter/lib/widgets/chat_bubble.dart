@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -693,17 +694,36 @@ class ChatBubble extends StatelessWidget {
 
   /// Renders an image from either a local file path or a network URL.
   Widget _buildImageWidget(String url) {
+    // 1. Handle Base64 Data URI
+    if (url.startsWith('data:image') || url.startsWith('data:') || url.contains(';base64,')) {
+      try {
+        final b64Index = url.indexOf('base64,');
+        final b64Data = b64Index != -1 ? url.substring(b64Index + 7) : url;
+        final bytes = base64Decode(b64Data.trim());
+        return Image.memory(
+          bytes,
+          width: 240,
+          height: 180,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _brokenMediaPlaceholder(Icons.broken_image),
+        );
+      } catch (_) {}
+    }
+
     final isLocal = !kIsWeb && !url.startsWith('http');
 
     if (isLocal) {
       final file = File(url);
-      return Image.file(
-        file,
-        width: 240,
-        height: 180,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _brokenMediaPlaceholder(Icons.broken_image),
-      );
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          width: 240,
+          height: 180,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _brokenMediaPlaceholder(Icons.broken_image),
+        );
+      }
+      return _brokenMediaPlaceholder(Icons.broken_image);
     }
 
     return Image.network(
