@@ -52,7 +52,23 @@ class _GameBubbleState extends State<GameBubble> with SingleTickerProviderStateM
     }
   }
 
-  bool get _isMyTurn => _game.isActive && _game.currentTurnId == widget.currentUserId;
+  bool get _isPlayer1 =>
+      widget.currentUserId == _game.player1Id ||
+      (_game.player1Id.isEmpty && widget.isMe) ||
+      (widget.isMe && !_game.isAiGame);
+
+  bool get _isMyTurn {
+    if (!_game.isActive) return false;
+    if (_game.isAiGame) {
+      return _isPlayer1 && _game.currentTurnId == _game.player1Id;
+    }
+    // In PvP multiplayer:
+    if (_game.currentTurnId == _game.player1Id) {
+      return _isPlayer1;
+    } else {
+      return !_isPlayer1;
+    }
+  }
 
   void _handleCellTap(int index) {
     if (!_isMyTurn || _isAiThinking) return;
@@ -68,9 +84,11 @@ class _GameBubbleState extends State<GameBubble> with SingleTickerProviderStateM
     if (_game.board[index].isNotEmpty) return;
 
     HapticFeedback.mediumImpact();
-    final isPlayer1 = widget.currentUserId == _game.player1Id;
+    final isPlayer1 = _isPlayer1;
     final mySymbol = isPlayer1 ? _game.player1Symbol : _game.player2Symbol;
-    final opponentId = isPlayer1 ? _game.player2Id : _game.player1Id;
+    final opponentId = isPlayer1
+        ? (_game.player2Id.isNotEmpty ? _game.player2Id : 'player_2')
+        : _game.player1Id;
 
     final newBoard = List<String>.from(_game.board);
     newBoard[index] = mySymbol;
@@ -81,7 +99,7 @@ class _GameBubbleState extends State<GameBubble> with SingleTickerProviderStateM
       final updated = _game.copyWith(
         board: newBoard,
         status: 'won',
-        winnerId: widget.currentUserId,
+        winnerId: isPlayer1 ? _game.player1Id : (_game.player2Id.isNotEmpty ? _game.player2Id : widget.currentUserId),
         winnerName: isPlayer1 ? _game.player1Name : _game.player2Name,
         winningLine: winCheck.line,
       );
@@ -99,7 +117,7 @@ class _GameBubbleState extends State<GameBubble> with SingleTickerProviderStateM
       return;
     }
 
-    // Pass turn
+    // Pass turn to other player
     final updated = _game.copyWith(
       board: newBoard,
       currentTurnId: opponentId,
@@ -164,9 +182,11 @@ class _GameBubbleState extends State<GameBubble> with SingleTickerProviderStateM
     if (row == -1) return; // Column full
 
     HapticFeedback.mediumImpact();
-    final isPlayer1 = widget.currentUserId == _game.player1Id;
+    final isPlayer1 = _isPlayer1;
     final mySymbol = isPlayer1 ? _game.player1Symbol : _game.player2Symbol;
-    final opponentId = isPlayer1 ? _game.player2Id : _game.player1Id;
+    final opponentId = isPlayer1
+        ? (_game.player2Id.isNotEmpty ? _game.player2Id : 'player_2')
+        : _game.player1Id;
 
     final cellIdx = row * 7 + col;
     final newBoard = List<String>.from(_game.board);
@@ -178,7 +198,7 @@ class _GameBubbleState extends State<GameBubble> with SingleTickerProviderStateM
       final updated = _game.copyWith(
         board: newBoard,
         status: 'won',
-        winnerId: widget.currentUserId,
+        winnerId: isPlayer1 ? _game.player1Id : (_game.player2Id.isNotEmpty ? _game.player2Id : widget.currentUserId),
         winnerName: isPlayer1 ? _game.player1Name : _game.player2Name,
         winningLine: winCheck.line,
       );
@@ -384,7 +404,9 @@ class _GameBubbleState extends State<GameBubble> with SingleTickerProviderStateM
 
   Widget _buildStatusBanner() {
     if (_game.status == 'won') {
-      final isWinnerMe = _game.winnerId == widget.currentUserId;
+      final isWinnerMe = _game.winnerId == widget.currentUserId ||
+          (_game.winnerId == _game.player1Id && _isPlayer1) ||
+          (_game.winnerId == _game.player2Id && !_isPlayer1);
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
         decoration: BoxDecoration(
@@ -436,10 +458,14 @@ class _GameBubbleState extends State<GameBubble> with SingleTickerProviderStateM
       );
     }
 
+    final opponentName = _isPlayer1
+        ? (_game.isAiGame ? 'Computer 🤖' : _game.player2Name)
+        : _game.player1Name;
+
     return Text(
       _isMyTurn
-          ? '🟢 Your turn (${widget.currentUserId == _game.player1Id ? _game.player1Symbol : _game.player2Symbol})'
-          : '⏳ Waiting for ${_game.currentTurnId == 'ai' ? 'Computer' : _game.player2Name}...',
+          ? '🟢 Your turn (${_isPlayer1 ? _game.player1Symbol : _game.player2Symbol})'
+          : '⏳ Waiting for $opponentName...',
       textAlign: TextAlign.center,
       style: TextStyle(
         fontSize: 11.5,
