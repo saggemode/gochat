@@ -415,7 +415,25 @@ class AppState extends ChangeNotifier {
         notifyListeners();
       }
     }
-    // 2. Incoming Profile Update Event
+    // 2. Incoming Live Game Move Event (Tic-Tac-Toe / Connect 4)
+    else if (eventType == 'game_move' || eventType == 'EVENT_GAME_MOVE') {
+      final convId = (data['conversation_id'] ?? '').toString();
+      final msgId = (data['message_id'] ?? '').toString();
+      final gameJson = data['game_data'];
+      if (convId.isNotEmpty && msgId.isNotEmpty && gameJson is Map<String, dynamic>) {
+        final gameData = GameData.fromJson(gameJson);
+        final msgs = _messages[convId];
+        if (msgs != null) {
+          final idx = msgs.indexWhere((m) => m.id == msgId);
+          if (idx != -1) {
+            msgs[idx] = msgs[idx].copyWith(gameData: gameData);
+            DatabaseService().updateGameData(msgId, gameData);
+            notifyListeners();
+          }
+        }
+      }
+    }
+    // 3. Incoming Profile Update Event
     else if (eventType == 'user_profile_updated' ||
         eventType == 'EVENT_USER_PROFILE_UPDATED') {
       final userData = data['user'] ?? data['payload'] ?? data['data'];
@@ -864,6 +882,7 @@ class AppState extends ChangeNotifier {
     String? mediaUrl,
     int? mediaDuration,
     PollData? pollData,
+    GameData? gameData,
     Map<String, dynamic>? productData,
     bool isPing = false,
     bool isViewOnce = false,
@@ -881,6 +900,7 @@ class AppState extends ChangeNotifier {
     if (type == MessageType.poll) typeInt = 6;
     if (type == MessageType.product) typeInt = 7;
     if (type == MessageType.ping) typeInt = 8;
+    if (type == MessageType.game) typeInt = 9;
 
     final expiresAt = disappearingDurationSeconds != null
         ? DateTime.now().add(Duration(seconds: disappearingDurationSeconds))
@@ -899,6 +919,7 @@ class AppState extends ChangeNotifier {
         mediaUrl: mediaUrl ?? realMsg.mediaUrl,
         mediaDuration: mediaDuration ?? realMsg.mediaDuration,
         pollData: pollData,
+        gameData: gameData,
         productData: productData,
         isPing: isPing,
         isViewOnce: isViewOnce,
@@ -913,6 +934,9 @@ class AppState extends ChangeNotifier {
         _messages[convId] = [];
       }
       _messages[convId]!.add(msgToAdd);
+
+      // Save to SQLite database
+      await DatabaseService().insertMessage(msgToAdd);
 
       // Save to offline storage
       await StorageService.saveCachedMessages(convId, _messages[convId]!);
@@ -948,6 +972,7 @@ class AppState extends ChangeNotifier {
           'disappearing_duration': disappearingDurationSeconds,
           'expires_at': expiresAt?.toIso8601String(),
           'poll_data': pollData?.toJson(),
+          'game_data': gameData?.toJson(),
           'product_data': productData,
           'reply_to_id': replyToId,
           'reply_to_text': replyToText,
@@ -970,8 +995,12 @@ class AppState extends ChangeNotifier {
         mediaUrl: mediaUrl,
         mediaDuration: mediaDuration,
         pollData: pollData,
+        gameData: gameData,
         productData: productData,
         isPing: isPing,
+        isViewOnce: isViewOnce,
+        disappearingDurationSeconds: disappearingDurationSeconds,
+        expiresAt: expiresAt,
         replyToId: replyToId,
         replyToText: replyToText,
         replyToSenderName: replyToSenderName,
@@ -995,6 +1024,7 @@ class AppState extends ChangeNotifier {
           'media_url': mediaUrl,
           'media_duration': mediaDuration,
           'poll_data': pollData?.toJson(),
+          'game_data': gameData?.toJson(),
           'product_data': productData,
         },
       );
@@ -1026,7 +1056,11 @@ class AppState extends ChangeNotifier {
           'media_url': mediaUrl,
           'media_duration': mediaDuration,
           'is_ping': isPing,
+          'is_view_once': isViewOnce,
+          'disappearing_duration': disappearingDurationSeconds,
+          'expires_at': expiresAt?.toIso8601String(),
           'poll_data': pollData?.toJson(),
+          'game_data': gameData?.toJson(),
           'product_data': productData,
           'reply_to_id': replyToId,
           'reply_to_text': replyToText,
@@ -1037,6 +1071,30 @@ class AppState extends ChangeNotifier {
 
       notifyListeners();
     }
+  }
+
+  /// Make a move in an in-chat mini-game (Tic-Tac-Toe or Connect 4)
+  Future<void> makeGameMove(String convId, String messageId, GameData updatedGame) async {
+    final msgs = _messages[convId];
+    if (msgs != null) {
+      final idx = msgs.indexWhere((m) => m.id == messageId);
+      if (idx != -1) {
+        msgs[idx] = msgs[idx].copyWith(gameData: updatedGame);
+        notifyListeners();
+      }
+    }
+
+    // Save to SQLite
+    await DatabaseService().updateGameData(messageId, updatedGame);
+
+    // Broadcast live over WebSocket to opponent
+    wsService.send({
+      'type': 'game_move',
+      'event_type': 'EVENT_GAME_MOVE',
+      'conversation_id': convId,
+      'message_id': messageId,
+      'game_data': updatedGame.toJson(),
+    });
   }
 
   /// Mark a View-Once message as opened (burns local media and updates state)

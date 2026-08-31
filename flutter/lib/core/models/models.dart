@@ -9,3 +9,4 @@ export 'product_variant.dart';
 export 'store_profile.dart';
 export 'marketplace_order.dart';
 export 'store_coupon.dart';
+export 'game_data.dart';

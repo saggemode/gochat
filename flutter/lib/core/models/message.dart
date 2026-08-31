@@ -1,3 +1,5 @@
+import 'game_data.dart';
+
 enum MessageType {
   text,
   image,
@@ -122,6 +124,7 @@ class Message {
   final int? mediaDuration; // In seconds for audio/video
   final int? mediaSize;     // In bytes
   final PollData? pollData;
+  final GameData? gameData;
   final Map<String, dynamic>? productData;
   final bool isPing;
   final bool isViewOnce;
@@ -148,6 +151,7 @@ class Message {
     this.mediaDuration,
     this.mediaSize,
     this.pollData,
+    this.gameData,
     this.productData,
     this.isPing = false,
     this.isViewOnce = false,
@@ -181,6 +185,7 @@ class Message {
     int? mediaDuration,
     int? mediaSize,
     PollData? pollData,
+    GameData? gameData,
     Map<String, dynamic>? productData,
     bool? isPing,
     bool? isViewOnce,
@@ -207,6 +212,7 @@ class Message {
       mediaDuration: mediaDuration ?? this.mediaDuration,
       mediaSize: mediaSize ?? this.mediaSize,
       pollData: pollData ?? this.pollData,
+      gameData: gameData ?? this.gameData,
       productData: productData ?? this.productData,
       isPing: isPing ?? this.isPing,
       isViewOnce: isViewOnce ?? this.isViewOnce,
@@ -246,6 +252,7 @@ class Message {
       mediaDuration: json['duration'] ?? json['media_duration'] ?? json['Duration'],
       mediaSize: json['file_size'] ?? json['media_size'] ?? json['MediaSize'],
       pollData: json['poll_data'] != null ? PollData.fromJson(json['poll_data']) : null,
+      gameData: json['game_data'] != null ? GameData.fromJson(json['game_data']) : null,
       productData: json['product_data'] is Map<String, dynamic> ? json['product_data'] : null,
       isPing: isPingVal,
       isViewOnce: json['is_view_once'] == true || json['isViewOnce'] == true || json['is_view_once'] == 1,
@@ -292,6 +299,7 @@ class Message {
       'duration': mediaDuration,
       'file_size': mediaSize,
       'poll_data': pollData?.toJson(),
+      'game_data': gameData?.toJson(),
       'product_data': productData,
       'is_ping': isPing,
       'is_view_once': isViewOnce,

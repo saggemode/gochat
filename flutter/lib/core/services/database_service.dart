@@ -13,7 +13,7 @@ class DatabaseService {
   DatabaseService._();
 
   static const String _dbName = 'gochat_msgstore.db';
-  static const int _dbVersion = 2;
+  static const int _dbVersion = 3;
 
   Database? _db;
 
@@ -41,6 +41,13 @@ class DatabaseService {
             await db.execute('ALTER TABLE messages ADD COLUMN expires_at INTEGER;');
           } catch (e) {
             debugPrint('[DatabaseService] Migration v2 column addition notice: $e');
+          }
+        }
+        if (oldVersion < 3) {
+          try {
+            await db.execute('ALTER TABLE messages ADD COLUMN game_data_json TEXT;');
+          } catch (e) {
+            debugPrint('[DatabaseService] Migration v3 column addition notice: $e');
           }
         }
       },
@@ -88,6 +95,7 @@ class DatabaseService {
             disappearing_duration INTEGER,
             expires_at INTEGER,
             poll_data_json TEXT,
+            game_data_json TEXT,
             product_data_json TEXT,
             reply_to_id TEXT,
             reply_to_text TEXT,
@@ -467,6 +475,24 @@ class DatabaseService {
     }
   }
 
+  /// Updates the game state in SQLite when a move is played
+  Future<void> updateGameData(String messageId, GameData gameData) async {
+    try {
+      final db = await database;
+      await db.update(
+        'messages',
+        {
+          'game_data_json': jsonEncode(gameData.toJson()),
+        },
+        where: 'id = ?',
+        whereArgs: [messageId],
+      );
+      debugPrint('[DatabaseService] Updated game state for message: $messageId');
+    } catch (e) {
+      debugPrint('[DatabaseService] Error updating game state: $e');
+    }
+  }
+
   // ── Row Mappers ─────────────────────────────────────────────────────────────
 
   Map<String, dynamic> _messageToRow(Message m) {
@@ -489,6 +515,7 @@ class DatabaseService {
       'disappearing_duration': m.disappearingDurationSeconds,
       'expires_at': m.expiresAt?.millisecondsSinceEpoch,
       'poll_data_json': m.pollData != null ? jsonEncode(m.pollData!.toJson()) : null,
+      'game_data_json': m.gameData != null ? jsonEncode(m.gameData!.toJson()) : null,
       'product_data_json': m.productData != null ? jsonEncode(m.productData) : null,
       'reply_to_id': m.replyToId,
       'reply_to_text': m.replyToText,
@@ -506,6 +533,13 @@ class DatabaseService {
     if (row['poll_data_json'] != null) {
       try {
         pollData = PollData.fromJson(jsonDecode(row['poll_data_json'] as String));
+      } catch (_) {}
+    }
+
+    GameData? gameData;
+    if (row['game_data_json'] != null) {
+      try {
+        gameData = GameData.fromJson(jsonDecode(row['game_data_json'] as String));
       } catch (_) {}
     }
 
@@ -557,6 +591,7 @@ class DatabaseService {
       disappearingDurationSeconds: row['disappearing_duration'] as int?,
       expiresAt: expiresAtMillis != null ? DateTime.fromMillisecondsSinceEpoch(expiresAtMillis) : null,
       pollData: pollData,
+      gameData: gameData,
       productData: productData,
       replyToId: row['reply_to_id'] as String?,
       replyToText: row['reply_to_text'] as String?,

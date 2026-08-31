@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../core/models/chat_theme.dart';
+import '../core/models/game_data.dart';
 import '../core/models/message.dart';
 import '../core/theme/app_theme.dart';
 import '../screens/chat/media_lightbox_screen.dart';
 import 'audio_player_bubble.dart';
+import 'game_bubble.dart';
 import 'poll_bubble.dart';
 
 class ChatBubble extends StatelessWidget {
@@ -19,6 +21,7 @@ class ChatBubble extends StatelessWidget {
   final VoidCallback? onReply;
   final VoidCallback? onOpenCanvas;
   final VoidCallback? onOpenViewOnce;
+  final Function(GameData updatedGame)? onUpdateGame;
   final Function(Map<String, dynamic> product)? onBuyProduct;
 
   const ChatBubble({
@@ -31,6 +34,7 @@ class ChatBubble extends StatelessWidget {
     this.onReply,
     this.onOpenCanvas,
     this.onOpenViewOnce,
+    this.onUpdateGame,
     this.onBuyProduct,
   });
 
@@ -352,6 +356,14 @@ class ChatBubble extends StatelessWidget {
                     currentUserId: currentUserId,
                     isMe: isMe,
                     onVote: (optId) => onVotePoll?.call(optId),
+                  )
+                // ── Interactive Mini-Game Bubble ─────────────────────────────
+                else if (message.type == MessageType.game)
+                  GameBubble(
+                    message: message,
+                    currentUserId: currentUserId,
+                    isMe: isMe,
+                    onUpdateGame: (updated) => onUpdateGame?.call(updated),
                   )
                 // ── Live Canvas Mini-App ──────────────────────────────────────
                 else if (message.type == MessageType.canvas)

@@ -22,6 +22,7 @@ import 'chat_input_bar.dart';
 import 'chat_theme_customizer_sheet.dart';
 import 'contact_profile_screen.dart';
 import 'create_poll_dialog.dart';
+import 'game_launcher_dialog.dart';
 import 'view_once_viewer_screen.dart';
 import '../stories/story_viewer_screen.dart';
 
@@ -402,7 +403,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       onDisappearingTimer: _showDisappearingMessagesSheet,
       onOpenPoll: _openCreatePollDialog,
       onOpenCanvas: _openMiniAppModal,
-      onOpenMiniGame: _openMiniAppModal,
+      onOpenMiniGame: _openGameLauncher,
       onShareProduct: _openProductPicker,
       onSendPing: _handleSendPing,
       onShareDocument: () {
@@ -417,6 +418,33 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       onAskBot: () {
         _inputController.text = '@bot summarize conversation';
         setState(() => _isTyping = true);
+      },
+    );
+  }
+
+  /// Launch in-chat multiplayer or AI mini-game
+  void _openGameLauncher() {
+    final myId = widget.appState.currentUser?.id ?? 'u_me';
+    final myName = widget.appState.currentUser?.displayName ?? 'Me';
+
+    GameLauncherDialog.show(
+      context,
+      currentUserId: myId,
+      currentUserName: myName,
+      partnerId: widget.conversation.partnerPin ?? widget.conversation.id,
+      partnerName: widget.conversation.title,
+      onLaunchGame: (game) {
+        final gameTitle = game.gameType == 'tictactoe' ? '⭕ Tic-Tac-Toe' : '🔴 Connect 4';
+        final opponentStr = game.isAiGame ? 'vs Computer 🤖' : 'vs ${widget.conversation.title}';
+
+        widget.appState.sendMessage(
+          widget.conversation.id,
+          '🎮 Started $gameTitle ($opponentStr)',
+          type: MessageType.game,
+          gameData: game,
+          disappearingDurationSeconds: _disappearingDuration,
+        );
+        _scrollToBottom();
       },
     );
   }
@@ -1010,6 +1038,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                                 setState(() => _replyingTo = msg);
                               },
                               onOpenCanvas: _openMiniAppModal,
+                              onUpdateGame: (updatedGame) {
+                                widget.appState.makeGameMove(
+                                  widget.conversation.id,
+                                  msg.id,
+                                  updatedGame,
+                                );
+                              },
                               onOpenViewOnce: () {
                                 if (msg.mediaUrl != null && msg.mediaUrl!.isNotEmpty) {
                                   ViewOnceViewerScreen.show(
