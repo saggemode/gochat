@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../core/models/story.dart';
 import '../../core/theme/app_theme.dart';
@@ -32,17 +33,17 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
   }
 
   void _startStoryTimer() {
-    _progress = 0.0;
     _timer?.cancel();
+    _progress = 0.0;
     _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
-      if (mounted) {
-        setState(() {
-          _progress += 0.01;
-          if (_progress >= 1.0) {
-            _nextStory();
-          }
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _progress += 0.01;
+        if (_progress >= 1.0) {
+          _timer?.cancel();
+          _nextStory();
+        }
+      });
     });
   }
 
@@ -53,7 +54,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
       });
       _startStoryTimer();
     } else {
-      _timer?.cancel();
       Navigator.pop(context);
     }
   }
@@ -67,6 +67,16 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
     }
   }
 
+  Color _parseBgColor(String? hex) {
+    if (hex == null || hex.isEmpty) return const Color(0xFF6C63FF);
+    try {
+      final clean = hex.replaceAll('#', '');
+      return Color(int.parse(clean, radix: 16));
+    } catch (_) {
+      return const Color(0xFF6C63FF);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.userStories.stories.isEmpty) {
@@ -74,6 +84,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
     }
 
     final story = widget.userStories.stories[_currentIndex];
+    final isTextStory = story.mediaType == 'text' || story.mediaUrl.isEmpty;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -88,18 +99,57 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
         },
         child: Stack(
           children: [
-            // Background Story Media Image
+            // ── Background Story Content (Text vs Image vs Video) ──
             Positioned.fill(
-              child: Image.network(
-                story.mediaUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (ctx, _, __) => Container(
-                  color: AppTheme.darkSurface,
-                  child: const Center(
-                    child: Icon(Icons.broken_image, size: 48, color: AppTheme.iconColor),
-                  ),
-                ),
-              ),
+              child: isTextStory
+                  ? Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            _parseBgColor(story.backgroundColor),
+                            _parseBgColor(story.backgroundColor).withValues(alpha: 0.7),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 36.0),
+                          child: Text(
+                            story.caption,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : (story.mediaUrl.startsWith('http')
+                      ? Image.network(
+                          story.mediaUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, _, __) => Container(
+                            color: AppTheme.darkSurface,
+                            child: const Center(
+                              child: Icon(Icons.broken_image, size: 48, color: AppTheme.iconColor),
+                            ),
+                          ),
+                        )
+                      : Image.file(
+                          File(story.mediaUrl),
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, _, __) => Container(
+                            color: AppTheme.darkSurface,
+                            child: const Center(
+                              child: Icon(Icons.broken_image, size: 48, color: AppTheme.iconColor),
+                            ),
+                          ),
+                        )),
             ),
 
             // Top Gradient & Story Progression Bars

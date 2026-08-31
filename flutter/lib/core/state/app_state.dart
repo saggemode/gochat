@@ -1649,11 +1649,13 @@ class AppState extends ChangeNotifier {
   }
 
   // ── Stories & Status Updates ───────────────────────────────────────────────
-  void addStory(String mediaUrl, String caption) {
+  void addStory(String mediaUrl, String caption, {String mediaType = 'image', String? backgroundColor}) {
     final newStory = StoryItem(
       id: 'story_${DateTime.now().millisecondsSinceEpoch}',
       mediaUrl: mediaUrl,
       caption: caption,
+      mediaType: mediaType,
+      backgroundColor: backgroundColor,
       createdAt: DateTime.now(),
       expiresAt: DateTime.now().add(const Duration(hours: 24)),
     );
