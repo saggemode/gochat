@@ -1649,9 +1649,10 @@ class AppState extends ChangeNotifier {
   }
 
   // ── Stories & Status Updates ───────────────────────────────────────────────
-  void addStory(String mediaUrl, String caption, {String mediaType = 'image', String? backgroundColor}) {
+  Future<void> addStory(String mediaUrl, String caption, {String mediaType = 'image', String? backgroundColor}) async {
+    final storyId = 'story_${DateTime.now().millisecondsSinceEpoch}';
     final newStory = StoryItem(
-      id: 'story_${DateTime.now().millisecondsSinceEpoch}',
+      id: storyId,
       mediaUrl: mediaUrl,
       caption: caption,
       mediaType: mediaType,
@@ -1675,6 +1676,38 @@ class AppState extends ChangeNotifier {
       );
     }
     notifyListeners();
+
+    // Broadcast & Post to Backend API in background so friends receive it
+    try {
+      String finalMediaUrl = mediaUrl;
+      if (mediaUrl.isNotEmpty && !mediaUrl.startsWith('http://') && !mediaUrl.startsWith('https://')) {
+        final uploaded = await ApiService.uploadMedia(mediaUrl);
+        if (uploaded != null && uploaded.isNotEmpty) {
+          finalMediaUrl = uploaded;
+        }
+      }
+
+      await ApiService.postStory(
+        mediaUrl: finalMediaUrl,
+        caption: caption,
+        mediaType: mediaType,
+      );
+
+      // Send live WebSocket broadcast event to all connected friends
+      wsService.send({
+        'type': 'story_created',
+        'event': 'story_created',
+        'story_id': storyId,
+        'user_id': _currentUser?.id ?? '',
+        'user_name': _currentUser?.displayName ?? '',
+        'media_url': finalMediaUrl,
+        'caption': caption,
+        'media_type': mediaType,
+        'background_color': backgroundColor,
+      });
+    } catch (_) {
+      // Local story was already added and displayed; remote sync error handled gracefully
+    }
   }
 
   @override
