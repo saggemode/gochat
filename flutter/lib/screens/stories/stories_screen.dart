@@ -161,7 +161,9 @@ class StoriesScreen extends StatelessWidget {
             ...otherStories.map((item) {
               return ListTile(
                 leading: StoryAvatar(
-                  avatarUrl: item.userAvatar,
+                  avatarUrl: (item.stories.isNotEmpty && item.stories.first.mediaUrl.isNotEmpty)
+                      ? item.stories.first.mediaUrl
+                      : item.userAvatar,
                   radius: 26,
                   hasUnseenStory: item.hasUnseenStories,
                   storyCount: item.stories.length,

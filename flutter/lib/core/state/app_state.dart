@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/models.dart';
@@ -486,6 +487,47 @@ class AppState extends ChangeNotifier {
     else if (eventType == 'story_created' ||
         eventType == 'chat:stories' ||
         data['type'] == 'story_created') {
+      final storyId = (data['story_id'] ?? data['id'] ?? 'story_${DateTime.now().millisecondsSinceEpoch}').toString();
+      final userId = (data['user_id'] ?? data['actor_id'] ?? data['sender_id'] ?? '').toString();
+      final userName = (data['user_name'] ?? data['sender_name'] ?? data['author_name'] ?? 'Friend').toString();
+      final userAvatar = (data['user_avatar'] ?? data['avatar_url'] ?? '').toString();
+      final mediaUrl = (data['media_url'] ?? data['url'] ?? '').toString();
+      final caption = (data['caption'] ?? data['content'] ?? '').toString();
+      final mediaType = (data['media_type'] ?? data['type'] ?? 'image').toString();
+      final backgroundColor = data['background_color']?.toString();
+
+      if (userId.isNotEmpty && userId != _currentUser?.id) {
+        final newStory = StoryItem(
+          id: storyId,
+          mediaUrl: mediaUrl,
+          caption: caption,
+          mediaType: mediaType,
+          backgroundColor: backgroundColor,
+          createdAt: DateTime.now(),
+          expiresAt: DateTime.now().add(const Duration(hours: 24)),
+        );
+
+        final userStoryIdx = _stories.indexWhere((s) => s.userId == userId || (s.userName.isNotEmpty && s.userName.toLowerCase() == userName.toLowerCase()));
+        if (userStoryIdx != -1) {
+          final existing = _stories[userStoryIdx];
+          if (!existing.stories.any((st) => st.id == storyId)) {
+            existing.stories.insert(0, newStory);
+          }
+        } else {
+          _stories.insert(
+            _stories.any((s) => s.isMe) ? 1 : 0,
+            UserStories(
+              userId: userId,
+              userName: userName,
+              userAvatar: userAvatar,
+              stories: [newStory],
+              isMe: false,
+            ),
+          );
+        }
+        notifyListeners();
+      }
+
       fetchStories();
     }
     // 3. Incoming Live Typing Event
@@ -1684,14 +1726,20 @@ class AppState extends ChangeNotifier {
         final uploaded = await ApiService.uploadMedia(mediaUrl);
         if (uploaded != null && uploaded.isNotEmpty) {
           finalMediaUrl = uploaded;
+        } else {
+          // Fallback to base64 Data URI so friend receives the full image immediately
+          try {
+            final file = File(mediaUrl);
+            if (await file.exists()) {
+              final bytes = await file.readAsBytes();
+              if (bytes.isNotEmpty) {
+                final ext = mediaUrl.split('.').last.toLowerCase();
+                finalMediaUrl = 'data:image/$ext;base64,${base64Encode(bytes)}';
+              }
+            }
+          } catch (_) {}
         }
       }
-
-      await ApiService.postStory(
-        mediaUrl: finalMediaUrl,
-        caption: caption,
-        mediaType: mediaType,
-      );
 
       // Send live WebSocket broadcast event to all connected friends
       wsService.send({
@@ -1700,11 +1748,18 @@ class AppState extends ChangeNotifier {
         'story_id': storyId,
         'user_id': _currentUser?.id ?? '',
         'user_name': _currentUser?.displayName ?? '',
+        'user_avatar': _currentUser?.avatarUrl ?? '',
         'media_url': finalMediaUrl,
         'caption': caption,
         'media_type': mediaType,
         'background_color': backgroundColor,
       });
+
+      await ApiService.postStory(
+        mediaUrl: finalMediaUrl,
+        caption: caption,
+        mediaType: mediaType,
+      );
     } catch (_) {
       // Local story was already added and displayed; remote sync error handled gracefully
     }
