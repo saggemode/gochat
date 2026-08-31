@@ -639,25 +639,29 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         ext: '.$ext',
       );
 
-      // Show immediately with local path
-      widget.appState.sendMessage(
-        widget.conversation.id,
-        isViewOnce ? '① Photo' : '📷 Photo',
-        type: MessageType.image,
-        mediaUrl: permanentPath,
-        isViewOnce: isViewOnce,
-        disappearingDurationSeconds: _disappearingDuration,
-      );
-      _scrollToBottom();
-
-      // Upload in background and update URL
+      // Upload to server FIRST so the recipient gets a downloadable URL
+      String finalMediaUrl = permanentPath;
       final uploadedUrl = await ApiService.uploadMedia(
         permanentPath,
         mimeType: 'image/$ext',
       );
-      if (uploadedUrl != null) {
+      if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+        finalMediaUrl = uploadedUrl;
         debugPrint('[ChatRoom] Image uploaded: $uploadedUrl');
+      } else {
+        debugPrint('[ChatRoom] Upload failed, sending with local path as fallback');
       }
+
+      // Send with the remote URL so the recipient can load it
+      widget.appState.sendMessage(
+        widget.conversation.id,
+        isViewOnce ? '① Photo' : '📷 Photo',
+        type: MessageType.image,
+        mediaUrl: finalMediaUrl,
+        isViewOnce: isViewOnce,
+        disappearingDurationSeconds: _disappearingDuration,
+      );
+      _scrollToBottom();
     } catch (e) {
       debugPrint('[ChatRoom] Error picking image: $e');
       if (mounted) {
@@ -686,25 +690,29 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         ext: '.$ext',
       );
 
-      // Show immediately with local path
-      widget.appState.sendMessage(
-        widget.conversation.id,
-        isViewOnce ? '① Video' : '🎥 Video',
-        type: MessageType.video,
-        mediaUrl: permanentPath,
-        isViewOnce: isViewOnce,
-        disappearingDurationSeconds: _disappearingDuration,
-      );
-      _scrollToBottom();
-
-      // Upload in background and update URL
+      // Upload to server FIRST so the recipient gets a downloadable URL
+      String finalMediaUrl = permanentPath;
       final uploadedUrl = await ApiService.uploadMedia(
         permanentPath,
         mimeType: 'video/$ext',
       );
-      if (uploadedUrl != null) {
+      if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+        finalMediaUrl = uploadedUrl;
         debugPrint('[ChatRoom] Video uploaded: $uploadedUrl');
+      } else {
+        debugPrint('[ChatRoom] Video upload failed, sending with local path as fallback');
       }
+
+      // Send with the remote URL so the recipient can load it
+      widget.appState.sendMessage(
+        widget.conversation.id,
+        isViewOnce ? '① Video' : '🎥 Video',
+        type: MessageType.video,
+        mediaUrl: finalMediaUrl,
+        isViewOnce: isViewOnce,
+        disappearingDurationSeconds: _disappearingDuration,
+      );
+      _scrollToBottom();
     } catch (e) {
       debugPrint('[ChatRoom] Error picking video: $e');
       if (mounted) {
