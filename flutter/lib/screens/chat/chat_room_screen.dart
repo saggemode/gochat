@@ -60,6 +60,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
   int? _disappearingDuration;
   Timer? _disappearingCleanupTimer;
 
+  // Media Upload Progress Tracker
+  double? _mediaUploadProgress;
+  String? _uploadingMediaLabel;
+
   @override
   void initState() {
     super.initState();
@@ -637,11 +641,28 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       final picker = ImagePicker();
       final XFile? picked = await picker.pickImage(
         source: source,
-        imageQuality: 80,
-        maxWidth: 1920,
-        maxHeight: 1920,
+        imageQuality: 85,
+        maxWidth: 2560,
+        maxHeight: 2560,
       );
       if (picked == null) return;
+
+      // ── Enforce 50 MB File Size Limit ──
+      final rawFile = File(picked.path);
+      final fileLength = await rawFile.length();
+      const max50MB = 50 * 1024 * 1024;
+      if (fileLength > max50MB) {
+        final mb = (fileLength / (1024 * 1024)).toStringAsFixed(1);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('⚠️ Image too large ($mb MB). Maximum allowed size is 50 MB.'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+        return;
+      }
 
       // Save to permanent GoChat/Media/GoChat Images/ folder
       final mediaStorage = MediaStorageService();
@@ -651,12 +672,24 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         ext: '.$ext',
       );
 
-      // Upload to server FIRST so the recipient gets a downloadable URL
+      // Track live upload progress
+      setState(() {
+        _mediaUploadProgress = 0.05;
+        _uploadingMediaLabel = 'Uploading photo...';
+      });
+
+      // Upload to server with live progress
       String finalMediaUrl = permanentPath;
       final uploadedUrl = await ApiService.uploadMedia(
         permanentPath,
         mimeType: 'image/$ext',
+        onProgress: (prog) {
+          if (mounted) {
+            setState(() => _mediaUploadProgress = prog);
+          }
+        },
       );
+
       if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
         finalMediaUrl = uploadedUrl;
         debugPrint('[ChatRoom] Image uploaded: $uploadedUrl');
@@ -670,17 +703,31 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         } catch (_) {}
       }
 
-      // Send with the remote URL so the recipient can load it
+      if (mounted) {
+        setState(() {
+          _mediaUploadProgress = null;
+          _uploadingMediaLabel = null;
+        });
+      }
+
+      // Send with the remote URL and size metadata so the recipient can load/download it
       widget.appState.sendMessage(
         widget.conversation.id,
         isViewOnce ? '① Photo' : '📷 Photo',
         type: MessageType.image,
         mediaUrl: finalMediaUrl,
+        mediaSize: fileLength,
         isViewOnce: isViewOnce,
         disappearingDurationSeconds: _disappearingDuration,
       );
       _scrollToBottom();
     } catch (e) {
+      if (mounted) {
+        setState(() {
+          _mediaUploadProgress = null;
+          _uploadingMediaLabel = null;
+        });
+      }
       debugPrint('[ChatRoom] Error picking image: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -696,9 +743,26 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       final picker = ImagePicker();
       final XFile? picked = await picker.pickVideo(
         source: ImageSource.gallery,
-        maxDuration: const Duration(minutes: 5),
+        maxDuration: const Duration(minutes: 10),
       );
       if (picked == null) return;
+
+      // ── Enforce 50 MB File Size Limit ──
+      final rawFile = File(picked.path);
+      final fileLength = await rawFile.length();
+      const max50MB = 50 * 1024 * 1024;
+      if (fileLength > max50MB) {
+        final mb = (fileLength / (1024 * 1024)).toStringAsFixed(1);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('⚠️ Video too large ($mb MB). Maximum allowed size is 50 MB.'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+        return;
+      }
 
       // Save to permanent GoChat/Media/GoChat Video/ folder
       final mediaStorage = MediaStorageService();
@@ -708,12 +772,24 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         ext: '.$ext',
       );
 
-      // Upload to server FIRST so the recipient gets a downloadable URL
+      // Track live upload progress
+      setState(() {
+        _mediaUploadProgress = 0.05;
+        _uploadingMediaLabel = 'Uploading video...';
+      });
+
+      // Upload to server with live progress
       String finalMediaUrl = permanentPath;
       final uploadedUrl = await ApiService.uploadMedia(
         permanentPath,
         mimeType: 'video/$ext',
+        onProgress: (prog) {
+          if (mounted) {
+            setState(() => _mediaUploadProgress = prog);
+          }
+        },
       );
+
       if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
         finalMediaUrl = uploadedUrl;
         debugPrint('[ChatRoom] Video uploaded: $uploadedUrl');
@@ -721,17 +797,31 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         debugPrint('[ChatRoom] Video upload failed, sending with local path as fallback');
       }
 
-      // Send with the remote URL so the recipient can load it
+      if (mounted) {
+        setState(() {
+          _mediaUploadProgress = null;
+          _uploadingMediaLabel = null;
+        });
+      }
+
+      // Send with the remote URL and size metadata so the recipient can download it
       widget.appState.sendMessage(
         widget.conversation.id,
         isViewOnce ? '① Video' : '🎥 Video',
         type: MessageType.video,
         mediaUrl: finalMediaUrl,
+        mediaSize: fileLength,
         isViewOnce: isViewOnce,
         disappearingDurationSeconds: _disappearingDuration,
       );
       _scrollToBottom();
     } catch (e) {
+      if (mounted) {
+        setState(() {
+          _mediaUploadProgress = null;
+          _uploadingMediaLabel = null;
+        });
+      }
       debugPrint('[ChatRoom] Error picking video: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1288,22 +1378,75 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                   }
 
                   // 3. Accepted Contact: Normal Chat Input Bar
-                  return ChatInputBar(
-                    inputController: _inputController,
-                    isTyping: _isTyping,
-                    replyingTo: _replyingTo,
-                    onCancelReply: () => setState(() => _replyingTo = null),
-                    onAttachmentPressed: _showAttachmentSheet,
-                    onVoiceNoteRecorded: _handleSendVoiceNote,
-                    onRecordingStateChanged: (isRec) {
-                      widget.appState.sendRecordingAudioEvent(
-                        widget.conversation.id,
-                        isRec,
-                      );
-                    },
-                    onPingPressed: _handleSendPing,
-                    onSendPressed: _handleSend,
-                    onChanged: _handleTypingChanged,
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_mediaUploadProgress != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppTheme.darkCard : Colors.grey.shade100,
+                            border: Border(
+                              top: BorderSide(color: AppTheme.primary.withValues(alpha: 0.3)),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: AppTheme.primary,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${_uploadingMediaLabel ?? 'Uploading...'} ${((_mediaUploadProgress ?? 0) * 100).toInt()}%',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark ? Colors.white : Colors.black87,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: LinearProgressIndicator(
+                                        value: _mediaUploadProgress,
+                                        backgroundColor: Colors.white24,
+                                        valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                                        minHeight: 4,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ChatInputBar(
+                        inputController: _inputController,
+                        isTyping: _isTyping,
+                        replyingTo: _replyingTo,
+                        onCancelReply: () => setState(() => _replyingTo = null),
+                        onAttachmentPressed: _showAttachmentSheet,
+                        onVoiceNoteRecorded: _handleSendVoiceNote,
+                        onRecordingStateChanged: (isRec) {
+                          widget.appState.sendRecordingAudioEvent(
+                            widget.conversation.id,
+                            isRec,
+                          );
+                        },
+                        onPingPressed: _handleSendPing,
+                        onSendPressed: _handleSend,
+                        onChanged: _handleTypingChanged,
+                      ),
+                    ],
                   );
                 },
               ),

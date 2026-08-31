@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' show MediaType;
 import '../constants/api_constants.dart';
@@ -329,20 +332,45 @@ class ApiService {
   }
 
   // ── Media: Upload File ────────────────────────────────────────────────────
-  /// Uploads a file (voice note, image, etc.) to /api/v1/media/upload.
+  /// Uploads a file (voice note, image, video, etc.) to /api/v1/media/upload with progress tracking.
   /// Returns the public URL of the uploaded media, or null on failure.
-  static Future<String?> uploadMedia(String filePath, {String? mimeType}) async {
+  static Future<String?> uploadMedia(
+    String filePath, {
+    String? mimeType,
+    Function(double progress)? onProgress,
+  }) async {
     try {
       final token = await StorageService.getToken();
       if (token == null || token.isEmpty) return null;
+
+      final file = File(filePath);
+      if (!file.existsSync()) return null;
+      final fileLength = await file.length();
 
       final uri = Uri.parse('${ApiConstants.apiV1}/media/upload');
       final request = http.MultipartRequest('POST', uri);
       request.headers['Authorization'] = 'Bearer $token';
 
-      final multipartFile = await http.MultipartFile.fromPath(
+      final fileStream = file.openRead();
+      int bytesUploaded = 0;
+
+      final trackedStream = fileStream.transform(
+        StreamTransformer<List<int>, List<int>>.fromHandlers(
+          handleData: (List<int> data, EventSink<List<int>> sink) {
+            bytesUploaded += data.length;
+            if (fileLength > 0 && onProgress != null) {
+              onProgress((bytesUploaded / fileLength).clamp(0.0, 1.0));
+            }
+            sink.add(data);
+          },
+        ),
+      );
+
+      final multipartFile = http.MultipartFile(
         'file',
-        filePath,
+        trackedStream,
+        fileLength,
+        filename: filePath.split(Platform.pathSeparator).last,
         contentType: mimeType != null
             ? _parseMediaType(mimeType)
             : null,
@@ -350,7 +378,7 @@ class ApiService {
       request.files.add(multipartFile);
 
       final streamedResponse = await request.send().timeout(
-        const Duration(seconds: 60),
+        const Duration(seconds: 120),
       );
       final responseBody = await streamedResponse.stream.bytesToString();
       final data = jsonDecode(responseBody);
@@ -359,11 +387,12 @@ class ApiService {
         // Backend returns MediaMeta with 'url' field
         final url = data['url'] ?? data['Url'] ?? data['URL'];
         if (url != null && url.toString().isNotEmpty) {
+          onProgress?.call(1.0);
           return url.toString();
         }
       }
     } catch (e) {
-      // ignore upload errors silently
+      debugPrint('[ApiService] uploadMedia error: $e');
     }
     return null;
   }

@@ -201,6 +201,54 @@ class MediaStorageService {
     }
   }
 
+  /// Download a remote media file with live progress tracking and save to GoChat permanent storage
+  Future<String?> downloadMediaWithProgress({
+    required String remoteUrl,
+    required MediaCategory category,
+    String ext = '.jpg',
+    Function(double progress)? onProgress,
+  }) async {
+    if (kIsWeb) return null;
+    await init();
+
+    try {
+      final uri = Uri.parse(remoteUrl);
+      final client = HttpClient();
+      final request = await client.getUrl(uri);
+      final response = await request.close();
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return null;
+      }
+
+      final totalBytes = response.contentLength;
+      int receivedBytes = 0;
+      final bytes = <int>[];
+
+      final targetFolder = _getCategoryPath(category);
+      final cleanExt = ext.startsWith('.') ? ext : '.$ext';
+      final newFileName = _generateFileName(category, cleanExt);
+      final targetPath = p.join(targetFolder, newFileName);
+
+      await for (final chunk in response) {
+        bytes.addAll(chunk);
+        receivedBytes += chunk.length;
+        if (totalBytes > 0 && onProgress != null) {
+          onProgress((receivedBytes / totalBytes).clamp(0.0, 1.0));
+        }
+      }
+
+      final file = File(targetPath);
+      await file.writeAsBytes(bytes);
+      onProgress?.call(1.0);
+      debugPrint('[MediaStorageService] Downloaded media saved to: $targetPath');
+      return targetPath;
+    } catch (e) {
+      debugPrint('[MediaStorageService] Error downloading media: $e');
+      return null;
+    }
+  }
+
   /// Check if a local file exists for the given path
   bool existsLocally(String? localPath) {
     if (localPath == null || localPath.isEmpty || kIsWeb) return false;
