@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../core/models/models.dart';
+import '../../core/services/media_storage_service.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/widgets.dart';
@@ -23,6 +26,80 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
   // Marketplace Feed State
   String _selectedCategory = 'All';
   final TextEditingController _searchController = TextEditingController();
+
+  Widget _buildSafeImage(String url, {BoxFit fit = BoxFit.cover, double? width, double? height, Widget? placeholder}) {
+    final fallback = placeholder ?? Container(
+      width: width,
+      height: height,
+      color: Colors.grey.withValues(alpha: 0.15),
+      child: const Center(child: Icon(Icons.shopping_bag_outlined, color: AppTheme.primary, size: 28)),
+    );
+
+    if (url.isEmpty) return fallback;
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return Image.network(
+        url,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (_, __, ___) => fallback,
+      );
+    }
+    final file = File(url);
+    return Image.file(
+      file,
+      width: width,
+      height: height,
+      fit: fit,
+      errorBuilder: (_, __, ___) => fallback,
+    );
+  }
+
+  Future<void> _pickStoreLogo() async {
+    final picker = ImagePicker();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_rounded, color: AppTheme.primary),
+              title: const Text('Take Logo Photo with Camera', style: TextStyle(fontWeight: FontWeight.bold)),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final XFile? image = await picker.pickImage(source: ImageSource.camera, maxWidth: 1024, maxHeight: 1024);
+                if (image != null) {
+                  final saved = await MediaStorageService().saveImage(image.path);
+                  setState(() => _storeLogoCtrl.text = saved);
+                }
+              },
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.photo_library_rounded, color: Colors.teal),
+              title: const Text('Select Logo from Phone Gallery', style: TextStyle(fontWeight: FontWeight.bold)),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final XFile? image = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1024, maxHeight: 1024);
+                if (image != null) {
+                  final saved = await MediaStorageService().saveImage(image.path);
+                  setState(() => _storeLogoCtrl.text = saved);
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
   bool _verifiedOnly = false;
   final String _sortBy = 'popular';
 
@@ -236,6 +313,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
     final imageCtrl = TextEditingController(text: productToEdit?.imageUrl ?? '');
     String category = productToEdit?.category ?? (widget.appState.myStore?.category ?? 'Electronics');
 
+    // Product Pictures (Max 3 from phone)
+    List<String> productImages = List<String>.from(
+      productToEdit?.images ?? (productToEdit?.imageUrl.isNotEmpty == true ? [productToEdit!.imageUrl] : []),
+    );
+
     // Product Variants Local State
     List<ProductVariant> localVariants = List<ProductVariant>.from(productToEdit?.variants ?? []);
     bool showVariantForm = false;
@@ -244,6 +326,73 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
     final varSkuCtrl = TextEditingController();
     final varPriceOverrideCtrl = TextEditingController();
     final varStockCtrl = TextEditingController(text: '10');
+
+    Future<void> pickProductPhotos(StateSetter setModalState) async {
+      if (productImages.length >= 3) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Maximum 3 photos allowed per product')),
+        );
+        return;
+      }
+
+      final picker = ImagePicker();
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (pCtx) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt_rounded, color: AppTheme.primary),
+                title: const Text('Take Photo with Camera', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('Capture product directly', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                onTap: () async {
+                  Navigator.pop(pCtx);
+                  final XFile? photo = await picker.pickImage(source: ImageSource.camera, maxWidth: 1920, maxHeight: 1920, imageQuality: 85);
+                  if (photo != null && productImages.length < 3) {
+                    final saved = await MediaStorageService().saveImage(photo.path);
+                    setModalState(() {
+                      productImages.add(saved);
+                      if (imageCtrl.text.isEmpty) imageCtrl.text = saved;
+                    });
+                  }
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded, color: Colors.teal),
+                title: Text(
+                  'Select from Gallery (up to ${3 - productImages.length} photos)',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text('Choose up to 3 high-res product photos', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                onTap: () async {
+                  Navigator.pop(pCtx);
+                  final remaining = 3 - productImages.length;
+                  final List<XFile> picked = await picker.pickMultiImage(limit: remaining, maxWidth: 1920, maxHeight: 1920, imageQuality: 85);
+                  for (final file in picked.take(remaining)) {
+                    final saved = await MediaStorageService().saveImage(file.path);
+                    setModalState(() {
+                      if (productImages.length < 3) {
+                        productImages.add(saved);
+                        if (imageCtrl.text.isEmpty) imageCtrl.text = saved;
+                      }
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     showModalBottomSheet(
       context: context,
@@ -300,6 +449,153 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                       ],
                     ),
                     const Divider(height: 20),
+
+                    // ── PRODUCT PICTURES SECTION (MAX 3) ───────────────────
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.photo_library_rounded, size: 18, color: AppTheme.primary),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'Product Pictures',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                            ),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: productImages.length == 3 ? Colors.green.withValues(alpha: 0.15) : AppTheme.primary.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '${productImages.length} / 3 photos',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: productImages.length == 3 ? Colors.green : AppTheme.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          height: 105,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              ...productImages.asMap().entries.map((entry) {
+                                final idx = entry.key;
+                                final imgPath = entry.value;
+                                return Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Container(
+                                      width: 95,
+                                      height: 95,
+                                      margin: const EdgeInsets.only(right: 12, top: 6),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(
+                                          color: idx == 0 ? AppTheme.primary : (isDark ? Colors.white24 : Colors.black12),
+                                          width: idx == 0 ? 2 : 1,
+                                        ),
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(13),
+                                        child: _buildSafeImage(imgPath, fit: BoxFit.cover),
+                                      ),
+                                    ),
+                                    // Badge: Cover or #
+                                    Positioned(
+                                      bottom: 8,
+                                      left: 4,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: idx == 0 ? AppTheme.primary : Colors.black87,
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          idx == 0 ? 'Cover' : '#${idx + 1}',
+                                          style: TextStyle(
+                                            color: idx == 0 ? Colors.black : Colors.white,
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    // Remove Button (✕)
+                                    Positioned(
+                                      top: 0,
+                                      right: 6,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setModalState(() {
+                                            productImages.removeAt(idx);
+                                            if (productImages.isEmpty) {
+                                              imageCtrl.text = '';
+                                            } else {
+                                              imageCtrl.text = productImages.first;
+                                            }
+                                          });
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: const BoxDecoration(
+                                            color: Colors.redAccent,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(Icons.close_rounded, size: 12, color: Colors.white),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }),
+                              // Add Photo Slot (if < 3)
+                              if (productImages.length < 3)
+                                InkWell(
+                                  onTap: () => pickProductPhotos(setModalState),
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: Container(
+                                    width: 95,
+                                    height: 95,
+                                    margin: const EdgeInsets.only(right: 12, top: 6),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                        color: AppTheme.primary.withValues(alpha: 0.6),
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: const Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.add_a_photo_rounded, color: AppTheme.primary, size: 24),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          '+ Add Photo',
+                                          style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: AppTheme.primary),
+                                        ),
+                                        Text(
+                                          'Max 3',
+                                          style: TextStyle(fontSize: 9, color: AppTheme.textMuted),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
 
                     TextField(
                       controller: titleCtrl,
@@ -358,9 +654,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                     TextField(
                       controller: imageCtrl,
                       decoration: const InputDecoration(
-                        labelText: 'Product Image URL',
+                        labelText: 'Product Image URL (Optional Fallback)',
                         hintText: 'https://images.unsplash.com/...',
-                        prefixIcon: Icon(Icons.image_rounded),
+                        prefixIcon: Icon(Icons.link_rounded),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -612,6 +908,15 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                           final price = double.tryParse(priceCtrl.text.trim()) ?? 0.0;
                           final origPrice = double.tryParse(originalPriceCtrl.text.trim()) ?? (price * 1.25);
 
+                          final finalImages = productImages.isNotEmpty
+                              ? productImages
+                              : (imageCtrl.text.trim().isNotEmpty ? [imageCtrl.text.trim()] : <String>[]);
+                          final primaryImage = finalImages.isNotEmpty
+                              ? finalImages.first
+                              : (productToEdit?.imageUrl.isNotEmpty == true
+                                  ? productToEdit!.imageUrl
+                                  : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80');
+
                           final savedProduct = Product(
                             id: productToEdit?.id ?? 'prod_${DateTime.now().millisecondsSinceEpoch}',
                             title: titleCtrl.text.trim(),
@@ -623,11 +928,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                             sellerId: widget.appState.currentUser?.id ?? '',
                             sellerPin: widget.appState.currentUser?.pin ?? '',
                             sellerLocation: widget.appState.myStore?.address ?? 'Lagos, Nigeria',
-                            imageUrl: imageCtrl.text.trim().isNotEmpty
-                                ? imageCtrl.text.trim()
-                                : (productToEdit?.imageUrl.isNotEmpty == true
-                                    ? productToEdit!.imageUrl
-                                    : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80'),
+                            imageUrl: primaryImage,
+                            images: finalImages,
                             rating: productToEdit?.rating ?? 5.0,
                             reviewsCount: productToEdit?.reviewsCount ?? 0,
                             isVerifiedSeller: true,
@@ -919,6 +1221,67 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                 ),
                 const SizedBox(height: 16),
 
+                // ── STORE LOGO SELECTION FROM PHONE ───────────────────────
+                Center(
+                  child: Column(
+                    children: [
+                      Stack(
+                        children: [
+                          GestureDetector(
+                            onTap: _pickStoreLogo,
+                            child: Container(
+                              width: 90,
+                              height: 90,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isDark ? AppTheme.darkCard : Colors.grey.shade100,
+                                border: Border.all(color: AppTheme.primary, width: 2.5),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppTheme.primary.withValues(alpha: 0.2),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: ClipOval(
+                                child: _storeLogoCtrl.text.isNotEmpty
+                                    ? _buildSafeImage(_storeLogoCtrl.text, fit: BoxFit.cover)
+                                    : const Icon(Icons.storefront_rounded, size: 44, color: AppTheme.primary),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: GestureDetector(
+                              onTap: _pickStoreLogo,
+                              child: Container(
+                                padding: const EdgeInsets.all(7),
+                                decoration: const BoxDecoration(
+                                  color: AppTheme.primary,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.camera_alt_rounded, size: 16, color: Colors.black),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      TextButton.icon(
+                        onPressed: _pickStoreLogo,
+                        icon: const Icon(Icons.add_photo_alternate_rounded, size: 16, color: AppTheme.primary),
+                        label: Text(
+                          _storeLogoCtrl.text.isNotEmpty ? 'Change Logo from Phone' : 'Select Logo from Phone',
+                          style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 12.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
                 TextField(
                   controller: _storeNameCtrl,
                   decoration: const InputDecoration(
@@ -968,9 +1331,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                 TextField(
                   controller: _storeLogoCtrl,
                   decoration: const InputDecoration(
-                    labelText: 'Store Logo URL (Optional)',
+                    labelText: 'Store Logo URL (Optional Fallback)',
                     hintText: 'https://...',
-                    prefixIcon: Icon(Icons.image_rounded),
+                    prefixIcon: Icon(Icons.link_rounded),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -1233,17 +1596,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                               children: [
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(10),
-                                  child: Image.network(
+                                  child: _buildSafeImage(
                                     p.imageUrl,
                                     width: 54,
                                     height: 54,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(
-                                      width: 54,
-                                      height: 54,
-                                      color: Colors.grey.shade300,
-                                      child: const Icon(Icons.shopping_bag),
-                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -1785,13 +2142,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                 children: [
                   ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-                    child: Image.network(
+                    child: _buildSafeImage(
                       product.imageUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: isDark ? Colors.white10 : Colors.grey.shade100,
-                        child: const Icon(Icons.shopping_bag_outlined, color: AppTheme.primary, size: 36),
-                      ),
                     ),
                   ),
                   if (product.hasDiscount)
@@ -1949,6 +2302,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
     final isDark = Theme.of(context).brightness == Brightness.dark;
     ProductVariant? selectedVariant = product.hasVariants ? product.variants.first : null;
     double currentPrice = selectedVariant?.priceOverride ?? product.price;
+    int selectedPhotoIndex = 0;
+
+    final allImages = product.images.isNotEmpty
+        ? product.images
+        : (product.imageUrl.isNotEmpty ? [product.imageUrl] : <String>[]);
 
     showModalBottomSheet(
       context: context,
@@ -1982,20 +2340,53 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                     ),
                     const SizedBox(height: 16),
 
+                    // ── Product Main Image Display ──
                     ClipRRect(
                       borderRadius: BorderRadius.circular(20),
                       child: AspectRatio(
                         aspectRatio: 16 / 10,
-                        child: Image.network(
-                          selectedVariant?.imageUrl.isNotEmpty == true ? selectedVariant!.imageUrl : product.imageUrl,
+                        child: _buildSafeImage(
+                          selectedVariant?.imageUrl.isNotEmpty == true
+                              ? selectedVariant!.imageUrl
+                              : (allImages.isNotEmpty ? allImages[selectedPhotoIndex % allImages.length] : ''),
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            color: isDark ? AppTheme.darkCard : Colors.grey.shade200,
-                            child: const Icon(Icons.shopping_bag_outlined, size: 64, color: AppTheme.primary),
-                          ),
                         ),
                       ),
                     ),
+
+                    // ── Thumbnail Strip if Multiple Photos ──
+                    if (allImages.length > 1) ...[
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 54,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: allImages.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          itemBuilder: (_, idx) {
+                            final isSelected = selectedPhotoIndex == idx;
+                            return GestureDetector(
+                              onTap: () => setDetailState(() => selectedPhotoIndex = idx),
+                              child: Container(
+                                width: 54,
+                                height: 54,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isSelected ? AppTheme.primary : (isDark ? Colors.white24 : Colors.black12),
+                                    width: isSelected ? 2.5 : 1,
+                                  ),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: _buildSafeImage(allImages[idx], fit: BoxFit.cover),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
 
                     Row(
@@ -2547,17 +2938,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                                   children: [
                                     ClipRRect(
                                       borderRadius: BorderRadius.circular(12),
-                                      child: Image.network(
+                                      child: _buildSafeImage(
                                         p.imageUrl,
                                         width: 60,
                                         height: 60,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Container(
-                                          width: 60,
-                                          height: 60,
-                                          color: Colors.grey.shade300,
-                                          child: const Icon(Icons.shopping_bag, color: Colors.grey),
-                                        ),
                                       ),
                                     ),
                                     const SizedBox(width: 12),
