@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -164,31 +167,71 @@ class _MediaLightboxScreenState extends State<MediaLightboxScreen> {
       transformationController: _transformController,
       minScale: 0.8,
       maxScale: 4.0,
-      child: Image.network(
-        widget.mediaUrl,
-        fit: BoxFit.contain,
-        loadingBuilder: (ctx, child, progress) {
-          if (progress == null) return child;
-          return Center(
-            child: CircularProgressIndicator(
-              value: progress.expectedTotalBytes != null
-                  ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes!
-                  : null,
-              color: AppTheme.primary,
-            ),
-          );
-        },
-        errorBuilder: (_, __, ___) => const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.broken_image_rounded, size: 60, color: Colors.white54),
-              SizedBox(height: 12),
-              Text('Unable to load full resolution image', style: TextStyle(color: Colors.white54)),
-            ],
+      child: _buildImageFromUrl(widget.mediaUrl),
+    );
+  }
+
+  /// Builds an Image widget that handles local file paths, Base64 data URIs, and network URLs.
+  Widget _buildImageFromUrl(String url) {
+    // 1. Base64 Data URI (fallback when server upload failed)
+    if (url.startsWith('data:') || url.contains(';base64,')) {
+      try {
+        final b64Index = url.indexOf('base64,');
+        final b64Data = b64Index != -1 ? url.substring(b64Index + 7) : url;
+        final bytes = base64Decode(b64Data.trim());
+        return Image.memory(
+          bytes,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => _errorPlaceholder(),
+        );
+      } catch (_) {
+        return _errorPlaceholder();
+      }
+    }
+
+    // 2. Local file path (sender's own device)
+    if (!kIsWeb && !url.startsWith('http')) {
+      final file = File(url);
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => _errorPlaceholder(),
+        );
+      }
+      return _errorPlaceholder();
+    }
+
+    // 3. Network URL (normal case for receiver)
+    return Image.network(
+      url,
+      fit: BoxFit.contain,
+      loadingBuilder: (ctx, child, progress) {
+        if (progress == null) return child;
+        return Center(
+          child: CircularProgressIndicator(
+            value: progress.expectedTotalBytes != null
+                ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes!
+                : null,
+            color: AppTheme.primary,
           ),
-        ),
+        );
+      },
+      errorBuilder: (_, __, ___) => _errorPlaceholder(),
+    );
+  }
+
+  Widget _errorPlaceholder() {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.broken_image_rounded, size: 60, color: Colors.white54),
+          SizedBox(height: 12),
+          Text('Unable to load full resolution image', style: TextStyle(color: Colors.white54)),
+        ],
       ),
     );
   }
 }
+
