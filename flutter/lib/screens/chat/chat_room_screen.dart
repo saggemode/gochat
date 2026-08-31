@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../core/models/chat_theme.dart';
 import '../../core/models/models.dart';
 import '../../core/services/api_service.dart';
@@ -381,21 +382,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
   void _showAttachmentSheet() {
     ChatAttachmentSheet.show(
       context,
+      onPickCamera: () => _pickAndSendImage(ImageSource.camera),
+      onPickGallery: () => _pickAndSendImage(ImageSource.gallery),
+      onPickVideo: () => _pickAndSendVideo(),
       onOpenPoll: _openCreatePollDialog,
       onOpenCanvas: _openMiniAppModal,
       onOpenMiniGame: _openMiniAppModal,
       onShareProduct: _openProductPicker,
       onSendPing: _handleSendPing,
-      onShareImage: () {
-        widget.appState.sendMessage(
-          widget.conversation.id,
-          'Shared an image',
-          type: MessageType.image,
-          mediaUrl:
-              'https://images.unsplash.com/photo-1518770660439-4636190af475?w=600',
-        );
-        _scrollToBottom();
-      },
       onShareDocument: () {
         widget.appState.sendMessage(
           widget.conversation.id,
@@ -409,6 +403,98 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         setState(() => _isTyping = true);
       },
     );
+  }
+
+  /// Pick an image from camera or gallery, save to permanent storage, upload, and send
+  Future<void> _pickAndSendImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? picked = await picker.pickImage(
+        source: source,
+        imageQuality: 80,
+        maxWidth: 1920,
+        maxHeight: 1920,
+      );
+      if (picked == null) return;
+
+      // Save to permanent GoChat/Media/GoChat Images/ folder
+      final mediaStorage = MediaStorageService();
+      final ext = picked.path.split('.').last.toLowerCase();
+      final permanentPath = await mediaStorage.saveImage(
+        picked.path,
+        ext: '.$ext',
+      );
+
+      // Show immediately with local path
+      widget.appState.sendMessage(
+        widget.conversation.id,
+        '📷 Photo',
+        type: MessageType.image,
+        mediaUrl: permanentPath,
+      );
+      _scrollToBottom();
+
+      // Upload in background and update URL
+      final uploadedUrl = await ApiService.uploadMedia(
+        permanentPath,
+        mimeType: 'image/$ext',
+      );
+      if (uploadedUrl != null) {
+        debugPrint('[ChatRoom] Image uploaded: $uploadedUrl');
+      }
+    } catch (e) {
+      debugPrint('[ChatRoom] Error picking image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick image: $e')),
+        );
+      }
+    }
+  }
+
+  /// Pick a video from gallery, save to permanent storage, upload, and send
+  Future<void> _pickAndSendVideo() async {
+    try {
+      final picker = ImagePicker();
+      final XFile? picked = await picker.pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: const Duration(minutes: 5),
+      );
+      if (picked == null) return;
+
+      // Save to permanent GoChat/Media/GoChat Video/ folder
+      final mediaStorage = MediaStorageService();
+      final ext = picked.path.split('.').last.toLowerCase();
+      final permanentPath = await mediaStorage.saveVideo(
+        picked.path,
+        ext: '.$ext',
+      );
+
+      // Show immediately with local path
+      widget.appState.sendMessage(
+        widget.conversation.id,
+        '🎥 Video',
+        type: MessageType.video,
+        mediaUrl: permanentPath,
+      );
+      _scrollToBottom();
+
+      // Upload in background and update URL
+      final uploadedUrl = await ApiService.uploadMedia(
+        permanentPath,
+        mimeType: 'video/$ext',
+      );
+      if (uploadedUrl != null) {
+        debugPrint('[ChatRoom] Video uploaded: $uploadedUrl');
+      }
+    } catch (e) {
+      debugPrint('[ChatRoom] Error picking video: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick video: $e')),
+        );
+      }
+    }
   }
 
   void _openMiniAppModal() {

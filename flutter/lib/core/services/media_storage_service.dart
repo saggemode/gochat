@@ -139,6 +139,28 @@ class MediaStorageService {
     }
   }
 
+  /// Save a video to the permanent `GoChat Video` folder
+  Future<String> saveVideo(String sourceTempPath, {String ext = '.mp4'}) async {
+    if (kIsWeb) return sourceTempPath;
+    await init();
+
+    try {
+      final sourceFile = File(sourceTempPath);
+      if (!await sourceFile.exists()) return sourceTempPath;
+
+      final targetFolder = _getCategoryPath(MediaCategory.video);
+      final newFileName = _generateFileName(MediaCategory.video, ext);
+      final targetPath = p.join(targetFolder, newFileName);
+
+      final savedFile = await sourceFile.copy(targetPath);
+      debugPrint('[MediaStorageService] Saved video to permanent storage: $targetPath');
+      return savedFile.path;
+    } catch (e) {
+      debugPrint('[MediaStorageService] Error saving video: $e');
+      return sourceTempPath;
+    }
+  }
+
   /// Check if a local file exists for the given path
   bool existsLocally(String? localPath) {
     if (localPath == null || localPath.isEmpty || kIsWeb) return false;

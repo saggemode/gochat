@@ -2,35 +2,41 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 
 class ChatAttachmentSheet extends StatelessWidget {
+  final VoidCallback onPickCamera;
+  final VoidCallback onPickGallery;
+  final VoidCallback onPickVideo;
   final VoidCallback onOpenPoll;
   final VoidCallback onOpenCanvas;
   final VoidCallback onOpenMiniGame;
   final VoidCallback onShareProduct;
   final VoidCallback onSendPing;
-  final VoidCallback onShareImage;
   final VoidCallback onShareDocument;
   final VoidCallback onAskBot;
 
   const ChatAttachmentSheet({
     super.key,
+    required this.onPickCamera,
+    required this.onPickGallery,
+    required this.onPickVideo,
     required this.onOpenPoll,
     required this.onOpenCanvas,
     required this.onOpenMiniGame,
     required this.onShareProduct,
     required this.onSendPing,
-    required this.onShareImage,
     required this.onShareDocument,
     required this.onAskBot,
   });
 
   static Future<void> show(
     BuildContext context, {
+    required VoidCallback onPickCamera,
+    required VoidCallback onPickGallery,
+    required VoidCallback onPickVideo,
     required VoidCallback onOpenPoll,
     required VoidCallback onOpenCanvas,
     required VoidCallback onOpenMiniGame,
     required VoidCallback onShareProduct,
     required VoidCallback onSendPing,
-    required VoidCallback onShareImage,
     required VoidCallback onShareDocument,
     required VoidCallback onAskBot,
   }) {
@@ -43,12 +49,14 @@ class ChatAttachmentSheet extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => ChatAttachmentSheet(
+        onPickCamera: onPickCamera,
+        onPickGallery: onPickGallery,
+        onPickVideo: onPickVideo,
         onOpenPoll: onOpenPoll,
         onOpenCanvas: onOpenCanvas,
         onOpenMiniGame: onOpenMiniGame,
         onShareProduct: onShareProduct,
         onSendPing: onSendPing,
-        onShareImage: onShareImage,
         onShareDocument: onShareDocument,
         onAskBot: onAskBot,
       ),
@@ -80,6 +88,36 @@ class ChatAttachmentSheet extends StatelessWidget {
             children: [
               _buildOption(
                 context,
+                Icons.camera_alt_rounded,
+                'Camera',
+                Colors.redAccent,
+                () {
+                  Navigator.pop(context);
+                  onPickCamera();
+                },
+              ),
+              _buildOption(
+                context,
+                Icons.photo_library_rounded,
+                'Gallery',
+                Colors.purpleAccent,
+                () {
+                  Navigator.pop(context);
+                  onPickGallery();
+                },
+              ),
+              _buildOption(
+                context,
+                Icons.videocam_rounded,
+                'Video',
+                Colors.deepOrangeAccent,
+                () {
+                  Navigator.pop(context);
+                  onPickVideo();
+                },
+              ),
+              _buildOption(
+                context,
                 Icons.poll_rounded,
                 'Live Poll',
                 Colors.amber,
@@ -92,7 +130,7 @@ class ChatAttachmentSheet extends StatelessWidget {
                 context,
                 Icons.vibration_rounded,
                 'GOCHAT PING!',
-                Colors.redAccent,
+                Colors.pinkAccent,
                 () {
                   Navigator.pop(context);
                   onSendPing();
@@ -112,20 +150,10 @@ class ChatAttachmentSheet extends StatelessWidget {
                 context,
                 Icons.brush_rounded,
                 'Canvas',
-                Colors.pinkAccent,
+                Colors.cyanAccent,
                 () {
                   Navigator.pop(context);
                   onOpenCanvas();
-                },
-              ),
-              _buildOption(
-                context,
-                Icons.image_rounded,
-                'Gallery',
-                Colors.purpleAccent,
-                () {
-                  Navigator.pop(context);
-                  onShareImage();
                 },
               ),
               _buildOption(

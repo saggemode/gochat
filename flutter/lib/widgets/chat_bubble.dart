@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -399,19 +401,49 @@ class ChatBubble extends StatelessWidget {
                       tag: 'img_${message.id}',
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(10),
-                        child: Image.network(
-                          message.mediaUrl!,
+                        child: _buildImageWidget(message.mediaUrl!),
+                      ),
+                    ),
+                  )
+                // ── Video Attachment ──────────────────────────────────────────
+                else if (message.type == MessageType.video && message.mediaUrl != null)
+                  GestureDetector(
+                    onTap: () {
+                      MediaLightboxScreen.show(
+                        context,
+                        mediaUrl: message.mediaUrl!,
+                        title: message.senderName,
+                        caption: message.content.isNotEmpty && message.content != 'Shared a video' ? message.content : null,
+                        timestamp: message.createdAt,
+                        heroTag: 'vid_${message.id}',
+                      );
+                    },
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
                           width: 240,
                           height: 180,
-                          fit: BoxFit.cover,
-                          errorBuilder: (ctx, _, __) => Container(
-                            width: 240,
-                            height: 140,
+                          decoration: BoxDecoration(
                             color: Colors.black26,
-                            child: const Icon(Icons.broken_image, color: AppTheme.iconColor),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: _buildVideoThumbnail(message.mediaUrl!),
                           ),
                         ),
-                      ),
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 30),
+                        ),
+                      ],
                     ),
                   )
                 // ── Text Content ──────────────────────────────────────────────
@@ -480,6 +512,79 @@ class ChatBubble extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  /// Renders an image from either a local file path or a network URL.
+  Widget _buildImageWidget(String url) {
+    final isLocal = !kIsWeb && !url.startsWith('http');
+
+    if (isLocal) {
+      final file = File(url);
+      return Image.file(
+        file,
+        width: 240,
+        height: 180,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _brokenMediaPlaceholder(Icons.broken_image),
+      );
+    }
+
+    return Image.network(
+      url,
+      width: 240,
+      height: 180,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => _brokenMediaPlaceholder(Icons.broken_image),
+    );
+  }
+
+  /// Renders a video thumbnail placeholder (since video thumbnails require extra packages).
+  Widget _buildVideoThumbnail(String url) {
+    final isLocal = !kIsWeb && !url.startsWith('http');
+
+    // Try to show a frame if it's a local image-like path, else show a styled placeholder
+    if (isLocal) {
+      return Container(
+        width: 240,
+        height: 180,
+        color: Colors.black87,
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.videocam_rounded, color: Colors.white54, size: 40),
+              SizedBox(height: 4),
+              Text('Video', style: TextStyle(color: Colors.white54, fontSize: 12)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      width: 240,
+      height: 180,
+      color: Colors.black87,
+      child: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.videocam_rounded, color: Colors.white54, size: 40),
+            SizedBox(height: 4),
+            Text('Video', style: TextStyle(color: Colors.white54, fontSize: 12)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _brokenMediaPlaceholder(IconData icon) {
+    return Container(
+      width: 240,
+      height: 140,
+      color: Colors.black26,
+      child: Icon(icon, color: AppTheme.iconColor),
     );
   }
 }
