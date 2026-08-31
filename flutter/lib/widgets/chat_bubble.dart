@@ -18,6 +18,7 @@ class ChatBubble extends StatelessWidget {
   final Function(String emoji)? onReact;
   final VoidCallback? onReply;
   final VoidCallback? onOpenCanvas;
+  final VoidCallback? onOpenViewOnce;
   final Function(Map<String, dynamic> product)? onBuyProduct;
 
   const ChatBubble({
@@ -29,6 +30,7 @@ class ChatBubble extends StatelessWidget {
     this.onReact,
     this.onReply,
     this.onOpenCanvas,
+    this.onOpenViewOnce,
     this.onBuyProduct,
   });
 
@@ -384,6 +386,160 @@ class ChatBubble extends StatelessWidget {
                       ),
                     ),
                   )
+                // ── View-Once Message (Photo or Video) ────────────────────────
+                else if (message.isViewOnce)
+                  if (message.isOpened)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withValues(alpha: 0.1),
+                              border: Border.all(color: Colors.white24, width: 1),
+                            ),
+                            child: const Text(
+                              '①',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.textMuted,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Opened',
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontStyle: FontStyle.italic,
+                              fontWeight: FontWeight.w500,
+                              color: isMe ? Colors.white60 : AppTheme.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (isMe)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppTheme.primary.withValues(alpha: 0.2),
+                              border: Border.all(color: AppTheme.primary, width: 1.2),
+                            ),
+                            child: const Text(
+                              '①',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                message.type == MessageType.video
+                                    ? 'Video (View Once)'
+                                    : 'Photo (View Once)',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13.5,
+                                ),
+                              ),
+                              const Text(
+                                'Sent • Self-destructing',
+                                style: TextStyle(fontSize: 10.5, color: Colors.white70),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    InkWell(
+                      onTap: onOpenViewOnce,
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AppTheme.primary.withValues(alpha: 0.4),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppTheme.primary.withValues(alpha: 0.2),
+                                border: Border.all(color: AppTheme.primary, width: 1.5),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  '①',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.primary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  message.type == MessageType.video
+                                      ? 'View Once Video'
+                                      : 'View Once Photo',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.touch_app_rounded,
+                                      size: 11,
+                                      color: AppTheme.primary,
+                                    ),
+                                    SizedBox(width: 3),
+                                    Text(
+                                      'Tap to view',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: AppTheme.primary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
                 // ── Image Attachment (Tap to Lightbox) ────────────────────────
                 else if (message.type == MessageType.image && message.mediaUrl != null)
                   GestureDetector(
@@ -463,6 +619,14 @@ class ChatBubble extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (message.disappearingDurationSeconds != null || message.expiresAt != null) ...[
+                      const Icon(
+                        Icons.local_fire_department_rounded,
+                        size: 12,
+                        color: Colors.deepOrangeAccent,
+                      ),
+                      const SizedBox(width: 3),
+                    ],
                     Text(
                       timeStr,
                       style: TextStyle(

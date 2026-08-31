@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
@@ -12,7 +13,7 @@ class DatabaseService {
   DatabaseService._();
 
   static const String _dbName = 'gochat_msgstore.db';
-  static const int _dbVersion = 1;
+  static const int _dbVersion = 2;
 
   Database? _db;
 
@@ -31,6 +32,18 @@ class DatabaseService {
     return await openDatabase(
       path,
       version: _dbVersion,
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          try {
+            await db.execute('ALTER TABLE messages ADD COLUMN is_view_once INTEGER DEFAULT 0;');
+            await db.execute('ALTER TABLE messages ADD COLUMN is_opened INTEGER DEFAULT 0;');
+            await db.execute('ALTER TABLE messages ADD COLUMN disappearing_duration INTEGER;');
+            await db.execute('ALTER TABLE messages ADD COLUMN expires_at INTEGER;');
+          } catch (e) {
+            debugPrint('[DatabaseService] Migration v2 column addition notice: $e');
+          }
+        }
+      },
       onCreate: (db, version) async {
         final batch = db.batch();
 
@@ -70,6 +83,10 @@ class DatabaseService {
             media_duration INTEGER,
             media_size INTEGER,
             is_ping INTEGER DEFAULT 0,
+            is_view_once INTEGER DEFAULT 0,
+            is_opened INTEGER DEFAULT 0,
+            disappearing_duration INTEGER,
+            expires_at INTEGER,
             poll_data_json TEXT,
             product_data_json TEXT,
             reply_to_id TEXT,
@@ -391,6 +408,65 @@ class DatabaseService {
     }
   }
 
+  /// Mark a View-Once message as opened: wipes media URL, marks is_opened = 1, and deletes local file
+  Future<void> markViewOnceAsOpened(String messageId) async {
+    try {
+      final db = await database;
+      // 1. Get current row to find media path
+      final rows = await db.query('messages', where: 'id = ?', whereArgs: [messageId], limit: 1);
+      if (rows.isNotEmpty) {
+        final localPath = rows.first['media_path'] as String?;
+        if (localPath != null && localPath.isNotEmpty && !kIsWeb) {
+          try {
+            final file = File(localPath);
+            if (await file.exists()) {
+              await file.delete();
+              debugPrint('[DatabaseService] Burned local media file for view-once: $localPath');
+            }
+          } catch (e) {
+            debugPrint('[DatabaseService] Error deleting local view-once file: $e');
+          }
+        }
+      }
+
+      // 2. Update SQLite record
+      await db.update(
+        'messages',
+        {
+          'is_opened': 1,
+          'media_path': null,
+          'media_url': null,
+          'content': 'Opened',
+        },
+        where: 'id = ?',
+        whereArgs: [messageId],
+      );
+      debugPrint('[DatabaseService] Marked view-once message as opened: $messageId');
+    } catch (e) {
+      debugPrint('[DatabaseService] Error marking view-once message as opened: $e');
+    }
+  }
+
+  /// Automatically purges expired disappearing messages from local SQLite database
+  Future<int> cleanupExpiredMessages() async {
+    try {
+      final db = await database;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final count = await db.delete(
+        'messages',
+        where: 'expires_at IS NOT NULL AND expires_at < ?',
+        whereArgs: [now],
+      );
+      if (count > 0) {
+        debugPrint('[DatabaseService] Purged $count expired disappearing messages from SQLite');
+      }
+      return count;
+    } catch (e) {
+      debugPrint('[DatabaseService] Error cleaning up expired messages: $e');
+      return 0;
+    }
+  }
+
   // ── Row Mappers ─────────────────────────────────────────────────────────────
 
   Map<String, dynamic> _messageToRow(Message m) {
@@ -408,6 +484,10 @@ class DatabaseService {
       'media_duration': m.mediaDuration,
       'media_size': m.mediaSize,
       'is_ping': m.isPing ? 1 : 0,
+      'is_view_once': m.isViewOnce ? 1 : 0,
+      'is_opened': m.isOpened ? 1 : 0,
+      'disappearing_duration': m.disappearingDurationSeconds,
+      'expires_at': m.expiresAt?.millisecondsSinceEpoch,
       'poll_data_json': m.pollData != null ? jsonEncode(m.pollData!.toJson()) : null,
       'product_data_json': m.productData != null ? jsonEncode(m.productData) : null,
       'reply_to_id': m.replyToId,
@@ -451,6 +531,7 @@ class DatabaseService {
 
     final localPath = row['media_path'] as String?;
     final remoteUrl = row['media_url'] as String?;
+    final expiresAtMillis = row['expires_at'] as int?;
 
     return Message(
       id: row['id'] as String,
@@ -471,6 +552,10 @@ class DatabaseService {
       mediaDuration: row['media_duration'] as int?,
       mediaSize: row['media_size'] as int?,
       isPing: (row['is_ping'] as int? ?? 0) == 1,
+      isViewOnce: (row['is_view_once'] as int? ?? 0) == 1,
+      isOpened: (row['is_opened'] as int? ?? 0) == 1,
+      disappearingDurationSeconds: row['disappearing_duration'] as int?,
+      expiresAt: expiresAtMillis != null ? DateTime.fromMillisecondsSinceEpoch(expiresAtMillis) : null,
       pollData: pollData,
       productData: productData,
       replyToId: row['reply_to_id'] as String?,

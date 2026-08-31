@@ -5,6 +5,8 @@ class ChatAttachmentSheet extends StatelessWidget {
   final VoidCallback onPickCamera;
   final VoidCallback onPickGallery;
   final VoidCallback onPickVideo;
+  final VoidCallback onPickViewOnce;
+  final VoidCallback onDisappearingTimer;
   final VoidCallback onOpenPoll;
   final VoidCallback onOpenCanvas;
   final VoidCallback onOpenMiniGame;
@@ -18,6 +20,8 @@ class ChatAttachmentSheet extends StatelessWidget {
     required this.onPickCamera,
     required this.onPickGallery,
     required this.onPickVideo,
+    required this.onPickViewOnce,
+    required this.onDisappearingTimer,
     required this.onOpenPoll,
     required this.onOpenCanvas,
     required this.onOpenMiniGame,
@@ -32,6 +36,8 @@ class ChatAttachmentSheet extends StatelessWidget {
     required VoidCallback onPickCamera,
     required VoidCallback onPickGallery,
     required VoidCallback onPickVideo,
+    required VoidCallback onPickViewOnce,
+    required VoidCallback onDisappearingTimer,
     required VoidCallback onOpenPoll,
     required VoidCallback onOpenCanvas,
     required VoidCallback onOpenMiniGame,
@@ -52,6 +58,8 @@ class ChatAttachmentSheet extends StatelessWidget {
         onPickCamera: onPickCamera,
         onPickGallery: onPickGallery,
         onPickVideo: onPickVideo,
+        onPickViewOnce: onPickViewOnce,
+        onDisappearingTimer: onDisappearingTimer,
         onOpenPoll: onOpenPoll,
         onOpenCanvas: onOpenCanvas,
         onOpenMiniGame: onOpenMiniGame,
@@ -88,6 +96,16 @@ class ChatAttachmentSheet extends StatelessWidget {
             children: [
               _buildOption(
                 context,
+                Icons.local_fire_department_rounded,
+                'View Once',
+                Colors.orangeAccent,
+                () {
+                  Navigator.pop(context);
+                  onPickViewOnce();
+                },
+              ),
+              _buildOption(
+                context,
                 Icons.camera_alt_rounded,
                 'Camera',
                 Colors.redAccent,
@@ -114,6 +132,16 @@ class ChatAttachmentSheet extends StatelessWidget {
                 () {
                   Navigator.pop(context);
                   onPickVideo();
+                },
+              ),
+              _buildOption(
+                context,
+                Icons.timer_rounded,
+                'Auto-Burn',
+                Colors.amberAccent,
+                () {
+                  Navigator.pop(context);
+                  onDisappearingTimer();
                 },
               ),
               _buildOption(

@@ -866,6 +866,8 @@ class AppState extends ChangeNotifier {
     PollData? pollData,
     Map<String, dynamic>? productData,
     bool isPing = false,
+    bool isViewOnce = false,
+    int? disappearingDurationSeconds,
     String? replyToId,
     String? replyToText,
     String? replyToSenderName,
@@ -879,6 +881,10 @@ class AppState extends ChangeNotifier {
     if (type == MessageType.poll) typeInt = 6;
     if (type == MessageType.product) typeInt = 7;
     if (type == MessageType.ping) typeInt = 8;
+
+    final expiresAt = disappearingDurationSeconds != null
+        ? DateTime.now().add(Duration(seconds: disappearingDurationSeconds))
+        : null;
 
     try {
       final realMsg = await ApiService.sendMessage(
@@ -895,6 +901,9 @@ class AppState extends ChangeNotifier {
         pollData: pollData,
         productData: productData,
         isPing: isPing,
+        isViewOnce: isViewOnce,
+        disappearingDurationSeconds: disappearingDurationSeconds,
+        expiresAt: expiresAt,
         replyToId: replyToId,
         replyToText: replyToText,
         replyToSenderName: replyToSenderName,
@@ -935,6 +944,9 @@ class AppState extends ChangeNotifier {
           'media_url': mediaUrl,
           'media_duration': mediaDuration,
           'is_ping': isPing,
+          'is_view_once': isViewOnce,
+          'disappearing_duration': disappearingDurationSeconds,
+          'expires_at': expiresAt?.toIso8601String(),
           'poll_data': pollData?.toJson(),
           'product_data': productData,
           'reply_to_id': replyToId,
@@ -1023,6 +1035,43 @@ class AppState extends ChangeNotifier {
         },
       });
 
+      notifyListeners();
+    }
+  }
+
+  /// Mark a View-Once message as opened (burns local media and updates state)
+  Future<void> markViewOnceAsOpened(String convId, String messageId) async {
+    if (_messages.containsKey(convId)) {
+      final idx = _messages[convId]!.indexWhere((m) => m.id == messageId);
+      if (idx != -1) {
+        final current = _messages[convId]![idx];
+        _messages[convId]![idx] = current.copyWith(
+          isOpened: true,
+          content: 'Opened',
+          mediaUrl: null,
+        );
+        notifyListeners();
+      }
+    }
+
+    // Burn from SQLite & permanent device storage
+    await DatabaseService().markViewOnceAsOpened(messageId);
+  }
+
+  /// Auto-purge expired disappearing messages from active memory and SQLite
+  Future<void> cleanupExpiredMessages() async {
+    await DatabaseService().cleanupExpiredMessages();
+    bool changed = false;
+
+    _messages.forEach((convId, msgList) {
+      final beforeCount = msgList.length;
+      msgList.removeWhere((m) => m.isExpired);
+      if (msgList.length != beforeCount) {
+        changed = true;
+      }
+    });
+
+    if (changed) {
       notifyListeners();
     }
   }

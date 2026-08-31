@@ -124,6 +124,10 @@ class Message {
   final PollData? pollData;
   final Map<String, dynamic>? productData;
   final bool isPing;
+  final bool isViewOnce;
+  final bool isOpened;
+  final int? disappearingDurationSeconds;
+  final DateTime? expiresAt;
   final String? replyToId;
   final String? replyToText;
   final String? replyToSenderName;
@@ -146,6 +150,10 @@ class Message {
     this.pollData,
     this.productData,
     this.isPing = false,
+    this.isViewOnce = false,
+    this.isOpened = false,
+    this.disappearingDurationSeconds,
+    this.expiresAt,
     this.replyToId,
     this.replyToText,
     this.replyToSenderName,
@@ -154,6 +162,11 @@ class Message {
     this.isMe = false,
   })  : reactions = reactions ?? {},
         createdAt = createdAt ?? DateTime.now();
+
+  bool get isExpired {
+    if (expiresAt == null) return false;
+    return DateTime.now().isAfter(expiresAt!);
+  }
 
   Message copyWith({
     String? id,
@@ -170,6 +183,10 @@ class Message {
     PollData? pollData,
     Map<String, dynamic>? productData,
     bool? isPing,
+    bool? isViewOnce,
+    bool? isOpened,
+    int? disappearingDurationSeconds,
+    DateTime? expiresAt,
     String? replyToId,
     String? replyToText,
     String? replyToSenderName,
@@ -192,6 +209,10 @@ class Message {
       pollData: pollData ?? this.pollData,
       productData: productData ?? this.productData,
       isPing: isPing ?? this.isPing,
+      isViewOnce: isViewOnce ?? this.isViewOnce,
+      isOpened: isOpened ?? this.isOpened,
+      disappearingDurationSeconds: disappearingDurationSeconds ?? this.disappearingDurationSeconds,
+      expiresAt: expiresAt ?? this.expiresAt,
       replyToId: replyToId ?? this.replyToId,
       replyToText: replyToText ?? this.replyToText,
       replyToSenderName: replyToSenderName ?? this.replyToSenderName,
@@ -227,6 +248,10 @@ class Message {
       pollData: json['poll_data'] != null ? PollData.fromJson(json['poll_data']) : null,
       productData: json['product_data'] is Map<String, dynamic> ? json['product_data'] : null,
       isPing: isPingVal,
+      isViewOnce: json['is_view_once'] == true || json['isViewOnce'] == true || json['is_view_once'] == 1,
+      isOpened: json['is_opened'] == true || json['isOpened'] == true || json['is_opened'] == 1,
+      disappearingDurationSeconds: json['disappearing_duration'] ?? json['disappearing_duration_seconds'] ?? json['disappearingDurationSeconds'],
+      expiresAt: json['expires_at'] != null ? _parseDateTime(json['expires_at']) : null,
       replyToId: json['reply_to_id'] ?? json['replyToId'] ?? json['parent_id'] ?? json['ParentId'],
       replyToText: json['reply_to_text'] ?? json['replyToText'],
       replyToSenderName: json['reply_to_sender_name'] ?? json['replyToSenderName'],
@@ -269,6 +294,10 @@ class Message {
       'poll_data': pollData?.toJson(),
       'product_data': productData,
       'is_ping': isPing,
+      'is_view_once': isViewOnce,
+      'is_opened': isOpened,
+      'disappearing_duration': disappearingDurationSeconds,
+      'expires_at': expiresAt?.toIso8601String(),
       'reply_to_id': replyToId,
       'reply_to_text': replyToText,
       'reply_to_sender_name': replyToSenderName,

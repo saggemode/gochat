@@ -22,6 +22,7 @@ import 'chat_input_bar.dart';
 import 'chat_theme_customizer_sheet.dart';
 import 'contact_profile_screen.dart';
 import 'create_poll_dialog.dart';
+import 'view_once_viewer_screen.dart';
 import '../stories/story_viewer_screen.dart';
 
 class ChatRoomScreen extends StatefulWidget {
@@ -52,6 +53,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
   late AnimationController _shakeController;
   late Animation<double> _shakeAnimation;
 
+  // Disappearing Messages Self-Destruct Duration (in seconds)
+  int? _disappearingDuration;
+  Timer? _disappearingCleanupTimer;
+
   @override
   void initState() {
     super.initState();
@@ -77,12 +82,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         _triggerScreenShake();
       }
     });
+
+    // Periodic cleanup of expired disappearing messages
+    _disappearingCleanupTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (mounted) widget.appState.cleanupExpiredMessages();
+    });
   }
 
   @override
   void dispose() {
     _typingDebounceTimer?.cancel();
     _pingSubscription?.cancel();
+    _disappearingCleanupTimer?.cancel();
     _shakeController.dispose();
     widget.appState.removeListener(_onStateChange);
     _inputController.dispose();
@@ -135,6 +146,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
     widget.appState.sendMessage(
       widget.conversation.id,
       text,
+      disappearingDurationSeconds: _disappearingDuration,
       replyToId: _replyingTo?.id,
       replyToText: _replyingTo?.content,
       replyToSenderName: _replyingTo?.senderName,
@@ -177,6 +189,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       type: MessageType.voice,
       mediaUrl: mediaUrl,
       mediaDuration: result.durationSeconds,
+      disappearingDurationSeconds: _disappearingDuration,
     );
 
     messenger.showSnackBar(
@@ -382,9 +395,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
   void _showAttachmentSheet() {
     ChatAttachmentSheet.show(
       context,
+      onPickViewOnce: _pickViewOnceMedia,
       onPickCamera: () => _pickAndSendImage(ImageSource.camera),
       onPickGallery: () => _pickAndSendImage(ImageSource.gallery),
       onPickVideo: () => _pickAndSendVideo(),
+      onDisappearingTimer: _showDisappearingMessagesSheet,
       onOpenPoll: _openCreatePollDialog,
       onOpenCanvas: _openMiniAppModal,
       onOpenMiniGame: _openMiniAppModal,
@@ -395,6 +410,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
           widget.conversation.id,
           '📄 Architecture_Spec_v2.pdf (1.8 MB)',
           type: MessageType.file,
+          disappearingDurationSeconds: _disappearingDuration,
         );
         _scrollToBottom();
       },
@@ -405,8 +421,178 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
     );
   }
 
+  /// Choose View-Once Photo or Video
+  void _pickViewOnceMedia() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.deepOrangeAccent.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.local_fire_department_rounded, color: Colors.deepOrangeAccent, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'View-Once Self-Destruct',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Dissolves & burns with fire after viewing',
+                        style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_rounded, color: Colors.redAccent),
+                title: const Text('Snap View-Once Photo'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAndSendImage(ImageSource.camera, isViewOnce: true);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded, color: Colors.purpleAccent),
+                title: const Text('Choose View-Once from Gallery'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAndSendImage(ImageSource.gallery, isViewOnce: true);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.videocam_rounded, color: Colors.deepOrangeAccent),
+                title: const Text('Send View-Once Video'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAndSendVideo(isViewOnce: true);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Disappearing Messages Auto-Burn Duration Selector
+  void _showDisappearingMessagesSheet() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.timer_rounded, color: Colors.amber, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Disappearing Messages',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            'Auto-delete messages from SQLite & server',
+                            style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _buildDisappearingOption(ctx, setSheetState, 'Off (Keep Forever)', null),
+                  _buildDisappearingOption(ctx, setSheetState, '🔥 10 Seconds (Test Burn)', 10),
+                  _buildDisappearingOption(ctx, setSheetState, '⏳ 1 Hour', 3600),
+                  _buildDisappearingOption(ctx, setSheetState, '📅 24 Hours', 86400),
+                  _buildDisappearingOption(ctx, setSheetState, '🗓️ 7 Days', 604800),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildDisappearingOption(
+    BuildContext ctx,
+    StateSetter setSheetState,
+    String label,
+    int? durationSec,
+  ) {
+    final isSelected = _disappearingDuration == durationSec;
+
+    return ListTile(
+      title: Text(
+        label,
+        style: TextStyle(
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? AppTheme.primary : null,
+        ),
+      ),
+      trailing: isSelected
+          ? const Icon(Icons.check_circle_rounded, color: AppTheme.primary)
+          : null,
+      onTap: () {
+        setState(() => _disappearingDuration = durationSec);
+        Navigator.pop(ctx);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              durationSec == null
+                  ? 'Disappearing messages turned OFF'
+                  : 'Auto-destruct set to ${durationSec == 10 ? '10 seconds' : (durationSec == 3600 ? '1 hour' : (durationSec == 86400 ? '24 hours' : '7 days'))} 🔥',
+            ),
+            backgroundColor: AppTheme.primary,
+          ),
+        );
+      },
+    );
+  }
+
   /// Pick an image from camera or gallery, save to permanent storage, upload, and send
-  Future<void> _pickAndSendImage(ImageSource source) async {
+  Future<void> _pickAndSendImage(ImageSource source, {bool isViewOnce = false}) async {
     try {
       final picker = ImagePicker();
       final XFile? picked = await picker.pickImage(
@@ -428,9 +614,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       // Show immediately with local path
       widget.appState.sendMessage(
         widget.conversation.id,
-        '📷 Photo',
+        isViewOnce ? '① Photo' : '📷 Photo',
         type: MessageType.image,
         mediaUrl: permanentPath,
+        isViewOnce: isViewOnce,
+        disappearingDurationSeconds: _disappearingDuration,
       );
       _scrollToBottom();
 
@@ -453,7 +641,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
   }
 
   /// Pick a video from gallery, save to permanent storage, upload, and send
-  Future<void> _pickAndSendVideo() async {
+  Future<void> _pickAndSendVideo({bool isViewOnce = false}) async {
     try {
       final picker = ImagePicker();
       final XFile? picked = await picker.pickVideo(
@@ -473,9 +661,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       // Show immediately with local path
       widget.appState.sendMessage(
         widget.conversation.id,
-        '🎥 Video',
+        isViewOnce ? '① Video' : '🎥 Video',
         type: MessageType.video,
         mediaUrl: permanentPath,
+        isViewOnce: isViewOnce,
+        disappearingDurationSeconds: _disappearingDuration,
       );
       _scrollToBottom();
 
@@ -679,6 +869,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
               onSelected: (val) {
                 if (val == 'theme') {
                   _openThemeCustomizer();
+                } else if (val == 'disappearing') {
+                  _showDisappearingMessagesSheet();
                 } else if (val == 'canvas') {
                   _openMiniAppModal();
                 } else if (val == 'poll') {
@@ -697,6 +889,20 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                       Icon(Icons.palette_outlined, size: 18, color: AppTheme.primary),
                       SizedBox(width: 10),
                       Text('Wallpaper & Theme'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'disappearing',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.timer_rounded, size: 18, color: Colors.amberAccent),
+                      const SizedBox(width: 10),
+                      Text(
+                        _disappearingDuration != null
+                            ? 'Auto-Burn (${_disappearingDuration == 10 ? '10s' : (_disappearingDuration == 3600 ? '1h' : '24h')})'
+                            : 'Disappearing Messages',
+                      ),
                     ],
                   ),
                 ),
@@ -804,6 +1010,20 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                                 setState(() => _replyingTo = msg);
                               },
                               onOpenCanvas: _openMiniAppModal,
+                              onOpenViewOnce: () {
+                                if (msg.mediaUrl != null && msg.mediaUrl!.isNotEmpty) {
+                                  ViewOnceViewerScreen.show(
+                                    context,
+                                    mediaUrl: msg.mediaUrl!,
+                                    isVideo: msg.type == MessageType.video,
+                                    senderName: msg.senderName,
+                                    onBurned: () => widget.appState.markViewOnceAsOpened(
+                                      widget.conversation.id,
+                                      msg.id,
+                                    ),
+                                  );
+                                }
+                              },
                               onBuyProduct: _showBuyProductSheet,
                             );
                           },
