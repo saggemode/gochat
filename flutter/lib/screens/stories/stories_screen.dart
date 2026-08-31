@@ -54,7 +54,9 @@ class StoriesScreen extends StatelessWidget {
                 Stack(
                   children: [
                     StoryAvatar(
-                      avatarUrl: myStory.userAvatar,
+                      avatarUrl: (myStory.stories.isNotEmpty && myStory.stories.first.mediaUrl.isNotEmpty)
+                          ? myStory.stories.first.mediaUrl
+                          : myStory.userAvatar,
                       radius: 28,
                       hasUnseenStory: myStory.hasUnseenStories,
                       storyCount: myStory.stories.length,
@@ -66,19 +68,24 @@ class StoriesScreen extends StatelessWidget {
                               builder: (_) => StoryViewerScreen(userStories: myStory),
                             ),
                           );
+                        } else {
+                          _showStatusTypeChooser(context);
                         }
                       },
                     ),
                     Positioned(
                       bottom: 0,
                       right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: const BoxDecoration(
-                          color: AppTheme.primary,
-                          shape: BoxShape.circle,
+                      child: GestureDetector(
+                        onTap: () => _showStatusTypeChooser(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(
+                            color: AppTheme.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.add, size: 16, color: Colors.black),
                         ),
-                        child: const Icon(Icons.add, size: 16, color: Colors.black),
                       ),
                     ),
                   ],
@@ -86,7 +93,18 @@ class StoriesScreen extends StatelessWidget {
                 const SizedBox(width: 16),
                 Expanded(
                   child: GestureDetector(
-                    onTap: () => _showStatusTypeChooser(context),
+                    onTap: () {
+                      if (myStory.stories.isNotEmpty) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => StoryViewerScreen(userStories: myStory),
+                          ),
+                        );
+                      } else {
+                        _showStatusTypeChooser(context);
+                      }
+                    },
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -101,11 +119,12 @@ class StoriesScreen extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           myStory.stories.isNotEmpty
-                              ? '${myStory.stories.length} updates'
+                              ? '${myStory.stories.length} ${myStory.stories.length == 1 ? 'update' : 'updates'} • Tap to view'
                               : 'Tap to add status update',
                           style: TextStyle(
                             fontSize: 13,
-                            color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
+                            color: myStory.stories.isNotEmpty ? AppTheme.primary : (isDark ? AppTheme.textMuted : AppTheme.textMutedLight),
+                            fontWeight: myStory.stories.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
                           ),
                         ),
                       ],

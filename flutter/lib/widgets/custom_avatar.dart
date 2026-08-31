@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../core/theme/app_theme.dart';
 
@@ -32,15 +33,27 @@ class CustomAvatar extends StatelessWidget {
     return name.substring(0, name.length >= 2 ? 2 : 1).toUpperCase();
   }
 
+  ImageProvider? _getImageProvider(String? url) {
+    if (url == null || url.isEmpty) return null;
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return NetworkImage(url);
+    }
+    final file = File(url);
+    if (file.existsSync()) {
+      return FileImage(file);
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final imageProvider = _getImageProvider(imageUrl);
+
     final avatarContent = CircleAvatar(
       radius: radius,
       backgroundColor: AppTheme.primary.withValues(alpha: 0.18),
-      backgroundImage: (imageUrl != null && imageUrl!.isNotEmpty)
-          ? NetworkImage(imageUrl!)
-          : null,
-      child: (imageUrl == null || imageUrl!.isEmpty)
+      backgroundImage: imageProvider,
+      child: imageProvider == null
           ? Text(
               _initials,
               style: TextStyle(

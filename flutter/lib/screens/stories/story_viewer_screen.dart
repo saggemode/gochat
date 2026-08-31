@@ -77,6 +77,18 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
     }
   }
 
+  ImageProvider? _getImageProvider(String url) {
+    if (url.isEmpty) return null;
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return NetworkImage(url);
+    }
+    final file = File(url);
+    if (file.existsSync()) {
+      return FileImage(file);
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.userStories.stories.isEmpty) {
@@ -201,7 +213,11 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
                       children: [
                         CircleAvatar(
                           radius: 18,
-                          backgroundImage: NetworkImage(widget.userStories.userAvatar),
+                          backgroundColor: AppTheme.darkCard,
+                          backgroundImage: _getImageProvider(widget.userStories.userAvatar),
+                          child: _getImageProvider(widget.userStories.userAvatar) == null
+                              ? const Icon(Icons.person, size: 18, color: Colors.white70)
+                              : null,
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -217,7 +233,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
                                 ),
                               ),
                               const Text(
-                                '2 hours ago',
+                                'Just now',
                                 style: TextStyle(color: Colors.white70, fontSize: 11),
                               ),
                             ],

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../core/theme/app_theme.dart';
 
@@ -17,13 +18,27 @@ class StoryAvatar extends StatelessWidget {
     this.onTap,
   });
 
+  ImageProvider? _getImageProvider(String url) {
+    if (url.isEmpty) return null;
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return NetworkImage(url);
+    }
+    final file = File(url);
+    if (file.existsSync()) {
+      return FileImage(file);
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final imageProvider = _getImageProvider(avatarUrl);
+
     Widget avatar = CircleAvatar(
       radius: radius,
       backgroundColor: AppTheme.darkCard,
-      backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
-      child: avatarUrl.isEmpty
+      backgroundImage: imageProvider,
+      child: imageProvider == null
           ? const Icon(Icons.person, color: AppTheme.iconColor)
           : null,
     );
