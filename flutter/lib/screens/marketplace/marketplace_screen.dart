@@ -2338,16 +2338,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                                   );
                                   return;
                                 }
-                                final added = widget.appState.addToCart(product);
-                                if (!added) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('⚠️ You cannot add your own product to the cart.'),
-                                      backgroundColor: Colors.orange,
-                                    ),
-                                  );
-                                  return;
-                                }
+                                widget.appState.addToCart(product);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text('Added "${product.title}" to cart!'),
@@ -2845,16 +2836,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                                       ? product.copyWith(price: currentPrice, title: '${product.title} (${selectedVariant!.title})')
                                       : product;
 
-                                  final added = widget.appState.addToCart(itemToAdd);
-                                  if (!added) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('⚠️ You cannot add your own product to the cart.'),
-                                        backgroundColor: Colors.orange,
-                                      ),
-                                    );
-                                    return;
-                                  }
+                                  widget.appState.addToCart(itemToAdd);
                                   Navigator.pop(ctx);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(

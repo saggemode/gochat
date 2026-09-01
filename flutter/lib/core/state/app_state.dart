@@ -1442,14 +1442,13 @@ class AppState extends ChangeNotifier {
   }
 
   // ── Marketplace: Cart Management ────────────────────────────────────────────
-  bool addToCart(Product product) {
+  void addToCart(Product product) {
     if (_currentUser != null && product.sellerId.isNotEmpty && product.sellerId == _currentUser!.id) {
-      return false; // Cannot add own product to cart
+      return; // Cannot add own product to cart
     }
     HapticFeedback.lightImpact();
     _cart.add(product);
     notifyListeners();
-    return true;
   }
 
   void removeFromCart(String productId) {
