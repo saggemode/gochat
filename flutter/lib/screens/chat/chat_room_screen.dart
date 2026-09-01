@@ -102,10 +102,24 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       }
     });
 
+    // Auto-scroll to the last chat message on open
+    _scrollToBottom(animate: false);
+    _scrollToBottom(animate: false, delayMs: 60);
+    _scrollToBottom(animate: false, delayMs: 180);
+
     // Periodic cleanup of expired disappearing messages
     _disappearingCleanupTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (mounted) widget.appState.cleanupExpiredMessages();
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant ChatRoomScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.conversation.id != widget.conversation.id) {
+      _scrollToBottom(animate: false);
+      _scrollToBottom(animate: false, delayMs: 80);
+    }
   }
 
   @override
@@ -129,20 +143,32 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
     if (mounted) {
       widget.appState.markConversationAsRead(widget.conversation.id);
       setState(() {});
-      _scrollToBottom();
+      _scrollToBottom(animate: true);
     }
   }
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
+  void _scrollToBottom({bool animate = true, int delayMs = 0}) {
+    void scroll() {
+      if (!mounted || !_scrollController.hasClients) return;
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      if (animate) {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          maxScroll,
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
         );
+      } else {
+        _scrollController.jumpTo(maxScroll);
       }
-    });
+    }
+
+    if (delayMs > 0) {
+      Future.delayed(Duration(milliseconds: delayMs), () {
+        WidgetsBinding.instance.addPostFrameCallback((_) => scroll());
+      });
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => scroll());
+    }
   }
 
   void _handleTypingChanged(String val) {
