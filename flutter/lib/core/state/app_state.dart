@@ -154,6 +154,9 @@ class AppState extends ChangeNotifier {
         await wsService.connect();
         await _flushOutbox();
         await refreshData();
+        if (_currentUser != null) {
+          PushNotificationService().registerTokenWithBackend(userId: _currentUser!.id);
+        }
       }
     } else {
       _isLoading = false;

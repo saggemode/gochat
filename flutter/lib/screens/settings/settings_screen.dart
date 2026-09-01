@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../auth/login_screen.dart';
 import '../chat/starred_messages_screen.dart';
 import 'chat_backup_screen.dart';
+import 'notifications_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final AppState appState;
@@ -291,6 +292,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             'Account & Security',
             'Security notifications, two-step verification',
             onTap: () {},
+          ),
+          _buildSettingsTile(
+            Icons.notifications_active_rounded,
+            'Notifications & Sounds',
+            'FCM & APNs push alerts, full-screen VoIP calls, ringtones',
+            onTap: () {
+              NotificationsSettingsScreen.open(context, appState: widget.appState);
+            },
           ),
           _buildSettingsTile(
             Icons.star_rounded,
