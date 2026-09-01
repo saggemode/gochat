@@ -533,7 +533,39 @@ class AppState extends ChangeNotifier {
 
       fetchStories();
     }
-    // 3. Incoming Live Typing Event
+    // 3. Incoming Message Status Updates (Delivered / Read Receipts -> Green Ticks)
+    else if (eventType == 'read_receipt' ||
+        eventType == 'EVENT_READ_RECEIPT' ||
+        eventType == 'message_read' ||
+        eventType == 'message_delivered') {
+      final convId = (data['conversation_id'] ?? data['conversationId'] ?? '').toString();
+      final msgId = (data['message_id'] ?? data['messageId'] ?? '').toString();
+      final isRead = eventType == 'read_receipt' ||
+          eventType == 'EVENT_READ_RECEIPT' ||
+          eventType == 'message_read';
+      final newStatus = isRead ? MessageStatus.read : MessageStatus.delivered;
+
+      if (convId.isNotEmpty) {
+        final msgs = _messages[convId];
+        if (msgs != null) {
+          bool updated = false;
+          for (int i = 0; i < msgs.length; i++) {
+            if (msgs[i].isMe && (msgId.isEmpty || msgs[i].id == msgId || msgId == 'all')) {
+              if (msgs[i].status != MessageStatus.read) {
+                msgs[i] = msgs[i].copyWith(status: newStatus);
+                DatabaseService().updateMessageStatus(msgs[i].id, newStatus);
+                updated = true;
+              }
+            }
+          }
+          if (updated) {
+            StorageService.saveCachedMessages(convId, msgs);
+            notifyListeners();
+          }
+        }
+      }
+    }
+    // 4. Incoming Live Typing Event
     else if (eventType == '6' ||
         eventType == 'EVENT_TYPING' ||
         eventType == 'typing') {
@@ -910,6 +942,34 @@ class AppState extends ChangeNotifier {
       type: MessageType.ping,
       isPing: true,
     );
+  }
+
+  /// Mark all incoming messages in a conversation as read and send read receipts over WebSocket
+  void markConversationAsRead(String convId) {
+    if (convId.isEmpty) return;
+    final msgs = _messages[convId];
+    if (msgs != null && msgs.isNotEmpty) {
+      bool hasUnread = false;
+      for (int i = 0; i < msgs.length; i++) {
+        if (!msgs[i].isMe && msgs[i].status != MessageStatus.read) {
+          msgs[i] = msgs[i].copyWith(status: MessageStatus.read);
+          DatabaseService().updateMessageStatus(msgs[i].id, MessageStatus.read);
+          hasUnread = true;
+        }
+      }
+      if (hasUnread) {
+        StorageService.saveCachedMessages(convId, msgs);
+        notifyListeners();
+      }
+    }
+
+    // Broadcast read receipt to peer so their ticks turn green
+    wsService.send({
+      'type': 'read_receipt',
+      'event_type': 'EVENT_READ_RECEIPT',
+      'conversation_id': convId,
+      'reader_id': _currentUser?.id ?? '',
+    });
   }
 
   // ── Chat: Send In-Chat Product Card ─────────────────────────────────────────

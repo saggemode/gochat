@@ -37,18 +37,25 @@ class ChatBubble extends StatelessWidget {
     this.onBuyProduct,
   });
 
-  Widget _buildStatusTicks(MessageStatus status) {
+  Widget _buildStatusTicks(MessageStatus status, {bool isMe = false, bool isDark = true}) {
+    final subtleTickColor = isMe
+        ? (isDark ? Colors.white60 : Colors.black54)
+        : (isDark ? AppTheme.textMuted : AppTheme.textMutedLight);
+
     switch (status) {
       case MessageStatus.pending:
-        return const Icon(Icons.access_time_rounded, size: 13, color: AppTheme.textMuted);
+        return Icon(Icons.access_time_rounded, size: 12, color: subtleTickColor);
       case MessageStatus.sent:
-        return const Icon(Icons.check, size: 14, color: AppTheme.textMuted);
+        // Single Good Sign (Grey Check)
+        return Icon(Icons.check_rounded, size: 15, color: subtleTickColor);
       case MessageStatus.delivered:
-        return const Icon(Icons.done_all, size: 14, color: AppTheme.textMuted);
+        // Double Good Sign (Grey Double Check)
+        return Icon(Icons.done_all_rounded, size: 15, color: subtleTickColor);
       case MessageStatus.read:
-        return const Icon(Icons.done_all, size: 14, color: AppTheme.readBlue);
+        // Double Good Sign in Green (Read Double Check)
+        return const Icon(Icons.done_all_rounded, size: 15, color: Color(0xFF25D366));
       case MessageStatus.failed:
-        return const Icon(Icons.error_outline, size: 13, color: AppTheme.dangerRed);
+        return const Icon(Icons.error_outline_rounded, size: 13, color: AppTheme.dangerRed);
     }
   }
 
@@ -677,7 +684,7 @@ class ChatBubble extends StatelessWidget {
                     ),
                     if (isMe) ...[
                       const SizedBox(width: 4),
-                      _buildStatusTicks(message.status),
+                      _buildStatusTicks(message.status, isMe: isMe, isDark: isDark),
                     ],
                   ],
                 ),
