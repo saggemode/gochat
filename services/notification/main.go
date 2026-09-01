@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -205,19 +204,20 @@ func handleSendVoipPush(w http.ResponseWriter, r *http.Request) {
 	tokens := tokenStore[callPayload.RecipientID]
 	storeMutex.RUnlock()
 
-	log.Printf("📞 [VoIP Push] Incoming %s call from %s (%s) to user %s (CallID: %s)",
-		callPayload.CallType, callPayload.CallerName, callPayload.CallerPin, callPayload.RecipientID, callPayload.CallID)
+	log.Printf("📞 [VoIP Push] Incoming %s call from %s (%s) to user %s (CallID: %s, Devices: %d)",
+		callPayload.CallType, callPayload.CallerName, callPayload.CallerPin, callPayload.RecipientID, callPayload.CallID, len(tokens))
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success":        true,
-		"call_id":        callPayload.CallID,
-		"recipient_id":   callPayload.RecipientID,
-		"call_type":      callPayload.CallType,
-		"caller_name":    callPayload.CallerName,
+		"success":          true,
+		"call_id":          callPayload.CallID,
+		"recipient_id":     callPayload.RecipientID,
+		"call_type":        callPayload.CallType,
+		"caller_name":      callPayload.CallerName,
+		"device_count":     len(tokens),
 		"is_high_priority": true,
-		"wake_lock":      true,
-		"delivered_at":   time.Now().Format(time.RFC3339),
+		"wake_lock":        true,
+		"delivered_at":     time.Now().Format(time.RFC3339),
 	})
 }
 
