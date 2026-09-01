@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/login_screen.dart';
+import '../chat/starred_messages_screen.dart';
+import 'chat_backup_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final AppState appState;
@@ -289,6 +291,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
             'Account & Security',
             'Security notifications, two-step verification',
             onTap: () {},
+          ),
+          _buildSettingsTile(
+            Icons.star_rounded,
+            'Starred Messages',
+            'View saved bookmarks and important messages',
+            onTap: () {
+              StarredMessagesScreen.open(context, appState: widget.appState);
+            },
+          ),
+          _buildSettingsTile(
+            Icons.backup_rounded,
+            'Chat Backup & Export',
+            'Password-encrypted local & cloud backup, restore chats',
+            onTap: () {
+              ChatBackupScreen.open(context, appState: widget.appState);
+            },
           ),
           _buildSettingsTile(
             Icons.lock_outline_rounded,

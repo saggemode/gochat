@@ -9,6 +9,8 @@ import '../../core/models/chat_theme.dart';
 import '../../core/models/models.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/chat_theme_service.dart';
+import '../../core/services/e2ee_verification_service.dart';
+import '../../core/services/giphy_tenor_service.dart';
 import '../../core/services/media_storage_service.dart';
 import '../../core/services/voice_recorder_service.dart';
 import '../../core/state/app_state.dart';
@@ -25,6 +27,7 @@ import 'chat_theme_customizer_sheet.dart';
 import 'contact_profile_screen.dart';
 import 'create_poll_dialog.dart';
 import 'game_launcher_dialog.dart';
+import 'starred_messages_screen.dart';
 import 'view_once_viewer_screen.dart';
 import '../stories/story_viewer_screen.dart';
 
@@ -64,10 +67,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
   double? _mediaUploadProgress;
   String? _uploadingMediaLabel;
 
+  // E2EE Verified Status
+  bool _isE2EEVerified = false;
+
   @override
   void initState() {
     super.initState();
     widget.appState.addListener(_onStateChange);
+
+    // Check E2EE verification status
+    E2EEVerificationService().isVerified(widget.conversation.id).then((v) {
+      if (mounted) setState(() => _isE2EEVerified = v);
+    });
 
     // Load active custom wallpaper and theme for this chat
     ChatThemeService().getThemeForConversation(widget.conversation.id).then((t) {
@@ -165,6 +176,36 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       _replyingTo = null;
     });
     widget.appState.sendTypingEvent(widget.conversation.id, false);
+    _scrollToBottom();
+  }
+
+  void _handleSendSticker(StickerItem sticker) {
+    widget.appState.sendMessage(
+      widget.conversation.id,
+      'sticker:${sticker.name}',
+      type: MessageType.image,
+      mediaUrl: sticker.url,
+      disappearingDurationSeconds: _disappearingDuration,
+      replyToId: _replyingTo?.id,
+      replyToText: _replyingTo?.content,
+      replyToSenderName: _replyingTo?.senderName,
+    );
+    setState(() => _replyingTo = null);
+    _scrollToBottom();
+  }
+
+  void _handleSendGif(GifItem gif) {
+    widget.appState.sendMessage(
+      widget.conversation.id,
+      'GIF: ${gif.title}',
+      type: MessageType.image,
+      mediaUrl: gif.fullUrl,
+      disappearingDurationSeconds: _disappearingDuration,
+      replyToId: _replyingTo?.id,
+      replyToText: _replyingTo?.content,
+      replyToSenderName: _replyingTo?.senderName,
+    );
+    setState(() => _replyingTo = null);
     _scrollToBottom();
   }
 
@@ -950,14 +991,29 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        widget.conversation.title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              widget.conversation.title,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (_isE2EEVerified) ...[
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.verified_user_rounded,
+                              color: AppTheme.primary,
+                              size: 15,
+                            ),
+                          ],
+                        ],
                       ),
                       Text(
                         isRecordingAudio
@@ -1013,6 +1069,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
               onSelected: (val) {
                 if (val == 'theme') {
                   _openThemeCustomizer();
+                } else if (val == 'starred') {
+                  StarredMessagesScreen.open(
+                    context,
+                    conversation: widget.conversation,
+                    appState: widget.appState,
+                  );
                 } else if (val == 'disappearing') {
                   _showDisappearingMessagesSheet();
                 } else if (val == 'canvas') {
@@ -1026,6 +1088,16 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                 }
               },
               itemBuilder: (ctx) => [
+                const PopupMenuItem(
+                  value: 'starred',
+                  child: Row(
+                    children: [
+                      Icon(Icons.star_rounded, size: 18, color: Colors.amber),
+                      SizedBox(width: 10),
+                      Text('Starred Messages'),
+                    ],
+                  ),
+                ),
                 const PopupMenuItem(
                   value: 'theme',
                   child: Row(
@@ -1445,6 +1517,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                         onPingPressed: _handleSendPing,
                         onSendPressed: _handleSend,
                         onChanged: _handleTypingChanged,
+                        onSendSticker: _handleSendSticker,
+                        onSendGif: _handleSendGif,
                       ),
                     ],
                   );

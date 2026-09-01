@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/models/message.dart';
+import '../../core/services/giphy_tenor_service.dart';
 import '../../core/services/voice_recorder_service.dart';
 import '../../core/theme/app_theme.dart';
+import 'chat_media_picker_sheet.dart';
 
 class ChatInputBar extends StatefulWidget {
   final TextEditingController inputController;
@@ -16,6 +18,8 @@ class ChatInputBar extends StatefulWidget {
   final VoidCallback onPingPressed;
   final VoidCallback onSendPressed;
   final ValueChanged<String> onChanged;
+  final ValueChanged<StickerItem>? onSendSticker;
+  final ValueChanged<GifItem>? onSendGif;
 
   const ChatInputBar({
     super.key,
@@ -30,6 +34,8 @@ class ChatInputBar extends StatefulWidget {
     required this.onPingPressed,
     required this.onSendPressed,
     required this.onChanged,
+    this.onSendSticker,
+    this.onSendGif,
   });
 
   @override
@@ -321,6 +327,39 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
     );
   }
 
+  void _showMediaPicker() {
+    ChatMediaPickerSheet.show(
+      context,
+      onEmojiSelected: (emoji) {
+        final current = widget.inputController.text;
+        final selection = widget.inputController.selection;
+        final newText = selection.start >= 0
+            ? current.replaceRange(selection.start, selection.end, emoji)
+            : '$current$emoji';
+        widget.inputController.text = newText;
+        widget.inputController.selection = TextSelection.collapsed(
+          offset: (selection.start >= 0 ? selection.start : current.length) + emoji.length,
+        );
+        widget.onChanged(newText);
+      },
+      onSendSticker: (sticker) {
+        widget.onSendSticker?.call(sticker);
+      },
+      onSendGif: (gif) {
+        widget.onSendGif?.call(gif);
+      },
+      onBackspace: () {
+        final current = widget.inputController.text;
+        if (current.isNotEmpty) {
+          final newText = current.characters.skipLast(1).toString();
+          widget.inputController.text = newText;
+          widget.inputController.selection = TextSelection.collapsed(offset: newText.length);
+          widget.onChanged(newText);
+        }
+      },
+    );
+  }
+
   Widget _buildNormalInputBar(bool isDark) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -342,7 +381,7 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
           ),
           Expanded(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(
                 color: isDark ? AppTheme.darkCard : const Color(0xFFF0F2F5),
                 borderRadius: BorderRadius.circular(24),
@@ -353,6 +392,18 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
               ),
               child: Row(
                 children: [
+                  // Emoji & GIF Picker button
+                  GestureDetector(
+                    onTap: _showMediaPicker,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Icon(
+                        Icons.emoji_emotions_outlined,
+                        color: isDark ? AppTheme.iconColor : AppTheme.iconColorLight,
+                        size: 22,
+                      ),
+                    ),
+                  ),
                   Expanded(
                     child: TextField(
                       controller: widget.inputController,

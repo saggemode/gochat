@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/models/models.dart';
+import '../../core/services/e2ee_verification_service.dart';
+import '../../core/services/starred_message_service.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/widgets.dart';
 import '../calls/active_call_screen.dart';
+import 'encryption_verification_screen.dart';
 import 'shared_media_gallery_screen.dart';
+import 'starred_messages_screen.dart';
 
 class ContactProfileScreen extends StatefulWidget {
   final Conversation conversation;
@@ -41,10 +45,15 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
   bool _isMuted = false;
   String _disappearingTimer = 'Off';
 
+  bool _isVerified = false;
+
   @override
   void initState() {
     super.initState();
     _isMuted = widget.conversation.isMuted;
+    E2EEVerificationService().isVerified(widget.conversation.id).then((v) {
+      if (mounted) setState(() => _isVerified = v);
+    });
   }
 
   String get _pin {
@@ -105,64 +114,20 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
     );
   }
 
-  void _showEncryptionVerification() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Theme.of(context).brightness == Brightness.dark
-            ? AppTheme.darkSurface
-            : Colors.white,
-        title: const Row(
-          children: [
-            Icon(Icons.lock_rounded, color: AppTheme.primary),
-            SizedBox(width: 8),
-            Text('Verify Security Code'),
-          ],
+  void _showEncryptionVerification() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EncryptionVerificationScreen(
+          conversation: widget.conversation,
+          appState: widget.appState,
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Messages and calls with this contact are protected with End-to-End Encryption.',
-              style: TextStyle(fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              color: Colors.white,
-              child: const Icon(
-                Icons.qr_code_2_rounded,
-                size: 140,
-                color: Colors.black,
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Fingerprint: 8492-2094-1182-3849\n4920-1928-3019-8472',
-              style: TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 11,
-                color: AppTheme.textMuted,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              'Verified',
-              style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
       ),
     );
+    final verified = await E2EEVerificationService().isVerified(widget.conversation.id);
+    if (mounted) {
+      setState(() => _isVerified = verified);
+    }
   }
 
   @override
@@ -483,15 +448,49 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
                 onTap: _showDisappearingDialog,
               ),
 
+              ValueListenableBuilder<List<Message>>(
+                valueListenable: StarredMessageService().starredMessagesNotifier,
+                builder: (context, _, __) {
+                  final count = StarredMessageService().getStarredCountForConversation(widget.conversation.id);
+                  return ListTile(
+                    leading: const Icon(Icons.star_rounded, color: Colors.amber),
+                    title: const Text('Starred Messages'),
+                    subtitle: Text(
+                      count > 0 ? '$count saved message${count > 1 ? 's' : ''}' : 'None',
+                      style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => StarredMessagesScreen.open(
+                      context,
+                      conversation: widget.conversation,
+                      appState: widget.appState,
+                    ),
+                  );
+                },
+              ),
+
               ListTile(
-                leading: const Icon(
-                  Icons.lock_outline_rounded,
-                  color: AppTheme.primary,
+                leading: Icon(
+                  _isVerified ? Icons.verified_user_rounded : Icons.lock_outline_rounded,
+                  color: _isVerified ? AppTheme.primary : AppTheme.iconColor,
                 ),
-                title: const Text('Encryption Verification'),
-                subtitle: const Text(
-                  'End-to-end encrypted security fingerprint',
-                  style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                title: Row(
+                  children: [
+                    const Text('Encryption Verification'),
+                    if (_isVerified) ...[
+                      const SizedBox(width: 6),
+                      const Icon(Icons.check_circle_rounded, color: AppTheme.primary, size: 16),
+                    ],
+                  ],
+                ),
+                subtitle: Text(
+                  _isVerified
+                      ? 'Security code verified (End-to-End Encrypted)'
+                      : 'End-to-end encrypted security fingerprint',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _isVerified ? AppTheme.primary : AppTheme.textMuted,
+                  ),
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: _showEncryptionVerification,

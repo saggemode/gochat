@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../core/models/chat_theme.dart';
 import '../core/models/game_data.dart';
 import '../core/models/message.dart';
+import '../core/services/starred_message_service.dart';
 import '../core/theme/app_theme.dart';
 import 'audio_player_bubble.dart';
 import 'game_bubble.dart';
@@ -53,6 +54,9 @@ class ChatBubble extends StatelessWidget {
 
   void _showReactionMenu(BuildContext context) {
     HapticFeedback.mediumImpact();
+    final starredService = StarredMessageService();
+    final isStarred = starredService.isStarred(message.id);
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -61,7 +65,6 @@ class ChatBubble extends StatelessWidget {
 
         return Container(
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: isDark ? AppTheme.darkSurface : Colors.white,
             borderRadius: BorderRadius.circular(24),
@@ -70,17 +73,83 @@ class ChatBubble extends StatelessWidget {
               BoxShadow(color: Colors.black38, blurRadius: 16, offset: Offset(0, 4)),
             ],
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: ['❤️', '👍', '😂', '😮', '😢', '🙏', '🔥', '🎉'].map((emoji) {
-              return GestureDetector(
-                onTap: () {
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ── Quick Reactions Row ──────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: ['❤️', '👍', '😂', '😮', '😢', '🙏', '🔥', '🎉'].map((emoji) {
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        onReact?.call(emoji);
+                      },
+                      child: Text(emoji, style: const TextStyle(fontSize: 28)),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const Divider(height: 1),
+
+              // ── Star / Unstar Action ─────────────────────────────────────────
+              ListTile(
+                leading: Icon(
+                  isStarred ? Icons.star_rounded : Icons.star_outline_rounded,
+                  color: Colors.amber,
+                ),
+                title: Text(isStarred ? 'Unstar Message' : 'Star Message'),
+                subtitle: Text(
+                  isStarred ? 'Remove from saved bookmarks' : 'Bookmark this message for quick access',
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                ),
+                onTap: () async {
                   Navigator.pop(ctx);
-                  onReact?.call(emoji);
+                  await starredService.toggleStar(message);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(isStarred ? 'Message unstarred' : '⭐ Message starred! Saved to Bookmarks'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  }
                 },
-                child: Text(emoji, style: const TextStyle(fontSize: 28)),
-              );
-            }).toList(),
+              ),
+
+              // ── Reply Action ─────────────────────────────────────────────────
+              if (onReply != null)
+                ListTile(
+                  leading: const Icon(Icons.reply_rounded, color: AppTheme.primary),
+                  title: const Text('Reply'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    onReply?.call();
+                  },
+                ),
+
+              // ── Copy Text Action ─────────────────────────────────────────────
+              if (message.content.isNotEmpty)
+                ListTile(
+                  leading: Icon(
+                    Icons.copy_rounded,
+                    color: isDark ? AppTheme.iconColor : AppTheme.iconColorLight,
+                  ),
+                  title: const Text('Copy Text'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Clipboard.setData(ClipboardData(text: message.content));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Message copied to clipboard')),
+                      );
+                    }
+                  },
+                ),
+              const SizedBox(height: 6),
+            ],
           ),
         );
       },
@@ -595,6 +664,16 @@ class ChatBubble extends StatelessWidget {
                         fontSize: 10,
                         color: isMe ? (isDark ? Colors.white60 : Colors.black54) : (isDark ? AppTheme.textMuted : AppTheme.textMutedLight),
                       ),
+                    ),
+                    ValueListenableBuilder<Set<String>>(
+                      valueListenable: StarredMessageService().starredIdsNotifier,
+                      builder: (context, starredIds, _) {
+                        if (!starredIds.contains(message.id)) return const SizedBox.shrink();
+                        return const Padding(
+                          padding: EdgeInsets.only(left: 4),
+                          child: Icon(Icons.star_rounded, size: 12, color: Colors.amber),
+                        );
+                      },
                     ),
                     if (isMe) ...[
                       const SizedBox(width: 4),
