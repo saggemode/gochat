@@ -13,6 +13,7 @@ resources:
   - storage/postgres.yaml
   - storage/redis.yaml
   - storage/minio.yaml
+  - storage/migration-job.yaml
 
   # 3. Microservices (gRPC)
   - microservices/auth.yaml

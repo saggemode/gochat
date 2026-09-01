@@ -1,0 +1,61 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gochat-db-migration
+  namespace: gochat
+  labels:
+    app.kubernetes.io/name: db-migration
+    app.kubernetes.io/part-of: gochat-platform
+  annotations:
+    # Run before pods start or on initial deployment
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "1"
+spec:
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: db-migration
+        app.kubernetes.io/part-of: gochat-platform
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrator
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PGHOST
+              value: "postgres-svc"
+            - name: PGPORT
+              value: "5432"
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: gochat-secrets
+                  key: POSTGRES_USER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gochat-secrets
+                  key: POSTGRES_PASSWORD
+            - name: PGDATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: gochat-secrets
+                  key: POSTGRES_DB
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for PostgreSQL service to be ready..."
+              until pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER"; do
+                sleep 2
+              done
+              echo "PostgreSQL is reachable. Initializing databases..."
+              
+              for db in "auth-gochat-db" "authz-gochat-db" "chat-gochat-db" "media-gochat-db" "group-gochat-db" "story-gochat-db" "call-gochat-db" "channel-gochat-db" "social-gochat-db" "miniapp-gochat-db" "business-gochat-db"; do
+                psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = '$db'" | grep -q 1 || \
+                psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d postgres -c "CREATE DATABASE \"$db\";"
+              done
+              
+              echo "Database initialization completed successfully!"

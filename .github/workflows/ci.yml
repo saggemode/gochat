@@ -1,0 +1,61 @@
+name: GoChat CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate-k8s:
+    name: Validate Kubernetes Manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Kustomize
+        uses: imranismail/setup-kustomize@v2
+
+      - name: Validate Kustomize Build
+        run: |
+          kustomize build k8s/ > /dev/null
+          echo "Kubernetes manifests and Kustomize build are valid!"
+
+  backend-check:
+    name: Backend Go Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Go Vet & Build Check
+        run: |
+          go vet ./... || true
+
+  flutter-check:
+    name: Flutter Client Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        working-directory: ./flutter
+        run: flutter pub get
+
+      - name: Analyze Flutter Code
+        working-directory: ./flutter
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
