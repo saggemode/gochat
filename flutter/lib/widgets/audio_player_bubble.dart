@@ -39,6 +39,11 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble> {
   Duration _totalDuration = Duration.zero;
   bool _hasRealAudio = false;
 
+  // Receiver Download State
+  bool _isDownloaded = true;
+  bool _isDownloading = false;
+  double _downloadProgress = 0.0;
+
   @override
   void initState() {
     super.initState();
@@ -49,8 +54,35 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble> {
       return (base * rnd.nextDouble() * 0.8 + 0.2).clamp(0.15, 1.0);
     });
 
-    _hasRealAudio = widget.audioUrl != null && widget.audioUrl!.isNotEmpty;
-    if (_hasRealAudio) {
+    final rawUrl = widget.audioUrl?.trim() ?? '';
+    final isRemote = rawUrl.startsWith('http://') || rawUrl.startsWith('https://');
+    _isDownloaded = widget.isMe || !isRemote;
+
+    _hasRealAudio = rawUrl.isNotEmpty;
+    if (_hasRealAudio && _isDownloaded) {
+      _initPlayer();
+    }
+  }
+
+  Future<void> _startDownload() async {
+    HapticFeedback.lightImpact();
+    setState(() {
+      _isDownloading = true;
+      _downloadProgress = 0.1;
+    });
+
+    for (int i = 1; i <= 10; i++) {
+      await Future.delayed(const Duration(milliseconds: 60));
+      if (mounted) {
+        setState(() => _downloadProgress = i / 10.0);
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _isDownloading = false;
+        _isDownloaded = true;
+      });
       _initPlayer();
     }
   }
@@ -271,23 +303,44 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Play / Pause Circle
+          // Play / Pause / Download Circle
           GestureDetector(
-            onTap: _togglePlay,
+            onTap: () {
+              if (!_isDownloaded && !_isDownloading) {
+                _startDownload();
+              } else if (_isDownloaded) {
+                _togglePlay();
+              }
+            },
             child: Container(
               width: 44,
               height: 44,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: widget.isMe
-                    ? AppTheme.accent.withValues(alpha: 0.25)
-                    : AppTheme.primary.withValues(alpha: 0.2),
+                color: !_isDownloaded
+                    ? AppTheme.primary
+                    : (widget.isMe
+                        ? AppTheme.accent.withValues(alpha: 0.25)
+                        : AppTheme.primary.withValues(alpha: 0.2)),
               ),
-              child: Icon(
-                _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                color: widget.isMe ? (isDark ? Colors.white : Colors.black) : AppTheme.primary,
-                size: 28,
-              ),
+              child: _isDownloading
+                  ? Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: CircularProgressIndicator(
+                        value: _downloadProgress > 0 ? _downloadProgress : null,
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Icon(
+                      !_isDownloaded
+                          ? Icons.arrow_downward_rounded
+                          : (_isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded),
+                      color: !_isDownloaded
+                          ? Colors.white
+                          : (widget.isMe ? (isDark ? Colors.white : Colors.black) : AppTheme.primary),
+                      size: 26,
+                    ),
             ),
           ),
           const SizedBox(width: 10),
