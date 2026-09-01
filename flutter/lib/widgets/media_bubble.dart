@@ -43,12 +43,10 @@ class _MediaBubbleState extends State<MediaBubble> {
     final rawUrl = widget.message.mediaUrl ?? '';
     if (rawUrl.isEmpty) return;
 
-    if (!kIsWeb && !rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
-      if (!rawUrl.startsWith('data:')) {
-        final file = File(rawUrl);
-        if (file.existsSync()) {
-          _localPath = rawUrl;
-        }
+    if (!kIsWeb && !rawUrl.startsWith('http://') && !rawUrl.startsWith('https://') && !rawUrl.startsWith('data:')) {
+      final file = File(rawUrl);
+      if (file.existsSync()) {
+        _localPath = rawUrl;
       }
     }
   }
@@ -67,13 +65,14 @@ class _MediaBubbleState extends State<MediaBubble> {
 
     setState(() {
       _isDownloading = true;
-      _downloadProgress = 0.05;
+      _downloadProgress = 0.1;
     });
 
     final isVideo = widget.message.type == MessageType.video;
     final ext = isVideo ? '.mp4' : '.jpg';
     final category = isVideo ? MediaCategory.video : MediaCategory.images;
 
+    // 1. Remote HTTP URL
     if (rawUrl.startsWith('http')) {
       final savedPath = await MediaStorageService().downloadMediaWithProgress(
         remoteUrl: rawUrl,
@@ -94,12 +93,42 @@ class _MediaBubbleState extends State<MediaBubble> {
           }
         });
       }
-    } else {
-      // Simulate download progress for non-http / mock media
-      for (int i = 1; i <= 10; i++) {
-        await Future.delayed(const Duration(milliseconds: 100));
+    }
+    // 2. Base64 Data URI from Phone Gallery
+    else if (rawUrl.startsWith('data:image') || rawUrl.startsWith('data:') || rawUrl.contains(';base64,')) {
+      for (int i = 1; i <= 8; i++) {
+        await Future.delayed(const Duration(milliseconds: 50));
         if (mounted) {
-          setState(() => _downloadProgress = i / 10.0);
+          setState(() => _downloadProgress = i / 8.0);
+        }
+      }
+      try {
+        final b64Index = rawUrl.indexOf('base64,');
+        final b64Data = b64Index != -1 ? rawUrl.substring(b64Index + 7) : rawUrl;
+        final bytes = base64Decode(b64Data.trim());
+        final savedPath = await MediaStorageService().saveImageBytes(bytes, ext: ext);
+        if (mounted) {
+          setState(() {
+            _isDownloading = false;
+            _localPath = savedPath.isNotEmpty ? savedPath : rawUrl;
+          });
+        }
+      } catch (e) {
+        debugPrint('[MediaBubble] Error decoding base64 download: $e');
+        if (mounted) {
+          setState(() {
+            _isDownloading = false;
+            _localPath = rawUrl;
+          });
+        }
+      }
+    }
+    // 3. Fallback Mock / Local Media
+    else {
+      for (int i = 1; i <= 8; i++) {
+        await Future.delayed(const Duration(milliseconds: 50));
+        if (mounted) {
+          setState(() => _downloadProgress = i / 8.0);
         }
       }
       if (mounted) {
@@ -116,8 +145,10 @@ class _MediaBubbleState extends State<MediaBubble> {
     final rawUrl = widget.message.mediaUrl ?? '';
     final isVideo = widget.message.type == MessageType.video;
     final isBase64 = rawUrl.startsWith('data:image') || rawUrl.startsWith('data:') || rawUrl.contains(';base64,');
-    final isLocal = _localPath != null && File(_localPath!).existsSync();
-    final isDownloaded = isLocal || isBase64 || widget.isMe;
+    final isLocalFile = _localPath != null && File(_localPath!).existsSync();
+    
+    // Downloaded status: Sender always sees downloaded; Receiver sees downloaded once saved to local path
+    final isDownloaded = widget.isMe || isLocalFile;
 
     return GestureDetector(
       onTap: () {
@@ -151,35 +182,43 @@ class _MediaBubbleState extends State<MediaBubble> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // ── 1. Media Visual Layer (Blurred Thumbnail if Not Downloaded) ──
-                if (isDownloaded && isLocal)
-                  Image.file(
-                    File(_localPath!),
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => _buildPlaceholder(isVideo),
-                  )
-                else if (isDownloaded && isBase64)
-                  _buildBase64Image(rawUrl)
-                else if (!isDownloaded && rawUrl.isNotEmpty && (rawUrl.startsWith('http') || rawUrl.startsWith('assets/')))
-                  // WhatsApp-style Blurred Thumbnail
+                // ── 1. Media Visual Layer ──
+                if (isDownloaded)
+                  if (isLocalFile)
+                    Image.file(
+                      File(_localPath!),
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => _buildPlaceholder(isVideo),
+                    )
+                  else if (isBase64)
+                    _buildBase64Image(rawUrl)
+                  else if (rawUrl.startsWith('http'))
+                    Image.network(
+                      rawUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => _buildPlaceholder(isVideo),
+                    )
+                  else
+                    _buildPlaceholder(isVideo)
+                else
+                  // Blurred Thumbnail Layer for Receiver before Download
                   ImageFiltered(
                     imageFilter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                    child: rawUrl.startsWith('http')
-                        ? Image.network(
-                            rawUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => _buildPlaceholder(isVideo),
-                          )
-                        : Image.asset(
-                            rawUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => _buildPlaceholder(isVideo),
-                          ),
-                  )
-                else
-                  ImageFiltered(
-                    imageFilter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: _buildPlaceholder(isVideo),
+                    child: isBase64
+                        ? _buildBase64Image(rawUrl)
+                        : (rawUrl.startsWith('http')
+                            ? Image.network(
+                                rawUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => _buildPlaceholder(isVideo),
+                              )
+                            : (rawUrl.startsWith('assets/')
+                                ? Image.asset(
+                                    rawUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => _buildPlaceholder(isVideo),
+                                  )
+                                : _buildPlaceholder(isVideo))),
                   ),
 
                 // Dark translucent tint over thumbnail for contrast

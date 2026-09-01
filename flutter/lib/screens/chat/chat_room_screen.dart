@@ -684,9 +684,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       final picker = ImagePicker();
       final XFile? picked = await picker.pickImage(
         source: source,
-        imageQuality: 85,
-        maxWidth: 2560,
-        maxHeight: 2560,
+        imageQuality: 70,
+        maxWidth: 1280,
+        maxHeight: 1280,
       );
       if (picked == null) return;
 
