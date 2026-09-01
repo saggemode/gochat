@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gochat
+  labels:
+    app.kubernetes.io/name: gochat
+    app.kubernetes.io/part-of: gochat-platform

@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: call-svc
+  namespace: gochat
+  labels:
+    app.kubernetes.io/name: call
+    app.kubernetes.io/part-of: gochat-platform
+spec:
+  ports:
+    - name: grpc
+      port: 50057
+      targetPort: 50057
+    - name: health
+      port: 9090
+      targetPort: 9090
+  selector:
+    app.kubernetes.io/name: call
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: call-deployment
+  namespace: gochat
+  labels:
+    app.kubernetes.io/name: call
+    app.kubernetes.io/part-of: gochat-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: call
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: call
+        app.kubernetes.io/part-of: gochat-platform
+    spec:
+      containers:
+        - name: call
+          image: gochat/call:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: grpc
+              containerPort: 50057
+            - name: health
+              containerPort: 9090
+          env:
+            - name: GRPC_PORT
+              value: "50057"
+            - name: HEALTH_PORT
+              value: "9090"
+            - name: REDIS_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  name: gochat-config
+                  key: REDIS_ADDR
+            - name: POSTGRES_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: gochat-secrets
+                  key: CALL_DB_DSN
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gochat-secrets
+                  key: REDIS_PASSWORD
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 9090
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: 9090
+            initialDelaySeconds: 10
+            periodSeconds: 15

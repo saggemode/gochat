@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: gochat
+
+resources:
+  # 1. Namespace & Base Configuration
+  - namespace.yaml
+  - configmap.yaml
+  - secrets.yaml
+
+  # 2. Stateful Storage & Databases
+  - storage/postgres.yaml
+  - storage/redis.yaml
+  - storage/minio.yaml
+
+  # 3. Microservices (gRPC)
+  - microservices/auth.yaml
+  - microservices/authz.yaml
+  - microservices/chat.yaml
+  - microservices/media.yaml
+  - microservices/group.yaml
+  - microservices/story.yaml
+  - microservices/call.yaml
+  - microservices/channel.yaml
+  - microservices/social.yaml
+  - microservices/miniapp.yaml
+  - microservices/business.yaml
+
+  # 4. Gateway & Routing
+  - gateway/gateway.yaml
+  - gateway/ingress.yaml

@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gochat-config
+  namespace: gochat
+  labels:
+    app.kubernetes.io/part-of: gochat-platform
+data:
+  # Internal gRPC service endpoints
+  AUTH_GRPC_ADDR: "auth-svc.gochat.svc.cluster.local:50051"
+  CHAT_GRPC_ADDR: "chat-svc.gochat.svc.cluster.local:50052"
+  MEDIA_GRPC_ADDR: "media-svc.gochat.svc.cluster.local:50053"
+  AUTHZ_GRPC_ADDR: "authz-svc.gochat.svc.cluster.local:50054"
+  GROUP_GRPC_ADDR: "group-svc.gochat.svc.cluster.local:50055"
+  STORY_GRPC_ADDR: "story-svc.gochat.svc.cluster.local:50056"
+  CALL_GRPC_ADDR: "call-svc.gochat.svc.cluster.local:50057"
+  CHANNEL_GRPC_ADDR: "channel-svc.gochat.svc.cluster.local:50058"
+  SOCIAL_GRPC_ADDR: "social-svc.gochat.svc.cluster.local:50061"
+  MINIAPP_GRPC_ADDR: "miniapp-svc.gochat.svc.cluster.local:50062"
+  BUSINESS_GRPC_ADDR: "business-svc.gochat.svc.cluster.local:50063"
+
+  # Redis & Storage
+  REDIS_ADDR: "redis-svc.gochat.svc.cluster.local:6379"
+  MINIO_ENDPOINT: "minio-svc.gochat.svc.cluster.local:9000"
+  MINIO_BUCKET: "gochat-media"
+  MINIO_USE_SSL: "false"
+
+  # HTTP & Health ports
+  HTTP_PORT: "8080"
+  HEALTH_PORT: "9090"
+  CORS_ORIGINS: "*"
+  JWT_EXPIRY_HOURS: "24"
+  JWT_REFRESH_EXPIRY_DAYS: "30"

@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: media-svc
+  namespace: gochat
+  labels:
+    app.kubernetes.io/name: media
+    app.kubernetes.io/part-of: gochat-platform
+spec:
+  ports:
+    - name: grpc
+      port: 50053
+      targetPort: 50053
+    - name: health
+      port: 9090
+      targetPort: 9090
+  selector:
+    app.kubernetes.io/name: media
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: media-deployment
+  namespace: gochat
+  labels:
+    app.kubernetes.io/name: media
+    app.kubernetes.io/part-of: gochat-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: media
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: media
+        app.kubernetes.io/part-of: gochat-platform
+    spec:
+      containers:
+        - name: media
+          image: gochat/media:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: grpc
+              containerPort: 50053
+            - name: health
+              containerPort: 9090
+          env:
+            - name: GRPC_PORT
+              value: "50053"
+            - name: HEALTH_PORT
+              value: "9090"
+            - name: MINIO_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: gochat-config
+                  key: MINIO_ENDPOINT
+            - name: MINIO_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: gochat-config
+                  key: MINIO_BUCKET
+            - name: MINIO_USE_SSL
+              valueFrom:
+                configMapKeyRef:
+                  name: gochat-config
+                  key: MINIO_USE_SSL
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gochat-secrets
+                  key: MINIO_ACCESS_KEY
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gochat-secrets
+                  key: MINIO_SECRET_KEY
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 9090
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: 9090
+            initialDelaySeconds: 10
+            periodSeconds: 15
