@@ -795,11 +795,15 @@ class ApiService {
           Uri.parse('${ApiConstants.apiV1}/business/products'),
           headers: await _headers(),
           body: jsonEncode({
+            'name': product.title,
             'title': product.title,
             'description': product.description,
             'price': product.price,
+            'currency': product.currency,
             'category': product.category,
+            'category_id': product.category,
             'image_url': product.imageUrl,
+            'image_urls': product.images.isNotEmpty ? product.images : (product.imageUrl.isNotEmpty ? [product.imageUrl] : []),
             'in_stock': product.inStock,
           }),
         )

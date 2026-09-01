@@ -104,6 +104,8 @@ class Product {
     List<String> parsedImages = [];
     if (json['images'] is List) {
       parsedImages = (json['images'] as List).map((e) => e.toString()).toList();
+    } else if (json['image_urls'] is List) {
+      parsedImages = (json['image_urls'] as List).map((e) => e.toString()).toList();
     } else if (json['image_url'] != null && json['image_url'].toString().isNotEmpty) {
       parsedImages = [json['image_url'].toString()];
     }
@@ -115,6 +117,8 @@ class Product {
           .toList();
     }
 
+    final rawSellerId = (json['seller_id'] ?? json['owner_id'] ?? json['business_id'] ?? json['user_id'] ?? '').toString();
+
     return Product(
       id: json['id']?.toString() ?? '',
       title: json['title'] ?? json['name'] ?? 'Product',
@@ -122,16 +126,16 @@ class Product {
       price: rawPrice,
       originalPrice: rawOriginalPrice > 0 ? rawOriginalPrice : (rawPrice * 1.25),
       currency: json['currency'] ?? 'USD',
-      imageUrl: json['image_url'] ?? (parsedImages.isNotEmpty ? parsedImages.first : ''),
+      imageUrl: (json['image_url'] ?? (parsedImages.isNotEmpty ? parsedImages.first : '')).toString(),
       images: parsedImages,
-      category: json['category'] ?? 'General',
-      storeName: json['store_name'] ?? json['brand'] ?? 'Official Store',
-      sellerId: json['seller_id']?.toString() ?? json['user_id']?.toString() ?? '',
+      category: json['category'] ?? json['category_name'] ?? 'General',
+      storeName: json['store_name'] ?? json['seller_name'] ?? json['brand'] ?? 'Official Store',
+      sellerId: rawSellerId,
       sellerPin: json['seller_pin']?.toString() ?? '',
       sellerLocation: json['seller_location'] ?? json['location'] ?? 'Lagos, Nigeria',
       isVerifiedSeller: json['is_verified'] != false,
-      rating: (json['rating'] is num) ? (json['rating'] as num).toDouble() : 4.8,
-      reviewsCount: json['reviews_count'] ?? 120,
+      rating: (json['rating'] is num) ? (json['rating'] as num).toDouble() : (json['rating_avg'] is num ? (json['rating_avg'] as num).toDouble() : 4.8),
+      reviewsCount: json['reviews_count'] ?? json['review_count'] ?? 120,
       inStock: json['in_stock'] != false,
       tags: json['tags'] is List ? (json['tags'] as List).map((e) => e.toString()).toList() : ['Verified Merchant', 'Fast Delivery'],
       isWishlisted: json['is_wishlisted'] == true,

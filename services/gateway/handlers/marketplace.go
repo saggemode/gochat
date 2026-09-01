@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	pb "gochat/gen/business"
 
@@ -18,12 +19,14 @@ func (h *BusinessHandler) CreateMarketplaceProduct(c *gin.Context) {
 	}
 
 	var req struct {
-		Name            string   `json:"name" binding:"required"`
+		Name            string   `json:"name"`
+		Title           string   `json:"title"`
 		Description     string   `json:"description"`
 		CategoryID      string   `json:"category_id"`
+		Category        string   `json:"category"`
 		SubCategoryID   string   `json:"sub_category_id"`
 		BrandID         string   `json:"brand_id"`
-		Price           float64  `json:"price" binding:"required"`
+		Price           float64  `json:"price"`
 		DiscountPercent float64  `json:"discount_percent"`
 		Currency        string   `json:"currency"`
 		Quantity        int32    `json:"quantity"`
@@ -32,6 +35,7 @@ func (h *BusinessHandler) CreateMarketplaceProduct(c *gin.Context) {
 		Size            string   `json:"size"`
 		Weight          float64  `json:"weight"`
 		ShippingFee     float64  `json:"shipping_fee"`
+		ImageURL        string   `json:"image_url"`
 		ImageURLs       []string `json:"image_urls"`
 	}
 
@@ -40,12 +44,31 @@ func (h *BusinessHandler) CreateMarketplaceProduct(c *gin.Context) {
 		return
 	}
 
+	prodName := strings.TrimSpace(req.Name)
+	if prodName == "" {
+		prodName = strings.TrimSpace(req.Title)
+	}
+	if prodName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "product name or title is required"})
+		return
+	}
+
+	catID := strings.TrimSpace(req.CategoryID)
+	if catID == "" {
+		catID = strings.TrimSpace(req.Category)
+	}
+
+	imgURLs := req.ImageURLs
+	if len(imgURLs) == 0 && req.ImageURL != "" {
+		imgURLs = []string{req.ImageURL}
+	}
+
 	resp, err := h.client.CreateMarketplaceProduct(c.Request.Context(), &pb.CreateMarketplaceProductRequest{
 		BusinessId:      userID,
 		OwnerId:         userID,
-		Name:            req.Name,
+		Name:            prodName,
 		Description:     req.Description,
-		CategoryId:      req.CategoryID,
+		CategoryId:      catID,
 		SubCategoryId:   req.SubCategoryID,
 		BrandId:         req.BrandID,
 		Price:           req.Price,
@@ -57,7 +80,7 @@ func (h *BusinessHandler) CreateMarketplaceProduct(c *gin.Context) {
 		Size:            req.Size,
 		Weight:          req.Weight,
 		ShippingFee:     req.ShippingFee,
-		ImageUrls:       req.ImageURLs,
+		ImageUrls:       imgURLs,
 	}, jsonOpt)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

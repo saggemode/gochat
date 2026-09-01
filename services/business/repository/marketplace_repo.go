@@ -110,11 +110,26 @@ func deriveCurrencyFromCountry(country string) string {
 }
 
 func (r *BusinessRepository) CreateMarketplaceProduct(ctx context.Context, p *MarketplaceProduct) (*MarketplaceProduct, error) {
-	// Verify user has created a business profile first
+	// Verify user has created a business profile, or auto-create a default one
 	var profileExists bool
-	err := r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM business.business_profiles WHERE user_id = $1)`, p.OwnerID).Scan(&profileExists)
-	if err != nil || !profileExists {
-		return nil, fmt.Errorf("business profile required: you must create a business profile before listing a product")
+	_ = r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM business.business_profiles WHERE user_id = $1)`, p.OwnerID).Scan(&profileExists)
+	if !profileExists {
+		var displayName string
+		_ = r.db.QueryRow(ctx, `SELECT COALESCE(display_name, 'Merchant Store') FROM core.users WHERE id = $1`, p.OwnerID).Scan(&displayName)
+		if displayName == "" {
+			displayName = "Merchant Store"
+		}
+		slugID := p.OwnerID
+		if len(slugID) > 8 {
+			slugID = slugID[:8]
+		}
+		slug := strings.ToLower(strings.ReplaceAll(displayName, " ", "-")) + "-" + slugID
+		_, _ = r.db.Exec(ctx, `
+			INSERT INTO business.business_profiles (
+				user_id, business_name, slug, category, is_verified, created_at, updated_at
+			) VALUES ($1, $2, $3, 'Retail', FALSE, NOW(), NOW())
+			ON CONFLICT (user_id) DO NOTHING
+		`, p.OwnerID, displayName, slug)
 	}
 
 	p.ID = uuid.New().String()

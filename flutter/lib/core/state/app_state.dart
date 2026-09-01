@@ -1442,10 +1442,14 @@ class AppState extends ChangeNotifier {
   }
 
   // ── Marketplace: Cart Management ────────────────────────────────────────────
-  void addToCart(Product product) {
+  bool addToCart(Product product) {
+    if (_currentUser != null && product.sellerId.isNotEmpty && product.sellerId == _currentUser!.id) {
+      return false; // Cannot add own product to cart
+    }
     HapticFeedback.lightImpact();
     _cart.add(product);
     notifyListeners();
+    return true;
   }
 
   void removeFromCart(String productId) {
@@ -1486,10 +1490,17 @@ class AppState extends ChangeNotifier {
 
   Future<Product> createStoreProduct(Product product) async {
     Product resultProduct = product;
+    if (resultProduct.sellerId.isEmpty && _currentUser != null) {
+      resultProduct = resultProduct.copyWith(sellerId: _currentUser!.id);
+    }
     try {
-      final created = await ApiService.createProduct(product);
+      final created = await ApiService.createProduct(resultProduct);
       resultProduct = created;
     } catch (_) {}
+    if (resultProduct.sellerId.isEmpty && _currentUser != null) {
+      resultProduct = resultProduct.copyWith(sellerId: _currentUser!.id);
+    }
+    _products.removeWhere((p) => p.id == resultProduct.id);
     _products.insert(0, resultProduct);
     notifyListeners();
     return resultProduct;

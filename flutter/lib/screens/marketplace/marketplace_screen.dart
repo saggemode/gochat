@@ -2326,7 +2326,28 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                             ),
                             InkWell(
                               onTap: () {
-                                widget.appState.addToCart(product);
+                                final isMyOwn = widget.appState.currentUser != null &&
+                                    product.sellerId.isNotEmpty &&
+                                    product.sellerId == widget.appState.currentUser!.id;
+                                if (isMyOwn) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('⚠️ You cannot add your own product to the cart.'),
+                                      backgroundColor: Colors.orange,
+                                    ),
+                                  );
+                                  return;
+                                }
+                                final added = widget.appState.addToCart(product);
+                                if (!added) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('⚠️ You cannot add your own product to the cart.'),
+                                      backgroundColor: Colors.orange,
+                                    ),
+                                  );
+                                  return;
+                                }
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text('Added "${product.title}" to cart!'),
@@ -2343,10 +2364,26 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                               child: Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.primary,
+                                  color: (widget.appState.currentUser != null &&
+                                          product.sellerId.isNotEmpty &&
+                                          product.sellerId == widget.appState.currentUser!.id)
+                                      ? (isDark ? Colors.white12 : Colors.grey.shade300)
+                                      : AppTheme.primary,
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                child: const Icon(Icons.add_shopping_cart_rounded, color: Colors.black, size: 16),
+                                child: Icon(
+                                  (widget.appState.currentUser != null &&
+                                          product.sellerId.isNotEmpty &&
+                                          product.sellerId == widget.appState.currentUser!.id)
+                                      ? Icons.storefront_rounded
+                                      : Icons.add_shopping_cart_rounded,
+                                  color: (widget.appState.currentUser != null &&
+                                          product.sellerId.isNotEmpty &&
+                                          product.sellerId == widget.appState.currentUser!.id)
+                                      ? (isDark ? Colors.white70 : Colors.black54)
+                                      : Colors.black,
+                                  size: 16,
+                                ),
                               ),
                             ),
                           ],
@@ -2759,36 +2796,78 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                         const SizedBox(width: 12),
                         Expanded(
                           flex: 2,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primary,
-                              foregroundColor: Colors.black,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                              elevation: 2,
-                            ),
-                            icon: const Icon(Icons.shopping_cart_checkout_rounded, size: 20),
-                            label: Text(
-                              selectedVariant != null ? 'Add ${selectedVariant!.title} to Cart' : 'Add to Cart',
-                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                            ),
-                            onPressed: () {
-                              final itemToAdd = selectedVariant != null
-                                  ? product.copyWith(price: currentPrice, title: '${product.title} (${selectedVariant!.title})')
-                                  : product;
+                          child: Builder(
+                            builder: (context) {
+                              final isMyOwn = widget.appState.currentUser != null &&
+                                  product.sellerId.isNotEmpty &&
+                                  product.sellerId == widget.appState.currentUser!.id;
 
-                              widget.appState.addToCart(itemToAdd);
-                              Navigator.pop(ctx);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Added "${itemToAdd.title}" to cart!'),
-                                  backgroundColor: AppTheme.primary,
-                                  action: SnackBarAction(
-                                    label: 'VIEW CART',
-                                    textColor: Colors.black,
-                                    onPressed: _showCartSheet,
+                              if (isMyOwn) {
+                                return ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: isDark ? Colors.white12 : Colors.grey.shade300,
+                                    foregroundColor: isDark ? Colors.white70 : Colors.black87,
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                    elevation: 0,
                                   ),
+                                  icon: const Icon(Icons.storefront_rounded, size: 20),
+                                  label: const Text(
+                                    'Your Store Listing',
+                                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                                  ),
+                                  onPressed: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('ℹ️ This is your own product listing in your store.'),
+                                        backgroundColor: Colors.blueGrey,
+                                      ),
+                                    );
+                                  },
+                                );
+                              }
+
+                              return ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppTheme.primary,
+                                  foregroundColor: Colors.black,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  elevation: 2,
                                 ),
+                                icon: const Icon(Icons.shopping_cart_checkout_rounded, size: 20),
+                                label: Text(
+                                  selectedVariant != null ? 'Add ${selectedVariant!.title} to Cart' : 'Add to Cart',
+                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                                ),
+                                onPressed: () {
+                                  final itemToAdd = selectedVariant != null
+                                      ? product.copyWith(price: currentPrice, title: '${product.title} (${selectedVariant!.title})')
+                                      : product;
+
+                                  final added = widget.appState.addToCart(itemToAdd);
+                                  if (!added) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('⚠️ You cannot add your own product to the cart.'),
+                                        backgroundColor: Colors.orange,
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  Navigator.pop(ctx);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Added "${itemToAdd.title}" to cart!'),
+                                      backgroundColor: AppTheme.primary,
+                                      action: SnackBarAction(
+                                        label: 'VIEW CART',
+                                        textColor: Colors.black,
+                                        onPressed: _showCartSheet,
+                                      ),
+                                    ),
+                                  );
+                                },
                               );
                             },
                           ),
