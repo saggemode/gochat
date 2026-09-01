@@ -650,8 +650,10 @@ class AppState extends ChangeNotifier {
         _calls.insert(0, incomingCall);
         HapticFeedback.vibrate();
         _incomingCallController.add(incomingCall);
+        VoipCallService().startRinging(incomingCall);
         notifyListeners();
       } else if (eventType == 'call_accepted') {
+        VoipCallService().stopRinging();
         if (_activeCall != null) {
           _activeCall = _activeCall!.copyWith(status: CallStatus.active);
           final idx = _calls.indexWhere((c) => c.id == _activeCall!.id);
@@ -661,6 +663,7 @@ class AppState extends ChangeNotifier {
           notifyListeners();
         }
       } else if (eventType == 'call_rejected' || eventType == 'call_ended') {
+        VoipCallService().stopRinging();
         if (_activeCall != null) {
           final isRejected = eventType == 'call_rejected';
           _activeCall = _activeCall!.copyWith(
