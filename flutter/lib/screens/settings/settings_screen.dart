@@ -1,5 +1,11 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../core/constants/api_constants.dart';
+import '../../core/services/api_service.dart';
+import '../../core/services/media_storage_service.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/login_screen.dart';
@@ -17,6 +23,78 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  bool _isUploadingAvatar = false;
+
+  Future<void> _pickProfileAvatar() async {
+    final picker = ImagePicker();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_rounded, color: AppTheme.primary),
+              title: const Text('Take Profile Photo with Camera', style: TextStyle(fontWeight: FontWeight.bold)),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final XFile? image = await picker.pickImage(source: ImageSource.camera, maxWidth: 800, maxHeight: 800, imageQuality: 80);
+                if (image != null) {
+                  await _uploadAndSetAvatar(image.path);
+                }
+              },
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.photo_library_rounded, color: Colors.teal),
+              title: const Text('Choose Photo from Gallery', style: TextStyle(fontWeight: FontWeight.bold)),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final XFile? image = await picker.pickImage(source: ImageSource.gallery, maxWidth: 800, maxHeight: 800, imageQuality: 80);
+                if (image != null) {
+                  await _uploadAndSetAvatar(image.path);
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _uploadAndSetAvatar(String localPath) async {
+    setState(() => _isUploadingAvatar = true);
+    try {
+      final savedPath = await MediaStorageService().saveImage(localPath);
+      final uploadedUrl = await ApiService.uploadMedia(savedPath, mimeType: 'image/jpeg');
+      final finalAvatarUrl = uploadedUrl ?? savedPath;
+
+      await widget.appState.updateProfile(avatarUrl: finalAvatarUrl);
+      if (mounted) {
+        setState(() => _isUploadingAvatar = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Profile photo uploaded to Telegram CDN and updated!'),
+            backgroundColor: AppTheme.primary,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isUploadingAvatar = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update avatar: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
+    }
+  }
   void _showEditProfileDialog() {
     final user = widget.appState.currentUser;
     final nameController = TextEditingController(text: user?.displayName ?? '');
@@ -156,15 +234,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Row(
                   children: [
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundColor: AppTheme.primary.withValues(alpha: 0.2),
-                      backgroundImage: user?.avatarUrl.isNotEmpty == true
-                          ? NetworkImage(user!.avatarUrl)
-                          : null,
-                      child: user?.avatarUrl.isEmpty != false
-                          ? const Icon(Icons.person, size: 32, color: AppTheme.primary)
-                          : null,
+                    GestureDetector(
+                      onTap: _isUploadingAvatar ? null : _pickProfileAvatar,
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 32,
+                            backgroundColor: AppTheme.primary.withValues(alpha: 0.2),
+                            backgroundImage: user?.avatarUrl.isNotEmpty == true
+                                ? (user!.avatarUrl.startsWith('http') || user.avatarUrl.startsWith('/api/')
+                                    ? NetworkImage(user.avatarUrl.startsWith('http') ? user.avatarUrl : '${ApiConstants.baseUrl}${user.avatarUrl}')
+                                    : (user.avatarUrl.startsWith('data:')
+                                        ? MemoryImage(base64Decode(user.avatarUrl.substring(user.avatarUrl.indexOf('base64,') + 7).trim()))
+                                        : (File(user.avatarUrl).existsSync()
+                                            ? FileImage(File(user.avatarUrl))
+                                            : null))) as ImageProvider?
+                                : null,
+                            child: user?.avatarUrl.isEmpty != false
+                                ? const Icon(Icons.person, size: 34, color: AppTheme.primary)
+                                : null,
+                          ),
+                          if (_isUploadingAvatar)
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: const BoxDecoration(
+                                color: Colors.black54,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                                ),
+                              ),
+                            )
+                          else
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: AppTheme.primary,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.camera_alt_rounded, size: 12, color: Colors.white),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(

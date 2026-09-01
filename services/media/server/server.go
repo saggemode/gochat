@@ -19,13 +19,14 @@ import (
 type MediaServer struct {
 	mediapb.UnimplementedMediaServiceServer
 
-	store *storage.MinIOStorage
-	log   *zap.Logger
+	store   *storage.MinIOStorage
+	tgStore *storage.TelegramStorage
+	log     *zap.Logger
 }
 
 // New creates a MediaServer.
-func New(store *storage.MinIOStorage, log *zap.Logger) *MediaServer {
-	return &MediaServer{store: store, log: log}
+func New(store *storage.MinIOStorage, tgStore *storage.TelegramStorage, log *zap.Logger) *MediaServer {
+	return &MediaServer{store: store, tgStore: tgStore, log: log}
 }
 
 // UploadMedia handles client-streaming upload with automated optimization.
@@ -60,7 +61,7 @@ func (s *MediaServer) UploadMedia(stream mediapb.MediaService_UploadMediaServer)
 	)
 
 	// ── Remaining messages: file chunks ───────────────────────────────────────
-	// Buffer chunks into a pipe for streaming through optimizer and MinIO
+	// Buffer chunks into a pipe for streaming through optimizer and storage
 	pr, pw := io.Pipe()
 
 	errCh := make(chan error, 1)
@@ -95,23 +96,49 @@ func (s *MediaServer) UploadMedia(stream mediapb.MediaService_UploadMediaServer)
 		s.log.Warn("optimizer error, continuing with stream", zap.Error(optErr))
 	}
 
-	// Upload to MinIO
-	result, err := s.store.Upload(ctx, optResult.Reader, h.FileName, optResult.MimeType, optResult.Size)
-	if err != nil {
-		return status.Errorf(codes.Internal, "upload failed: %v", err)
+	var objectKey, publicURL string
+	var sizeBytes int64
+
+	// 1. Try Telegram Storage first if configured
+	if s.tgStore != nil && s.tgStore.IsConfigured() {
+		tgResult, tgErr := s.tgStore.Upload(ctx, optResult.Reader, h.FileName, optResult.MimeType, optResult.Size)
+		if tgErr == nil {
+			objectKey = tgResult.FileID
+			publicURL = tgResult.URL
+			sizeBytes = tgResult.Size
+			s.log.Info("media uploaded via Telegram CDN",
+				zap.String("file_id", tgResult.FileID),
+				zap.String("url", tgResult.URL),
+			)
+		} else {
+			s.log.Warn("telegram storage upload failed, attempting fallback to MinIO", zap.Error(tgErr))
+		}
 	}
 
-	// Wait for goroutine to finish
+	// 2. Fallback to MinIO if Telegram was not configured or failed
+	if objectKey == "" && s.store != nil {
+		minioResult, minioErr := s.store.Upload(ctx, optResult.Reader, h.FileName, optResult.MimeType, optResult.Size)
+		if minioErr != nil {
+			return status.Errorf(codes.Internal, "storage upload failed: %v", minioErr)
+		}
+		objectKey = minioResult.ObjectKey
+		publicURL = minioResult.URL
+		sizeBytes = minioResult.Size
+	} else if objectKey == "" {
+		return status.Errorf(codes.Unavailable, "no media storage provider available")
+	}
+
+	// Wait for chunk receiving goroutine to finish
 	if err := <-errCh; err != nil {
 		return status.Errorf(codes.Internal, "receiving chunks: %v", err)
 	}
 
 	return stream.SendAndClose(&mediapb.UploadMediaResponse{
 		Media: &mediapb.MediaMeta{
-			ObjectKey:  result.ObjectKey,
-			Url:        result.URL,
+			ObjectKey:  objectKey,
+			Url:        publicURL,
 			MimeType:   optResult.MimeType,
-			SizeBytes:  result.Size,
+			SizeBytes:  sizeBytes,
 			MediaType:  h.MediaType,
 			UploadedAt: time.Now().Unix(),
 		},

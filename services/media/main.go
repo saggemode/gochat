@@ -28,7 +28,8 @@ func main() {
 
 	cfg := config.Load()
 
-	// ── MinIO Storage ─────────────────────────────────────────────────────────
+	// ── Storage Providers ────────────────────────────────────────────────────
+	var store *storage.MinIOStorage
 	store, err := storage.NewMinIOStorage(
 		cfg.MinIOEndpoint,
 		cfg.MinIOAccessKey,
@@ -38,14 +39,32 @@ func main() {
 		log,
 	)
 	if err != nil {
-		log.Fatal("failed to connect to MinIO", zap.Error(err))
+		log.Warn("MinIO storage unavailable", zap.Error(err))
+	}
+
+	tgStore := storage.NewTelegramStorage(
+		cfg.TelegramAPIID,
+		cfg.TelegramAPIHash,
+		cfg.TelegramBotToken,
+		cfg.TelegramChannelID,
+		log,
+	)
+	if tgStore.IsConfigured() {
+		log.Info("Telegram CDN Storage initialized")
 	}
 
 	// ── Health Check Server ──────────────────────────────────────────────────
 	healthSrv := health.New("media-service", cfg.HealthPort, log)
-	healthSrv.AddCheck("minio", func(ctx context.Context) error {
-		return store.Ping(ctx)
-	})
+	if store != nil {
+		healthSrv.AddCheck("minio", func(ctx context.Context) error {
+			return store.Ping(ctx)
+		})
+	}
+	if tgStore.IsConfigured() {
+		healthSrv.AddCheck("telegram", func(ctx context.Context) error {
+			return tgStore.Ping(ctx)
+		})
+	}
 	healthSrv.Start()
 	defer healthSrv.Stop()
 
@@ -67,7 +86,7 @@ func main() {
 		),
 	)
 
-	mediapb.RegisterMediaServiceServer(grpcServer, server.New(store, log))
+	mediapb.RegisterMediaServiceServer(grpcServer, server.New(store, tgStore, log))
 	reflection.Register(grpcServer)
 
 	addr := fmt.Sprintf(":%s", cfg.GRPCPort)

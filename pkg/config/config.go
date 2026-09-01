@@ -54,6 +54,12 @@ type Config struct {
 	MinioBucket    string
 	MinIOUseSSL    bool
 
+	// Telegram CDN Storage (used by media service & gateway)
+	TelegramAPIID     string
+	TelegramAPIHash   string
+	TelegramBotToken  string
+	TelegramChannelID string
+
 	// E2EE key encryption (base64-encoded 32-byte key for AES-256-GCM)
 	E2EEKeyEncryptionKey string
 
@@ -114,6 +120,11 @@ func Load() *Config {
 		MinIOSecretKey: getEnv("MINIO_SECRET_KEY", "minioadmin_secret"),
 		MinioBucket:    getEnv("MINIO_BUCKET", "gochat-media"),
 		MinIOUseSSL:    getEnvBool("MINIO_USE_SSL", false),
+
+		TelegramAPIID:     getEnv("TELEGRAM_API_ID", "31623440"),
+		TelegramAPIHash:   getEnv("TELEGRAM_API_HASH", "b9dc2235a2c847a2f9bca49f31ce3b78"),
+		TelegramBotToken:  getEnv("TELEGRAM_BOT_TOKEN", ""),
+		TelegramChannelID: getEnv("TELEGRAM_CHANNEL_ID", ""),
 
 		E2EEKeyEncryptionKey: getEnv("E2EE_KEY_ENCRYPTION_KEY", ""),
 

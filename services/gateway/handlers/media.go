@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -13,15 +15,20 @@ import (
 	mediapb "gochat/gen/media"
 )
 
-// MediaHandler wraps the Media Service gRPC client.
+// MediaHandler wraps the Media Service gRPC client and Telegram CDN proxy.
 type MediaHandler struct {
-	client mediapb.MediaServiceClient
-	log    *zap.Logger
+	client   mediapb.MediaServiceClient
+	botToken string
+	log      *zap.Logger
 }
 
 // NewMediaHandler constructs the MediaHandler.
-func NewMediaHandler(client mediapb.MediaServiceClient, log *zap.Logger) *MediaHandler {
-	return &MediaHandler{client: client, log: log}
+func NewMediaHandler(client mediapb.MediaServiceClient, botToken string, log *zap.Logger) *MediaHandler {
+	return &MediaHandler{
+		client:   client,
+		botToken: strings.TrimSpace(botToken),
+		log:      log,
+	}
 }
 
 // Upload handles incoming multipart uploads and streams them to the Media gRPC service.
@@ -142,4 +149,81 @@ func (h *MediaHandler) handleGrpcError(c *gin.Context, err error, actionMsg stri
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"error": st.Message()})
 	}
+}
+
+// DownloadTelegram proxies on-demand media downloads from Telegram CDN to client.
+func (h *MediaHandler) DownloadTelegram(c *gin.Context) {
+	fileID := c.Param("fileId")
+	if fileID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file_id is required"})
+		return
+	}
+
+	if h.botToken == "" {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "telegram bot token not configured on server"})
+		return
+	}
+
+	// 1. Resolve file path via Telegram getFile
+	client := &http.Client{Timeout: 120 * time.Second}
+	getFileURL := "https://api.telegram.org/bot" + h.botToken + "/getFile?file_id=" + fileID
+	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, getFileURL, nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed creating telegram request"})
+		return
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "failed communicating with telegram API"})
+		return
+	}
+	defer resp.Body.Close()
+
+	var getFileResp struct {
+		OK     bool `json:"ok"`
+		Result struct {
+			FilePath string `json:"file_path"`
+			FileSize int64  `json:"file_size"`
+		} `json:"result"`
+		Description string `json:"description"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&getFileResp); err != nil || !getFileResp.OK {
+		errMsg := getFileResp.Description
+		if errMsg == "" {
+			errMsg = "file not found on telegram"
+		}
+		c.JSON(http.StatusNotFound, gin.H{"error": errMsg})
+		return
+	}
+
+	// 2. Fetch binary stream from Telegram file CDN
+	fileDownloadURL := "https://api.telegram.org/file/bot" + h.botToken + "/" + getFileResp.Result.FilePath
+	dlReq, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, fileDownloadURL, nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed creating download stream"})
+		return
+	}
+
+	dlResp, err := client.Do(dlReq)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "failed fetching file from telegram"})
+		return
+	}
+	defer dlResp.Body.Close()
+
+	contentType := dlResp.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	c.Header("Cache-Control", "public, max-age=31536000, immutable")
+	c.DataFromReader(
+		http.StatusOK,
+		getFileResp.Result.FileSize,
+		contentType,
+		dlResp.Body,
+		nil,
+	)
 }

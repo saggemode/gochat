@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' show MediaType;
 import '../constants/api_constants.dart';
 import '../models/models.dart';
+import 'media_storage_service.dart';
 import 'storage_service.dart';
 
 class ApiService {
@@ -333,8 +334,8 @@ class ApiService {
 
   // ── Media: Upload File ────────────────────────────────────────────────────
   /// Uploads a file (voice note, image, video, etc.) to /api/v1/media/upload with progress tracking.
-  /// Returns the public URL of the uploaded media, or null on failure.
-  static Future<String?> uploadMedia(
+  /// Returns the full TelegramUploadResult including file_id and thumbnail.
+  static Future<TelegramUploadResult?> uploadMediaResult(
     String filePath, {
     String? mimeType,
     Function(double progress)? onProgress,
@@ -384,17 +385,63 @@ class ApiService {
       final data = jsonDecode(responseBody);
 
       if (streamedResponse.statusCode >= 200 && streamedResponse.statusCode < 300) {
-        // Backend returns MediaMeta with 'url' field
-        final url = data['url'] ?? data['Url'] ?? data['URL'];
-        if (url != null && url.toString().isNotEmpty) {
-          onProgress?.call(1.0);
-          return url.toString();
-        }
+        final url = (data['url'] ?? data['Url'] ?? data['URL'] ?? '').toString();
+        final fileId = (data['object_key'] ?? data['objectKey'] ?? data['file_id'] ?? data['fileId'] ?? '').toString();
+        final thumbUrl = (data['thumbnail_url'] ?? data['thumbnailUrl'] ?? '').toString();
+        final size = data['size_bytes'] ?? data['size'] ?? fileLength;
+
+        onProgress?.call(1.0);
+        return TelegramUploadResult(
+          url: url.isNotEmpty ? url : null,
+          fileId: fileId.isNotEmpty ? fileId : null,
+          thumbnailUrl: thumbUrl.isNotEmpty ? thumbUrl : null,
+          size: size is int ? size : int.tryParse(size.toString()),
+          mimeType: mimeType,
+        );
       }
     } catch (e) {
       debugPrint('[ApiService] uploadMedia error: $e');
     }
     return null;
+  }
+
+  /// Uploads a file and returns its public URL.
+  static Future<String?> uploadMedia(
+    String filePath, {
+    String? mimeType,
+    Function(double progress)? onProgress,
+  }) async {
+    final res = await uploadMediaResult(filePath, mimeType: mimeType, onProgress: onProgress);
+    return res?.url;
+  }
+
+  /// Downloads a file from Telegram CDN proxy via `/api/v1/media/download/<file_id>`
+  static Future<String?> downloadTelegramFile(
+    String fileIdOrUrl, {
+    MediaCategory category = MediaCategory.images,
+    String ext = '.jpg',
+    Function(double progress)? onProgress,
+  }) async {
+    try {
+      String downloadUrl = fileIdOrUrl;
+      if (!downloadUrl.startsWith('http://') && !downloadUrl.startsWith('https://')) {
+        if (downloadUrl.startsWith('/')) {
+          downloadUrl = '${ApiConstants.baseUrl}$downloadUrl';
+        } else {
+          downloadUrl = '${ApiConstants.apiV1}/media/download/$downloadUrl';
+        }
+      }
+
+      return await MediaStorageService().downloadMediaWithProgress(
+        remoteUrl: downloadUrl,
+        category: category,
+        ext: ext,
+        onProgress: onProgress,
+      );
+    } catch (e) {
+      debugPrint('[ApiService] downloadTelegramFile error: $e');
+      return null;
+    }
   }
 
   /// Parse a MIME type string into a MediaType for http_parser.

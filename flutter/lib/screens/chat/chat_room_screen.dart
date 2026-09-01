@@ -721,9 +721,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         _uploadingMediaLabel = 'Uploading photo...';
       });
 
-      // Upload to server with live progress
+      // Upload to server (Telegram CDN) with live progress
       String finalMediaUrl = permanentPath;
-      final uploadedUrl = await ApiService.uploadMedia(
+      String? finalThumbnailUrl;
+      String? finalTelegramFileId;
+      final uploadResult = await ApiService.uploadMediaResult(
         permanentPath,
         mimeType: 'image/$ext',
         onProgress: (prog) {
@@ -733,15 +735,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         },
       );
 
-      if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
-        finalMediaUrl = uploadedUrl;
-        debugPrint('[ChatRoom] Image uploaded: $uploadedUrl');
+      if (uploadResult != null && uploadResult.url != null) {
+        finalMediaUrl = uploadResult.url!;
+        finalThumbnailUrl = uploadResult.thumbnailUrl;
+        finalTelegramFileId = uploadResult.fileId;
+        debugPrint('[ChatRoom] Image uploaded to Telegram CDN: ${uploadResult.fileId}, URL: ${uploadResult.url}');
       } else {
-        // Fallback to Base64 Data URI so recipient can render the image directly
+        // Fallback to Base64 Data URI so recipient can render the image preview directly
         try {
           final bytes = await File(permanentPath).readAsBytes();
           if (bytes.isNotEmpty) {
             finalMediaUrl = 'data:image/$ext;base64,${base64Encode(bytes)}';
+            finalThumbnailUrl = finalMediaUrl;
           }
         } catch (_) {}
       }
@@ -753,13 +758,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         });
       }
 
-      // Send with the remote URL and size metadata so the recipient can load/download it
+      // Send with the remote URL and Telegram CDN metadata
       widget.appState.sendMessage(
         widget.conversation.id,
         isViewOnce ? '① Photo' : '📷 Photo',
         type: MessageType.image,
         mediaUrl: finalMediaUrl,
-        mediaSize: fileLength,
+        mediaThumbnail: finalThumbnailUrl,
+        telegramFileId: finalTelegramFileId,
+        mediaSize: uploadResult?.size ?? fileLength,
         isViewOnce: isViewOnce,
         disappearingDurationSeconds: _disappearingDuration,
       );
@@ -821,9 +828,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         _uploadingMediaLabel = 'Uploading video...';
       });
 
-      // Upload to server with live progress
+      // Upload to server (Telegram CDN) with live progress
       String finalMediaUrl = permanentPath;
-      final uploadedUrl = await ApiService.uploadMedia(
+      String? finalThumbnailUrl;
+      String? finalTelegramFileId;
+      final uploadResult = await ApiService.uploadMediaResult(
         permanentPath,
         mimeType: 'video/$ext',
         onProgress: (prog) {
@@ -833,9 +842,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         },
       );
 
-      if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
-        finalMediaUrl = uploadedUrl;
-        debugPrint('[ChatRoom] Video uploaded: $uploadedUrl');
+      if (uploadResult != null && uploadResult.url != null) {
+        finalMediaUrl = uploadResult.url!;
+        finalThumbnailUrl = uploadResult.thumbnailUrl;
+        finalTelegramFileId = uploadResult.fileId;
+        debugPrint('[ChatRoom] Video uploaded to Telegram CDN: ${uploadResult.fileId}');
       } else {
         debugPrint('[ChatRoom] Video upload failed, sending with local path as fallback');
       }
@@ -847,13 +858,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
         });
       }
 
-      // Send with the remote URL and size metadata so the recipient can download it
+      // Send with the remote URL and Telegram CDN metadata
       widget.appState.sendMessage(
         widget.conversation.id,
         isViewOnce ? '① Video' : '🎥 Video',
         type: MessageType.video,
         mediaUrl: finalMediaUrl,
-        mediaSize: fileLength,
+        mediaThumbnail: finalThumbnailUrl,
+        telegramFileId: finalTelegramFileId,
+        mediaSize: uploadResult?.size ?? fileLength,
         isViewOnce: isViewOnce,
         disappearingDurationSeconds: _disappearingDuration,
       );

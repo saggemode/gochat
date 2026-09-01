@@ -1,15 +1,15 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../core/models/message.dart';
+import '../core/services/api_service.dart';
 import '../core/services/media_storage_service.dart';
 import '../core/theme/app_theme.dart';
 import '../screens/chat/media_lightbox_screen.dart';
 
 /// WhatsApp-style media card for in-chat Images and Videos supporting:
-/// - Blurred thumbnail preview before download with center download action
+/// - Clear thumbnail preview before download with center download action
 /// - Live circular download progress with file size badge for receiver
 /// - Instant local file playback and Lightbox viewer
 class MediaBubble extends StatefulWidget {
@@ -43,7 +43,7 @@ class _MediaBubbleState extends State<MediaBubble> {
     final rawUrl = widget.message.mediaUrl ?? '';
     if (rawUrl.isEmpty) return;
 
-    if (!kIsWeb && !rawUrl.startsWith('http://') && !rawUrl.startsWith('https://') && !rawUrl.startsWith('data:')) {
+    if (!kIsWeb && !rawUrl.startsWith('http://') && !rawUrl.startsWith('https://') && !rawUrl.startsWith('data:') && !rawUrl.startsWith('/api/')) {
       final file = File(rawUrl);
       if (file.existsSync()) {
         _localPath = rawUrl;
@@ -61,21 +61,23 @@ class _MediaBubbleState extends State<MediaBubble> {
 
   Future<void> _startDownload() async {
     final rawUrl = widget.message.mediaUrl ?? '';
-    if (rawUrl.isEmpty) return;
+    final tgFileId = widget.message.telegramFileId ?? '';
+    if (rawUrl.isEmpty && tgFileId.isEmpty) return;
 
     setState(() {
       _isDownloading = true;
-      _downloadProgress = 0.1;
+      _downloadProgress = 0.08;
     });
 
     final isVideo = widget.message.type == MessageType.video;
     final ext = isVideo ? '.mp4' : '.jpg';
     final category = isVideo ? MediaCategory.video : MediaCategory.images;
 
-    // 1. Remote HTTP URL
-    if (rawUrl.startsWith('http')) {
-      final savedPath = await MediaStorageService().downloadMediaWithProgress(
-        remoteUrl: rawUrl,
+    // 1. Telegram CDN File ID or Proxied /api/v1/media/download URL
+    if (tgFileId.isNotEmpty || rawUrl.contains('/media/download/') || (rawUrl.isNotEmpty && !rawUrl.startsWith('data:'))) {
+      final downloadTarget = tgFileId.isNotEmpty ? tgFileId : rawUrl;
+      final savedPath = await ApiService.downloadTelegramFile(
+        downloadTarget,
         category: category,
         ext: ext,
         onProgress: (prog) {
@@ -94,10 +96,10 @@ class _MediaBubbleState extends State<MediaBubble> {
         });
       }
     }
-    // 2. Base64 Data URI from Phone Gallery
+    // 2. Base64 Data URI from local picker
     else if (rawUrl.startsWith('data:image') || rawUrl.startsWith('data:') || rawUrl.contains(';base64,')) {
       for (int i = 1; i <= 8; i++) {
-        await Future.delayed(const Duration(milliseconds: 50));
+        await Future.delayed(const Duration(milliseconds: 40));
         if (mounted) {
           setState(() => _downloadProgress = i / 8.0);
         }
@@ -123,10 +125,10 @@ class _MediaBubbleState extends State<MediaBubble> {
         }
       }
     }
-    // 3. Fallback Mock / Local Media
+    // 3. Fallback
     else {
       for (int i = 1; i <= 8; i++) {
-        await Future.delayed(const Duration(milliseconds: 50));
+        await Future.delayed(const Duration(milliseconds: 40));
         if (mounted) {
           setState(() => _downloadProgress = i / 8.0);
         }
@@ -201,30 +203,18 @@ class _MediaBubbleState extends State<MediaBubble> {
                   else
                     _buildPlaceholder(isVideo)
                 else
-                  // Blurred Thumbnail Layer for Receiver before Download
-                  ImageFiltered(
-                    imageFilter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                    child: isBase64
-                        ? _buildBase64Image(rawUrl)
-                        : (rawUrl.startsWith('http')
-                            ? Image.network(
-                                rawUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => _buildPlaceholder(isVideo),
-                              )
-                            : (rawUrl.startsWith('assets/')
-                                ? Image.asset(
-                                    rawUrl,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, _, _) => _buildPlaceholder(isVideo),
-                                  )
-                                : _buildPlaceholder(isVideo))),
+                  // Sharp Preview Thumbnail Layer for Receiver before Download
+                  _buildThumbnailPreview(
+                    previewUrl: widget.message.mediaThumbnail?.isNotEmpty == true
+                        ? widget.message.mediaThumbnail!
+                        : rawUrl,
+                    isVideo: isVideo,
                   ),
 
                 // Dark translucent tint over thumbnail for contrast
                 if (!isDownloaded)
                   Container(
-                    color: Colors.black.withValues(alpha: 0.35),
+                    color: Colors.black.withValues(alpha: 0.28),
                   ),
 
                 // ── 2. Video Play Icon Overlay (When Downloaded) ──
@@ -396,6 +386,30 @@ class _MediaBubbleState extends State<MediaBubble> {
     } catch (_) {
       return _buildPlaceholder(false);
     }
+  }
+
+  Widget _buildThumbnailPreview({required String previewUrl, required bool isVideo}) {
+    if (previewUrl.isEmpty) {
+      return _buildPlaceholder(isVideo);
+    }
+    if (previewUrl.startsWith('data:image') || previewUrl.startsWith('data:') || previewUrl.contains(';base64,')) {
+      return _buildBase64Image(previewUrl);
+    }
+    if (previewUrl.startsWith('http')) {
+      return Image.network(
+        previewUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _buildPlaceholder(isVideo),
+      );
+    }
+    if (previewUrl.startsWith('assets/')) {
+      return Image.asset(
+        previewUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _buildPlaceholder(isVideo),
+      );
+    }
+    return _buildPlaceholder(isVideo);
   }
 
   Widget _buildPlaceholder(bool isVideo) {

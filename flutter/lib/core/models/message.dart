@@ -14,6 +14,22 @@ enum MessageType {
   ping,
 }
 
+class TelegramUploadResult {
+  final String? url;
+  final String? fileId;
+  final String? thumbnailUrl;
+  final int? size;
+  final String? mimeType;
+
+  TelegramUploadResult({
+    this.url,
+    this.fileId,
+    this.thumbnailUrl,
+    this.size,
+    this.mimeType,
+  });
+}
+
 enum MessageStatus {
   pending,
   sent,
@@ -121,6 +137,7 @@ class Message {
   final MessageStatus status;
   final String? mediaUrl;
   final String? mediaThumbnail;
+  final String? telegramFileId;
   final int? mediaDuration; // In seconds for audio/video
   final int? mediaSize;     // In bytes
   final PollData? pollData;
@@ -148,6 +165,7 @@ class Message {
     this.status = MessageStatus.sent,
     this.mediaUrl,
     this.mediaThumbnail,
+    this.telegramFileId,
     this.mediaDuration,
     this.mediaSize,
     this.pollData,
@@ -182,6 +200,7 @@ class Message {
     MessageStatus? status,
     String? mediaUrl,
     String? mediaThumbnail,
+    String? telegramFileId,
     int? mediaDuration,
     int? mediaSize,
     PollData? pollData,
@@ -209,6 +228,7 @@ class Message {
       status: status ?? this.status,
       mediaUrl: mediaUrl ?? this.mediaUrl,
       mediaThumbnail: mediaThumbnail ?? this.mediaThumbnail,
+      telegramFileId: telegramFileId ?? this.telegramFileId,
       mediaDuration: mediaDuration ?? this.mediaDuration,
       mediaSize: mediaSize ?? this.mediaSize,
       pollData: pollData ?? this.pollData,
@@ -249,6 +269,7 @@ class Message {
       status: _parseMessageStatus(json['status'] ?? json['Status']),
       mediaUrl: json['media_url'] ?? json['mediaUrl'] ?? json['MediaUrl'] ?? json['url'] ?? json['Url'] ?? json['media'] ?? json['Media'],
       mediaThumbnail: json['thumbnail_url'] ?? json['thumbnailUrl'] ?? json['ThumbnailUrl'],
+      telegramFileId: json['telegram_file_id'] ?? json['telegramFileId'] ?? json['file_id'] ?? json['fileId'] ?? json['object_key'] ?? json['objectKey'],
       mediaDuration: json['duration'] ?? json['media_duration'] ?? json['mediaDuration'] ?? json['Duration'],
       mediaSize: json['file_size'] ?? json['media_size'] ?? json['mediaSize'] ?? json['MediaSize'] ?? json['size'],
       pollData: json['poll_data'] != null ? PollData.fromJson(json['poll_data']) : null,
@@ -296,6 +317,7 @@ class Message {
       'status': status.name,
       'media_url': mediaUrl,
       'thumbnail_url': mediaThumbnail,
+      'telegram_file_id': telegramFileId,
       'duration': mediaDuration,
       'file_size': mediaSize,
       'poll_data': pollData?.toJson(),

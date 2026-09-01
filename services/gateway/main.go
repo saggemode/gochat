@@ -255,7 +255,7 @@ func main() {
 	authHandler := handlers.NewAuthHandler(authClient, log)
 	chatHandler := handlers.NewChatHandler(chatClient, authClient, log)
 	aiHandler := handlers.NewAIHandler(aiClient, log)
-	mediaHandler := handlers.NewMediaHandler(mediaClient, log)
+	mediaHandler := handlers.NewMediaHandler(mediaClient, cfg.TelegramBotToken, log)
 	groupHandler := handlers.NewGroupHandler(groupClient, log)
 	storyHandler := handlers.NewStoryHandler(storyClient, log)
 	callHandler := handlers.NewCallHandler(callClient, log)
@@ -432,7 +432,7 @@ func main() {
 		authRequired.POST("/chat/polls/:id/vote", chatHandler.VotePoll)
 		authRequired.POST("/chat/polls/:id/close", chatHandler.ClosePoll)
 
-		// Media upload
+		// Media upload & Telegram CDN download
 		uploadLimiter := middleware.RateLimitMiddleware(redisClient, middleware.RateLimitConfig{
 			Prefix:             "rl:media:upload",
 			Limit:              20,
@@ -440,6 +440,7 @@ func main() {
 			UseUserIfAvailable: true,
 		})
 		authRequired.POST("/media/upload", uploadLimiter, mediaHandler.Upload)
+		authRequired.GET("/media/download/:fileId", mediaHandler.DownloadTelegram)
 
 		// Group management
 		authRequired.POST("/groups/:id/metadata", groupHandler.UpdateGroupMetadata)

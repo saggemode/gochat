@@ -988,6 +988,8 @@ class AppState extends ChangeNotifier {
     String content, {
     MessageType type = MessageType.text,
     String? mediaUrl,
+    String? mediaThumbnail,
+    String? telegramFileId,
     int? mediaDuration,
     int? mediaSize,
     PollData? pollData,
@@ -1026,6 +1028,8 @@ class AppState extends ChangeNotifier {
       final msgToAdd = realMsg.copyWith(
         type: type,
         mediaUrl: mediaUrl ?? realMsg.mediaUrl,
+        mediaThumbnail: mediaThumbnail ?? realMsg.mediaThumbnail,
+        telegramFileId: telegramFileId ?? realMsg.telegramFileId,
         mediaDuration: mediaDuration ?? realMsg.mediaDuration,
         mediaSize: mediaSize ?? realMsg.mediaSize,
         pollData: pollData,

@@ -232,7 +232,14 @@ func startInProcessGRPC(
 			log,
 		)
 	}
-	mediapb.RegisterMediaServiceServer(s, mediaserver.New(minioStore, log))
+	tgStore := mediastorage.NewTelegramStorage(
+		cfg.TelegramAPIID,
+		cfg.TelegramAPIHash,
+		cfg.TelegramBotToken,
+		cfg.TelegramChannelID,
+		log,
+	)
+	mediapb.RegisterMediaServiceServer(s, mediaserver.New(minioStore, tgStore, log))
 
 	go func() {
 		if err := s.Serve(lis); err != nil {
