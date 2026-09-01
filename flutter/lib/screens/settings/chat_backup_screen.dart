@@ -471,7 +471,7 @@ class _ChatBackupScreenState extends State<ChatBackupScreen> {
             title: const Text('Include Videos & Photos', style: TextStyle(fontWeight: FontWeight.w500)),
             subtitle: const Text('Include voice notes and saved images in backup file', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
             value: _includeMedia,
-            activeColor: AppTheme.primary,
+            activeThumbColor: AppTheme.primary,
             onChanged: (val) => setState(() => _includeMedia = val),
           ),
           ListTile(

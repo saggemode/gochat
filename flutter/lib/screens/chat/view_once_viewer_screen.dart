@@ -156,7 +156,7 @@ class _ViewOnceViewerScreenState extends State<ViewOnceViewerScreen>
       return Image.file(
         file,
         fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => const Center(
+        errorBuilder: (_, _, _) => const Center(
           child: Icon(Icons.broken_image, color: Colors.white54, size: 64),
         ),
       );
@@ -176,7 +176,7 @@ class _ViewOnceViewerScreenState extends State<ViewOnceViewerScreen>
           ),
         );
       },
-      errorBuilder: (_, __, ___) => const Center(
+      errorBuilder: (_, _, _) => const Center(
         child: Icon(Icons.broken_image, color: Colors.white54, size: 64),
       ),
     );

@@ -370,7 +370,7 @@ class ChatBubble extends StatelessWidget {
                               height: 120,
                               width: double.infinity,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const SizedBox(),
+                              errorBuilder: (_, _, _) => const SizedBox(),
                             ),
                           ),
                         const SizedBox(height: 8),

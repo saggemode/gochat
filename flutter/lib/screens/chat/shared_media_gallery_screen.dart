@@ -92,7 +92,7 @@ class SharedMediaGalleryScreen extends StatelessWidget {
                           child: Image.network(
                             m.mediaUrl ?? '',
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
+                            errorBuilder: (_, _, _) => Container(
                               color: isDark ? AppTheme.darkCard : const Color(0xFFE9EDEF),
                               child: const Icon(Icons.broken_image, color: AppTheme.iconColor),
                             ),
@@ -112,7 +112,7 @@ class SharedMediaGalleryScreen extends StatelessWidget {
                 : ListView.separated(
                     padding: const EdgeInsets.all(12),
                     itemCount: _docMessages.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (ctx, idx) {
                       final m = _docMessages[idx];
                       return ListTile(
@@ -156,7 +156,7 @@ class SharedMediaGalleryScreen extends StatelessWidget {
                 : ListView.separated(
                     padding: const EdgeInsets.all(12),
                     itemCount: _linkMessages.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (ctx, idx) {
                       final m = _linkMessages[idx];
                       return ListTile(

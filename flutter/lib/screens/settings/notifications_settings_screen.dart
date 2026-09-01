@@ -77,7 +77,7 @@ class _NotificationsSettingsScreenState
             ),
             value: _pushService.isEnabled,
             activeTrackColor: AppTheme.primary.withValues(alpha: 0.5),
-            activeColor: AppTheme.primary,
+            activeThumbColor: AppTheme.primary,
             onChanged: (val) async {
               await _pushService.updateSettings(isEnabled: val);
               setState(() {});
@@ -92,7 +92,7 @@ class _NotificationsSettingsScreenState
             subtitle: const Text('Play sound for incoming and outgoing messages', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
             value: _pushService.soundEnabled,
             activeTrackColor: AppTheme.primary.withValues(alpha: 0.5),
-            activeColor: AppTheme.primary,
+            activeThumbColor: AppTheme.primary,
             onChanged: _pushService.isEnabled
                 ? (val) async {
                     await _pushService.updateSettings(soundEnabled: val);
@@ -105,7 +105,7 @@ class _NotificationsSettingsScreenState
             subtitle: const Text('Vibrate on incoming message alert', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
             value: _pushService.vibrateEnabled,
             activeTrackColor: AppTheme.primary.withValues(alpha: 0.5),
-            activeColor: AppTheme.primary,
+            activeThumbColor: AppTheme.primary,
             onChanged: _pushService.isEnabled
                 ? (val) async {
                     await _pushService.updateSettings(vibrateEnabled: val);
@@ -118,7 +118,7 @@ class _NotificationsSettingsScreenState
             subtitle: const Text('Show message sender and text preview in notification banner', style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
             value: _pushService.previewEnabled,
             activeTrackColor: AppTheme.primary.withValues(alpha: 0.5),
-            activeColor: AppTheme.primary,
+            activeThumbColor: AppTheme.primary,
             onChanged: _pushService.isEnabled
                 ? (val) async {
                     await _pushService.updateSettings(previewEnabled: val);
@@ -138,7 +138,7 @@ class _NotificationsSettingsScreenState
             ),
             value: _pushService.voipCallPushEnabled,
             activeTrackColor: AppTheme.primary.withValues(alpha: 0.5),
-            activeColor: AppTheme.primary,
+            activeThumbColor: AppTheme.primary,
             onChanged: (val) async {
               await _pushService.updateSettings(voipCallPushEnabled: val);
               setState(() {});

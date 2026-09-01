@@ -231,7 +231,7 @@ class _ChatThemeCustomizerSheetState extends State<ChatThemeCustomizerSheet> {
                               ),
                               Switch(
                                 value: _selectedTheme.showDoodlePattern,
-                                activeColor: AppTheme.primary,
+                                activeThumbColor: AppTheme.primary,
                                 onChanged: (val) {
                                   _updateTheme(_selectedTheme.copyWith(showDoodlePattern: val));
                                 },
@@ -384,7 +384,7 @@ class _ChatThemeCustomizerSheetState extends State<ChatThemeCustomizerSheet> {
               child: Image.network(
                 _selectedTheme.wallpaperImageUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                errorBuilder: (_, _, _) => Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: _selectedTheme.bgGradient,
@@ -493,7 +493,7 @@ class _ChatThemeCustomizerSheetState extends State<ChatThemeCustomizerSheet> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: ChatTheme.presets.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
         itemBuilder: (_, index) {
           final preset = ChatTheme.presets[index];
           final isSelected = _selectedTheme.id == preset.id;
@@ -639,7 +639,7 @@ class _ChatThemeCustomizerSheetState extends State<ChatThemeCustomizerSheet> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: _customSenderGradients.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
         itemBuilder: (_, index) {
           final grad = _customSenderGradients[index];
           final isSelected = _selectedTheme.senderGradient.first == grad.first;

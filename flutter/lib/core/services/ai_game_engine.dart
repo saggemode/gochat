@@ -1,5 +1,4 @@
 import 'dart:math';
-import '../models/game_data.dart';
 
 /// Game logic and AI engine for in-chat mini-games (Tic-Tac-Toe & Connect 4).
 /// Provides turn validation, win detection, and multi-difficulty AI opponents.

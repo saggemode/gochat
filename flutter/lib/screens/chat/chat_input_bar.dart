@@ -239,7 +239,7 @@ class _ChatInputBarState extends State<ChatInputBar> with SingleTickerProviderSt
           // Red recording dot with pulse
           AnimatedBuilder(
             animation: _pulseAnimation,
-            builder: (_, __) => Transform.scale(
+            builder: (_, _) => Transform.scale(
               scale: _pulseAnimation.value,
               child: Container(
                 width: 12,

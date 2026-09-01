@@ -321,7 +321,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                   child: ListView.separated(
                     shrinkWrap: true,
                     itemCount: products.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (c, idx) {
                       final prod = products[idx];
                       return ListTile(
@@ -332,7 +332,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                             width: 44,
                             height: 44,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
+                            errorBuilder: (_, _, _) =>
                                 const Icon(Icons.shopping_bag),
                           ),
                         ),
@@ -399,7 +399,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                       width: 64,
                       height: 64,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
+                      errorBuilder: (_, _, _) =>
                           const Icon(Icons.shopping_bag, size: 40),
                     ),
                   ),
@@ -1150,7 +1150,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                 child: Image.network(
                   _activeTheme.wallpaperImageUrl!,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
+                  errorBuilder: (_, _, _) => Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: _activeTheme.bgGradient,

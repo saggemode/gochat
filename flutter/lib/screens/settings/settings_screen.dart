@@ -340,7 +340,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             trailing: Switch(
               value: widget.appState.isDarkMode,
-              activeColor: AppTheme.primary,
+              activeThumbColor: AppTheme.primary,
               onChanged: (_) {
                 widget.appState.toggleTheme();
               },

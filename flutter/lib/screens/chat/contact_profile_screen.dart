@@ -163,7 +163,7 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
                     Image.network(
                       widget.conversation.avatarUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
+                      errorBuilder: (_, _, _) =>
                           Container(color: AppTheme.darkSurface),
                     )
                   else
@@ -389,7 +389,7 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: mediaMessages.length.clamp(0, 6),
-                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          separatorBuilder: (_, _) => const SizedBox(width: 8),
                           itemBuilder: (ctx, idx) {
                             final m = mediaMessages[idx];
                             return ClipRRect(
@@ -399,7 +399,7 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
                                 width: 72,
                                 height: 72,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
+                                errorBuilder: (_, _, _) => Container(
                                   width: 72,
                                   height: 72,
                                   color: Colors.black26,
@@ -426,7 +426,7 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
                 title: const Text('Mute Notifications'),
                 trailing: Switch(
                   value: _isMuted,
-                  activeColor: AppTheme.primary,
+                  activeThumbColor: AppTheme.primary,
                   onChanged: (val) => setState(() => _isMuted = val),
                 ),
               ),
@@ -450,7 +450,7 @@ class _ContactProfileScreenState extends State<ContactProfileScreen> {
 
               ValueListenableBuilder<List<Message>>(
                 valueListenable: StarredMessageService().starredMessagesNotifier,
-                builder: (context, _, __) {
+                builder: (context, _, _) {
                   final count = StarredMessageService().getStarredCountForConversation(widget.conversation.id);
                   return ListTile(
                     leading: const Icon(Icons.star_rounded, color: Colors.amber),

@@ -27,11 +27,11 @@ class IncomingVoipCallScreen extends StatefulWidget {
       context,
       PageRouteBuilder(
         opaque: true,
-        pageBuilder: (_, __, ___) => IncomingVoipCallScreen(
+        pageBuilder: (_, _, _) => IncomingVoipCallScreen(
           callRecord: callRecord,
           appState: appState,
         ),
-        transitionsBuilder: (_, anim, __, child) {
+        transitionsBuilder: (_, anim, _, child) {
           return FadeTransition(opacity: anim, child: child);
         },
       ),
@@ -161,7 +161,6 @@ class _IncomingVoipCallScreenState extends State<IncomingVoipCallScreen>
     final callerName = widget.callRecord.callerName.isNotEmpty
         ? widget.callRecord.callerName
         : 'GoChat Contact';
-    const callerPin = '';
 
     return Scaffold(
       backgroundColor: const Color(0xFF0D1418),
@@ -236,7 +235,7 @@ class _IncomingVoipCallScreenState extends State<IncomingVoipCallScreen>
                     // Outer Radar Pulse 1
                     AnimatedBuilder(
                       animation: _radarController,
-                      builder: (_, __) {
+                      builder: (_, _) {
                         final val = _radarController.value;
                         return Container(
                           width: 140 + (100 * val),
@@ -255,7 +254,7 @@ class _IncomingVoipCallScreenState extends State<IncomingVoipCallScreen>
                     // Outer Radar Pulse 2
                     AnimatedBuilder(
                       animation: _radarController,
-                      builder: (_, __) {
+                      builder: (_, _) {
                         final val = (_radarController.value + 0.5) % 1.0;
                         return Container(
                           width: 140 + (100 * val),

@@ -405,7 +405,7 @@ class _ChatMediaPickerSheetState extends State<ChatMediaPickerSheet>
                   child: Image.network(
                     sticker.url,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Center(
+                    errorBuilder: (_, _, _) => const Center(
                       child: Icon(Icons.broken_image_rounded, size: 28, color: AppTheme.textMuted),
                     ),
                     loadingBuilder: (_, child, progress) {
@@ -563,7 +563,7 @@ class _ChatMediaPickerSheetState extends State<ChatMediaPickerSheet>
                                       ),
                                     );
                                   },
-                                  errorBuilder: (_, __, ___) => Container(
+                                  errorBuilder: (_, _, _) => Container(
                                     color: isDark ? AppTheme.darkCard : const Color(0xFFE5E7EB),
                                     child: const Center(
                                       child: Icon(Icons.broken_image_rounded, color: AppTheme.textMuted),

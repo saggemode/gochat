@@ -77,6 +77,11 @@ class MediaStorageService {
     }
   }
 
+  Directory getImagesDirectory() => Directory(_getCategoryPath(MediaCategory.images));
+  Directory getVoiceNotesDirectory() => Directory(_getCategoryPath(MediaCategory.voiceNotes));
+  Directory getVideoDirectory() => Directory(_getCategoryPath(MediaCategory.video));
+  Directory getDocumentsDirectory() => Directory(_getCategoryPath(MediaCategory.documents));
+
   /// Generate a WhatsApp-standard filename (e.g. `AUD-20260831-WA0001.m4a`)
   String _generateFileName(MediaCategory category, String ext) {
     final dateStr = DateFormat('yyyyMMdd').format(DateTime.now());

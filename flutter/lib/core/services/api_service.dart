@@ -201,9 +201,9 @@ class ApiService {
 
     try {
       final body = <String, dynamic>{
-        if (displayName != null) 'display_name': displayName,
-        if (statusText != null) 'status_text': statusText,
-        if (avatarUrl != null) 'avatar_url': avatarUrl,
+        'display_name': ?displayName,
+        'status_text': ?statusText,
+        'avatar_url': ?avatarUrl,
       };
 
       final res = await http
@@ -427,7 +427,7 @@ class ApiService {
               body: jsonEncode({
                 'content': content,
                 'type': type,
-                if (mediaUrl != null) 'media_url': mediaUrl,
+                'media_url': ?mediaUrl,
               }),
             )
             .timeout(const Duration(seconds: 6));

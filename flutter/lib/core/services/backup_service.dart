@@ -78,12 +78,12 @@ class BackupService {
 
     // 1. Fetch conversations and messages from SQLite database
     final db = DatabaseService();
-    final convs = await db.getAllConversations();
+    final convs = await db.getConversations();
     final allMessages = <String, List<Map<String, dynamic>>>{};
     int totalMsgCount = 0;
 
     for (final conv in convs) {
-      final msgs = await db.getMessagesForConversation(conv.id, limit: 5000);
+      final msgs = await db.getMessages(conv.id);
       allMessages[conv.id] = msgs.map((m) => m.toJson()).toList();
       totalMsgCount += msgs.length;
     }
@@ -98,8 +98,8 @@ class BackupService {
       onProgress?.call(0.5, 'Bundling voice notes and photos...');
       final mediaStorage = MediaStorageService();
       try {
-        final imgDir = await mediaStorage.getImagesDirectory();
-        final voiceDir = await mediaStorage.getVoiceNotesDirectory();
+        final imgDir = mediaStorage.getImagesDirectory();
+        final voiceDir = mediaStorage.getVoiceNotesDirectory();
 
         for (final dir in [imgDir, voiceDir]) {
           if (await dir.exists()) {
@@ -233,7 +233,7 @@ class BackupService {
     // Restore conversations
     for (final cJson in rawConvs) {
       final conv = Conversation.fromJson(cJson);
-      await db.insertConversation(conv);
+      await db.saveConversations([conv]);
     }
 
     // Restore messages
@@ -255,8 +255,8 @@ class BackupService {
     if (rawMedia.isNotEmpty) {
       onProgress?.call(0.85, 'Unpacking media files...');
       final mediaStorage = MediaStorageService();
-      final imgDir = await mediaStorage.getImagesDirectory();
-      final voiceDir = await mediaStorage.getVoiceNotesDirectory();
+      final imgDir = mediaStorage.getImagesDirectory();
+      final voiceDir = mediaStorage.getVoiceNotesDirectory();
 
       for (final name in rawMedia.keys) {
         try {

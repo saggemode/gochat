@@ -35,7 +35,7 @@ class MediaLightboxScreen extends StatefulWidget {
       PageRouteBuilder(
         opaque: false,
         barrierColor: Colors.black,
-        pageBuilder: (_, __, ___) => MediaLightboxScreen(
+        pageBuilder: (_, _, _) => MediaLightboxScreen(
           mediaUrl: mediaUrl,
           title: title,
           caption: caption,
@@ -182,7 +182,7 @@ class _MediaLightboxScreenState extends State<MediaLightboxScreen> {
         return Image.memory(
           bytes,
           fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => _errorPlaceholder(),
+          errorBuilder: (_, _, _) => _errorPlaceholder(),
         );
       } catch (_) {
         return _errorPlaceholder();
@@ -196,7 +196,7 @@ class _MediaLightboxScreenState extends State<MediaLightboxScreen> {
         return Image.file(
           file,
           fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => _errorPlaceholder(),
+          errorBuilder: (_, _, _) => _errorPlaceholder(),
         );
       }
       return _errorPlaceholder();
@@ -217,7 +217,7 @@ class _MediaLightboxScreenState extends State<MediaLightboxScreen> {
           ),
         );
       },
-      errorBuilder: (_, __, ___) => _errorPlaceholder(),
+      errorBuilder: (_, _, _) => _errorPlaceholder(),
     );
   }
 

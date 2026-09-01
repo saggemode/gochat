@@ -42,7 +42,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
         width: width,
         height: height,
         fit: fit,
-        errorBuilder: (_, __, ___) => fallback,
+        errorBuilder: (_, _, _) => fallback,
       );
     }
     final file = File(url);
@@ -51,7 +51,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
       width: width,
       height: height,
       fit: fit,
-      errorBuilder: (_, __, ___) => fallback,
+      errorBuilder: (_, _, _) => fallback,
     );
   }
 
@@ -637,7 +637,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                     const SizedBox(height: 12),
 
                     DropdownButtonFormField<String>(
-                      value: category,
+                      initialValue: category,
                       decoration: const InputDecoration(
                         labelText: 'Product Category',
                         prefixIcon: Icon(Icons.category_rounded),
@@ -1043,7 +1043,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: discountType,
+                        initialValue: discountType,
                         decoration: const InputDecoration(labelText: 'Discount Type'),
                         items: const [
                           DropdownMenuItem(value: 'percentage', child: Text('Percentage (%)')),
@@ -1293,7 +1293,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                 const SizedBox(height: 14),
 
                 DropdownButtonFormField<String>(
-                  value: _storeCategory,
+                  initialValue: _storeCategory,
                   decoration: const InputDecoration(
                     labelText: 'Industry / Category',
                     prefixIcon: Icon(Icons.category_rounded),
@@ -1583,7 +1583,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: myProducts.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemBuilder: (_, index) {
                           final p = myProducts[index];
                           return Container(
@@ -1649,7 +1649,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: orders.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
                         itemBuilder: (_, index) {
                           final o = orders[index];
                           return Container(
@@ -1752,7 +1752,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: coupons.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemBuilder: (_, index) {
                           final c = coupons[index];
                           return Container(
@@ -1984,7 +1984,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
               itemCount: _categories.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (_, index) {
                 final cat = _categories[index];
                 final isSelected = _selectedCategory == cat['name'];
@@ -2362,7 +2362,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: allImages.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          separatorBuilder: (_, _) => const SizedBox(width: 8),
                           itemBuilder: (_, idx) {
                             final isSelected = selectedPhotoIndex == idx;
                             return GestureDetector(
@@ -2925,7 +2925,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
                           child: ListView.separated(
                             controller: scrollController,
                             itemCount: cart.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            separatorBuilder: (_, _) => const SizedBox(height: 12),
                             itemBuilder: (_, index) {
                               final p = cart[index];
                               return Container(

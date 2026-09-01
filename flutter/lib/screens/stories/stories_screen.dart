@@ -341,7 +341,7 @@ class StoriesScreen extends StatelessWidget {
         builder: (_) => _TextStatusEditorPage(
           onPost: (text, bgIndex) {
             final gradient = _textBgGradients[bgIndex % _textBgGradients.length];
-            final bgHex = '#${gradient[0].value.toRadixString(16).padLeft(8, '0')}';
+            final bgHex = '#${gradient[0].toARGB32().toRadixString(16).padLeft(8, '0')}';
             appState.addStory(
               '',
               text,
@@ -427,6 +427,7 @@ class StoriesScreen extends StatelessWidget {
 
     // Save permanently
     final savedPath = await MediaStorageService().saveImage(image.path);
+    if (!context.mounted) return;
 
     // Optional caption dialog
     final caption = await _showCaptionDialog(context, savedPath, isVideo: false);
@@ -457,6 +458,7 @@ class StoriesScreen extends StatelessWidget {
 
     // Save permanently
     final savedPath = await MediaStorageService().saveVideo(video.path);
+    if (!context.mounted) return;
 
     // Optional caption dialog
     final caption = await _showCaptionDialog(context, savedPath, isVideo: true);
@@ -509,7 +511,7 @@ class StoriesScreen extends StatelessWidget {
                 ),
                 child: isVideo
                     ? const Center(child: Icon(Icons.play_circle_fill_rounded, color: Colors.white54, size: 48))
-                    : Image.file(File(mediaPath), fit: BoxFit.cover, errorBuilder: (_, __, ___) =>
+                    : Image.file(File(mediaPath), fit: BoxFit.cover, errorBuilder: (_, _, _) =>
                         const Center(child: Icon(Icons.image, color: Colors.white24, size: 48))),
               ),
             ),
@@ -750,7 +752,7 @@ class _TextStatusEditorPageState extends State<_TextStatusEditorPage> {
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: _gradients.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          separatorBuilder: (_, _) => const SizedBox(width: 8),
                           itemBuilder: (_, idx) {
                             final g = _gradients[idx];
                             final isSelected = idx == _bgIndex;

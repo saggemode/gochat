@@ -145,7 +145,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
                       ? Image.network(
                           story.mediaUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (ctx, _, __) => Container(
+                          errorBuilder: (ctx, _, _) => Container(
                             color: AppTheme.darkSurface,
                             child: const Center(
                               child: Icon(Icons.broken_image, size: 48, color: AppTheme.iconColor),
@@ -155,7 +155,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
                       : Image.file(
                           File(story.mediaUrl),
                           fit: BoxFit.cover,
-                          errorBuilder: (ctx, _, __) => Container(
+                          errorBuilder: (ctx, _, _) => Container(
                             color: AppTheme.darkSurface,
                             child: const Center(
                               child: Icon(Icons.broken_image, size: 48, color: AppTheme.iconColor),

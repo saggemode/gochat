@@ -278,7 +278,7 @@ class _StarredMessagesScreenState extends State<StarredMessagesScreen> {
                 return ListView.separated(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, idx) {
                     final message = filtered[idx];
                     final dateStr = DateFormat('MMM d, yyyy · hh:mm a').format(message.createdAt);
@@ -341,7 +341,7 @@ class _StarredMessagesScreenState extends State<StarredMessagesScreen> {
                                         child: Image.network(
                                           message.mediaUrl!,
                                           fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) => Container(
+                                          errorBuilder: (_, _, _) => Container(
                                             color: isDark ? AppTheme.darkCard : Colors.grey[300],
                                             child: const Icon(Icons.broken_image_rounded, color: AppTheme.textMuted),
                                           ),

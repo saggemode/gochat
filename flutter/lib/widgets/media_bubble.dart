@@ -140,7 +140,7 @@ class _MediaBubbleState extends State<MediaBubble> {
                   Image.file(
                     File(_localPath!),
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _buildPlaceholder(isVideo),
+                    errorBuilder: (_, _, _) => _buildPlaceholder(isVideo),
                   )
                 else if (isBase64)
                   _buildBase64Image(rawUrl)
@@ -149,7 +149,7 @@ class _MediaBubbleState extends State<MediaBubble> {
                   Image.network(
                     rawUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _buildPlaceholder(isVideo),
+                    errorBuilder: (_, _, _) => _buildPlaceholder(isVideo),
                   )
                 else
                   _buildPlaceholder(isVideo),
@@ -274,7 +274,7 @@ class _MediaBubbleState extends State<MediaBubble> {
       return Image.memory(
         bytes,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _buildPlaceholder(false),
+        errorBuilder: (_, _, _) => _buildPlaceholder(false),
       );
     } catch (_) {
       return _buildPlaceholder(false);

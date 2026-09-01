@@ -38,7 +38,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
                 child: Image.network(
                   widget.callRecord.callerAvatar,
                   fit: BoxFit.cover,
-                  errorBuilder: (ctx, _, __) =>
+                  errorBuilder: (ctx, _, _) =>
                       Container(color: AppTheme.darkSurface),
                 ),
               )
