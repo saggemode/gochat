@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../constants/api_constants.dart';
 import '../theme/app_theme.dart';
 
 class PushNotificationItem {
@@ -106,7 +107,8 @@ class PushNotificationService {
     String? baseUrl,
   }) async {
     await init();
-    final url = Uri.parse('${baseUrl ?? 'http://10.0.2.2:8080'}/api/v1/notifications/tokens');
+    final effectiveBaseUrl = baseUrl ?? ApiConstants.baseUrl;
+    final url = Uri.parse('$effectiveBaseUrl/api/v1/notifications/tokens');
 
     try {
       final res = await http.post(
@@ -118,12 +120,12 @@ class PushNotificationService {
           'platform': kIsWeb ? 'web' : (defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android'),
           'voip_token': 'voip_$_fcmToken',
         }),
-      ).timeout(const Duration(seconds: 4));
+      ).timeout(const Duration(seconds: 5));
 
       return res.statusCode == 200 || res.statusCode == 201;
     } catch (e) {
-      debugPrint('FCM Token registration offline/fallback: $e');
-      return true;
+      debugPrint('[PushNotificationService] FCM Token registration offline/fallback: $e');
+      return false;
     }
   }
 
