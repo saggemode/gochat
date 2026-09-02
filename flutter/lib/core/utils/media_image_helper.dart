@@ -193,3 +193,7 @@ class MediaImageHelper {
     return defaultError;
   }
 }
+
+/// Standalone top-level helper for checking local device filesystem paths
+bool isLocalDevicePath(String? path) => MediaImageHelper.isLocalDevicePath(path);
+

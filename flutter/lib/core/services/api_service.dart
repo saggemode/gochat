@@ -426,9 +426,9 @@ class ApiService {
     try {
       String downloadUrl = fileIdOrUrl;
       if (!downloadUrl.startsWith('http://') && !downloadUrl.startsWith('https://')) {
-        if (downloadUrl.startsWith('/') && !MediaImageHelper.isLocalDevicePath(downloadUrl)) {
+        if (downloadUrl.startsWith('/') && !isLocalDevicePath(downloadUrl)) {
           downloadUrl = '${ApiConstants.baseUrl}$downloadUrl';
-        } else if (!MediaImageHelper.isLocalDevicePath(downloadUrl)) {
+        } else if (!isLocalDevicePath(downloadUrl)) {
           downloadUrl = '${ApiConstants.apiV1}/media/download/$downloadUrl';
         }
       }
