@@ -1,11 +1,12 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import '../core/constants/api_constants.dart';
 import '../core/models/message.dart';
 import '../core/services/api_service.dart';
 import '../core/services/media_storage_service.dart';
 import '../core/theme/app_theme.dart';
+import '../core/utils/media_image_helper.dart';
 import '../screens/chat/media_lightbox_screen.dart';
 
 /// WhatsApp-style media card for in-chat Images and Videos supporting:
@@ -44,9 +45,9 @@ class _MediaBubbleState extends State<MediaBubble> {
     if (rawUrl.isEmpty) return;
 
     if (!kIsWeb && !rawUrl.startsWith('http://') && !rawUrl.startsWith('https://') && !rawUrl.startsWith('data:') && !rawUrl.startsWith('/api/')) {
-      final file = File(rawUrl);
-      if (file.existsSync()) {
-        _localPath = rawUrl;
+      final file = MediaImageHelper.getLocalFile(rawUrl);
+      if (file != null) {
+        _localPath = file.path;
       }
     }
   }
@@ -147,7 +148,8 @@ class _MediaBubbleState extends State<MediaBubble> {
     final rawUrl = widget.message.mediaUrl ?? '';
     final isVideo = widget.message.type == MessageType.video;
     final isBase64 = rawUrl.startsWith('data:image') || rawUrl.startsWith('data:') || rawUrl.contains(';base64,');
-    final isLocalFile = _localPath != null && File(_localPath!).existsSync();
+    final localFile = MediaImageHelper.getLocalFile(_localPath ?? rawUrl);
+    final isLocalFile = localFile != null;
     
     // Downloaded status: Sender always sees downloaded; Receiver sees downloaded once saved to local path
     final isDownloaded = widget.isMe || isLocalFile;
@@ -186,17 +188,17 @@ class _MediaBubbleState extends State<MediaBubble> {
               children: [
                 // ── 1. Media Visual Layer ──
                 if (isDownloaded)
-                  if (isLocalFile)
+                  if (localFile != null)
                     Image.file(
-                      File(_localPath!),
+                      localFile,
                       fit: BoxFit.cover,
                       errorBuilder: (_, _, _) => _buildPlaceholder(isVideo),
                     )
                   else if (isBase64)
                     _buildBase64Image(rawUrl)
-                  else if (rawUrl.startsWith('http'))
+                  else if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://') || rawUrl.startsWith('/api/'))
                     Image.network(
-                      rawUrl,
+                      rawUrl.startsWith('http') ? rawUrl : '${ApiConstants.baseUrl}$rawUrl',
                       fit: BoxFit.cover,
                       errorBuilder: (_, _, _) => _buildPlaceholder(isVideo),
                     )
@@ -395,7 +397,15 @@ class _MediaBubbleState extends State<MediaBubble> {
     if (previewUrl.startsWith('data:image') || previewUrl.startsWith('data:') || previewUrl.contains(';base64,')) {
       return _buildBase64Image(previewUrl);
     }
-    if (previewUrl.startsWith('http')) {
+    final localFile = MediaImageHelper.getLocalFile(previewUrl);
+    if (localFile != null) {
+      return Image.file(
+        localFile,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _buildPlaceholder(isVideo),
+      );
+    }
+    if (previewUrl.startsWith('http://') || previewUrl.startsWith('https://')) {
       return Image.network(
         previewUrl,
         fit: BoxFit.cover,

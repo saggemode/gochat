@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/models/models.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/media_image_helper.dart';
 import '../../widgets/widgets.dart';
 import 'media_lightbox_screen.dart';
 
@@ -89,10 +90,10 @@ class SharedMediaGalleryScreen extends StatelessWidget {
                         },
                         child: Hero(
                           tag: 'gallery_${m.id}',
-                          child: Image.network(
-                            m.mediaUrl ?? '',
+                          child: MediaImageHelper.buildSafeImage(
+                            m.mediaUrl,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => Container(
+                            errorWidget: Container(
                               color: isDark ? AppTheme.darkCard : const Color(0xFFE9EDEF),
                               child: const Icon(Icons.broken_image, color: AppTheme.iconColor),
                             ),

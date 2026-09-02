@@ -29,13 +29,16 @@ class AppDrawerNavItem extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 2),
       decoration: BoxDecoration(
-        color: isSelected ? AppTheme.primary.withValues(alpha: 0.15) : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         border: isSelected
             ? Border.all(color: AppTheme.primary.withValues(alpha: 0.3), width: 1)
             : null,
       ),
-      child: ListTile(
+      child: Material(
+        color: isSelected ? AppTheme.primary.withValues(alpha: 0.15) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
         dense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
         leading: Icon(currentIcon, color: color, size: 22),
@@ -88,6 +91,7 @@ class AppDrawerNavItem extends StatelessWidget {
         ),
         onTap: onTap,
       ),
-    );
+    ),
+  );
   }
 }

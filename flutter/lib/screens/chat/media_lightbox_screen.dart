@@ -1,10 +1,10 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/media_image_helper.dart';
 
 class MediaLightboxScreen extends StatefulWidget {
   final String mediaUrl;
@@ -189,36 +189,39 @@ class _MediaLightboxScreenState extends State<MediaLightboxScreen> {
       }
     }
 
-    // 2. Local file path (sender's own device)
-    if (!kIsWeb && !url.startsWith('http')) {
-      final file = File(url);
-      if (file.existsSync()) {
+    // 2. Local file path or file:// URI (sender's own device)
+    if (!kIsWeb && !url.startsWith('http://') && !url.startsWith('https://')) {
+      final file = MediaImageHelper.getLocalFile(url);
+      if (file != null) {
         return Image.file(
           file,
           fit: BoxFit.contain,
           errorBuilder: (_, _, _) => _errorPlaceholder(),
         );
       }
-      return _errorPlaceholder();
     }
 
     // 3. Network URL (normal case for receiver)
-    return Image.network(
-      url,
-      fit: BoxFit.contain,
-      loadingBuilder: (ctx, child, progress) {
-        if (progress == null) return child;
-        return Center(
-          child: CircularProgressIndicator(
-            value: progress.expectedTotalBytes != null
-                ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes!
-                : null,
-            color: AppTheme.primary,
-          ),
-        );
-      },
-      errorBuilder: (_, _, _) => _errorPlaceholder(),
-    );
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return Image.network(
+        url,
+        fit: BoxFit.contain,
+        loadingBuilder: (ctx, child, progress) {
+          if (progress == null) return child;
+          return Center(
+            child: CircularProgressIndicator(
+              value: progress.expectedTotalBytes != null
+                  ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes!
+                  : null,
+              color: AppTheme.primary,
+            ),
+          );
+        },
+        errorBuilder: (_, _, _) => _errorPlaceholder(),
+      );
+    }
+
+    return _errorPlaceholder();
   }
 
   Widget _errorPlaceholder() {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/models/user.dart';
 import '../core/theme/app_theme.dart';
+import 'custom_avatar.dart';
 
 class AppDrawerProfileHeader extends StatelessWidget {
   final User? user;
@@ -27,24 +28,10 @@ class AppDrawerProfileHeader extends StatelessWidget {
         children: [
           Stack(
             children: [
-              CircleAvatar(
+              CustomAvatar(
+                imageUrl: user?.avatarUrl,
+                name: user?.displayName ?? 'G',
                 radius: 28,
-                backgroundColor: AppTheme.primary.withValues(alpha: 0.2),
-                backgroundImage: (user?.avatarUrl != null && user!.avatarUrl.isNotEmpty)
-                    ? NetworkImage(user!.avatarUrl)
-                    : null,
-                child: (user?.avatarUrl == null || user!.avatarUrl.isEmpty)
-                    ? Text(
-                        (user?.displayName.isNotEmpty == true)
-                            ? user!.displayName.substring(0, 1).toUpperCase()
-                            : 'G',
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primary,
-                        ),
-                      )
-                    : null,
               ),
               Positioned(
                 bottom: 0,

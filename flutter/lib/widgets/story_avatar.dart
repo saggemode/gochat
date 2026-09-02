@@ -1,6 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../core/theme/app_theme.dart';
+import '../core/utils/media_image_helper.dart';
 
 class StoryAvatar extends StatelessWidget {
   final String avatarUrl;
@@ -19,15 +19,7 @@ class StoryAvatar extends StatelessWidget {
   });
 
   ImageProvider? _getImageProvider(String url) {
-    if (url.isEmpty) return null;
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return NetworkImage(url);
-    }
-    final file = File(url);
-    if (file.existsSync()) {
-      return FileImage(file);
-    }
-    return null;
+    return MediaImageHelper.safeImageProvider(url);
   }
 
   @override

@@ -254,10 +254,19 @@ class MediaStorageService {
     }
   }
 
-  /// Check if a local file exists for the given path
+  /// Check if a local file exists for the given path or file:// URI
   bool existsLocally(String? localPath) {
     if (localPath == null || localPath.isEmpty || kIsWeb) return false;
     try {
+      if (localPath.startsWith('file://')) {
+        final uri = Uri.tryParse(localPath);
+        if (uri != null) {
+          final f = File.fromUri(uri);
+          if (f.existsSync()) return true;
+        }
+        final directPath = localPath.replaceFirst(RegExp(r'^file://+'), '/');
+        return File(directPath).existsSync();
+      }
       final file = File(localPath);
       return file.existsSync();
     } catch (_) {

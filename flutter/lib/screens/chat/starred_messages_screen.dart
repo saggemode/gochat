@@ -6,6 +6,7 @@ import '../../core/models/message.dart';
 import '../../core/services/starred_message_service.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/media_image_helper.dart';
 import 'chat_room_screen.dart';
 import 'media_lightbox_screen.dart';
 
@@ -338,10 +339,10 @@ class _StarredMessagesScreenState extends State<StarredMessagesScreen> {
                                       width: 160,
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.circular(8),
-                                        child: Image.network(
-                                          message.mediaUrl!,
+                                        child: MediaImageHelper.buildSafeImage(
+                                          message.mediaUrl,
                                           fit: BoxFit.cover,
-                                          errorBuilder: (_, _, _) => Container(
+                                          errorWidget: Container(
                                             color: isDark ? AppTheme.darkCard : Colors.grey[300],
                                             child: const Icon(Icons.broken_image_rounded, color: AppTheme.textMuted),
                                           ),
