@@ -1,13 +1,11 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../core/constants/api_constants.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/media_storage_service.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/media_image_helper.dart';
 import '../auth/login_screen.dart';
 import '../chat/starred_messages_screen.dart';
 import 'chat_backup_screen.dart';
@@ -242,13 +240,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             radius: 32,
                             backgroundColor: AppTheme.primary.withValues(alpha: 0.2),
                             backgroundImage: user?.avatarUrl.isNotEmpty == true
-                                ? (user!.avatarUrl.startsWith('http') || user.avatarUrl.startsWith('/api/')
-                                    ? NetworkImage(user.avatarUrl.startsWith('http') ? user.avatarUrl : '${ApiConstants.baseUrl}${user.avatarUrl}')
-                                    : (user.avatarUrl.startsWith('data:')
-                                        ? MemoryImage(base64Decode(user.avatarUrl.substring(user.avatarUrl.indexOf('base64,') + 7).trim()))
-                                        : (File(user.avatarUrl).existsSync()
-                                            ? FileImage(File(user.avatarUrl))
-                                            : null))) as ImageProvider?
+                                ? MediaImageHelper.safeImageProvider(user!.avatarUrl)
                                 : null,
                             child: user?.avatarUrl.isEmpty != false
                                 ? const Icon(Icons.person, size: 34, color: AppTheme.primary)

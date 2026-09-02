@@ -1,14 +1,13 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../core/constants/api_constants.dart';
 import '../../core/models/models.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/media_storage_service.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/media_image_helper.dart';
 import '../../widgets/widgets.dart';
 import '../chat/chat_room_screen.dart';
 
@@ -37,56 +36,14 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> with SingleTicker
       child: const Center(child: Icon(Icons.shopping_bag_outlined, color: AppTheme.primary, size: 28)),
     );
 
-    if (url.isEmpty) return fallback;
-
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return Image.network(
-        url,
-        width: width,
-        height: height,
-        fit: fit,
-        errorBuilder: (_, _, _) => fallback,
-      );
-    }
-    if (url.startsWith('/api/') || url.startsWith('/')) {
-      return Image.network(
-        '${ApiConstants.baseUrl}$url',
-        width: width,
-        height: height,
-        fit: fit,
-        errorBuilder: (_, _, _) => fallback,
-      );
-    }
-    if (url.startsWith('data:image') || url.startsWith('data:') || url.contains(';base64,')) {
-      try {
-        final b64Index = url.indexOf('base64,');
-        final b64Data = b64Index != -1 ? url.substring(b64Index + 7) : url;
-        final bytes = base64Decode(b64Data.trim());
-        return Image.memory(
-          bytes,
-          width: width,
-          height: height,
-          fit: fit,
-          errorBuilder: (_, _, _) => fallback,
-        );
-      } catch (_) {
-        return fallback;
-      }
-    }
-    try {
-      final file = File(url);
-      if (file.existsSync()) {
-        return Image.file(
-          file,
-          width: width,
-          height: height,
-          fit: fit,
-          errorBuilder: (_, _, _) => fallback,
-        );
-      }
-    } catch (_) {}
-
-    return fallback;
+    return MediaImageHelper.buildSafeImage(
+      url,
+      width: width,
+      height: height,
+      fit: fit,
+      placeholder: fallback,
+      errorWidget: fallback,
+    );
   }
 
   Future<void> _pickStoreLogo() async {

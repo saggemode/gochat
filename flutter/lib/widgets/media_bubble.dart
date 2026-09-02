@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import '../core/constants/api_constants.dart';
 import '../core/models/message.dart';
 import '../core/services/api_service.dart';
 import '../core/services/media_storage_service.dart';
@@ -196,14 +195,12 @@ class _MediaBubbleState extends State<MediaBubble> {
                     )
                   else if (isBase64)
                     _buildBase64Image(rawUrl)
-                  else if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://') || rawUrl.startsWith('/api/'))
-                    Image.network(
-                      rawUrl.startsWith('http') ? rawUrl : '${ApiConstants.baseUrl}$rawUrl',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => _buildPlaceholder(isVideo),
-                    )
                   else
-                    _buildPlaceholder(isVideo)
+                    MediaImageHelper.buildSafeImage(
+                      rawUrl,
+                      fit: BoxFit.cover,
+                      errorWidget: _buildPlaceholder(isVideo),
+                    )
                 else
                   // Sharp Preview Thumbnail Layer for Receiver before Download
                   _buildThumbnailPreview(

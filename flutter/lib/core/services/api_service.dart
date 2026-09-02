@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' show MediaType;
 import '../constants/api_constants.dart';
 import '../models/models.dart';
+import '../utils/media_image_helper.dart';
 import 'media_storage_service.dart';
 import 'storage_service.dart';
 
@@ -425,9 +426,9 @@ class ApiService {
     try {
       String downloadUrl = fileIdOrUrl;
       if (!downloadUrl.startsWith('http://') && !downloadUrl.startsWith('https://')) {
-        if (downloadUrl.startsWith('/')) {
+        if (downloadUrl.startsWith('/') && !MediaImageHelper.isLocalDevicePath(downloadUrl)) {
           downloadUrl = '${ApiConstants.baseUrl}$downloadUrl';
-        } else {
+        } else if (!MediaImageHelper.isLocalDevicePath(downloadUrl)) {
           downloadUrl = '${ApiConstants.apiV1}/media/download/$downloadUrl';
         }
       }

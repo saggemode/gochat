@@ -5,23 +5,41 @@ import 'package:flutter/material.dart';
 import '../constants/api_constants.dart';
 
 class MediaImageHelper {
+  /// Check if a path looks like an absolute local device filesystem path
+  static bool isLocalDevicePath(String? path) {
+    if (path == null || path.isEmpty) return false;
+    final p = path.trim().toLowerCase();
+    return p.startsWith('file://') ||
+        p.startsWith('/storage/') ||
+        p.startsWith('/data/') ||
+        p.startsWith('/sdcard/') ||
+        p.startsWith('/users/') ||
+        p.startsWith('/private/') ||
+        p.startsWith('/var/') ||
+        p.startsWith('/tmp/') ||
+        RegExp(r'^[a-z]:[\\/]', caseSensitive: false).hasMatch(p);
+  }
+
   /// Extract a valid local File from either a file:// URI or a direct filesystem path.
   static File? getLocalFile(String? pathOrUri) {
     if (pathOrUri == null || pathOrUri.isEmpty || kIsWeb) return null;
     try {
-      if (pathOrUri.startsWith('file://')) {
-        final uri = Uri.tryParse(pathOrUri);
+      final clean = pathOrUri.trim();
+      if (clean.startsWith('file://')) {
+        final uri = Uri.tryParse(clean);
         if (uri != null) {
           final file = File.fromUri(uri);
           if (file.existsSync()) return file;
           // Also try unencoded raw path fallback
-          final directPath = pathOrUri.replaceFirst(RegExp(r'^file://+'), '/');
+          final directPath = clean.replaceFirst(RegExp(r'^file://+'), '/');
           final fallbackFile = File(directPath);
           if (fallbackFile.existsSync()) return fallbackFile;
         }
       } else {
-        final file = File(pathOrUri);
+        final file = File(clean);
         if (file.existsSync()) return file;
+        // If it's a known device path pattern, return the file object anyway for lazy creation
+        if (isLocalDevicePath(clean)) return file;
       }
     } catch (_) {}
     return null;
@@ -32,21 +50,7 @@ class MediaImageHelper {
     if (url == null || url.trim().isEmpty) return null;
     final clean = url.trim();
 
-    // 1. HTTP / HTTPS URL
-    if (clean.startsWith('http://') || clean.startsWith('https://')) {
-      final uri = Uri.tryParse(clean);
-      if (uri != null && uri.host.isNotEmpty) {
-        return NetworkImage(clean);
-      }
-      return null;
-    }
-
-    // 2. Relative API path
-    if (clean.startsWith('/api/') || clean.startsWith('/')) {
-      return NetworkImage('${ApiConstants.baseUrl}$clean');
-    }
-
-    // 3. Base64 Data URI
+    // 1. Base64 Data URI
     if (clean.startsWith('data:image') || clean.startsWith('data:') || clean.contains(';base64,')) {
       try {
         final b64Index = clean.indexOf('base64,');
@@ -57,15 +61,34 @@ class MediaImageHelper {
       return null;
     }
 
-    // 4. Local File (file:// URI or path)
+    // 2. HTTP / HTTPS URL
+    if (clean.startsWith('http://') || clean.startsWith('https://')) {
+      final uri = Uri.tryParse(clean);
+      if (uri != null && uri.host.isNotEmpty) {
+        return NetworkImage(clean);
+      }
+      return null;
+    }
+
+    // 3. Local File (file:// URI or path) - checked BEFORE relative web endpoints!
     final localFile = getLocalFile(clean);
-    if (localFile != null) {
+    if (localFile != null && !kIsWeb) {
       return FileImage(localFile);
     }
 
-    // 5. Asset
+    // If it is a device path that couldn't be loaded, do NOT treat as a network endpoint
+    if (isLocalDevicePath(clean)) {
+      return null;
+    }
+
+    // 4. Asset
     if (clean.startsWith('assets/')) {
       return AssetImage(clean);
+    }
+
+    // 5. Relative API path (e.g. /api/v1/..., /media/..., /uploads/...)
+    if (clean.startsWith('/api/') || clean.startsWith('/media/') || clean.startsWith('/uploads/') || clean.startsWith('/static/')) {
+      return NetworkImage('${ApiConstants.baseUrl}$clean');
     }
 
     return null;
@@ -113,41 +136,7 @@ class MediaImageHelper {
       return defaultError;
     }
 
-    // 2. Local File (file:// or path)
-    final localFile = getLocalFile(clean);
-    if (localFile != null) {
-      return Image.file(
-        localFile,
-        width: width,
-        height: height,
-        fit: fit,
-        errorBuilder: (_, _, _) => defaultError,
-      );
-    }
-
-    // 3. Asset
-    if (clean.startsWith('assets/')) {
-      return Image.asset(
-        clean,
-        width: width,
-        height: height,
-        fit: fit,
-        errorBuilder: (_, _, _) => defaultError,
-      );
-    }
-
-    // 4. Relative API path
-    if (clean.startsWith('/api/') || clean.startsWith('/')) {
-      return Image.network(
-        '${ApiConstants.baseUrl}$clean',
-        width: width,
-        height: height,
-        fit: fit,
-        errorBuilder: (_, _, _) => defaultError,
-      );
-    }
-
-    // 5. Network URL
+    // 2. HTTP / HTTPS Network URL
     if (clean.startsWith('http://') || clean.startsWith('https://')) {
       final uri = Uri.tryParse(clean);
       if (uri != null && uri.host.isNotEmpty) {
@@ -159,6 +148,46 @@ class MediaImageHelper {
           errorBuilder: (_, _, _) => defaultError,
         );
       }
+      return defaultError;
+    }
+
+    // 3. Local File (file:// or path) - checked BEFORE relative web endpoints!
+    final localFile = getLocalFile(clean);
+    if (localFile != null && !kIsWeb) {
+      return Image.file(
+        localFile,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (_, _, _) => defaultError,
+      );
+    }
+
+    // If it is a device path that couldn't be loaded, do NOT treat as a network endpoint
+    if (isLocalDevicePath(clean)) {
+      return defaultError;
+    }
+
+    // 4. Asset
+    if (clean.startsWith('assets/')) {
+      return Image.asset(
+        clean,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (_, _, _) => defaultError,
+      );
+    }
+
+    // 5. Relative API path (e.g. /api/v1/..., /media/..., /uploads/...)
+    if (clean.startsWith('/api/') || clean.startsWith('/media/') || clean.startsWith('/uploads/') || clean.startsWith('/static/')) {
+      return Image.network(
+        '${ApiConstants.baseUrl}$clean',
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (_, _, _) => defaultError,
+      );
     }
 
     return defaultError;

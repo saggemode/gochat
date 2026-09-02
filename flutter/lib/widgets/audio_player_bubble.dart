@@ -8,6 +8,7 @@ import 'package:just_audio/just_audio.dart';
 import '../core/constants/api_constants.dart';
 import '../core/services/media_storage_service.dart';
 import '../core/theme/app_theme.dart';
+import '../core/utils/media_image_helper.dart';
 
 class AudioPlayerBubble extends StatefulWidget {
   final int durationSeconds;
@@ -157,9 +158,9 @@ class _AudioPlayerBubbleState extends State<AudioPlayerBubble> {
         }
       }
 
-      // 3. Remote URL: handle relative paths or localhost
+      // 3. Remote URL: handle relative paths or localhost (but NOT local device paths)
       String targetUrl = rawUrl;
-      if (targetUrl.startsWith('/')) {
+      if (targetUrl.startsWith('/') && !MediaImageHelper.isLocalDevicePath(targetUrl)) {
         targetUrl = '${ApiConstants.baseUrl}$targetUrl';
       } else if (targetUrl.startsWith('http://localhost') || targetUrl.startsWith('http://127.0.0.1')) {
         targetUrl = targetUrl.replaceFirst('http://localhost:8080', ApiConstants.baseUrl)
