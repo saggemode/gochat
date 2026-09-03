@@ -68,6 +68,16 @@ class AppState extends ChangeNotifier {
   Stream<Map<String, dynamic>> get onCallSignaling =>
       _callSignalingController.stream;
 
+  String? _activeConversationId;
+  String? get activeConversationId => _activeConversationId;
+
+  void setActiveConversation(String? convId) {
+    _activeConversationId = convId;
+    if (convId != null && convId.isNotEmpty) {
+      markConversationAsRead(convId);
+    }
+  }
+
   List<Message> getMessagesFor(String convId) {
     final list = _messages[convId];
     if (list == null || list.isEmpty) return [];
@@ -422,18 +432,30 @@ class AppState extends ChangeNotifier {
               ? InvitationStatus.accepted
               : currentStatus;
 
+          final isViewingThisChat = _activeConversationId == finalConvId;
+          final shouldIncrementUnread = isIncomingFromOther && !isViewingThisChat;
+
           final updated = _conversations[convIdx].copyWith(
             title: shouldUpdateTitle ? msg.senderName : currentTitle,
             lastMessage: msg,
-            unreadCount: isIncomingFromOther
+            unreadCount: shouldIncrementUnread
                 ? _conversations[convIdx].unreadCount + 1
-                : _conversations[convIdx].unreadCount,
+                : (isViewingThisChat ? 0 : _conversations[convIdx].unreadCount),
             invitationStatus: newStatus,
             updatedAt: DateTime.now(),
           );
           _conversations.removeAt(convIdx);
           _conversations.insert(0, updated);
           DatabaseService().saveConversations(_conversations);
+
+          if (isViewingThisChat) {
+            wsService.send({
+              'type': 'read_receipt',
+              'event_type': 'EVENT_READ_RECEIPT',
+              'conversation_id': finalConvId,
+              'reader_id': _currentUser?.id ?? '',
+            });
+          }
         } else {
           // New conversation created by sender - add to receiver's list
           final isFromMe = msg.isMe ||
@@ -452,9 +474,11 @@ class AppState extends ChangeNotifier {
                 : InvitationStatus.pendingIncoming,
             invitationSenderId: msg.senderId,
             memberIds: [if (msg.senderId.isNotEmpty) msg.senderId],
+            unreadCount: (!isFromMe && _activeConversationId != msg.conversationId) ? 1 : 0,
             updatedAt: DateTime.now(),
           );
           _conversations.insert(0, newConv);
+          DatabaseService().saveConversations(_conversations);
           // Sync full conversation details from server in background, merging to preserve latest messages
           ApiService.getConversations()
               .then((convs) {
@@ -1034,23 +1058,39 @@ class AppState extends ChangeNotifier {
   /// Mark all incoming messages in a conversation as read and send read receipts over WebSocket
   void markConversationAsRead(String convId) {
     if (convId.isEmpty) return;
+    bool needsNotify = false;
+
+    // 1. Reset unread count in conversations list
+    final convIdx = _conversations.indexWhere((c) => c.id == convId);
+    if (convIdx != -1) {
+      if (_conversations[convIdx].unreadCount > 0) {
+        _conversations[convIdx] = _conversations[convIdx].copyWith(unreadCount: 0);
+        StorageService.saveCachedConversations(_conversations);
+        DatabaseService().saveConversations(_conversations);
+        needsNotify = true;
+      }
+    }
+
+    // 2. Mark all messages in memory and SQLite as read
     final msgs = _messages[convId];
     if (msgs != null && msgs.isNotEmpty) {
-      bool hasUnread = false;
       for (int i = 0; i < msgs.length; i++) {
         if (!msgs[i].isMe && msgs[i].status != MessageStatus.read) {
           msgs[i] = msgs[i].copyWith(status: MessageStatus.read);
           DatabaseService().updateMessageStatus(msgs[i].id, MessageStatus.read);
-          hasUnread = true;
+          needsNotify = true;
         }
       }
-      if (hasUnread) {
+      if (needsNotify) {
         StorageService.saveCachedMessages(convId, msgs);
-        notifyListeners();
       }
     }
 
-    // Broadcast read receipt to peer so their ticks turn green
+    if (needsNotify) {
+      notifyListeners();
+    }
+
+    // 3. Broadcast read receipt to peer so their ticks turn green
     wsService.send({
       'type': 'read_receipt',
       'event_type': 'EVENT_READ_RECEIPT',
@@ -1149,11 +1189,13 @@ class AppState extends ChangeNotifier {
       if (idx != -1) {
         _conversations[idx] = _conversations[idx].copyWith(
           lastMessage: msgToAdd,
+          unreadCount: 0,
           updatedAt: DateTime.now(),
         );
         final updated = _conversations.removeAt(idx);
         _conversations.insert(0, updated);
         await StorageService.saveCachedConversations(_conversations);
+        await DatabaseService().saveConversations(_conversations);
       }
       // Find recipient_id for direct 1:1 conversation so gateway can target peer directly
       String? recipientId;
@@ -1259,11 +1301,13 @@ class AppState extends ChangeNotifier {
       if (idx != -1) {
         _conversations[idx] = _conversations[idx].copyWith(
           lastMessage: optimisticMsg,
+          unreadCount: 0,
           updatedAt: DateTime.now(),
         );
         final updated = _conversations.removeAt(idx);
         _conversations.insert(0, updated);
         await StorageService.saveCachedConversations(_conversations);
+        await DatabaseService().saveConversations(_conversations);
       }
 
       // Also broadcast optimistic message over WebSocket for immediate peer sync

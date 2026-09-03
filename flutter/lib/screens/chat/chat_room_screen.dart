@@ -73,6 +73,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
   @override
   void initState() {
     super.initState();
+    widget.appState.setActiveConversation(widget.conversation.id);
     widget.appState.addListener(_onStateChange);
     widget.appState.markConversationAsRead(widget.conversation.id);
     widget.appState.fetchMessagesFor(widget.conversation.id);
@@ -98,28 +99,29 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
 
     // Listen for incoming PING! events for this conversation
     _pingSubscription = widget.appState.onPingReceived.listen((convId) {
-      if (convId == widget.conversation.id && mounted) {
+      if (convId == widget.conversation.id) {
         _triggerScreenShake();
       }
     });
 
-    // Fetch latest messages from server on open and scroll to bottom
-    widget.appState.fetchMessagesFor(widget.conversation.id).then((_) {
+    // Check disappearing messages expiration every 5 seconds
+    _disappearingCleanupTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (mounted) {
-        _scrollToBottom(animate: false, delayMs: 40);
-        _scrollToBottom(animate: false, delayMs: 120);
+        final msgs = widget.appState.getMessagesFor(widget.conversation.id);
+        final now = DateTime.now();
+        final hasExpired = msgs.any(
+          (m) => m.expiresAt != null && m.expiresAt!.isBefore(now),
+        );
+        if (hasExpired) {
+          setState(() {});
+        }
       }
     });
 
-    // Auto-scroll to the last chat message on open
-    _scrollToBottom(animate: false);
-    _scrollToBottom(animate: false, delayMs: 60);
-    _scrollToBottom(animate: false, delayMs: 180);
-    _scrollToBottom(animate: false, delayMs: 350);
-
-    // Periodic cleanup of expired disappearing messages
-    _disappearingCleanupTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (mounted) widget.appState.cleanupExpiredMessages();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottom(animate: false);
+      _scrollToBottom(animate: false, delayMs: 120);
+      _scrollToBottom(animate: false, delayMs: 350);
     });
   }
 
@@ -127,6 +129,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
   void didUpdateWidget(covariant ChatRoomScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.conversation.id != widget.conversation.id) {
+      widget.appState.setActiveConversation(widget.conversation.id);
+      widget.appState.markConversationAsRead(widget.conversation.id);
       widget.appState.fetchMessagesFor(widget.conversation.id);
       _scrollToBottom(animate: false);
       _scrollToBottom(animate: false, delayMs: 80);
@@ -135,6 +139,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
 
   @override
   void dispose() {
+    widget.appState.setActiveConversation(null);
+    widget.appState.markConversationAsRead(widget.conversation.id);
     _typingDebounceTimer?.cancel();
     _pingSubscription?.cancel();
     _disappearingCleanupTimer?.cancel();

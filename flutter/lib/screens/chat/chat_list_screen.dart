@@ -385,15 +385,20 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             }
                           : null,
                       onTap: () {
+                        widget.appState.markConversationAsRead(c.id);
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => ChatRoomScreen(
-                              conversation: c,
+                              conversation: c.copyWith(unreadCount: 0),
                               appState: widget.appState,
                             ),
                           ),
-                        );
+                        ).then((_) {
+                          if (mounted) {
+                            widget.appState.markConversationAsRead(c.id);
+                          }
+                        });
                       },
                       onLongPress: () {
                         ConfirmDialog.show(
