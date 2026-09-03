@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -43,7 +45,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: const Text('Take Profile Photo with Camera', style: TextStyle(fontWeight: FontWeight.bold)),
               onTap: () async {
                 Navigator.pop(ctx);
-                final XFile? image = await picker.pickImage(source: ImageSource.camera, maxWidth: 800, maxHeight: 800, imageQuality: 80);
+                final XFile? image = await picker.pickImage(
+                  source: ImageSource.camera,
+                  maxWidth: 320,
+                  maxHeight: 320,
+                  imageQuality: 70,
+                );
                 if (image != null) {
                   await _uploadAndSetAvatar(image.path);
                 }
@@ -55,7 +62,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: const Text('Choose Photo from Gallery', style: TextStyle(fontWeight: FontWeight.bold)),
               onTap: () async {
                 Navigator.pop(ctx);
-                final XFile? image = await picker.pickImage(source: ImageSource.gallery, maxWidth: 800, maxHeight: 800, imageQuality: 80);
+                final XFile? image = await picker.pickImage(
+                  source: ImageSource.gallery,
+                  maxWidth: 320,
+                  maxHeight: 320,
+                  imageQuality: 70,
+                );
                 if (image != null) {
                   await _uploadAndSetAvatar(image.path);
                 }
@@ -71,15 +83,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _isUploadingAvatar = true);
     try {
       final savedPath = await MediaStorageService().saveImage(localPath);
-      final uploadedUrl = await ApiService.uploadMedia(savedPath, mimeType: 'image/jpeg');
-      final finalAvatarUrl = uploadedUrl ?? savedPath;
+
+      // 1. Try uploading to remote CDN/storage first
+      String? finalAvatarUrl;
+      try {
+        final uploadedUrl = await ApiService.uploadMedia(savedPath, mimeType: 'image/jpeg');
+        if (uploadedUrl != null &&
+            uploadedUrl.isNotEmpty &&
+            (uploadedUrl.startsWith('http://') || uploadedUrl.startsWith('https://'))) {
+          finalAvatarUrl = uploadedUrl;
+        }
+      } catch (_) {}
+
+      // 2. Fallback to compact Base64 Data URI so other devices can render it directly
+      if (finalAvatarUrl == null || finalAvatarUrl.isEmpty) {
+        try {
+          final bytes = await File(savedPath).readAsBytes();
+          if (bytes.isNotEmpty) {
+            finalAvatarUrl = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+          }
+        } catch (_) {}
+      }
+
+      finalAvatarUrl ??= savedPath;
 
       await widget.appState.updateProfile(avatarUrl: finalAvatarUrl);
       if (mounted) {
         setState(() => _isUploadingAvatar = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Profile photo uploaded to Telegram CDN and updated!'),
+            content: Text('✅ Profile photo updated!'),
             backgroundColor: AppTheme.primary,
           ),
         );

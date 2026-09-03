@@ -69,7 +69,11 @@ class AppState extends ChangeNotifier {
       _callSignalingController.stream;
 
   List<Message> getMessagesFor(String convId) {
-    return _messages[convId] ?? [];
+    final list = _messages[convId];
+    if (list == null || list.isEmpty) return [];
+    final sorted = List<Message>.from(list);
+    sorted.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    return sorted;
   }
 
   // ── Typing Indicator Queries ────────────────────────────────────────────────
@@ -375,6 +379,7 @@ class AppState extends ChangeNotifier {
         } else {
           _messages[msg.conversationId]![existingIdx] = msg;
         }
+        _messages[msg.conversationId]!.sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
         // Update cached messages
         StorageService.saveCachedMessages(
@@ -397,15 +402,27 @@ class AppState extends ChangeNotifier {
               msg.senderName != 'Me' &&
               !msg.senderName.startsWith('User_');
 
+          final isIncomingFromOther = !msg.isMe &&
+              (_currentUser?.id.isEmpty == true || msg.senderId != _currentUser?.id);
+          final currentStatus = _conversations[convIdx].invitationStatus;
+          final newStatus = (isIncomingFromOther && currentStatus == InvitationStatus.pendingOutgoing)
+              ? InvitationStatus.accepted
+              : currentStatus;
+
           final updated = _conversations[convIdx].copyWith(
             title: shouldUpdateTitle ? msg.senderName : currentTitle,
             lastMessage: msg,
+            invitationStatus: newStatus,
             updatedAt: DateTime.now(),
           );
           _conversations.removeAt(convIdx);
           _conversations.insert(0, updated);
         } else {
           // New conversation created by sender - add to receiver's list
+          final isFromMe = msg.isMe ||
+              (_currentUser?.id.isNotEmpty == true &&
+                  msg.senderId == _currentUser?.id);
+
           final newConv = Conversation(
             id: msg.conversationId,
             title: msg.senderName.isNotEmpty && msg.senderName != 'Me'
@@ -413,8 +430,11 @@ class AppState extends ChangeNotifier {
                 : 'Contact',
             lastMessage: msg,
             type: ConversationType.direct,
-            invitationStatus: InvitationStatus.accepted,
+            invitationStatus: isFromMe
+                ? InvitationStatus.pendingOutgoing
+                : InvitationStatus.pendingIncoming,
             invitationSenderId: msg.senderId,
+            memberIds: [if (msg.senderId.isNotEmpty) msg.senderId],
             updatedAt: DateTime.now(),
           );
           _conversations.insert(0, newConv);
@@ -429,6 +449,8 @@ class AppState extends ChangeNotifier {
                       return newC.copyWith(
                         lastMessage: ex.lastMessage ?? newC.lastMessage,
                         unreadCount: ex.unreadCount,
+                        invitationStatus: ex.invitationStatus,
+                        partnerPin: ex.partnerPin ?? newC.partnerPin,
                       );
                     }
                     return newC;
@@ -478,7 +500,7 @@ class AppState extends ChangeNotifier {
         final newName = userData['display_name']?.toString() ?? '';
         final newAvatar = userData['avatar_url']?.toString() ?? '';
 
-        if (userId.isNotEmpty && newName.isNotEmpty) {
+        if (userId.isNotEmpty && (newName.isNotEmpty || newAvatar.isNotEmpty)) {
           bool changed = false;
           for (int i = 0; i < _conversations.length; i++) {
             final conv = _conversations[i];
@@ -486,14 +508,30 @@ class AppState extends ChangeNotifier {
                 conv.id == userId ||
                 conv.partnerPin == userData['pin']) {
               _conversations[i] = conv.copyWith(
-                title: newName,
+                title: newName.isNotEmpty ? newName : conv.title,
                 avatarUrl: newAvatar.isNotEmpty ? newAvatar : conv.avatarUrl,
               );
               changed = true;
             }
           }
+
+          // Also update contact story avatar if present
+          for (int s = 0; s < _stories.length; s++) {
+            if (_stories[s].userId == userId) {
+              _stories[s] = UserStories(
+                userId: _stories[s].userId,
+                userName: newName.isNotEmpty ? newName : _stories[s].userName,
+                userAvatar: newAvatar.isNotEmpty ? newAvatar : _stories[s].userAvatar,
+                stories: _stories[s].stories,
+                isMe: _stories[s].isMe,
+              );
+              changed = true;
+            }
+          }
+
           if (changed) {
             StorageService.saveCachedConversations(_conversations);
+            DatabaseService().saveConversations(_conversations);
             notifyListeners();
           }
         }
@@ -1052,6 +1090,7 @@ class AppState extends ChangeNotifier {
         _messages[convId] = [];
       }
       _messages[convId]!.add(msgToAdd);
+      _messages[convId]!.sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
       // Save to SQLite database
       await DatabaseService().insertMessage(msgToAdd);
@@ -1151,6 +1190,7 @@ class AppState extends ChangeNotifier {
         _messages[convId] = [];
       }
       _messages[convId]!.add(optimisticMsg);
+      _messages[convId]!.sort((a, b) => a.createdAt.compareTo(b.createdAt));
       await StorageService.saveCachedMessages(convId, _messages[convId]!);
 
       // Save to SQLite Outbox queue for automatic background flush
@@ -1305,6 +1345,7 @@ class AppState extends ChangeNotifier {
     try {
       final msgs = await ApiService.getMessages(convId);
       if (msgs.isNotEmpty) {
+        msgs.sort((a, b) => a.createdAt.compareTo(b.createdAt));
         _messages[convId] = msgs;
         await StorageService.saveCachedMessages(convId, msgs);
         await DatabaseService().saveMessages(convId, msgs);
@@ -1312,8 +1353,16 @@ class AppState extends ChangeNotifier {
         final convIdx = _conversations.indexWhere((c) => c.id == convId);
         if (convIdx != -1) {
           final last = msgs.last;
+          final hasMessagesFromOther = msgs.any((m) =>
+              !m.isMe &&
+              (_currentUser?.id.isEmpty == true || m.senderId != _currentUser?.id));
+          final newStatus = hasMessagesFromOther
+              ? InvitationStatus.accepted
+              : _conversations[convIdx].invitationStatus;
+
           _conversations[convIdx] = _conversations[convIdx].copyWith(
             lastMessage: last,
+            invitationStatus: newStatus,
             updatedAt: last.createdAt,
           );
           await StorageService.saveCachedConversations(_conversations);
@@ -1322,6 +1371,18 @@ class AppState extends ChangeNotifier {
         notifyListeners();
       }
     } catch (_) {}
+  }
+
+  // ── Chat: Mark Conversation Accepted ───────────────────────────────────────
+  void markConversationAccepted(String convId) {
+    final idx = _conversations.indexWhere((c) => c.id == convId);
+    if (idx != -1 && _conversations[idx].invitationStatus != InvitationStatus.accepted) {
+      _conversations[idx] = _conversations[idx].copyWith(
+        invitationStatus: InvitationStatus.accepted,
+      );
+      StorageService.saveCachedConversations(_conversations);
+      notifyListeners();
+    }
   }
 
   // ── Contacts: Scan & Sync Device Contacts ──────────────────────────────────
@@ -1360,6 +1421,24 @@ class AppState extends ChangeNotifier {
     InvitationStatus invitationStatus = InvitationStatus.accepted,
     String? partnerPin,
   }) async {
+    final cleanPin = partnerPin?.trim().toUpperCase();
+
+    // 1. Check if conversation already exists in memory to avoid duplicates
+    if (!isGroup) {
+      for (final existing in _conversations) {
+        if (existing.type == ConversationType.direct) {
+          final pinMatch = cleanPin != null &&
+              cleanPin.isNotEmpty &&
+              existing.partnerPin?.toUpperCase() == cleanPin;
+          final memberMatch = memberIds.isNotEmpty &&
+              memberIds.any((m) => m.isNotEmpty && existing.memberIds.contains(m));
+          if (pinMatch || memberMatch) {
+            return existing;
+          }
+        }
+      }
+    }
+
     try {
       final conv = await ApiService.createConversation(
         name: name,
@@ -1368,19 +1447,33 @@ class AppState extends ChangeNotifier {
       );
       final withInvitation = conv.copyWith(
         invitationStatus: invitationStatus,
-        partnerPin: partnerPin,
+        partnerPin: partnerPin ?? conv.partnerPin,
         invitationSenderId: _currentUser?.id,
+        memberIds: conv.memberIds.isNotEmpty ? conv.memberIds : memberIds,
       );
-      // Remove any broken fallback conversations with 'conv_'
-      _conversations.removeWhere((c) =>
-          c.id.startsWith('conv_') &&
-          (c.title == name || (partnerPin != null && c.partnerPin == partnerPin)));
-      _conversations.insert(0, withInvitation);
+
+      // Remove any temporary fallback conversations or existing entry with the same ID or PIN
+      final existingIdx = _conversations.indexWhere((c) =>
+          c.id == withInvitation.id ||
+          (!isGroup &&
+              cleanPin != null &&
+              cleanPin.isNotEmpty &&
+              c.partnerPin?.toUpperCase() == cleanPin));
+
+      if (existingIdx != -1) {
+        _conversations[existingIdx] = withInvitation;
+      } else {
+        _conversations.removeWhere((c) =>
+            c.id.startsWith('conv_') &&
+            (c.title == name || (cleanPin != null && c.partnerPin?.toUpperCase() == cleanPin)));
+        _conversations.insert(0, withInvitation);
+      }
+
       await StorageService.saveCachedConversations(_conversations);
       notifyListeners();
       return withInvitation;
     } catch (_) {
-      // Local fallback for offline / 401 unauth / direct PIN chat
+      // Local fallback for offline / direct PIN chat
       final localId = 'conv_${DateTime.now().millisecondsSinceEpoch}';
       final fallbackConv = Conversation(
         id: localId,
@@ -1390,6 +1483,7 @@ class AppState extends ChangeNotifier {
         invitationStatus: invitationStatus,
         partnerPin: partnerPin,
         invitationSenderId: _currentUser?.id,
+        memberIds: memberIds,
         isOnline: true,
         unreadCount: 0,
         updatedAt: DateTime.now(),
@@ -1411,12 +1505,26 @@ class AppState extends ChangeNotifier {
       );
       await StorageService.saveCachedConversations(_conversations);
 
+      // Find partner ID to target directly
+      String? recipientId;
+      for (final mId in _conversations[idx].memberIds) {
+        if (mId.isNotEmpty && mId != _currentUser?.id) {
+          recipientId = mId;
+          break;
+        }
+      }
+      if (recipientId == null || recipientId.isEmpty) {
+        recipientId = _conversations[idx].invitationSenderId;
+      }
+
       // Broadcast acceptance over WebSocket so sender unblocks immediately
       wsService.send({
         'type': 'invitation_accepted',
+        'event_type': 'invitation_accepted',
         'conversation_id': convId,
         'user_id': _currentUser?.id ?? '',
         'user_name': _currentUser?.displayName ?? 'Me',
+        if (recipientId != null && recipientId.isNotEmpty) 'recipient_id': recipientId,
       });
 
       // Send greeting system message

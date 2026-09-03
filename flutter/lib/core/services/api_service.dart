@@ -389,9 +389,11 @@ class ApiService {
           final rawList = data is List
               ? data
               : (data['messages'] as List? ?? []);
-          return rawList
+          final list = rawList
               .map((e) => Message.fromJson(e, currentUserId: user?.id ?? ''))
               .toList();
+          list.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+          return list;
         }
       } catch (_) {}
     }

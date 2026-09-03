@@ -103,10 +103,19 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       }
     });
 
+    // Fetch latest messages from server on open and scroll to bottom
+    widget.appState.fetchMessagesFor(widget.conversation.id).then((_) {
+      if (mounted) {
+        _scrollToBottom(animate: false, delayMs: 40);
+        _scrollToBottom(animate: false, delayMs: 120);
+      }
+    });
+
     // Auto-scroll to the last chat message on open
     _scrollToBottom(animate: false);
     _scrollToBottom(animate: false, delayMs: 60);
     _scrollToBottom(animate: false, delayMs: 180);
+    _scrollToBottom(animate: false, delayMs: 350);
 
     // Periodic cleanup of expired disappearing messages
     _disappearingCleanupTimer = Timer.periodic(const Duration(seconds: 4), (_) {
@@ -1008,7 +1017,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => StoryViewerScreen(userStories: contactStories),
+                            builder: (_) => StoryViewerScreen(
+                              userStories: contactStories,
+                              appState: widget.appState,
+                            ),
                           ),
                         );
                       }
@@ -1299,10 +1311,24 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                     (c) => c.id == widget.conversation.id,
                     orElse: () => widget.conversation,
                   );
+                  final currentMsgs = widget.appState.getMessagesFor(widget.conversation.id);
+                  final hasRepliesFromOther = currentMsgs.any((m) =>
+                      !m.isMe &&
+                      (widget.appState.currentUser == null ||
+                          m.senderId != widget.appState.currentUser!.id));
+
+                  if (hasRepliesFromOther &&
+                      liveConv.invitationStatus ==
+                          InvitationStatus.pendingOutgoing) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      widget.appState.markConversationAccepted(liveConv.id);
+                    });
+                  }
 
                   // 1. Sender awaiting recipient's acceptance
                   if (liveConv.invitationStatus ==
-                      InvitationStatus.pendingOutgoing) {
+                          InvitationStatus.pendingOutgoing &&
+                      !hasRepliesFromOther) {
                     return Container(
                       width: double.infinity,
                       margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),

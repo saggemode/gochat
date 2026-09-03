@@ -97,7 +97,7 @@ func (h *ChatHandler) CreateConversation(c *gin.Context) {
 		return
 	}
 
-	// For direct 1:1 conversation, populate partner's display name if name is empty
+	// For direct 1:1 conversation, populate partner's display name and avatar if empty
 	conv := resp.Conversation
 	if conv != nil && (conv.Type == chatpb.ConversationType_DIRECT || len(conv.MemberIds) <= 2) && h.authClient != nil {
 		for _, mID := range conv.MemberIds {
@@ -110,6 +110,9 @@ func (h *ChatHandler) CreateConversation(c *gin.Context) {
 					}
 					if conv.Name == "" {
 						conv.Name = uResp.User.Phone
+					}
+					if uResp.User.AvatarUrl != "" {
+						conv.AvatarUrl = uResp.User.AvatarUrl
 					}
 				}
 				break
@@ -140,7 +143,7 @@ func (h *ChatHandler) GetConversations(c *gin.Context) {
 		return
 	}
 
-	// Populate partner names for 1:1 direct conversations
+	// Populate partner names and avatars for 1:1 direct conversations
 	if resp != nil && len(resp.Conversations) > 0 && h.authClient != nil {
 		partnerIDs := make([]string, 0)
 		for _, conv := range resp.Conversations {
@@ -155,6 +158,7 @@ func (h *ChatHandler) GetConversations(c *gin.Context) {
 			usersResp, err := h.authClient.GetUsers(c.Request.Context(), &authpb.GetUsersRequest{UserIds: partnerIDs})
 			if err == nil && usersResp != nil {
 				userMap := make(map[string]string)
+				avatarMap := make(map[string]string)
 				for _, u := range usersResp.Users {
 					name := u.DisplayName
 					if name == "" {
@@ -164,6 +168,7 @@ func (h *ChatHandler) GetConversations(c *gin.Context) {
 						name = u.Phone
 					}
 					userMap[u.Id] = name
+					avatarMap[u.Id] = u.AvatarUrl
 				}
 
 				for _, conv := range resp.Conversations {
@@ -172,6 +177,9 @@ func (h *ChatHandler) GetConversations(c *gin.Context) {
 							if mID != userID {
 								if partnerName, ok := userMap[mID]; ok && partnerName != "" {
 									conv.Name = partnerName
+								}
+								if partnerAvatar, ok := avatarMap[mID]; ok && partnerAvatar != "" {
+									conv.AvatarUrl = partnerAvatar
 								}
 								break
 							}
@@ -202,7 +210,31 @@ func (h *ChatHandler) GetConversation(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, resp.Conversation)
+	conv := resp.Conversation
+	if conv != nil && (conv.Type == chatpb.ConversationType_DIRECT || conv.Name == "" || conv.AvatarUrl == "") && h.authClient != nil {
+		for _, mID := range conv.MemberIds {
+			if mID != userID {
+				uResp, err := h.authClient.GetUser(c.Request.Context(), &authpb.GetUserRequest{UserId: mID})
+				if err == nil && uResp != nil && uResp.User != nil {
+					if conv.Name == "" {
+						conv.Name = uResp.User.DisplayName
+						if conv.Name == "" {
+							conv.Name = uResp.User.Email
+						}
+						if conv.Name == "" {
+							conv.Name = uResp.User.Phone
+						}
+					}
+					if conv.AvatarUrl == "" && uResp.User.AvatarUrl != "" {
+						conv.AvatarUrl = uResp.User.AvatarUrl
+					}
+				}
+				break
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, conv)
 }
 
 // AddMember adds a user to a group conversation.

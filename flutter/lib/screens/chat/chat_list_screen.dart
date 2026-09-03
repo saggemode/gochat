@@ -162,7 +162,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) => StoryViewerScreen(userStories: item),
+                                      builder: (_) => StoryViewerScreen(
+                                        userStories: item,
+                                        appState: widget.appState,
+                                      ),
                                     ),
                                   );
                                 } else {
@@ -347,7 +350,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => StoryViewerScreen(userStories: convStories),
+                                  builder: (_) => StoryViewerScreen(
+                                    userStories: convStories,
+                                    appState: widget.appState,
+                                  ),
                                 ),
                               );
                             }

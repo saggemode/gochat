@@ -96,10 +96,11 @@ class _QrScannerScreenState extends State<QrScannerScreen>
     Conversation targetConv;
     final matchIndex = widget.appState.conversations.indexWhere(
       (c) =>
+          c.partnerPin?.toUpperCase() == cleanPin ||
+          (recipientId.isNotEmpty && c.memberIds.contains(recipientId)) ||
           c.title.toUpperCase().contains(cleanPin) ||
           c.id.toUpperCase().contains(cleanPin) ||
-          (recipientId.isNotEmpty && c.id == recipientId) ||
-          c.partnerPin?.toUpperCase() == cleanPin,
+          (recipientId.isNotEmpty && c.id == recipientId),
     );
 
     if (matchIndex != -1) {

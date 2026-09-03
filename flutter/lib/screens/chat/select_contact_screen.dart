@@ -71,19 +71,31 @@ class _SelectContactScreenState extends State<SelectContactScreen> {
     HapticFeedback.lightImpact();
 
     // 1. Check if conversation already exists
+    final cleanPin = contact.pin?.trim().toUpperCase();
+    final contactId = contact.id.trim();
+
     Conversation? existingConv;
     for (final c in widget.appState.conversations) {
       if (c.type == ConversationType.direct) {
-        if (c.memberIds.contains(contact.id) ||
-            (contact.pin != null && contact.pin!.isNotEmpty && c.partnerPin == contact.pin) ||
-            (c.title.toLowerCase() == contact.displayName.toLowerCase())) {
+        final pinMatch = cleanPin != null &&
+            cleanPin.isNotEmpty &&
+            ((c.partnerPin != null && c.partnerPin!.toUpperCase() == cleanPin) ||
+                c.title.toUpperCase().contains(cleanPin));
+        final memberMatch = contactId.isNotEmpty &&
+            (c.memberIds.contains(contactId) || c.id == contactId);
+        final nameMatch = c.title.toLowerCase() == contact.displayName.toLowerCase() ||
+            (contact.gochatName != null &&
+                contact.gochatName!.isNotEmpty &&
+                c.title.toLowerCase() == contact.gochatName!.toLowerCase());
+
+        if (pinMatch || memberMatch || nameMatch) {
           existingConv = c;
           break;
         }
       }
     }
 
-    if (existingConv != null && !existingConv.id.startsWith('conv_')) {
+    if (existingConv != null) {
       if (!mounted) return;
       Navigator.pushReplacement(
         context,

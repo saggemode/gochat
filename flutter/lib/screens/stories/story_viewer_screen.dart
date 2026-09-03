@@ -1,13 +1,21 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../core/models/conversation.dart';
 import '../../core/models/story.dart';
+import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
+import '../../widgets/widgets.dart';
 
 class StoryViewerScreen extends StatefulWidget {
   final UserStories userStories;
+  final AppState? appState;
 
-  const StoryViewerScreen({super.key, required this.userStories});
+  const StoryViewerScreen({
+    super.key,
+    required this.userStories,
+    this.appState,
+  });
 
   @override
   State<StoryViewerScreen> createState() => _StoryViewerScreenState();
@@ -18,16 +26,37 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
   double _progress = 0.0;
   Timer? _timer;
   final TextEditingController _replyController = TextEditingController();
+  final FocusNode _replyFocusNode = FocusNode();
+
+  bool get _isMyStory {
+    if (widget.userStories.isMe) return true;
+    final currentUserId = widget.appState?.currentUser?.id;
+    if (currentUserId != null &&
+        currentUserId.isNotEmpty &&
+        widget.userStories.userId == currentUserId) {
+      return true;
+    }
+    return false;
+  }
 
   @override
   void initState() {
     super.initState();
     _startStoryTimer();
+
+    _replyFocusNode.addListener(() {
+      if (_replyFocusNode.hasFocus) {
+        _timer?.cancel();
+      } else {
+        _startStoryTimer();
+      }
+    });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _replyFocusNode.dispose();
     _replyController.dispose();
     super.dispose();
   }
@@ -77,22 +106,63 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
     }
   }
 
-  ImageProvider? _getImageProvider(String url) {
-    if (url.isEmpty) return null;
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return NetworkImage(url);
+  String _formatStoryTime(DateTime time) {
+    final diff = DateTime.now().difference(time);
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
+  }
+
+  void _sendReply() async {
+    final text = _replyController.text.trim();
+    if (text.isEmpty) return;
+
+    final partnerId = widget.userStories.userId;
+    if (widget.appState != null &&
+        partnerId.isNotEmpty &&
+        partnerId != widget.appState?.currentUser?.id) {
+      final convs = widget.appState!.conversations;
+      final matchIdx = convs.indexWhere(
+        (c) =>
+            c.type == ConversationType.direct &&
+            (c.memberIds.contains(partnerId) || c.id == partnerId),
+      );
+
+      String convId;
+      if (matchIdx != -1) {
+        convId = convs[matchIdx].id;
+      } else {
+        final newConv = await widget.appState!.createConversation(
+          widget.userStories.userName,
+          [partnerId],
+        );
+        convId = newConv.id;
+      }
+
+      await widget.appState!.sendMessage(convId, 'Replying to story:\n$text');
     }
-    final file = File(url);
-    if (file.existsSync()) {
-      return FileImage(file);
+
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Reply sent to ${widget.userStories.userName}'),
+          backgroundColor: AppTheme.primary,
+        ),
+      );
     }
-    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.userStories.stories.isEmpty) {
-      return const Scaffold(body: Center(child: Text('No stories found')));
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Text('No stories found', style: TextStyle(color: Colors.white)),
+        ),
+      );
     }
 
     final story = widget.userStories.stories[_currentIndex];
@@ -164,13 +234,13 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
                         )),
             ),
 
-            // Top Gradient & Story Progression Bars
+            // Top Gradient Overlay for Header Legibility
             Positioned(
               top: 0,
               left: 0,
               right: 0,
+              height: 120,
               child: Container(
-                padding: const EdgeInsets.fromLTRB(16, 44, 16, 20),
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Colors.black87, Colors.transparent],
@@ -178,80 +248,79 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
                     end: Alignment.bottomCenter,
                   ),
                 ),
-                child: Column(
-                  children: [
-                    // Multi-Segment Progression Bar
-                    Row(
-                      children: List.generate(
-                        widget.userStories.stories.length,
-                        (idx) {
-                          double barVal = 0.0;
-                          if (idx < _currentIndex) {
-                            barVal = 1.0;
-                          } else if (idx == _currentIndex) {
-                            barVal = _progress;
-                          }
+              ),
+            ),
 
-                          return Expanded(
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 2),
-                              height: 3,
-                              child: LinearProgressIndicator(
-                                value: barVal,
-                                backgroundColor: Colors.white24,
-                                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            ),
-                          );
-                        },
+            // Top Multi-Segment Progression Bar
+            Positioned(
+              top: 48,
+              left: 12,
+              right: 12,
+              child: Row(
+                children: List.generate(
+                  widget.userStories.stories.length,
+                  (index) => Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: LinearProgressIndicator(
+                          value: index == _currentIndex
+                              ? _progress
+                              : (index < _currentIndex ? 1.0 : 0.0),
+                          backgroundColor: Colors.white24,
+                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                          minHeight: 2.5,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 12),
-
-                    // User Info Header
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 18,
-                          backgroundColor: AppTheme.darkCard,
-                          backgroundImage: _getImageProvider(widget.userStories.userAvatar),
-                          child: _getImageProvider(widget.userStories.userAvatar) == null
-                              ? const Icon(Icons.person, size: 18, color: Colors.white70)
-                              : null,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                widget.userStories.userName,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const Text(
-                                'Just now',
-                                style: TextStyle(color: Colors.white70, fontSize: 11),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
 
-            // Caption at bottom
-            if (story.caption.isNotEmpty)
+            // Header (Avatar, Name, Time, Close)
+            Positioned(
+              top: 60,
+              left: 16,
+              right: 16,
+              child: Row(
+                children: [
+                  CustomAvatar(
+                    imageUrl: widget.userStories.userAvatar,
+                    name: widget.userStories.userName,
+                    radius: 18,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _isMyStory ? 'My status' : widget.userStories.userName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          _formatStoryTime(story.createdAt),
+                          style: const TextStyle(color: Colors.white70, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white, size: 24),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+
+            // Caption at bottom for media stories
+            if (story.caption.isNotEmpty && !isTextStory)
               Positioned(
                 bottom: 80,
                 left: 20,
@@ -274,69 +343,102 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
                 ),
               ),
 
-            // Bottom Quick Reply Bar
-            Positioned(
-              bottom: 16,
-              left: 16,
-              right: 16,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      height: 44,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.white24),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _replyController,
-                              style: const TextStyle(color: Colors.white, fontSize: 13),
-                              decoration: const InputDecoration(
-                                hintText: 'Reply to story...',
-                                hintStyle: TextStyle(color: Colors.white54),
-                                border: InputBorder.none,
-                                isDense: true,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.send_rounded, color: AppTheme.primary, size: 20),
-                            onPressed: () {
-                              if (_replyController.text.trim().isNotEmpty) {
-                                Navigator.pop(context);
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 44,
-                    height: 44,
+            // ── Bottom Action Bar ──────────────────────────────────────────
+            // For own story: Show "Your status" pill (User cannot reply to their own status!)
+            // For friend story: Show reply input and like heart
+            if (_isMyStory)
+              Positioned(
+                bottom: 24,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     decoration: BoxDecoration(
                       color: Colors.black54,
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(24),
                       border: Border.all(color: Colors.white24),
                     ),
-                    child: IconButton(
-                      icon: const Icon(Icons.favorite_border_rounded, color: Colors.pinkAccent),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('❤️ Liked Story!')),
-                        );
-                      },
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.remove_red_eye_outlined, color: Colors.white70, size: 18),
+                        SizedBox(width: 8),
+                        Text(
+                          'Your status',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
+              )
+            else
+              // Bottom Quick Reply Bar (Only for other users' stories)
+              Positioned(
+                bottom: 16,
+                left: 16,
+                right: 16,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: 44,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _replyController,
+                                focusNode: _replyFocusNode,
+                                style: const TextStyle(color: Colors.white, fontSize: 13),
+                                decoration: const InputDecoration(
+                                  hintText: 'Reply to story...',
+                                  hintStyle: TextStyle(color: Colors.white54),
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                ),
+                                onSubmitted: (_) => _sendReply(),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.send_rounded, color: AppTheme.primary, size: 20),
+                              onPressed: _sendReply,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.favorite_border_rounded, color: Colors.pinkAccent),
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('❤️ Liked Story!')),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
           ],
         ),
       ),

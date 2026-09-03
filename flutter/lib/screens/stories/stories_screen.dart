@@ -17,17 +17,25 @@ class StoriesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final stories = appState.stories;
-    final myStory = stories.where((s) => s.isMe).firstOrNull ??
-        (stories.isNotEmpty
-            ? stories.first
-            : UserStories(
-                userId: appState.currentUser?.id ?? 'me',
-                userName: appState.currentUser?.displayName ?? 'My Status',
-                userAvatar: appState.currentUser?.avatarUrl ?? '',
-                isMe: true,
-                stories: [],
-              ));
-    final otherStories = stories.where((s) => !s.isMe).toList();
+    final myStory = stories
+            .where((s) =>
+                s.isMe ||
+                (appState.currentUser != null &&
+                    s.userId == appState.currentUser!.id))
+            .firstOrNull ??
+        UserStories(
+          userId: appState.currentUser?.id ?? 'me',
+          userName: appState.currentUser?.displayName ?? 'My Status',
+          userAvatar: appState.currentUser?.avatarUrl ?? '',
+          isMe: true,
+          stories: [],
+        );
+    final otherStories = stories
+        .where((s) =>
+            !s.isMe &&
+            (appState.currentUser == null ||
+                s.userId != appState.currentUser!.id))
+        .toList();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -65,7 +73,10 @@ class StoriesScreen extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => StoryViewerScreen(userStories: myStory),
+                              builder: (_) => StoryViewerScreen(
+                                userStories: myStory,
+                                appState: appState,
+                              ),
                             ),
                           );
                         } else {
@@ -98,7 +109,10 @@ class StoriesScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => StoryViewerScreen(userStories: myStory),
+                            builder: (_) => StoryViewerScreen(
+                              userStories: myStory,
+                              appState: appState,
+                            ),
                           ),
                         );
                       } else {
@@ -187,7 +201,10 @@ class StoriesScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => StoryViewerScreen(userStories: item),
+                        builder: (_) => StoryViewerScreen(
+                          userStories: item,
+                          appState: appState,
+                        ),
                       ),
                     );
                   }
