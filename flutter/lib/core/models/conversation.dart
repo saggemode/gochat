@@ -23,6 +23,7 @@ class Conversation {
   final bool isPinned;
   final bool isMuted;
   final bool isOnline;
+  final DateTime? lastSeen;
   final DateTime updatedAt;
   final List<String> memberIds;
   final InvitationStatus invitationStatus;
@@ -39,6 +40,7 @@ class Conversation {
     this.isPinned = false,
     this.isMuted = false,
     this.isOnline = false,
+    this.lastSeen,
     DateTime? updatedAt,
     List<String>? memberIds,
     this.invitationStatus = InvitationStatus.accepted,
@@ -61,6 +63,7 @@ class Conversation {
     bool? isPinned,
     bool? isMuted,
     bool? isOnline,
+    DateTime? lastSeen,
     DateTime? updatedAt,
     List<String>? memberIds,
     InvitationStatus? invitationStatus,
@@ -77,6 +80,7 @@ class Conversation {
       isPinned: isPinned ?? this.isPinned,
       isMuted: isMuted ?? this.isMuted,
       isOnline: isOnline ?? this.isOnline,
+      lastSeen: lastSeen ?? this.lastSeen,
       updatedAt: updatedAt ?? this.updatedAt,
       memberIds: memberIds ?? this.memberIds,
       invitationStatus: invitationStatus ?? this.invitationStatus,
@@ -101,6 +105,14 @@ class Conversation {
       title = title.replaceAll('BBM', 'GOCHAT');
     }
 
+    DateTime? parsedLastSeen;
+    final ls = json['last_seen'];
+    if (ls is int && ls > 0) {
+      parsedLastSeen = DateTime.fromMillisecondsSinceEpoch(ls * 1000);
+    } else if (ls is String && ls.isNotEmpty) {
+      parsedLastSeen = DateTime.tryParse(ls);
+    }
+
     return Conversation(
       id: json['id']?.toString() ?? '',
       title: title,
@@ -115,6 +127,7 @@ class Conversation {
       isPinned: json['is_pinned'] == true,
       isMuted: json['is_muted'] == true,
       isOnline: json['is_online'] == true,
+      lastSeen: parsedLastSeen,
       updatedAt: json['updated_at'] != null
           ? DateTime.tryParse(json['updated_at'].toString()) ?? DateTime.now()
           : DateTime.now(),
@@ -136,6 +149,7 @@ class Conversation {
       'is_pinned': isPinned,
       'is_muted': isMuted,
       'is_online': isOnline,
+      'last_seen': lastSeen?.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'member_ids': memberIds,
       'invitation_status': invitationStatus.name,

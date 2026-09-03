@@ -12,3 +12,4 @@ export 'giphy_tenor_service.dart';
 export 'starred_message_service.dart';
 export 'push_notification_service.dart';
 export 'voip_call_service.dart';
+export 'contact_sync_service.dart';

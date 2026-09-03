@@ -287,6 +287,31 @@ class ApiService {
     return null;
   }
 
+  // ── Contacts: Sync Device Contacts with Registered GoChat Users ───────────
+  static Future<List<Map<String, dynamic>>> syncContacts(List<String> identifiers) async {
+    if (identifiers.isEmpty) return [];
+    final token = await StorageService.getToken();
+    if (token == null || token.isEmpty) return [];
+
+    try {
+      final res = await http
+          .post(
+            Uri.parse(ApiConstants.syncContacts),
+            headers: await _headers(),
+            body: jsonEncode({'identifiers': identifiers}),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final data = jsonDecode(res.body);
+        if (data is List) {
+          return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
   // ── Chat: Get Conversations ─────────────────────────────────────────────────
   static Future<List<Conversation>> getConversations() async {
     final res = await http

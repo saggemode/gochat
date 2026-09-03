@@ -297,6 +297,8 @@ func (r *UserRepository) GetUsersByIdentifiers(ctx context.Context, identifiers 
 			FROM users 
 			WHERE LOWER(email) = ANY(SELECT LOWER(x) FROM unnest($1::text[]) x)
 			   OR phone = ANY($1)
+			   OR REGEXP_REPLACE(phone, '\D', '', 'g') = ANY(SELECT REGEXP_REPLACE(x, '\D', '', 'g') FROM unnest($1::text[]) x WHERE LENGTH(REGEXP_REPLACE(x, '\D', '', 'g')) >= 7)
+			   OR (LENGTH(REGEXP_REPLACE(phone, '\D', '', 'g')) >= 10 AND RIGHT(REGEXP_REPLACE(phone, '\D', '', 'g'), 10) = ANY(SELECT RIGHT(REGEXP_REPLACE(x, '\D', '', 'g'), 10) FROM unnest($1::text[]) x WHERE LENGTH(REGEXP_REPLACE(x, '\D', '', 'g')) >= 10))
 			   OR LOWER(display_name) = ANY(SELECT LOWER(x) FROM unnest($1::text[]) x)
 			   OR id::text = ANY($1)
 			   OR UPPER(pin) = ANY(SELECT UPPER(x) FROM unnest($1::text[]) x)

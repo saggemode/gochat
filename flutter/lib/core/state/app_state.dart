@@ -36,6 +36,8 @@ class AppState extends ChangeNotifier {
   List<MarketplaceOrder> _sellerOrders = [];
   List<StoreCoupon> _storeCoupons = [];
   CallRecord? _activeCall;
+  List<SyncedContact> _syncedContacts = [];
+  bool _isSyncingContacts = false;
 
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
@@ -45,6 +47,12 @@ class AppState extends ChangeNotifier {
   bool get isDarkMode => _themeMode == ThemeMode.dark;
 
   List<Conversation> get conversations => _conversations;
+  List<SyncedContact> get syncedContacts => _syncedContacts;
+  List<SyncedContact> get registeredContacts =>
+      _syncedContacts.where((c) => c.isRegistered).toList();
+  List<SyncedContact> get inviteContacts =>
+      _syncedContacts.where((c) => !c.isRegistered).toList();
+  bool get isSyncingContacts => _isSyncingContacts;
   List<UserStories> get stories => _stories;
   List<CallRecord> get calls => _calls;
   List<Channel> get channels => _channels;
@@ -228,6 +236,9 @@ class AppState extends ChangeNotifier {
           _conversations = cached;
         }
       }
+
+      // Load cached synced contacts for instant contact picker
+      loadCachedContacts();
 
       // Fetch messages for each active conversation & cache
       for (final conv in _conversations) {
@@ -1297,6 +1308,34 @@ class AppState extends ChangeNotifier {
           await StorageService.saveCachedConversations(_conversations);
         }
 
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  // ── Contacts: Scan & Sync Device Contacts ──────────────────────────────────
+  Future<void> syncDeviceContacts({bool force = false}) async {
+    if (_currentUser == null) return;
+    _isSyncingContacts = true;
+    notifyListeners();
+
+    try {
+      _syncedContacts = await ContactSyncService().scanAndSyncContacts(
+        currentUserId: _currentUser!.id,
+      );
+    } catch (e) {
+      debugPrint('[AppState] Error syncing device contacts: $e');
+    } finally {
+      _isSyncingContacts = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadCachedContacts() async {
+    try {
+      final cached = await ContactSyncService().getCachedContacts();
+      if (cached.isNotEmpty) {
+        _syncedContacts = cached;
         notifyListeners();
       }
     } catch (_) {}

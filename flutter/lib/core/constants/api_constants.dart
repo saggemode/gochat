@@ -14,6 +14,7 @@ class ApiConstants {
   static const String refresh = '$apiV1/auth/refresh';
   static const String requestOtp = '$apiV1/auth/otp/request';
   static const String verifyOtp = '$apiV1/auth/otp/verify';
+  static const String syncContacts = '$apiV1/users/sync';
 
   // Chat & Messaging endpoints
   static const String conversations = '$apiV1/chat/conversations';

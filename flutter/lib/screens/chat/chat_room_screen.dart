@@ -1065,7 +1065,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                                   ? typingText
                                   : (widget.conversation.isOnline
                                         ? (hasStory ? '🟢 Online · Has Status' : 'Online')
-                                        : (hasStory ? '📸 Tap photo to view status' : 'tap here for info'))),
+                                        : (hasStory
+                                            ? '📸 Tap photo to view status'
+                                            : SyncedContact.formatLastSeen(
+                                                widget.conversation.lastSeen,
+                                                widget.conversation.isOnline,
+                                              )))),
                         style: TextStyle(
                           fontSize: 11,
                           color: isRecordingAudio

@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../widgets/widgets.dart';
 import 'chat_room_screen.dart';
 import 'new_chat_by_pin_dialog.dart';
+import 'select_contact_screen.dart';
 import '../qr/qr_scanner_screen.dart';
 import '../stories/story_viewer_screen.dart';
 
@@ -276,7 +277,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   description: _isSearching
                       ? 'No messages match "${_searchController.text}"'
                       : 'Start chatting with your contacts using their GOCHAT PIN or phone number.',
-                  actionLabel: _isSearching ? 'Clear Search' : 'Start Chat by PIN',
+                  actionLabel: _isSearching ? 'Clear Search' : 'Select Contact',
                   onAction: () {
                     if (_isSearching) {
                       setState(() {
@@ -284,7 +285,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         _isSearching = false;
                       });
                     } else {
-                      NewChatByPinDialog.show(context, widget.appState);
+                      SelectContactScreen.open(context, widget.appState);
                     }
                   },
                 ),
@@ -381,8 +382,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'chat_list_fab',
-        tooltip: 'Start Chat by PIN',
-        onPressed: () => NewChatByPinDialog.show(context, widget.appState),
+        tooltip: 'New Chat',
+        onPressed: () => SelectContactScreen.open(context, widget.appState),
         child: const Icon(Icons.message_rounded),
       ),
     );

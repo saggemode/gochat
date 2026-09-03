@@ -797,21 +797,29 @@ func (h *AuthHandler) SyncContacts(c *gin.Context) {
 	}
 
 	type ClientUser struct {
-		ID     string `json:"id"`
-		Name   string `json:"name"`
-		Email  string `json:"email"`
-		Phone  string `json:"phone"`
-		Avatar string `json:"avatar"`
+		ID         string `json:"id"`
+		Name       string `json:"name"`
+		Email      string `json:"email"`
+		Phone      string `json:"phone"`
+		Avatar     string `json:"avatar"`
+		StatusText string `json:"status_text"`
+		IsOnline   bool   `json:"is_online"`
+		LastSeen   int64  `json:"last_seen"`
+		PIN        string `json:"pin"`
 	}
 
 	var clientUsers []ClientUser
 	for _, u := range resp.Users {
 		clientUsers = append(clientUsers, ClientUser{
-			ID:     u.Id,
-			Name:   u.DisplayName,
-			Email:  u.Email,
-			Phone:  u.Phone,
-			Avatar: u.AvatarUrl,
+			ID:         u.Id,
+			Name:       u.DisplayName,
+			Email:      u.Email,
+			Phone:      u.Phone,
+			Avatar:     u.AvatarUrl,
+			StatusText: u.StatusText,
+			IsOnline:   u.IsOnline,
+			LastSeen:   u.LastSeen,
+			PIN:        u.Pin,
 		})
 	}
 

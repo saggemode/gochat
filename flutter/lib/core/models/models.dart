@@ -10,3 +10,4 @@ export 'store_profile.dart';
 export 'marketplace_order.dart';
 export 'store_coupon.dart';
 export 'game_data.dart';
+export 'synced_contact.dart';

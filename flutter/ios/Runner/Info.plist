@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSContactsUsageDescription</key>
+	<string>GoChat needs access to your contacts to discover which of your friends and family are already on GoChat.</string>
 </dict>
 </plist>
