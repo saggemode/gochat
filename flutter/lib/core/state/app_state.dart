@@ -754,17 +754,8 @@ class AppState extends ChangeNotifier {
       await wsService.connect();
       await refreshData();
     } catch (e) {
-      _errorMessage = e.toString();
-      // If offline, check if matching user is already cached
-      final cachedUser = await StorageService.getUser();
-      if (cachedUser != null &&
-          (cachedUser.email == email ||
-              cachedUser.phone == email ||
-              cachedUser.pin == email.toUpperCase())) {
-        _currentUser = cachedUser;
-      } else {
-        rethrow;
-      }
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      rethrow;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -806,28 +797,9 @@ class AppState extends ChangeNotifier {
       await wsService.connect();
       await refreshData();
     } catch (e) {
-      _errorMessage = e.toString();
-      // Graceful fallback for offline / server cold boot
-      if (_currentUser == null) {
-        final fallbackId = 'user_${DateTime.now().millisecondsSinceEpoch}';
-        final cleanPin = fallbackId
-            .substring(fallbackId.length - 6)
-            .toUpperCase();
-        final assignedName = displayName.isNotEmpty
-            ? displayName
-            : (phone.isNotEmpty
-                  ? 'User ${phone.length > 4 ? phone.substring(phone.length - 4) : phone}'
-                  : 'GoChat User');
-        _currentUser = User(
-          id: fallbackId,
-          displayName: assignedName,
-          phone: phone,
-          email: email,
-          pin: cleanPin,
-          countryCode: countryCode,
-        );
-        await StorageService.saveUser(_currentUser!);
-      }
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _currentUser = null;
+      rethrow;
     } finally {
       _isLoading = false;
       notifyListeners();

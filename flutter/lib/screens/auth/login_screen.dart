@@ -77,12 +77,15 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       final user = widget.appState.currentUser;
-      final assignedName = user?.displayName.isNotEmpty == true
-          ? user!.displayName
+      if (user == null) {
+        throw Exception('Registration did not complete. Please try again.');
+      }
+      final assignedName = user.displayName.isNotEmpty == true
+          ? user.displayName
           : 'User ${fullPhone.length > 4 ? fullPhone.substring(fullPhone.length - 4) : fullPhone}';
-      final pin = (user?.pin.isNotEmpty == true)
-          ? user!.pin
-          : (user?.id.isNotEmpty == true ? user!.id.replaceAll('-', '').substring(0, 6).toUpperCase() : '8492A1');
+      final pin = (user.pin.isNotEmpty == true)
+          ? user.pin
+          : (user.id.isNotEmpty == true ? user.id.replaceAll('-', '').substring(0, 6).toUpperCase() : '8492A1');
 
       setState(() {
         _assignedUsername = assignedName;
@@ -119,14 +122,17 @@ class _LoginScreenState extends State<LoginScreen> {
       await widget.appState.login(identifier, '');
 
       final user = widget.appState.currentUser;
-      final pin = (user?.pin.isNotEmpty == true)
-          ? user!.pin
-          : (user?.id.isNotEmpty == true ? user!.id.replaceAll('-', '').substring(0, 6).toUpperCase() : '8492A1');
+      if (user == null) {
+        throw Exception('Sign in did not complete. Please try again.');
+      }
+      final pin = (user.pin.isNotEmpty == true)
+          ? user.pin
+          : (user.id.isNotEmpty == true ? user.id.replaceAll('-', '').substring(0, 6).toUpperCase() : '8492A1');
 
       setState(() {
-        _assignedUsername = user?.displayName;
+        _assignedUsername = user.displayName;
         _generatedPin = pin;
-        _otpDestination = user?.phone.isNotEmpty == true ? user!.phone : identifier;
+        _otpDestination = user.phone.isNotEmpty ? user.phone : identifier;
         _showOtp = true;
         _loading = false;
       });

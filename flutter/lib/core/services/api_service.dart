@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' show MediaType;
 import '../constants/api_constants.dart';
@@ -66,6 +66,43 @@ class ApiService {
     return headers;
   }
 
+  /// Check whether an error is due to missing network / offline connection
+  static bool isNetworkException(dynamic error) {
+    if (error is SocketException ||
+        error is http.ClientException ||
+        error is TimeoutException) {
+      return true;
+    }
+    final msg = error.toString().toLowerCase();
+    return msg.contains('socketexception') ||
+        msg.contains('network is unreachable') ||
+        msg.contains('failed host lookup') ||
+        msg.contains('no address associated with hostname') ||
+        msg.contains('connection refused') ||
+        msg.contains('connection reset') ||
+        msg.contains('connection closed') ||
+        msg.contains('clientexception') ||
+        msg.contains('timeoutexception') ||
+        msg.contains('os error') ||
+        msg.contains('offline');
+  }
+
+  /// Verify that the device currently has active internet connectivity
+  static Future<bool> hasInternetConnection() async {
+    if (kIsWeb) return true;
+    try {
+      final host = Uri.parse(ApiConstants.baseUrl).host;
+      if (host.isNotEmpty && host != 'localhost' && host != '10.0.2.2' && host != '127.0.0.1') {
+        final res = await InternetAddress.lookup(host).timeout(const Duration(seconds: 4));
+        return res.isNotEmpty && res[0].rawAddress.isNotEmpty;
+      }
+      final res = await InternetAddress.lookup('google.com').timeout(const Duration(seconds: 4));
+      return res.isNotEmpty && res[0].rawAddress.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ── Auth: Register ──────────────────────────────────────────────────────────
   static Future<Map<String, dynamic>> register({
     String email = '',
@@ -74,6 +111,12 @@ class ApiService {
     String phone = '',
     String countryCode = '',
   }) async {
+    // 1. Verify device has active network connectivity
+    final hasNet = await hasInternetConnection();
+    if (!hasNet) {
+      throw Exception('No internet connection. Please connect to the internet to register.');
+    }
+
     final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
     final safeName = displayName.isNotEmpty
         ? displayName
@@ -81,76 +124,60 @@ class ApiService {
               ? 'User ${cleanPhone.length > 4 ? cleanPhone.substring(cleanPhone.length - 4) : cleanPhone}'
               : 'GoChat User');
     final identifier = cleanPhone.isNotEmpty ? cleanPhone : email;
+    final safePassword = password.isNotEmpty ? password : 'GoChat@Password123!';
 
-    // 1. Check if user already exists on the backend by attempting login first
-    if (identifier.isNotEmpty) {
-      try {
-        final existingSession = await login(
-          email: identifier,
-          password: password,
-        );
-        final token =
-            existingSession['access_token'] ?? existingSession['token'] ?? '';
-        if (isValidJwt(token) && existingSession['user'] != null) {
-          await StorageService.saveToken(token);
-          return existingSession;
-        }
-      } catch (_) {}
-    }
-
-    // 2. If not found, proceed to register new user
     final body = <String, dynamic>{
       if (cleanPhone.isNotEmpty) 'phone': cleanPhone,
       if (email.isNotEmpty) 'email': email,
-      'password': password.isNotEmpty ? password : 'GoChat@Password123!',
+      'password': safePassword,
       'display_name': safeName,
       'country_code': countryCode.isNotEmpty ? countryCode : 'NG',
     };
 
+    http.Response res;
     try {
-      final res = await http
+      res = await http
           .post(
             Uri.parse(ApiConstants.register),
             headers: await _headers(requireAuth: false),
             body: jsonEncode(body),
           )
-          .timeout(const Duration(seconds: 30));
-
-      if (res.statusCode >= 200 && res.statusCode < 300) {
-        final data = jsonDecode(res.body);
-        final token = data['access_token'] ?? data['token'] ?? '';
-        if (isValidJwt(token)) {
-          await StorageService.saveToken(token);
-        }
-        return data;
+          .timeout(const Duration(seconds: 20));
+    } catch (e) {
+      if (isNetworkException(e)) {
+        throw Exception('No internet connection. Please connect to the internet to register.');
       }
-    } catch (_) {}
-
-    // 3. Fallback: auto-login creates account if not exists
-    if (identifier.isNotEmpty) {
-      try {
-        final loginRes = await login(email: identifier, password: password);
-        final token = loginRes['access_token'] ?? loginRes['token'] ?? '';
-        if (isValidJwt(token)) {
-          await StorageService.saveToken(token);
-        }
-        return loginRes;
-      } catch (_) {}
+      rethrow;
     }
 
-    return {
-      'user': {
-        'id':
-            'user_${cleanPhone.isNotEmpty ? cleanPhone.replaceAll('+', '') : DateTime.now().millisecondsSinceEpoch}',
-        'display_name': safeName,
-        'phone': cleanPhone,
-        'email': email,
-        'pin': cleanPhone.length >= 6
-            ? cleanPhone.substring(cleanPhone.length - 6).toUpperCase()
-            : '8492A1',
-        'status_text': 'Hey there! I am using GoChat.',
-      },
-    };
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final data = jsonDecode(res.body);
+      final token = data['access_token'] ?? data['token'] ?? '';
+      if (isValidJwt(token)) {
+        await StorageService.saveToken(token);
+      }
+      return data;
+    }
+
+    // If user already exists on the backend, try logging in with the credentials
+    final responseBody = res.body;
+    if (res.statusCode == 409 ||
+        responseBody.toLowerCase().contains('already exists') ||
+        responseBody.toLowerCase().contains('already registered')) {
+      if (identifier.isNotEmpty) {
+        return await login(email: identifier, password: safePassword);
+      }
+    }
+
+    try {
+      final data = jsonDecode(responseBody);
+      throw Exception(
+        data['error'] ?? data['message'] ?? 'Registration failed (${res.statusCode})',
+      );
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Server error (${res.statusCode})');
+    }
   }
 
   // ── Auth: Login ─────────────────────────────────────────────────────────────
@@ -158,19 +185,33 @@ class ApiService {
     required String email,
     required String password,
   }) async {
+    // 1. Verify device has active network connectivity
+    final hasNet = await hasInternetConnection();
+    if (!hasNet) {
+      throw Exception('No internet connection. Please connect to the internet to sign in.');
+    }
+
     final cleanIdentifier = email.trim();
     final safePassword = password.isNotEmpty ? password : '';
 
-    final res = await http
-        .post(
-          Uri.parse(ApiConstants.login),
-          headers: await _headers(requireAuth: false),
-          body: jsonEncode({
-            'email': cleanIdentifier,
-            'password': safePassword,
-          }),
-        )
-        .timeout(const Duration(seconds: 30));
+    http.Response res;
+    try {
+      res = await http
+          .post(
+            Uri.parse(ApiConstants.login),
+            headers: await _headers(requireAuth: false),
+            body: jsonEncode({
+              'email': cleanIdentifier,
+              'password': safePassword,
+            }),
+          )
+          .timeout(const Duration(seconds: 20));
+    } catch (e) {
+      if (isNetworkException(e)) {
+        throw Exception('No internet connection. Please connect to the internet to sign in.');
+      }
+      rethrow;
+    }
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
       final data = jsonDecode(res.body);
