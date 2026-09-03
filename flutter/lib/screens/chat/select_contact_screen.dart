@@ -83,7 +83,7 @@ class _SelectContactScreenState extends State<SelectContactScreen> {
       }
     }
 
-    if (existingConv != null) {
+    if (existingConv != null && !existingConv.id.startsWith('conv_')) {
       if (!mounted) return;
       Navigator.pushReplacement(
         context,

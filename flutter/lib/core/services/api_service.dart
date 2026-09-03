@@ -348,7 +348,7 @@ class ApiService {
                 'is_group': isGroup,
               }),
             )
-            .timeout(const Duration(seconds: 6));
+            .timeout(const Duration(seconds: 25));
 
         final data = jsonDecode(res.body);
         if (res.statusCode >= 200 && res.statusCode < 300) {
@@ -382,7 +382,7 @@ class ApiService {
               Uri.parse(ApiConstants.conversationMessages(conversationId)),
               headers: await _headers(),
             )
-            .timeout(const Duration(seconds: 6));
+            .timeout(const Duration(seconds: 25));
 
         if (res.statusCode == 200) {
           final data = jsonDecode(res.body);

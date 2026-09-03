@@ -405,11 +405,7 @@ class AppState extends ChangeNotifier {
           _conversations.removeAt(convIdx);
           _conversations.insert(0, updated);
         } else {
-          // New conversation created by sender - add to receiver's list as incoming invitation if not from me
-          final isFromMe =
-              msg.isMe ||
-              (_currentUser?.id.isNotEmpty == true &&
-                  msg.senderId == _currentUser?.id);
+          // New conversation created by sender - add to receiver's list
           final newConv = Conversation(
             id: msg.conversationId,
             title: msg.senderName.isNotEmpty && msg.senderName != 'Me'
@@ -417,18 +413,27 @@ class AppState extends ChangeNotifier {
                 : 'Contact',
             lastMessage: msg,
             type: ConversationType.direct,
-            invitationStatus: isFromMe
-                ? InvitationStatus.pendingOutgoing
-                : InvitationStatus.pendingIncoming,
+            invitationStatus: InvitationStatus.accepted,
             invitationSenderId: msg.senderId,
             updatedAt: DateTime.now(),
           );
           _conversations.insert(0, newConv);
-          // Sync full conversation details from server in background
+          // Sync full conversation details from server in background, merging to preserve latest messages
           ApiService.getConversations()
               .then((convs) {
                 if (convs.isNotEmpty) {
-                  _conversations = convs;
+                  final updatedList = convs.map((newC) {
+                    final existingIdx = _conversations.indexWhere((c) => c.id == newC.id);
+                    if (existingIdx != -1) {
+                      final ex = _conversations[existingIdx];
+                      return newC.copyWith(
+                        lastMessage: ex.lastMessage ?? newC.lastMessage,
+                        unreadCount: ex.unreadCount,
+                      );
+                    }
+                    return newC;
+                  }).toList();
+                  _conversations = updatedList;
                   StorageService.saveCachedConversations(_conversations);
                   notifyListeners();
                 }
@@ -1067,9 +1072,15 @@ class AppState extends ChangeNotifier {
       }
       // Find recipient_id for direct 1:1 conversation so gateway can target peer directly
       String? recipientId;
-      if (idx != -1 && _conversations.isNotEmpty) {
-        final conv = _conversations[0];
-        for (final mId in conv.memberIds) {
+      Conversation? targetConv;
+      for (final c in _conversations) {
+        if (c.id == convId) {
+          targetConv = c;
+          break;
+        }
+      }
+      if (targetConv != null) {
+        for (final mId in targetConv.memberIds) {
           if (mId.isNotEmpty && mId != _currentUser?.id) {
             recipientId = mId;
             break;

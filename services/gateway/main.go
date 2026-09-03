@@ -253,7 +253,7 @@ func main() {
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(authClient, log)
-	chatHandler := handlers.NewChatHandler(chatClient, authClient, log)
+	chatHandler := handlers.NewChatHandler(chatClient, authClient, hub, log)
 	aiHandler := handlers.NewAIHandler(aiClient, log)
 	mediaHandler := handlers.NewMediaHandler(mediaClient, cfg.TelegramBotToken, log)
 	groupHandler := handlers.NewGroupHandler(groupClient, log)

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -12,18 +13,20 @@ import (
 
 	authpb "gochat/gen/auth"
 	chatpb "gochat/gen/chat"
+	"gochat/services/gateway/ws"
 )
 
 // ChatHandler wraps the Chat Service gRPC client.
 type ChatHandler struct {
 	client     chatpb.ChatServiceClient
 	authClient authpb.AuthServiceClient
+	hub        *ws.Hub
 	log        *zap.Logger
 }
 
 // NewChatHandler constructs the ChatHandler.
-func NewChatHandler(client chatpb.ChatServiceClient, authClient authpb.AuthServiceClient, log *zap.Logger) *ChatHandler {
-	return &ChatHandler{client: client, authClient: authClient, log: log}
+func NewChatHandler(client chatpb.ChatServiceClient, authClient authpb.AuthServiceClient, hub *ws.Hub, log *zap.Logger) *ChatHandler {
+	return &ChatHandler{client: client, authClient: authClient, hub: hub, log: log}
 }
 
 // CreateConversation handles 1:1 and group creation.
@@ -299,6 +302,45 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to send message")
 		return
+	}
+
+	// Fan out to all conversation members connected via WebSocket immediately
+	if h.hub != nil && resp != nil && resp.Message != nil {
+		go func(m *chatpb.Message, cid, uid string) {
+			convResp, cErr := h.client.GetConversation(c.Request.Context(), &chatpb.GetConversationRequest{
+				ConversationId: cid,
+				UserId:         uid,
+			})
+			if cErr == nil && convResp != nil && convResp.Conversation != nil {
+				payloadMap := map[string]interface{}{
+					"type":            "new_message",
+					"event_type":      "EVENT_NEW_MESSAGE",
+					"conversation_id": cid,
+					"sender_id":       uid,
+					"message": map[string]interface{}{
+						"id":              m.Id,
+						"conversation_id": m.ConversationId,
+						"sender_id":       m.SenderId,
+						"content":         m.Content,
+						"type":            m.Type.String(),
+						"media_type":      m.Type.String(),
+						"status":          m.Status.String(),
+						"media_url":       m.MediaUrl,
+						"media_mime":      m.MediaMime,
+						"media_size":      m.MediaSize,
+						"parent_id":       m.ParentId,
+						"created_at":      m.CreatedAt,
+						"send_at":         m.SendAt,
+					},
+				}
+				data, _ := json.Marshal(payloadMap)
+				for _, memberID := range convResp.Conversation.MemberIds {
+					if memberID != uid {
+						h.hub.SendToUser(memberID, data)
+					}
+				}
+			}
+		}(resp.Message, convID, userID)
 	}
 
 	c.JSON(http.StatusCreated, resp.Message)

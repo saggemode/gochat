@@ -1094,16 +1094,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.palette_outlined),
-              tooltip: 'Wallpaper & Theme',
-              onPressed: _openThemeCustomizer,
-            ),
-            IconButton(
-              icon: const Icon(Icons.vibration_rounded, color: Colors.amber),
-              tooltip: 'GOCHAT PING!',
-              onPressed: _handleSendPing,
-            ),
-            IconButton(
               icon: const Icon(Icons.videocam_rounded),
               onPressed: () => _startCall(CallType.video),
             ),
@@ -1146,16 +1136,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                     ],
                   ),
                 ),
-                const PopupMenuItem(
-                  value: 'theme',
-                  child: Row(
-                    children: [
-                      Icon(Icons.palette_outlined, size: 18, color: AppTheme.primary),
-                      SizedBox(width: 10),
-                      Text('Wallpaper & Theme'),
-                    ],
-                  ),
-                ),
+
                 PopupMenuItem(
                   value: 'disappearing',
                   child: Row(
@@ -1185,6 +1166,16 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
                 const PopupMenuItem(
                   value: 'poll',
                   child: Text('📊 Create Live Poll'),
+                ),
+                const PopupMenuItem(
+                  value: 'theme',
+                  child: Row(
+                    children: [
+                      Icon(Icons.palette_outlined, size: 18, color: AppTheme.primary),
+                      SizedBox(width: 10),
+                      Text('Wallpaper & Theme'),
+                    ],
+                  ),
                 ),
               ],
             ),

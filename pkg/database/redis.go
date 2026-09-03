@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -20,8 +21,12 @@ func NewRedis(ctx context.Context, addr, password string, db int, log *zap.Logge
 			return nil, fmt.Errorf("parsing redis URL: %w", err)
 		}
 	} else {
+		redisAddr := addr
+		if redisAddr != "" && !strings.Contains(redisAddr, ":") {
+			redisAddr = redisAddr + ":6379"
+		}
 		opts = &redis.Options{
-			Addr:         addr,
+			Addr:         redisAddr,
 			Password:     password,
 			DB:           db,
 			DialTimeout:  5 * time.Second,
