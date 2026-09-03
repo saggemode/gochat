@@ -75,6 +75,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
     super.initState();
     widget.appState.addListener(_onStateChange);
     widget.appState.markConversationAsRead(widget.conversation.id);
+    widget.appState.fetchMessagesFor(widget.conversation.id);
 
     // Check E2EE verification status
     E2EEVerificationService().isVerified(widget.conversation.id).then((v) {
@@ -117,6 +118,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
   void didUpdateWidget(covariant ChatRoomScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.conversation.id != widget.conversation.id) {
+      widget.appState.fetchMessagesFor(widget.conversation.id);
       _scrollToBottom(animate: false);
       _scrollToBottom(animate: false, delayMs: 80);
     }

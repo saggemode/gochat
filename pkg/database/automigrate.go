@@ -117,6 +117,25 @@ func AutoMigrate(ctx context.Context, pool *pgxpool.Pool, serviceName string, lo
 		}
 	}
 
+	// Clean up any cross-database foreign keys targeting users to prevent insert failures across isolated microservice databases
+	_, _ = pool.Exec(ctx, `
+		DO $$ 
+		DECLARE r RECORD;
+		BEGIN
+			FOR r IN (
+				SELECT tc.table_schema, tc.table_name, tc.constraint_name
+				FROM information_schema.table_constraints tc
+				JOIN information_schema.constraint_column_usage ccu
+				  ON ccu.constraint_name = tc.constraint_name
+				WHERE tc.constraint_type = 'FOREIGN KEY'
+				  AND ccu.table_name = 'users'
+				  AND tc.table_schema NOT IN ('auth', 'core')
+			) LOOP
+				EXECUTE 'ALTER TABLE "' || r.table_schema || '"."' || r.table_name || '" DROP CONSTRAINT IF EXISTS "' || r.constraint_name || '" CASCADE;';
+			END LOOP;
+		END $$;
+	`)
+
 	log.Info("✅ Permanent boot-time database auto-migration finished successfully!",
 		zap.String("service", serviceName),
 		zap.Int("processed_files", len(sqlFiles)),

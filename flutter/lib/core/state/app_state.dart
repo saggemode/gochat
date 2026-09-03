@@ -328,6 +328,22 @@ class AppState extends ChangeNotifier {
                 rawMsg.containsKey('conversationId')));
 
     if (isMessageEvent) {
+      final convId = (data['conversation_id'] ??
+              data['conversationId'] ??
+              data['conv_id'] ??
+              (rawMsg is Map ? (rawMsg['conversation_id'] ?? rawMsg['conversationId']) : null) ??
+              '')
+          .toString();
+
+      // If notification payload without message body, fetch latest messages from server
+      if ((rawMsg == null || (rawMsg is Map && rawMsg['content'] == null)) &&
+          data['content'] == null) {
+        if (convId.isNotEmpty) {
+          fetchMessagesFor(convId);
+        }
+        return;
+      }
+
       final Map<String, dynamic> payload = (rawMsg is Map<String, dynamic>)
           ? rawMsg
           : data;
@@ -1038,11 +1054,24 @@ class AppState extends ChangeNotifier {
         _conversations.insert(0, updated);
         await StorageService.saveCachedConversations(_conversations);
       }
+      // Find recipient_id for direct 1:1 conversation so gateway can target peer directly
+      String? recipientId;
+      if (idx != -1 && _conversations.isNotEmpty) {
+        final conv = _conversations[0];
+        for (final mId in conv.memberIds) {
+          if (mId.isNotEmpty && mId != _currentUser?.id) {
+            recipientId = mId;
+            break;
+          }
+        }
+      }
+
       // Broadcast over WebSocket to all connected peers
       wsService.send({
         'type': 'new_message',
         'event_type': 'EVENT_NEW_MESSAGE',
         'conversation_id': convId,
+        if (recipientId != null && recipientId.isNotEmpty) 'recipient_id': recipientId,
         'message': {
           'id': msgToAdd.id,
           'conversation_id': convId,
@@ -1248,6 +1277,31 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── Chat: Fetch Latest Messages for Conversation ───────────────────────────
+  Future<void> fetchMessagesFor(String convId) async {
+    if (convId.isEmpty || convId.startsWith('conv_')) return;
+    try {
+      final msgs = await ApiService.getMessages(convId);
+      if (msgs.isNotEmpty) {
+        _messages[convId] = msgs;
+        await StorageService.saveCachedMessages(convId, msgs);
+        await DatabaseService().saveMessages(convId, msgs);
+
+        final convIdx = _conversations.indexWhere((c) => c.id == convId);
+        if (convIdx != -1) {
+          final last = msgs.last;
+          _conversations[convIdx] = _conversations[convIdx].copyWith(
+            lastMessage: last,
+            updatedAt: last.createdAt,
+          );
+          await StorageService.saveCachedConversations(_conversations);
+        }
+
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
   // ── Chat: Create Conversation ───────────────────────────────────────────────
   Future<Conversation> createConversation(
     String name,
@@ -1267,6 +1321,10 @@ class AppState extends ChangeNotifier {
         partnerPin: partnerPin,
         invitationSenderId: _currentUser?.id,
       );
+      // Remove any broken fallback conversations with 'conv_'
+      _conversations.removeWhere((c) =>
+          c.id.startsWith('conv_') &&
+          (c.title == name || (partnerPin != null && c.partnerPin == partnerPin)));
       _conversations.insert(0, withInvitation);
       await StorageService.saveCachedConversations(_conversations);
       notifyListeners();

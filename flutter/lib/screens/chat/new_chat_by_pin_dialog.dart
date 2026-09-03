@@ -106,7 +106,11 @@ class _NewChatByPinDialogState extends State<NewChatByPinDialog> {
 
     Conversation targetConv;
     final matchIndex = widget.appState.conversations.indexWhere(
-      (c) => c.title.toUpperCase().contains(rawPin) || c.id.toUpperCase().contains(rawPin) || (recipientId.isNotEmpty && c.id == recipientId),
+      (c) =>
+          !c.id.startsWith('conv_') &&
+          (c.title.toUpperCase().contains(rawPin) ||
+              c.id.toUpperCase().contains(rawPin) ||
+              (recipientId.isNotEmpty && c.id == recipientId)),
     );
 
     if (matchIndex != -1) {

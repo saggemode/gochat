@@ -707,14 +707,10 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 					continue
 				}
 
-				// Intercept only new message events
-				if payload["event"] != "new_message" {
-					continue
-				}
-
 				convIDStr := payload["conv_id"]
 				actorIDStr := payload["actor_id"]
 				msgIDStr := payload["msg_id"]
+				eventType := payload["event"]
 				if convIDStr == "" || actorIDStr == "" {
 					continue
 				}
@@ -728,7 +724,7 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 					continue
 				}
 
-				// Find offline recipients
+				// Determine online/offline recipients and deliver events
 				onlineUsers := hub.GetOnlineUsers()
 				onlineMap := make(map[string]bool)
 				for _, uid := range onlineUsers {
@@ -740,7 +736,16 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 						continue
 					}
 
-					if !onlineMap[memberID] {
+					if onlineMap[memberID] {
+						// Deliver the event to online WebSocket clients in real-time
+						hub.SendToUser(memberID, []byte(msg.Payload))
+						log.Debug("Delivered real-time event to online user",
+							zap.String("event", eventType),
+							zap.String("recipient_id", memberID),
+							zap.String("conversation_id", convIDStr),
+						)
+					} else if eventType == "new_message" {
+						// Only log push notifications for new messages
 						log.Info("MOCK PUSH NOTIFICATION TRIGGERED (RECIPIENT OFFLINE)",
 							zap.String("recipient_id", memberID),
 							zap.String("conversation_id", convIDStr),
@@ -753,3 +758,4 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 		}
 	}()
 }
+

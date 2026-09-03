@@ -86,8 +86,12 @@ func Load() *Config {
 		DiscoveryTTL:      time.Duration(getEnvInt("DISCOVERY_TTL_SECONDS", 15)) * time.Second,
 		DiscoveryInterval: time.Duration(getEnvInt("DISCOVERY_INTERVAL_SECONDS", 5)) * time.Second,
 
-		PostgresDSN: getEnv("POSTGRES_DSN",
-			"postgres://gochat:gochat_secret@localhost:5432/gochat?sslmode=disable"),
+		PostgresDSN: getFirstEnv([]string{
+			"CHAT_DB_DSN", "AUTH_DB_DSN", "AUTHZ_DB_DSN", "GROUP_DB_DSN",
+			"STORY_DB_DSN", "CALL_DB_DSN", "CHANNEL_DB_DSN", "AI_DB_DSN",
+			"PAYMENT_DB_DSN", "SOCIAL_DB_DSN", "MINIAPP_DB_DSN", "BUSINESS_DB_DSN",
+			"MEDIA_DB_DSN", "POSTGRES_DSN", "POSTGRES_URL", "DATABASE_URL",
+		}, "postgres://gochat:gochat_secret@localhost:5432/gochat?sslmode=disable"),
 
 		RedisAddr:     getEnv("REDIS_URL", getEnv("REDIS_ADDR", "localhost:6379")),
 		RedisPassword: getEnv("REDIS_PASSWORD", "redis_secret"),
@@ -141,6 +145,15 @@ func Load() *Config {
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
+	}
+	return fallback
+}
+
+func getFirstEnv(keys []string, fallback string) string {
+	for _, key := range keys {
+		if v := os.Getenv(key); v != "" {
+			return v
+		}
 	}
 	return fallback
 }
