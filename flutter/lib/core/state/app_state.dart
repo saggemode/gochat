@@ -360,36 +360,49 @@ class AppState extends ChangeNotifier {
       }
 
       final Map<String, dynamic> payload = (rawMsg is Map<String, dynamic>)
-          ? rawMsg
-          : data;
-      final msg = Message.fromJson(
+          ? Map<String, dynamic>.from(rawMsg)
+          : Map<String, dynamic>.from(data);
+      if ((payload['conversation_id'] == null || payload['conversation_id'].toString().isEmpty) && convId.isNotEmpty) {
+        payload['conversation_id'] = convId;
+      }
+
+      var msg = Message.fromJson(
         payload,
         currentUserId: _currentUser?.id ?? '',
       );
 
-      if (msg.conversationId.isNotEmpty) {
-        if (!_messages.containsKey(msg.conversationId)) {
-          _messages[msg.conversationId] = [];
+      final finalConvId = msg.conversationId.isNotEmpty ? msg.conversationId : convId;
+      if (finalConvId.isNotEmpty && msg.conversationId.isEmpty) {
+        msg = msg.copyWith(conversationId: finalConvId);
+      }
+
+      if (finalConvId.isNotEmpty) {
+        if (!_messages.containsKey(finalConvId)) {
+          _messages[finalConvId] = [];
         }
-        final existingIdx = _messages[msg.conversationId]!.indexWhere(
+        final existingIdx = _messages[finalConvId]!.indexWhere(
           (m) => m.id == msg.id,
         );
         if (existingIdx == -1) {
-          _messages[msg.conversationId]!.add(msg);
+          _messages[finalConvId]!.add(msg);
+          if (!msg.isMe) {
+            HapticFeedback.lightImpact();
+          }
         } else {
-          _messages[msg.conversationId]![existingIdx] = msg;
+          _messages[finalConvId]![existingIdx] = msg;
         }
-        _messages[msg.conversationId]!.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        _messages[finalConvId]!.sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-        // Update cached messages
+        // Save to SQLite database & cache
+        DatabaseService().insertMessage(msg);
         StorageService.saveCachedMessages(
-          msg.conversationId,
-          _messages[msg.conversationId]!,
+          finalConvId,
+          _messages[finalConvId]!,
         );
 
         // Update or insert conversation in list
         final convIdx = _conversations.indexWhere(
-          (c) => c.id == msg.conversationId,
+          (c) => c.id == finalConvId,
         );
         if (convIdx != -1) {
           final currentTitle = _conversations[convIdx].title;
@@ -412,11 +425,15 @@ class AppState extends ChangeNotifier {
           final updated = _conversations[convIdx].copyWith(
             title: shouldUpdateTitle ? msg.senderName : currentTitle,
             lastMessage: msg,
+            unreadCount: isIncomingFromOther
+                ? _conversations[convIdx].unreadCount + 1
+                : _conversations[convIdx].unreadCount,
             invitationStatus: newStatus,
             updatedAt: DateTime.now(),
           );
           _conversations.removeAt(convIdx);
           _conversations.insert(0, updated);
+          DatabaseService().saveConversations(_conversations);
         } else {
           // New conversation created by sender - add to receiver's list
           final isFromMe = msg.isMe ||
@@ -1132,7 +1149,8 @@ class AppState extends ChangeNotifier {
         'type': 'new_message',
         'event_type': 'EVENT_NEW_MESSAGE',
         'conversation_id': convId,
-        if (recipientId != null && recipientId.isNotEmpty) 'recipient_id': recipientId,
+        if (recipientId != null && (recipientId.contains('-') || recipientId.length >= 24))
+          'recipient_id': recipientId,
         'message': {
           'id': msgToAdd.id,
           'conversation_id': convId,

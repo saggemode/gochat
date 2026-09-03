@@ -80,16 +80,20 @@ func (h *Hub) Broadcast(message []byte, excludeUserID string) {
 }
 
 // SendToUser sends a JSON payload directly to a specific user's active client connections.
-func (h *Hub) SendToUser(userID string, message []byte) {
+// Returns true if at least one client connection received the message.
+func (h *Hub) SendToUser(userID string, message []byte) bool {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
+	sent := false
 	for client := range h.clients {
 		if client.userID == userID {
 			select {
 			case client.send <- message:
+				sent = true
 			default:
 			}
 		}
 	}
+	return sent
 }

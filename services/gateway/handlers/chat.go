@@ -339,38 +339,50 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 	// Fan out to all conversation members connected via WebSocket immediately
 	if h.hub != nil && resp != nil && resp.Message != nil {
 		go func(m *chatpb.Message, cid, uid string) {
-			convResp, cErr := h.client.GetConversation(c.Request.Context(), &chatpb.GetConversationRequest{
+			bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			payloadMap := map[string]interface{}{
+				"type":            "new_message",
+				"event_type":      "EVENT_NEW_MESSAGE",
+				"conversation_id": cid,
+				"sender_id":       uid,
+				"message": map[string]interface{}{
+					"id":              m.Id,
+					"conversation_id": m.ConversationId,
+					"sender_id":       m.SenderId,
+					"content":         m.Content,
+					"type":            m.Type.String(),
+					"media_type":      m.Type.String(),
+					"status":          m.Status.String(),
+					"media_url":       m.MediaUrl,
+					"media_mime":      m.MediaMime,
+					"media_size":      m.MediaSize,
+					"parent_id":       m.ParentId,
+					"created_at":      m.CreatedAt,
+					"send_at":         m.SendAt,
+				},
+			}
+			data, _ := json.Marshal(payloadMap)
+
+			delivered := false
+			convResp, cErr := h.client.GetConversation(bgCtx, &chatpb.GetConversationRequest{
 				ConversationId: cid,
 				UserId:         uid,
 			})
 			if cErr == nil && convResp != nil && convResp.Conversation != nil {
-				payloadMap := map[string]interface{}{
-					"type":            "new_message",
-					"event_type":      "EVENT_NEW_MESSAGE",
-					"conversation_id": cid,
-					"sender_id":       uid,
-					"message": map[string]interface{}{
-						"id":              m.Id,
-						"conversation_id": m.ConversationId,
-						"sender_id":       m.SenderId,
-						"content":         m.Content,
-						"type":            m.Type.String(),
-						"media_type":      m.Type.String(),
-						"status":          m.Status.String(),
-						"media_url":       m.MediaUrl,
-						"media_mime":      m.MediaMime,
-						"media_size":      m.MediaSize,
-						"parent_id":       m.ParentId,
-						"created_at":      m.CreatedAt,
-						"send_at":         m.SendAt,
-					},
-				}
-				data, _ := json.Marshal(payloadMap)
 				for _, memberID := range convResp.Conversation.MemberIds {
-					if memberID != uid {
-						h.hub.SendToUser(memberID, data)
+					if memberID != uid && memberID != "" {
+						if h.hub.SendToUser(memberID, data) {
+							delivered = true
+						}
 					}
 				}
+			}
+
+			// If direct delivery did not reach a registered connection, broadcast so peer receives it
+			if !delivered {
+				h.hub.Broadcast(data, uid)
 			}
 		}(resp.Message, convID, userID)
 	}

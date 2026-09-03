@@ -25,6 +25,32 @@ class _ChatListScreenState extends State<ChatListScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
 
+  @override
+  void initState() {
+    super.initState();
+    widget.appState.addListener(_onStateChange);
+  }
+
+  @override
+  void didUpdateWidget(covariant ChatListScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.appState != widget.appState) {
+      oldWidget.appState.removeListener(_onStateChange);
+      widget.appState.addListener(_onStateChange);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.appState.removeListener(_onStateChange);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onStateChange() {
+    if (mounted) setState(() {});
+  }
+
   List<Conversation> _filterConversations(List<Conversation> list) {
     var filtered = list;
     if (_selectedFilter == 'Unread') {

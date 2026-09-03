@@ -72,11 +72,14 @@ func (c *Client) readPump() {
 
 				// Check if targeted to a specific recipient user
 				targetUserID, hasTarget := payload["recipient_id"].(string)
+				delivered := false
 				if hasTarget && targetUserID != "" {
 					if b, err := json.Marshal(payload); err == nil {
-						c.hub.SendToUser(targetUserID, b)
+						delivered = c.hub.SendToUser(targetUserID, b)
 					}
-				} else {
+				}
+				// If not targeted or recipient not connected by that specific ID, broadcast to active peers
+				if !delivered {
 					if b, err := json.Marshal(payload); err == nil {
 						c.hub.Broadcast(b, c.userID)
 					}
