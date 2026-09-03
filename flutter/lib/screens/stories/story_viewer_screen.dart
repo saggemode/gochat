@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../core/models/conversation.dart';
 import '../../core/models/story.dart';
 import '../../core/state/app_state.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/media_image_helper.dart';
 import '../../widgets/widgets.dart';
 
 class StoryViewerScreen extends StatefulWidget {
@@ -171,6 +171,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: GestureDetector(
+        onLongPressStart: (_) => _timer?.cancel(),
+        onLongPressEnd: (_) => _startStoryTimer(),
         onTapDown: (details) {
           final width = MediaQuery.of(context).size.width;
           if (details.globalPosition.dx < width * 0.3) {
@@ -211,27 +213,21 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
                         ),
                       ),
                     )
-                  : (story.mediaUrl.startsWith('http')
-                      ? Image.network(
+                  : Container(
+                      color: Colors.black,
+                      child: Center(
+                        child: MediaImageHelper.buildSafeImage(
                           story.mediaUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (ctx, _, _) => Container(
-                            color: AppTheme.darkSurface,
+                          fit: BoxFit.contain,
+                          errorWidget: Container(
+                            color: Colors.black,
                             child: const Center(
-                              child: Icon(Icons.broken_image, size: 48, color: AppTheme.iconColor),
+                              child: Icon(Icons.broken_image_rounded, size: 54, color: Colors.white24),
                             ),
                           ),
-                        )
-                      : Image.file(
-                          File(story.mediaUrl),
-                          fit: BoxFit.cover,
-                          errorBuilder: (ctx, _, _) => Container(
-                            color: AppTheme.darkSurface,
-                            child: const Center(
-                              child: Icon(Icons.broken_image, size: 48, color: AppTheme.iconColor),
-                            ),
-                          ),
-                        )),
+                        ),
+                      ),
+                    ),
             ),
 
             // Top Gradient Overlay for Header Legibility

@@ -608,21 +608,24 @@ class ApiService {
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
-      final rawList = data is List ? data : (data['stories'] as List? ?? []);
+      final rawList = data is List ? data : (data['feed'] as List? ?? data['stories'] as List? ?? []);
       return rawList.map((e) {
         final userId = e['user_id']?.toString() ?? '';
-        final userName = e['user_name'] ?? e['author_name'] ?? 'Contact';
-        final userAvatar = e['user_avatar'] ?? e['avatar_url'] ?? '';
-        final items = (e['items'] as List? ?? [e])
-            .map((item) => StoryItem.fromJson(item))
-            .toList();
+        final userName = e['user_display_name'] ?? e['user_name'] ?? e['author_name'] ?? 'Contact';
+        final userAvatar = e['user_avatar_url'] ?? e['user_avatar'] ?? e['avatar_url'] ?? '';
+        final storiesList = e['stories'] as List? ?? e['items'] as List?;
+        final items = storiesList != null && storiesList.isNotEmpty
+            ? storiesList.map((item) => StoryItem.fromJson(item)).toList()
+            : <StoryItem>[];
+        // Skip users with no stories
+        if (items.isEmpty) return null;
         return UserStories(
           userId: userId,
           userName: userName,
           userAvatar: userAvatar,
           stories: items,
         );
-      }).toList();
+      }).whereType<UserStories>().toList();
     }
     return [];
   }

@@ -21,15 +21,25 @@ class StoryItem {
         expiresAt = expiresAt ?? DateTime.now().add(const Duration(hours: 24));
 
   factory StoryItem.fromJson(Map<String, dynamic> json) {
+    DateTime? parseDate(dynamic val) {
+      if (val == null) return null;
+      if (val is int) {
+        return DateTime.fromMillisecondsSinceEpoch(
+          val > 100000000000 ? val : val * 1000,
+        );
+      }
+      return DateTime.tryParse(val.toString());
+    }
+
     return StoryItem(
       id: json['id']?.toString() ?? '',
-      mediaUrl: json['media_url'] ?? '',
-      caption: json['caption'] ?? '',
-      mediaType: json['media_type'] ?? 'image',
+      mediaUrl: json['media_url'] ?? json['url'] ?? '',
+      caption: json['caption'] ?? json['content'] ?? '',
+      mediaType: json['media_type'] ?? json['type'] ?? 'image',
       backgroundColor: json['background_color'],
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at']) : null,
-      expiresAt: json['expires_at'] != null ? DateTime.tryParse(json['expires_at']) : null,
-      isViewed: json['is_viewed'] == true,
+      createdAt: parseDate(json['created_at']),
+      expiresAt: parseDate(json['expires_at']),
+      isViewed: json['viewed'] == true || json['is_viewed'] == true,
     );
   }
 }
