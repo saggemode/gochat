@@ -196,17 +196,33 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
     });
   }
 
+  String? _getQuotedText(Message? msg) {
+    if (msg == null) return null;
+    if (msg.content.trim().isNotEmpty) return msg.content.trim();
+    if (msg.type == MessageType.image) return '📷 Photo';
+    if (msg.type == MessageType.video) return '🎬 Video';
+    if (msg.type == MessageType.voice || msg.type == MessageType.audio) return '🎤 Voice note';
+    if (msg.type == MessageType.file) return '📄 Document';
+    if (msg.type == MessageType.poll) return '📊 Poll: ${msg.pollData?.question ?? ""}';
+    if (msg.isPing) return '💥 PING!';
+    return 'Message';
+  }
+
   void _handleSend() {
     final text = _inputController.text.trim();
     if (text.isEmpty) return;
+
+    final quotedText = _getQuotedText(_replyingTo);
+    final quotedThumb = _replyingTo?.mediaThumbnail ?? _replyingTo?.mediaUrl;
 
     widget.appState.sendMessage(
       widget.conversation.id,
       text,
       disappearingDurationSeconds: _disappearingDuration,
       replyToId: _replyingTo?.id,
-      replyToText: _replyingTo?.content,
+      replyToText: quotedText,
       replyToSenderName: _replyingTo?.senderName,
+      mediaThumbnail: quotedThumb,
     );
 
     _inputController.clear();
@@ -219,6 +235,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
   }
 
   void _handleSendSticker(StickerItem sticker) {
+    final quotedText = _getQuotedText(_replyingTo);
+    final quotedThumb = _replyingTo?.mediaThumbnail ?? _replyingTo?.mediaUrl;
+
     widget.appState.sendMessage(
       widget.conversation.id,
       'sticker:${sticker.name}',
@@ -226,14 +245,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       mediaUrl: sticker.url,
       disappearingDurationSeconds: _disappearingDuration,
       replyToId: _replyingTo?.id,
-      replyToText: _replyingTo?.content,
+      replyToText: quotedText,
       replyToSenderName: _replyingTo?.senderName,
+      mediaThumbnail: quotedThumb,
     );
     setState(() => _replyingTo = null);
     _scrollToBottom();
   }
 
   void _handleSendGif(GifItem gif) {
+    final quotedText = _getQuotedText(_replyingTo);
+    final quotedThumb = _replyingTo?.mediaThumbnail ?? _replyingTo?.mediaUrl;
+
     widget.appState.sendMessage(
       widget.conversation.id,
       'GIF: ${gif.title}',
@@ -241,8 +264,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen>
       mediaUrl: gif.fullUrl,
       disappearingDurationSeconds: _disappearingDuration,
       replyToId: _replyingTo?.id,
-      replyToText: _replyingTo?.content,
+      replyToText: quotedText,
       replyToSenderName: _replyingTo?.senderName,
+      mediaThumbnail: quotedThumb,
     );
     setState(() => _replyingTo = null);
     _scrollToBottom();

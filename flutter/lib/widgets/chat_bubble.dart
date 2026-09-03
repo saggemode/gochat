@@ -6,6 +6,7 @@ import '../core/models/game_data.dart';
 import '../core/models/message.dart';
 import '../core/services/starred_message_service.dart';
 import '../core/theme/app_theme.dart';
+import '../core/utils/media_image_helper.dart';
 import 'audio_player_bubble.dart';
 import 'game_bubble.dart';
 import 'media_bubble.dart';
@@ -302,38 +303,67 @@ class ChatBubble extends StatelessWidget {
                   ),
 
                 // ── Quoted Reply Preview ──────────────────────────────────────
-                if (message.replyToText != null)
+                if (message.replyToText != null && message.replyToText!.isNotEmpty)
                   Container(
                     margin: const EdgeInsets.only(bottom: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.2),
+                      color: isDark
+                          ? Colors.black.withValues(alpha: 0.3)
+                          : Colors.black.withValues(alpha: 0.07),
                       borderRadius: BorderRadius.circular(8),
                       border: const Border(
                         left: BorderSide(color: AppTheme.primary, width: 3.5),
                       ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        if (message.replyToSenderName != null)
-                          Text(
-                            message.replyToSenderName!,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.primary,
+                        Flexible(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (message.replyToSenderName != null &&
+                                  message.replyToSenderName!.isNotEmpty)
+                                Text(
+                                  message.replyToSenderName!,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.primary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              const SizedBox(height: 2),
+                              Text(
+                                message.replyToText!,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (message.mediaThumbnail != null &&
+                            message.mediaThumbnail!.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: SizedBox(
+                              width: 38,
+                              height: 38,
+                              child: MediaImageHelper.buildSafeImage(
+                                message.mediaThumbnail,
+                                fit: BoxFit.cover,
+                              ),
                             ),
                           ),
-                        Text(
-                          message.replyToText!,
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        ],
                       ],
                     ),
                   ),

@@ -43,6 +43,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
   void initState() {
     super.initState();
     _startStoryTimer();
+    _recordCurrentStoryView();
+    _fetchCurrentStoryViewers();
 
     _replyFocusNode.addListener(() {
       if (_replyFocusNode.hasFocus) {
@@ -51,6 +53,23 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
         _startStoryTimer();
       }
     });
+  }
+
+  void _recordCurrentStoryView() {
+    if (!_isMyStory && _currentIndex < widget.userStories.stories.length) {
+      final currentStory = widget.userStories.stories[_currentIndex];
+      widget.appState?.recordStoryView(
+        currentStory.id,
+        storyOwnerId: widget.userStories.userId,
+      );
+    }
+  }
+
+  void _fetchCurrentStoryViewers() {
+    if (_isMyStory && _currentIndex < widget.userStories.stories.length) {
+      final currentStory = widget.userStories.stories[_currentIndex];
+      widget.appState?.fetchStoryViewers(currentStory.id);
+    }
   }
 
   @override
@@ -81,6 +100,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
       setState(() {
         _currentIndex++;
       });
+      _recordCurrentStoryView();
+      _fetchCurrentStoryViewers();
       _startStoryTimer();
     } else {
       Navigator.pop(context);
@@ -92,6 +113,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
       setState(() {
         _currentIndex--;
       });
+      _recordCurrentStoryView();
+      _fetchCurrentStoryViewers();
       _startStoryTimer();
     }
   }
@@ -140,7 +163,24 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
         convId = newConv.id;
       }
 
-      await widget.appState!.sendMessage(convId, 'Replying to story:\n$text');
+      final currentStory = widget.userStories.stories[_currentIndex];
+      final storyCaption = currentStory.caption.trim();
+      final snippet = storyCaption.isNotEmpty
+          ? storyCaption
+          : (currentStory.mediaType == 'image'
+              ? '📷 Status Photo'
+              : (currentStory.mediaType == 'video'
+                  ? '🎬 Status Video'
+                  : 'Status Update'));
+
+      await widget.appState!.sendMessage(
+        convId,
+        text,
+        replyToId: currentStory.id,
+        replyToText: 'Story: $snippet',
+        replyToSenderName: widget.userStories.userName,
+        mediaThumbnail: currentStory.mediaUrl.isNotEmpty ? currentStory.mediaUrl : null,
+      );
     }
 
     if (mounted) {
@@ -152,6 +192,155 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
         ),
       );
     }
+  }
+
+  void _showViewersSheet(BuildContext context, StoryItem story) {
+    _timer?.cancel();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? AppTheme.darkSurface : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      isScrollControlled: true,
+      builder: (ctx) {
+        return FutureBuilder<List<StoryViewer>>(
+          future: widget.appState?.fetchStoryViewers(story.id),
+          initialData: story.viewers,
+          builder: (ctx, snapshot) {
+            final viewers = snapshot.data ?? story.viewers;
+
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.65,
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade400,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.remove_red_eye_rounded, color: AppTheme.primary, size: 22),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Viewed by (${viewers.length})',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppTheme.textLight : AppTheme.textDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(height: 1),
+                  if (viewers.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(40),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.visibility_off_outlined,
+                              size: 48,
+                              color: isDark ? Colors.white24 : Colors.black26,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No views yet',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Views from your contacts will appear here',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark ? Colors.white38 : Colors.black38,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: ListView.separated(
+                        itemCount: viewers.length,
+                        separatorBuilder: (context, index) => const Divider(height: 1, indent: 68),
+                        itemBuilder: (ctx, idx) {
+                          final v = viewers[idx];
+                          return ListTile(
+                            leading: CircleAvatar(
+                              radius: 22,
+                              backgroundColor: AppTheme.primary.withValues(alpha: 0.15),
+                              backgroundImage: v.avatarUrl.isNotEmpty
+                                  ? NetworkImage(v.avatarUrl)
+                                  : null,
+                              child: v.avatarUrl.isEmpty
+                                  ? Text(
+                                      v.displayName.isNotEmpty
+                                          ? v.displayName[0].toUpperCase()
+                                          : '?',
+                                      style: const TextStyle(
+                                        color: AppTheme.primary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                            title: Text(
+                              v.displayName,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? AppTheme.textLight : AppTheme.textDark,
+                              ),
+                            ),
+                            subtitle: Text(
+                              _formatStoryTime(v.viewedAt),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark ? AppTheme.textMuted : AppTheme.textMutedLight,
+                              ),
+                            ),
+                            trailing: const Icon(
+                              Icons.check_circle_outline_rounded,
+                              color: AppTheme.primary,
+                              size: 18,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    ).then((_) {
+      if (mounted) _startStoryTimer();
+    });
   }
 
   @override
@@ -348,27 +537,41 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
                 left: 0,
                 right: 0,
                 child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.remove_red_eye_outlined, color: Colors.white70, size: 18),
-                        SizedBox(width: 8),
-                        Text(
-                          'Your status',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
+                  child: GestureDetector(
+                    onTap: () => _showViewersSheet(context, story),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.65),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.white24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.remove_red_eye_rounded, color: Colors.white, size: 18),
+                          const SizedBox(width: 8),
+                          Text(
+                            story.viewCount > 0
+                                ? '${story.viewCount} ${story.viewCount == 1 ? 'view' : 'views'}'
+                                : 'No views yet',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.keyboard_arrow_up_rounded, color: Colors.white70, size: 18),
+                        ],
+                      ),
                     ),
                   ),
                 ),

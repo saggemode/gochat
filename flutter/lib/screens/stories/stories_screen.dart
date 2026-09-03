@@ -133,7 +133,7 @@ class StoriesScreen extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           myStory.stories.isNotEmpty
-                              ? '${myStory.stories.length} ${myStory.stories.length == 1 ? 'update' : 'updates'} • Tap to view'
+                              ? '${myStory.stories.length} ${myStory.stories.length == 1 ? 'update' : 'updates'}${myStory.totalViewCount > 0 ? ' • 👁 ${myStory.totalViewCount}' : ''} • Tap to view'
                               : 'Tap to add status update',
                           style: TextStyle(
                             fontSize: 13,

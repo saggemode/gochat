@@ -530,6 +530,7 @@ class ApiService {
     required String content,
     int type = 0,
     String? mediaUrl,
+    String? parentId,
   }) async {
     final user = await StorageService.getUser();
     final token = await StorageService.getToken();
@@ -543,7 +544,8 @@ class ApiService {
               body: jsonEncode({
                 'content': content,
                 'type': type,
-                'media_url': ?mediaUrl,
+                'media_url': mediaUrl,
+                if (parentId != null && parentId.isNotEmpty) 'parent_id': parentId,
               }),
             )
             .timeout(const Duration(seconds: 6));
@@ -651,6 +653,37 @@ class ApiService {
       final data = jsonDecode(res.body);
       throw Exception(data['error'] ?? 'Failed to post story');
     }
+  }
+
+  static Future<bool> viewStory(String storyId) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse('${ApiConstants.stories}/$storyId/view'),
+            headers: await _headers(),
+          )
+          .timeout(const Duration(seconds: 5));
+      return res.statusCode >= 200 && res.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<List<StoryViewer>> getStoryViewers(String storyId) async {
+    try {
+      final res = await http
+          .get(
+            Uri.parse('${ApiConstants.stories}/$storyId/viewers'),
+            headers: await _headers(),
+          )
+          .timeout(const Duration(seconds: 6));
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final data = jsonDecode(res.body);
+        final list = data is List ? data : (data['viewers'] as List? ?? []);
+        return list.map((e) => StoryViewer.fromJson(e as Map<String, dynamic>)).toList();
+      }
+    } catch (_) {}
+    return [];
   }
 
   // ── Calls: Start Call ───────────────────────────────────────────────────────

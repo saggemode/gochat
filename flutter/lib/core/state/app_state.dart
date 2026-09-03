@@ -620,6 +620,34 @@ class AppState extends ChangeNotifier {
 
       fetchStories();
     }
+    // 2b. Incoming Story Viewed Event (Live view counter updates)
+    else if (eventType == 'story_viewed' ||
+        eventType == 'EVENT_STORY_VIEWED' ||
+        data['type'] == 'story_viewed') {
+      final storyId = (data['story_id'] ?? data['id'] ?? '').toString();
+      final viewerMap = data['viewer'];
+      if (storyId.isNotEmpty && viewerMap is Map<String, dynamic>) {
+        final viewer = StoryViewer.fromJson(viewerMap);
+        for (final us in _stories) {
+          if (us.isMe) {
+            final idx = us.stories.indexWhere((s) => s.id == storyId);
+            if (idx != -1) {
+              final existing = us.stories[idx];
+              final viewers = List<StoryViewer>.from(existing.viewers);
+              if (!viewers.any((v) => v.userId == viewer.userId)) {
+                viewers.insert(0, viewer);
+                us.stories[idx] = existing.copyWith(
+                  viewers: viewers,
+                  viewCount: viewers.length,
+                );
+                notifyListeners();
+              }
+            }
+            break;
+          }
+        }
+      }
+    }
     // 3. Incoming Message Status Updates (Delivered / Read Receipts -> Green Ticks)
     else if (eventType == 'read_receipt' ||
         eventType == 'EVENT_READ_RECEIPT' ||
@@ -1082,6 +1110,7 @@ class AppState extends ChangeNotifier {
         content: content,
         type: typeInt,
         mediaUrl: mediaUrl,
+        parentId: replyToId,
       );
 
       final msgToAdd = realMsg.copyWith(
@@ -2052,6 +2081,51 @@ class AppState extends ChangeNotifier {
       );
     } catch (_) {
       // Local story was already added and displayed; remote sync error handled gracefully
+    }
+  }
+
+  Future<void> recordStoryView(String storyId, {String? storyOwnerId}) async {
+    if (storyId.isEmpty) return;
+    try {
+      await ApiService.viewStory(storyId);
+      // Also broadcast live WebSocket event to the story author
+      if (storyOwnerId != null && storyOwnerId.isNotEmpty && storyOwnerId != _currentUser?.id) {
+        wsService.send({
+          'type': 'story_viewed',
+          'event': 'story_viewed',
+          'story_id': storyId,
+          'recipient_id': storyOwnerId,
+          'viewer': {
+            'user_id': _currentUser?.id ?? '',
+            'display_name': _currentUser?.displayName ?? 'Friend',
+            'avatar_url': _currentUser?.avatarUrl ?? '',
+            'viewed_at': DateTime.now().toIso8601String(),
+          },
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<List<StoryViewer>> fetchStoryViewers(String storyId) async {
+    if (storyId.isEmpty) return [];
+    try {
+      final viewers = await ApiService.getStoryViewers(storyId);
+      for (final us in _stories) {
+        if (us.isMe) {
+          final idx = us.stories.indexWhere((s) => s.id == storyId);
+          if (idx != -1) {
+            us.stories[idx] = us.stories[idx].copyWith(
+              viewers: viewers,
+              viewCount: viewers.length,
+            );
+            notifyListeners();
+            break;
+          }
+        }
+      }
+      return viewers;
+    } catch (_) {
+      return [];
     }
   }
 
