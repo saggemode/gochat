@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="380dp"
+    android:background="@drawable/bg_card_dark"
+    android:orientation="vertical"
+    android:paddingTop="12dp">
+
+    <!-- Bottom Sheet Drag Handle -->
+    <View
+        android:layout_width="36dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:background="@drawable/bg_unread_badge"
+        android:backgroundTint="@color/gochat_border_dark" />
+
+    <!-- Header: View Count -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="12dp">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:contentDescription="Views"
+            android:src="@drawable/ic_visibility"
+            tools:tint="@color/gochat_emerald_light" />
+
+        <TextView
+            android:id="@+id/tvBottomSheetViewsTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:textColor="@color/gochat_text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            tools:text="Viewed by 4" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:background="@color/gochat_border_dark" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <!-- RecyclerView of Viewers -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvStoryViewers"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingVertical="4dp"
+            tools:listitem="@layout/item_story_viewer" />
+
+        <!-- Empty State -->
+        <LinearLayout
+            android:id="@+id/layoutNoViewers"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <ImageView
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:alpha="0.3"
+                android:contentDescription="No views"
+                android:src="@drawable/ic_visibility" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="No views yet"
+                android:textColor="@color/gochat_text_secondary"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Views from your contacts will appear here"
+                android:textColor="@color/gochat_text_muted"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+    </FrameLayout>
+
+</LinearLayout>

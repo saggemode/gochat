@@ -1,72 +1,109 @@
 package com.example.gochat
 
+import android.content.Intent
 import android.os.Bundle
-import com.google.android.material.snackbar.Snackbar
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.activity.enableEdgeToEdge
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.navigation.findNavController
-import androidx.navigation.fragment.NavHostFragment
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.navigateUp
-import androidx.navigation.ui.setupActionBarWithNavController
-import android.view.Menu
-import android.view.MenuItem
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.example.gochat.data.api.TokenManager
 import com.example.gochat.databinding.ActivityMainBinding
+import com.example.gochat.ui.auth.LoginActivity
+import com.example.gochat.ui.calls.CallsFragment
+import com.example.gochat.ui.chat.ChatListFragment
+import com.example.gochat.ui.chat.ChatListViewModel
+import com.example.gochat.ui.settings.SettingsFragment
+import com.example.gochat.ui.stories.StoriesFragment
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
+    private val chatViewModel: ChatListViewModel by viewModels()
+
+    private val chatListFragment by lazy { ChatListFragment() }
+    private val storiesFragment by lazy { StoriesFragment() }
+    private val callsFragment by lazy { CallsFragment() }
+    private val settingsFragment by lazy { SettingsFragment() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+
+        val tokenManager = TokenManager.getInstance(this)
+        if (!tokenManager.isLoggedIn) {
+            startActivity(Intent(this, LoginActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            })
+            finish()
+            return
+        }
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        ViewCompat.setOnApplyWindowInsetsListener(binding.main) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
+        if (savedInstanceState == null) {
+            switchFragment(chatListFragment)
         }
-        setSupportActionBar(binding.toolbar)
 
-        val navHostFragment =
-            supportFragmentManager.findFragmentById(R.id.nav_host_fragment_content_main) as NavHostFragment
-        val navController = navHostFragment.navController
+        setupBottomNavigation()
+        observeUnreadBadge()
+    }
 
-        appBarConfiguration = AppBarConfiguration(navController.graph)
-        setupActionBarWithNavController(navController, appBarConfiguration)
+    override fun onResume() {
+        super.onResume()
+        chatViewModel.connectWebSocket()
+    }
 
-        binding.fab.setOnClickListener { view ->
-            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                .setAction("Action", null)
-                .setAnchorView(R.id.fab).show()
+    private fun setupBottomNavigation() {
+        binding.bottomNav.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_chats -> {
+                    switchFragment(chatListFragment)
+                    true
+                }
+                R.id.nav_status -> {
+                    switchFragment(storiesFragment)
+                    true
+                }
+                R.id.nav_calls -> {
+                    switchFragment(callsFragment)
+                    true
+                }
+                R.id.nav_settings -> {
+                    switchFragment(settingsFragment)
+                    true
+                }
+                else -> false
+            }
         }
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        menuInflater.inflate(R.menu.menu_main, menu)
-        return true
+    private fun switchFragment(fragment: Fragment) {
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragmentContainer, fragment)
+            .commit()
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        return when (item.itemId) {
-            R.id.action_settings -> true
-            else -> super.onOptionsItemSelected(item)
+    private fun observeUnreadBadge() {
+        val badge = binding.bottomNav.getOrCreateBadge(R.id.nav_chats).apply {
+            backgroundColor = ContextCompat.getColor(this@MainActivity, R.color.gochat_accent)
+            badgeTextColor = ContextCompat.getColor(this@MainActivity, R.color.black)
         }
-    }
 
-    override fun onSupportNavigateUp(): Boolean {
-        val navController = findNavController(R.id.nav_host_fragment_content_main)
-        return navController.navigateUp(appBarConfiguration)
-                || super.onSupportNavigateUp()
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                chatViewModel.totalUnreadCount.collect { unread ->
+                    if (unread > 0) {
+                        badge.isVisible = true
+                        badge.number = unread
+                    } else {
+                        badge.isVisible = false
+                    }
+                }
+            }
+        }
     }
 }

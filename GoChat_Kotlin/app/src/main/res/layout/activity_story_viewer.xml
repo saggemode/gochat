@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/storyViewerRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/black">
+
+    <!-- Main Content Container -->
+    <FrameLayout
+        android:id="@+id/layoutStoryContent"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <!-- Text Story View -->
+        <FrameLayout
+            android:id="@+id/layoutTextStory"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#00A884"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <TextView
+                android:id="@+id/tvTextStoryContent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:lineSpacingMultiplier="1.2"
+                android:paddingHorizontal="36dp"
+                android:textColor="@color/white"
+                android:textSize="26sp"
+                android:textStyle="bold"
+                tools:text="Building the native Kotlin GoChat application! 🚀" />
+        </FrameLayout>
+
+        <!-- Media Image Story View -->
+        <ImageView
+            android:id="@+id/ivMediaStory"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="Story Image"
+            android:scaleType="fitCenter"
+            android:visibility="gone"
+            tools:visibility="gone" />
+
+        <!-- Optional Image Caption Overlay -->
+        <TextView
+            android:id="@+id/tvImageStoryCaption"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:layout_marginBottom="80dp"
+            android:background="#66000000"
+            android:gravity="center"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="12dp"
+            android:textColor="@color/white"
+            android:textSize="15sp"
+            android:visibility="gone"
+            tools:text="Great sunset today!"
+            tools:visibility="visible" />
+
+    </FrameLayout>
+
+    <!-- Tap Navigation Zones Overlay (Previous / Next) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal">
+
+        <!-- Left 30% Tap Area: Previous Story -->
+        <View
+            android:id="@+id/touchZonePrevious"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0.3"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <!-- Right 70% Tap Area: Next Story -->
+        <View
+            android:id="@+id/touchZoneNext"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0.7"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
+
+    <!-- Top Overlay: Segmented Progress Bars & Header Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#4D000000"
+        android:orientation="vertical"
+        android:paddingTop="36dp">
+
+        <!-- Horizontal Segmented Progress Bars -->
+        <LinearLayout
+            android:id="@+id/layoutSegmentedProgress"
+            android:layout_width="match_parent"
+            android:layout_height="3.5dp"
+            android:orientation="horizontal"
+            android:paddingHorizontal="8dp" />
+
+        <!-- Header: User info & Back / Close -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="12dp">
+
+            <ImageView
+                android:id="@+id/btnBackStory"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="Back"
+                android:focusable="true"
+                android:padding="6dp"
+                android:src="@drawable/ic_back"
+                app:tint="@color/white" />
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/ivStoryHeaderAvatar"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:layout_marginStart="4dp"
+                android:contentDescription="Avatar"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_account"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvStoryHeaderName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/white"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    tools:text="Sarah Connor" />
+
+                <TextView
+                    android:id="@+id/tvStoryHeaderTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="11.5sp"
+                    tools:text="2h ago" />
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/btnCloseStory"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="Close"
+                android:focusable="true"
+                android:padding="6dp"
+                android:src="@drawable/ic_close"
+                app:tint="@color/white" />
+
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Bottom Footer for Own Story (View Count Pill) -->
+    <LinearLayout
+        android:id="@+id/layoutOwnStoryFooter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="24dp"
+        android:background="@drawable/bg_view_count_pill"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <ImageView
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:contentDescription="Views"
+            android:src="@drawable/ic_visibility"
+            app:tint="@color/gochat_emerald_light" />
+
+        <TextView
+            android:id="@+id/tvOwnStoryViewCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:textColor="@color/white"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            tools:text="3 views" />
+    </LinearLayout>
+
+    <!-- Bottom Footer for Other User Story (Reply Input) -->
+    <LinearLayout
+        android:id="@+id/layoutReplyStoryFooter"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="#4D000000"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="10dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <EditText
+            android:id="@+id/etStoryReplyInput"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_card_dark"
+            android:hint="Reply..."
+            android:importantForAutofill="no"
+            android:inputType="textCapSentences"
+            android:paddingHorizontal="16dp"
+            android:textColor="@color/white"
+            android:textColorHint="#99FFFFFF"
+            android:textSize="14sp" />
+
+        <ImageView
+            android:id="@+id/btnSendStoryReply"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_button_emerald"
+            android:clickable="true"
+            android:contentDescription="Send"
+            android:focusable="true"
+            android:padding="10dp"
+            android:src="@drawable/ic_send"
+            app:tint="@color/black" />
+    </LinearLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

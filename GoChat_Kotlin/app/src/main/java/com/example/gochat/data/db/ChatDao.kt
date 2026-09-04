@@ -23,10 +23,10 @@ interface ChatDao {
     suspend fun insertConversation(conv: Conversation)
 
     @Query("UPDATE conversations SET unreadCount = 0 WHERE id = :convId")
-    suspend fun markConversationAsRead(convId: String)
+    suspend fun markConversationAsRead(convId: String): Int
 
     @Query("DELETE FROM conversations WHERE id = :convId")
-    suspend fun deleteConversation(convId: String)
+    suspend fun deleteConversation(convId: String): Int
 
     // ── Messages ───────────────────────────────────────────────
     @Query("SELECT * FROM messages WHERE conversationId = :convId ORDER BY createdAt ASC")
@@ -42,13 +42,13 @@ interface ChatDao {
     suspend fun insertMessages(messages: List<Message>)
 
     @Query("UPDATE messages SET status = :status WHERE id = :messageId")
-    suspend fun updateMessageStatus(messageId: String, status: MessageStatus)
+    suspend fun updateMessageStatus(messageId: String, status: MessageStatus): Int
 
     @Query("DELETE FROM messages WHERE id = :messageId")
-    suspend fun deleteMessage(messageId: String)
+    suspend fun deleteMessage(messageId: String): Int
 
     @Query("DELETE FROM messages WHERE conversationId = :convId")
-    suspend fun clearMessagesForConversation(convId: String)
+    suspend fun clearMessagesForConversation(convId: String): Int
 
     // ── Calls ──────────────────────────────────────────────────
     @Query("SELECT * FROM calls ORDER BY timestamp DESC")
@@ -58,5 +58,5 @@ interface ChatDao {
     suspend fun insertCall(call: CallRecord)
 
     @Query("DELETE FROM calls")
-    suspend fun clearAllCalls()
+    suspend fun clearAllCalls(): Int
 }

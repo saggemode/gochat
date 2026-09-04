@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="end"
+    android:orientation="vertical"
+    android:paddingHorizontal="10dp"
+    android:paddingVertical="3dp">
+
+    <!-- Outgoing Bubble Container -->
+    <LinearLayout
+        android:id="@+id/layoutBubbleContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="60dp"
+        android:background="@drawable/bg_bubble_me"
+        android:orientation="vertical"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="7dp">
+
+        <!-- Quoted Reply Container -->
+        <LinearLayout
+            android:id="@+id/layoutQuotedReply"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="6dp"
+            android:background="@drawable/bg_quoted_reply_me"
+            android:orientation="horizontal"
+            android:padding="6dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <View
+                android:layout_width="3.5dp"
+                android:layout_height="match_parent"
+                android:background="@color/gochat_emerald_light" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvQuotedSender"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/gochat_emerald_light"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    tools:text="Alex" />
+
+                <TextView
+                    android:id="@+id/tvQuotedText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:textColor="@color/gochat_text_secondary"
+                    android:textSize="12sp"
+                    tools:text="Original message being replied to here..." />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Media Image Preview -->
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/ivMessageImage"
+            android:layout_width="220dp"
+            android:layout_height="180dp"
+            android:layout_marginBottom="4dp"
+            android:contentDescription="Attached Image"
+            android:scaleType="centerCrop"
+            android:visibility="gone"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Medium"
+            tools:visibility="visible" />
+
+        <!-- Voice Note Playback Row -->
+        <LinearLayout
+            android:id="@+id/layoutVoiceNote"
+            android:layout_width="210dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <ImageView
+                android:id="@+id/btnPlayPauseVoice"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="@drawable/bg_circle_pulse"
+                android:contentDescription="Play/Pause"
+                android:padding="8dp"
+                android:src="@drawable/ic_play" />
+
+            <SeekBar
+                android:id="@+id/sbVoiceProgress"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:progressTint="@color/gochat_emerald_light"
+                android:thumbTint="@color/gochat_emerald_light" />
+
+            <TextView
+                android:id="@+id/tvVoiceDuration"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:textColor="@color/gochat_text_secondary"
+                android:textSize="11sp"
+                tools:text="0:14" />
+        </LinearLayout>
+
+        <!-- Message Text -->
+        <TextView
+            android:id="@+id/tvMessageContent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:autoLink="web"
+            android:lineSpacingMultiplier="1.15"
+            android:textColor="@color/gochat_text_primary"
+            android:textSize="14.5sp"
+            tools:text="Hey there! This is a test message in GoChat." />
+
+        <!-- Footer: Timestamp + Read Status -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginTop="3dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvMessageTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#9EFFFFFF"
+                android:textSize="10.5sp"
+                tools:text="11:42 AM" />
+
+            <ImageView
+                android:id="@+id/ivMessageStatus"
+                android:layout_width="15dp"
+                android:layout_height="15dp"
+                android:layout_marginStart="4dp"
+                android:contentDescription="Status"
+                android:src="@drawable/ic_status_read" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

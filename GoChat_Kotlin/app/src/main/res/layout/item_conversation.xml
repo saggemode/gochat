@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="12dp">
+
+    <!-- Avatar with Online Status Indicator -->
+    <FrameLayout
+        android:id="@+id/layoutAvatarContainer"
+        android:layout_width="54dp"
+        android:layout_height="54dp">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/ivAvatar"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_gravity="center"
+            android:contentDescription="Avatar"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_account"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
+
+        <!-- Story ring overlay -->
+        <View
+            android:id="@+id/viewStoryRing"
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:background="@drawable/bg_story_ring"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <!-- Online Presence Dot -->
+        <View
+            android:id="@+id/viewOnlineDot"
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="1dp"
+            android:layout_marginBottom="1dp"
+            android:background="@drawable/bg_online_indicator"
+            android:visibility="gone"
+            tools:visibility="visible" />
+    </FrameLayout>
+
+    <!-- Conversation Info -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <!-- Top Row: Name + Time -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvConversationTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/gochat_text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                tools:text="Alex Smith" />
+
+            <TextView
+                android:id="@+id/tvTimestamp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:textColor="@color/gochat_text_muted"
+                android:textSize="12sp"
+                tools:text="11:42 AM" />
+        </LinearLayout>
+
+        <!-- Bottom Row: Status Icons + Message Preview + Unread Badge -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <!-- Pinned Indicator -->
+            <ImageView
+                android:id="@+id/ivPinned"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:layout_marginEnd="4dp"
+                android:contentDescription="Pinned"
+                android:src="@drawable/ic_pinned"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <!-- Muted Indicator -->
+            <ImageView
+                android:id="@+id/ivMuted"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:layout_marginEnd="4dp"
+                android:contentDescription="Muted"
+                android:src="@drawable/ic_muted"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <!-- Message Preview -->
+            <TextView
+                android:id="@+id/tvLastMessage"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/gochat_text_secondary"
+                android:textSize="13.5sp"
+                tools:text="Hey, are we still meeting today?" />
+
+            <!-- Unread Badge -->
+            <TextView
+                android:id="@+id/tvUnreadBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_unread_badge"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center"
+                android:minWidth="20dp"
+                android:textColor="@color/black"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                tools:text="3"
+                tools:visibility="visible" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

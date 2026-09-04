@@ -1,0 +1,368 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/chatRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/gochat_bg_dark">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- Top Custom Action Bar -->
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbarChatRoom"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/gochat_surface_dark"
+            app:contentInsetStart="4dp"
+            app:contentInsetEnd="6dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <!-- Back Button -->
+                <ImageView
+                    android:id="@+id/btnBack"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:contentDescription="Back"
+                    android:focusable="true"
+                    android:padding="7dp"
+                    android:src="@drawable/ic_back" />
+
+                <!-- Contact Avatar with Online Dot -->
+                <FrameLayout
+                    android:id="@+id/layoutAvatarHeader"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="2dp">
+
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/ivHeaderAvatar"
+                        android:layout_width="38dp"
+                        android:layout_height="38dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="Avatar"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/ic_account"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
+
+                    <View
+                        android:id="@+id/viewHeaderOnlineDot"
+                        android:layout_width="11dp"
+                        android:layout_height="11dp"
+                        android:layout_gravity="bottom|end"
+                        android:background="@drawable/bg_online_indicator"
+                        android:visibility="gone"
+                        tools:visibility="visible" />
+                </FrameLayout>
+
+                <!-- Name & Status Subtitle -->
+                <LinearLayout
+                    android:id="@+id/layoutHeaderInfo"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvChatTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:textColor="@color/gochat_text_primary"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        tools:text="Alex Smith" />
+
+                    <TextView
+                        android:id="@+id/tvChatSubtitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:textColor="@color/gochat_emerald_light"
+                        android:textSize="11.5sp"
+                        tools:text="online" />
+                </LinearLayout>
+
+                <!-- BBM PING! Action Button -->
+                <ImageView
+                    android:id="@+id/btnPing"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:contentDescription="PING!"
+                    android:focusable="true"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_ping_bell" />
+
+                <!-- Call Action Button -->
+                <ImageView
+                    android:id="@+id/btnCall"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:contentDescription="Call"
+                    android:focusable="true"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_tab_calls" />
+
+                <!-- More Options Menu -->
+                <ImageView
+                    android:id="@+id/btnMoreChatOptions"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:contentDescription="More"
+                    android:focusable="true"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_more_vert" />
+
+            </LinearLayout>
+        </androidx.appcompat.widget.Toolbar>
+
+        <!-- Message List -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvMessages"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:paddingVertical="8dp"
+            tools:listitem="@layout/item_message_me" />
+
+        <!-- Quoted Reply Preview Bar (above input bar) -->
+        <LinearLayout
+            android:id="@+id/layoutReplyPreview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="8dp"
+            android:background="@drawable/bg_reply_preview_bar"
+            android:orientation="horizontal"
+            android:padding="8dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <View
+                android:layout_width="4dp"
+                android:layout_height="match_parent"
+                android:background="@color/gochat_accent" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvReplyPreviewSender"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/gochat_emerald_light"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    tools:text="Replying to Alex" />
+
+                <TextView
+                    android:id="@+id/tvReplyPreviewText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/gochat_text_secondary"
+                    android:textSize="12sp"
+                    tools:text="I will send the document over in a bit." />
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/btnCloseReplyPreview"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="center_vertical"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="Cancel reply"
+                android:focusable="true"
+                android:padding="4dp"
+                android:src="@drawable/ic_close" />
+        </LinearLayout>
+
+        <!-- Chat Input Bar -->
+        <LinearLayout
+            android:id="@+id/layoutNormalInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="bottom"
+            android:orientation="horizontal"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="6dp">
+
+            <!-- Rounded Input Capsule -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/bg_card_dark"
+                android:gravity="center_vertical"
+                android:minHeight="48dp"
+                android:orientation="horizontal"
+                android:paddingHorizontal="8dp">
+
+                <!-- Attachment Button -->
+                <ImageView
+                    android:id="@+id/btnAttachment"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:contentDescription="Attach"
+                    android:focusable="true"
+                    android:padding="7dp"
+                    android:src="@drawable/ic_attach_file" />
+
+                <!-- Text Input -->
+                <EditText
+                    android:id="@+id/etMessageInput"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@android:color/transparent"
+                    android:hint="Message"
+                    android:importantForAutofill="no"
+                    android:inputType="textCapSentences|textMultiLine"
+                    android:maxLines="5"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="8dp"
+                    android:textColor="@color/gochat_text_primary"
+                    android:textColorHint="@color/gochat_text_muted"
+                    android:textSize="15.5sp" />
+
+            </LinearLayout>
+
+            <!-- Send / Voice Button -->
+            <FrameLayout
+                android:id="@+id/btnSendOrVoice"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_button_emerald"
+                android:clickable="true"
+                android:elevation="2dp"
+                android:focusable="true">
+
+                <!-- Send Icon (when text entered) -->
+                <ImageView
+                    android:id="@+id/ivSendIcon"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="Send"
+                    android:src="@drawable/ic_send"
+                    android:visibility="gone"
+                    app:tint="@color/black"
+                    tools:visibility="visible" />
+
+                <!-- Mic Icon (when empty) -->
+                <ImageView
+                    android:id="@+id/ivMicIcon"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="Voice note"
+                    android:src="@drawable/ic_mic"
+                    android:visibility="visible"
+                    app:tint="@color/black" />
+            </FrameLayout>
+
+        </LinearLayout>
+
+        <!-- Voice Note Recording Bar Overlay -->
+        <LinearLayout
+            android:id="@+id/layoutVoiceRecording"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginHorizontal="6dp"
+            android:layout_marginVertical="6dp"
+            android:background="@drawable/bg_card_dark"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="14dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <!-- Red Pulsing Recording Dot -->
+            <View
+                android:id="@+id/viewRecordingDot"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:background="@drawable/bg_circle_pulse"
+                android:backgroundTint="#FF3B30" />
+
+            <!-- Timer -->
+            <TextView
+                android:id="@+id/tvRecordingTimer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:textColor="@color/white"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                tools:text="00:05" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_weight="1"
+                android:text="Recording voice note..."
+                android:textColor="@color/gochat_text_muted"
+                android:textSize="13sp" />
+
+            <!-- Discard / Cancel Button -->
+            <ImageView
+                android:id="@+id/btnCancelVoiceRecording"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="Discard"
+                android:focusable="true"
+                android:padding="7dp"
+                android:src="@drawable/ic_delete_recording"
+                app:tint="#FF3B30" />
+
+            <!-- Send Voice Note Button -->
+            <ImageView
+                android:id="@+id/btnSendVoiceRecording"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_button_emerald"
+                android:clickable="true"
+                android:contentDescription="Send Voice Note"
+                android:focusable="true"
+                android:padding="8dp"
+                android:src="@drawable/ic_send"
+                app:tint="@color/black" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

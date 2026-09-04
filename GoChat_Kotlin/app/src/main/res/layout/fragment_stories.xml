@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/gochat_bg_dark">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/gochat_surface_dark"
+        app:elevation="0dp">
+
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbarStories"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:contentInsetStart="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Updates"
+                android:textColor="@color/gochat_text_primary"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+        </androidx.appcompat.widget.Toolbar>
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefreshStories"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <androidx.core.widget.NestedScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- My Status Tile -->
+                <LinearLayout
+                    android:id="@+id/layoutMyStatusTile"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="14dp">
+
+                    <FrameLayout
+                        android:layout_width="56dp"
+                        android:layout_height="56dp">
+
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:id="@+id/ivMyStatusAvatar"
+                            android:layout_width="50dp"
+                            android:layout_height="50dp"
+                            android:layout_gravity="center"
+                            android:contentDescription="Avatar"
+                            android:scaleType="centerCrop"
+                            android:src="@drawable/ic_account"
+                            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
+
+                        <View
+                            android:id="@+id/viewMyStatusStoryRing"
+                            android:layout_width="56dp"
+                            android:layout_height="56dp"
+                            android:background="@drawable/bg_story_ring"
+                            android:visibility="gone"
+                            tools:visibility="visible" />
+
+                        <!-- Add Badge Icon -->
+                        <ImageView
+                            android:id="@+id/ivMyStatusAddBadge"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:layout_gravity="bottom|end"
+                            android:background="@drawable/bg_button_emerald"
+                            android:contentDescription="Add Status"
+                            android:padding="4dp"
+                            android:src="@drawable/ic_message_add"
+                            app:tint="@color/black" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="My status"
+                            android:textColor="@color/gochat_text_primary"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvMyStatusSubtitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:textColor="@color/gochat_text_muted"
+                            android:textSize="13sp"
+                            tools:text="Tap to add status update" />
+                    </LinearLayout>
+
+                    <!-- Quick Action Buttons -->
+                    <ImageView
+                        android:id="@+id/btnQuickTextStatus"
+                        android:layout_width="38dp"
+                        android:layout_height="38dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:clickable="true"
+                        android:contentDescription="Text status"
+                        android:focusable="true"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_edit_status"
+                        app:tint="@color/gochat_accent" />
+
+                    <ImageView
+                        android:id="@+id/btnQuickCameraStatus"
+                        android:layout_width="38dp"
+                        android:layout_height="38dp"
+                        android:layout_marginStart="4dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:clickable="true"
+                        android:contentDescription="Camera status"
+                        android:focusable="true"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_camera_status"
+                        app:tint="@color/gochat_accent" />
+
+                </LinearLayout>
+
+                <!-- Section Header: RECENT UPDATES -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:letterSpacing="0.08"
+                    android:paddingHorizontal="16dp"
+                    android:paddingTop="16dp"
+                    android:paddingBottom="8dp"
+                    android:text="RECENT UPDATES"
+                    android:textColor="@color/gochat_text_secondary"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <!-- Contact Stories RecyclerView -->
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvRecentStories"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    tools:listitem="@layout/item_story_user" />
+
+                <!-- Empty State View -->
+                <LinearLayout
+                    android:id="@+id/layoutNoStories"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:padding="40dp"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <ImageView
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:alpha="0.3"
+                        android:contentDescription="No updates"
+                        android:src="@drawable/ic_tab_status" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="No Recent Updates"
+                        android:textColor="@color/gochat_text_secondary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:gravity="center"
+                        android:text="Status updates from your contacts will appear here and disappear after 24 hours."
+                        android:textColor="@color/gochat_text_muted"
+                        android:textSize="12.5sp" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+    <!-- Floating Action Buttons -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="18dp"
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
+
+        <!-- Pencil FAB for Text Status -->
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabTextStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:backgroundTint="@color/gochat_card_lighter"
+            android:contentDescription="Text status"
+            android:elevation="4dp"
+            app:fabSize="mini"
+            app:srcCompat="@drawable/ic_edit_status"
+            app:tint="@color/white" />
+
+        <!-- Camera FAB for Photo/Video Status -->
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabCameraStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@color/gochat_accent"
+            android:contentDescription="Camera status"
+            android:elevation="6dp"
+            app:fabSize="normal"
+            app:srcCompat="@drawable/ic_camera_status"
+            app:tint="@color/black" />
+
+    </LinearLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

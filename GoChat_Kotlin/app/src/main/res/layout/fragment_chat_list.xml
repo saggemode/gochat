@@ -1,0 +1,381 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/gochat_bg_dark">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/gochat_surface_dark"
+        app:elevation="0dp">
+
+        <!-- Top Toolbar -->
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbarChatList"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/gochat_surface_dark"
+            app:contentInsetStart="16dp"
+            app:contentInsetEnd="8dp">
+
+            <!-- Normal Title Container -->
+            <LinearLayout
+                android:id="@+id/layoutToolbarNormal"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tvAppTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="GoChat"
+                    android:textColor="@color/gochat_text_primary"
+                    android:textSize="22sp"
+                    android:textStyle="bold" />
+
+                <!-- Search Button -->
+                <ImageView
+                    android:id="@+id/btnOpenSearch"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:contentDescription="Search"
+                    android:focusable="true"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_search" />
+
+                <!-- QR Scanner Button -->
+                <ImageView
+                    android:id="@+id/btnQrScanner"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:contentDescription="Scan QR"
+                    android:focusable="true"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_qr_code" />
+
+                <!-- More Options Menu -->
+                <ImageView
+                    android:id="@+id/btnMoreOptions"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:contentDescription="More"
+                    android:focusable="true"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_more_vert" />
+            </LinearLayout>
+
+            <!-- Expanded Search Container -->
+            <LinearLayout
+                android:id="@+id/layoutToolbarSearch"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                tools:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/btnCloseSearch"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:contentDescription="Close search"
+                    android:focusable="true"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_arrow_down"
+                    android:rotation="90" />
+
+                <EditText
+                    android:id="@+id/etSearchQuery"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:background="@android:color/transparent"
+                    android:hint="Search chats, contacts, or messages..."
+                    android:imeOptions="actionDone"
+                    android:importantForAutofill="no"
+                    android:inputType="text"
+                    android:textColor="@color/gochat_text_primary"
+                    android:textColorHint="@color/gochat_text_muted"
+                    android:textSize="15sp" />
+
+                <ImageView
+                    android:id="@+id/btnClearSearch"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:contentDescription="Clear"
+                    android:focusable="true"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_error"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+            </LinearLayout>
+
+        </androidx.appcompat.widget.Toolbar>
+
+        <!-- Horizontal Story Updates Carousel -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvStoriesCarousel"
+            android:layout_width="match_parent"
+            android:layout_height="96dp"
+            android:clipToPadding="false"
+            android:orientation="horizontal"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="4dp"
+            tools:listitem="@layout/item_story_carousel" />
+
+        <!-- Filter Chips & Quick PIN Action Row -->
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipToPadding="false"
+            android:overScrollMode="never"
+            android:paddingHorizontal="14dp"
+            android:paddingBottom="8dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <!-- + Chat by PIN Action Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnChatByPin"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:backgroundTint="@color/gochat_accent"
+                    android:elevation="0dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:paddingHorizontal="12dp"
+                    android:text="+ Chat by PIN"
+                    android:textAllCaps="false"
+                    android:textColor="@color/black"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="17dp"
+                    app:icon="@drawable/ic_vpn_key"
+                    app:iconGravity="textStart"
+                    app:iconPadding="4dp"
+                    app:iconSize="14dp"
+                    app:iconTint="@color/black" />
+
+                <!-- Filter: All -->
+                <TextView
+                    android:id="@+id/chipFilterAll"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_chip_selected"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:paddingHorizontal="14dp"
+                    android:text="All"
+                    android:textColor="@color/gochat_accent"
+                    android:textSize="12.5sp"
+                    android:textStyle="bold" />
+
+                <!-- Filter: Unread -->
+                <TextView
+                    android:id="@+id/chipFilterUnread"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_chip_unselected"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:paddingHorizontal="14dp"
+                    android:text="Unread"
+                    android:textColor="@color/gochat_text_muted"
+                    android:textSize="12.5sp" />
+
+                <!-- Filter: Groups -->
+                <TextView
+                    android:id="@+id/chipFilterGroups"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_chip_unselected"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:paddingHorizontal="14dp"
+                    android:text="Groups"
+                    android:textColor="@color/gochat_text_muted"
+                    android:textSize="12.5sp" />
+
+                <!-- Filter: Channels -->
+                <TextView
+                    android:id="@+id/chipFilterChannels"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_chip_unselected"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:paddingHorizontal="14dp"
+                    android:text="Channels"
+                    android:textColor="@color/gochat_text_muted"
+                    android:textSize="12.5sp" />
+
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <!-- Pending Contact Invitations Banner -->
+        <LinearLayout
+            android:id="@+id/layoutPendingBanner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="14dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/bg_username_chip"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="10dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="Pending"
+                android:src="@drawable/ic_email_verify" />
+
+            <TextView
+                android:id="@+id/tvPendingBannerText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:textColor="@color/gochat_emerald_light"
+                android:textSize="12.5sp"
+                android:textStyle="bold"
+                tools:text="1 new contact invitation request" />
+
+            <TextView
+                android:id="@+id/btnReviewInvitations"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_unread_badge"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="4dp"
+                android:text="Review"
+                android:textColor="@color/black"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <!-- Main List Container with Pull-to-Refresh -->
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefresh"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <!-- RecyclerView Conversations -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvConversations"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingBottom="80dp"
+                tools:listitem="@layout/item_conversation" />
+
+            <!-- Empty State View -->
+            <LinearLayout
+                android:id="@+id/layoutEmptyState"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="32dp"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <ImageView
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:alpha="0.4"
+                    android:contentDescription="Empty"
+                    android:src="@drawable/ic_chat_bubble_rounded" />
+
+                <TextView
+                    android:id="@+id/tvEmptyTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="No Conversations"
+                    android:textColor="@color/gochat_text_primary"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvEmptyDescription"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center"
+                    android:maxWidth="280dp"
+                    android:text="Start chatting with your contacts using their GOCHAT PIN or phone number."
+                    android:textColor="@color/gochat_text_secondary"
+                    android:textSize="13sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnEmptyAction"
+                    android:layout_width="wrap_content"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="20dp"
+                    android:backgroundTint="@color/gochat_accent"
+                    android:text="Select Contact"
+                    android:textAllCaps="false"
+                    android:textColor="@color/black"
+                    android:textStyle="bold"
+                    app:cornerRadius="12dp" />
+            </LinearLayout>
+
+        </FrameLayout>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+    <!-- Floating Action Button for New Chat -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabNewChat"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="18dp"
+        android:backgroundTint="@color/gochat_accent"
+        android:contentDescription="New Chat"
+        android:elevation="6dp"
+        app:fabSize="normal"
+        app:srcCompat="@drawable/ic_message_add"
+        app:tint="@color/black" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

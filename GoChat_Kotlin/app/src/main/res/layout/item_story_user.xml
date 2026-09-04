@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="12dp">
+
+    <!-- Avatar with Story Ring -->
+    <FrameLayout
+        android:layout_width="56dp"
+        android:layout_height="56dp">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/ivStoryUserAvatar"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_gravity="center"
+            android:contentDescription="Avatar"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_account"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
+
+        <View
+            android:id="@+id/viewStoryRing"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/bg_story_ring"
+            android:visibility="visible" />
+    </FrameLayout>
+
+    <!-- Info: Name + Timestamp -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvStoryUserName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/gochat_text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            tools:text="Sarah Connor" />
+
+        <TextView
+            android:id="@+id/tvStoryTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:textColor="@color/gochat_text_muted"
+            android:textSize="13sp"
+            tools:text="25 minutes ago" />
+    </LinearLayout>
+
+</LinearLayout>

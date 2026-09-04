@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/gochat_bg_dark"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <ImageView
+        android:id="@+id/ivTabPlaceholder"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:alpha="0.4"
+        android:contentDescription="Tab Icon"
+        android:src="@drawable/ic_tab_status" />
+
+    <TextView
+        android:id="@+id/tvTabTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Updates"
+        android:textColor="@color/gochat_text_primary"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tvTabSubtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center"
+        android:text="Status updates from your contacts will appear here."
+        android:textColor="@color/gochat_text_secondary"
+        android:textSize="13sp" />
+
+</LinearLayout>

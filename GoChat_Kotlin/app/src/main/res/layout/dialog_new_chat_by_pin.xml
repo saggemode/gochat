@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_card_dark"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <!-- Header Icon -->
+    <FrameLayout
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center_horizontal"
+        android:background="@drawable/bg_username_chip">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center"
+            android:contentDescription="PIN"
+            android:src="@drawable/ic_vpn_key" />
+    </FrameLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="14dp"
+        android:text="Start Chat by GOCHAT PIN"
+        android:textColor="@color/gochat_text_primary"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="4dp"
+        android:gravity="center"
+        android:text="Enter your contact's 6-character unique GoChat PIN (e.g. 8492A1)"
+        android:textColor="@color/gochat_text_secondary"
+        android:textSize="12.5sp" />
+
+    <!-- PIN Input Field -->
+    <EditText
+        android:id="@+id/etPinInput"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="18dp"
+        android:background="@drawable/bg_input_field"
+        android:fontFamily="monospace"
+        android:gravity="center"
+        android:hint="8492A1"
+        android:imeOptions="actionDone"
+        android:importantForAutofill="no"
+        android:inputType="textCapCharacters"
+        android:letterSpacing="0.25"
+        android:maxLength="8"
+        android:textColor="@color/gochat_emerald_light"
+        android:textColorHint="@color/gochat_text_subtle"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <!-- Error Banner -->
+    <TextView
+        android:id="@+id/tvPinError"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textColor="@color/gochat_error"
+        android:textSize="12sp"
+        android:visibility="gone"
+        tools:text="User not found with this PIN" />
+
+    <!-- Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:gravity="end"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCancelPin"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cancel"
+            android:textAllCaps="false"
+            android:textColor="@color/gochat_text_muted" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnConnectPin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:backgroundTint="@color/gochat_accent"
+            android:text="Connect"
+            android:textAllCaps="false"
+            android:textColor="@color/black"
+            android:textStyle="bold"
+            app:cornerRadius="10dp" />
+    </LinearLayout>
+
+</LinearLayout>

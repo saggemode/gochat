@@ -2,6 +2,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Permissions -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -11,17 +20,58 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.GoChat">
+
+        <!-- Login / Registration / OTP Activity (Launcher) -->
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.auth.LoginActivity"
             android:exported="true"
             android:theme="@style/Theme.GoChat"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Main Navigation Activity -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Chat Room Activity -->
+        <activity
+            android:name=".ui.chat.ChatRoomActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Story Viewer Activity -->
+        <activity
+            android:name=".ui.stories.StoryViewerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Chat Backup Activity -->
+        <activity
+            android:name=".ui.backup.ChatBackupActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- FileProvider for camera and media sharing -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
     </application>
 
 </manifest>

@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -43,6 +44,7 @@ dependencies {
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
+    implementation(libs.androidx.swiperefreshlayout)
 
     // Lifecycle & Coroutines
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
@@ -59,7 +61,7 @@ dependencies {
     // Room Database
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    annotationProcessor(libs.androidx.room.compiler)
+    ksp(libs.androidx.room.compiler)
 
     // Security
     implementation(libs.androidx.security.crypto)
@@ -68,6 +70,9 @@ dependencies {
     implementation(libs.coil)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
+
+    // Google Play Services Auth (Google Drive backup)
+    implementation(libs.google.play.services.auth)
 
     // Testing
     testImplementation(libs.junit)

@@ -1,0 +1,505 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/gochat_bg_dark">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:overScrollMode="never"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="32dp">
+
+            <!-- App Logo Icon -->
+            <FrameLayout
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:background="@drawable/bg_logo_squircle"
+                android:elevation="6dp">
+
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@string/app_name"
+                    android:src="@drawable/ic_chat_bubble_rounded" />
+            </FrameLayout>
+
+            <!-- Screen Title -->
+            <TextView
+                android:id="@+id/tvAuthTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="Get Started with GoChat"
+                android:textColor="@color/gochat_text_primary"
+                android:textSize="26sp"
+                android:textStyle="bold" />
+
+            <!-- Screen Subtitle -->
+            <TextView
+                android:id="@+id/tvAuthSubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="center"
+                android:maxWidth="340dp"
+                android:text="Instant passwordless phone sign-up with SMS OTP verification"
+                android:textColor="@color/gochat_text_secondary"
+                android:textSize="13sp" />
+
+            <!-- Main Auth Card Container -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:background="@drawable/bg_card_dark"
+                android:orientation="vertical"
+                android:padding="22dp">
+
+                <!-- Error Banner -->
+                <LinearLayout
+                    android:id="@+id/layoutErrorBanner"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:background="@drawable/bg_error_banner"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="12dp"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:contentDescription="Error"
+                        android:src="@drawable/ic_error" />
+
+                    <TextView
+                        android:id="@+id/tvErrorMessage"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:layout_weight="1"
+                        android:textColor="@color/gochat_error"
+                        android:textSize="13sp"
+                        tools:text="Please enter a valid phone number" />
+                </LinearLayout>
+
+                <!-- ════════════ PHONE REGISTRATION FORM ════════════ -->
+                <LinearLayout
+                    android:id="@+id/layoutPhoneForm"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="visible">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:letterSpacing="0.08"
+                        android:text="PHONE NUMBER"
+                        android:textColor="@color/gochat_text_secondary"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <!-- Country Code Button -->
+                        <LinearLayout
+                            android:id="@+id/layoutCountryButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="48dp"
+                            android:background="@drawable/bg_country_picker"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="12dp">
+
+                            <TextView
+                                android:id="@+id/tvSelectedFlag"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="🇳🇬"
+                                android:textSize="16sp" />
+
+                            <TextView
+                                android:id="@+id/tvSelectedDial"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="6dp"
+                                android:fontFamily="monospace"
+                                android:text="+234"
+                                android:textColor="#D4D4D8"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+
+                            <ImageView
+                                android:layout_width="16dp"
+                                android:layout_height="16dp"
+                                android:layout_marginStart="4dp"
+                                android:contentDescription="Select Country"
+                                android:src="@drawable/ic_arrow_down" />
+                        </LinearLayout>
+
+                        <!-- Phone Input -->
+                        <EditText
+                            android:id="@+id/etPhoneNumber"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_marginStart="8dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_input_field"
+                            android:hint="Phone number"
+                            android:imeOptions="actionDone"
+                            android:importantForAutofill="no"
+                            android:inputType="phone"
+                            android:paddingHorizontal="14dp"
+                            android:textColor="@color/gochat_text_primary"
+                            android:textColorHint="@color/gochat_text_muted"
+                            android:textSize="14.5sp" />
+                    </LinearLayout>
+
+                    <!-- Country Picker Dropdown Container -->
+                    <LinearLayout
+                        android:id="@+id/layoutCountryPickerDropdown"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_input_field"
+                        android:orientation="vertical"
+                        android:padding="8dp"
+                        android:visibility="gone"
+                        tools:visibility="visible">
+
+                        <EditText
+                            android:id="@+id/etCountrySearch"
+                            android:layout_width="match_parent"
+                            android:layout_height="38dp"
+                            android:background="@drawable/bg_country_picker"
+                            android:drawableStart="@drawable/ic_search"
+                            android:drawablePadding="8dp"
+                            android:hint="Search country or code..."
+                            android:imeOptions="actionDone"
+                            android:importantForAutofill="no"
+                            android:inputType="text"
+                            android:paddingHorizontal="10dp"
+                            android:textColor="@color/gochat_text_primary"
+                            android:textColorHint="@color/gochat_text_muted"
+                            android:textSize="12.5sp" />
+
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/rvCountries"
+                            android:layout_width="match_parent"
+                            android:layout_height="180dp"
+                            android:layout_marginTop="6dp"
+                            android:scrollbars="vertical" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:lineSpacingMultiplier="1.2"
+                        android:text="Fast &amp; secure phone sign-up. Username &amp; email can be added anytime in Settings."
+                        android:textColor="@color/gochat_text_muted"
+                        android:textSize="11sp" />
+
+                    <!-- Continue Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnContinuePhone"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="20dp"
+                        android:backgroundTint="@color/gochat_accent"
+                        android:elevation="0dp"
+                        android:text="Continue with Phone"
+                        android:textAllCaps="false"
+                        android:textColor="@color/black"
+                        android:textSize="14.5sp"
+                        android:textStyle="bold"
+                        app:cornerRadius="12dp" />
+                </LinearLayout>
+
+                <!-- ════════════ SIGN IN FORM ════════════ -->
+                <LinearLayout
+                    android:id="@+id/layoutSignInForm"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    tools:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:letterSpacing="0.08"
+                        android:text="PHONE NUMBER, EMAIL, OR GOCHAT PIN"
+                        android:textColor="@color/gochat_text_secondary"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                    <EditText
+                        android:id="@+id/etIdentifier"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_input_field"
+                        android:drawableStart="@drawable/ic_account"
+                        android:drawablePadding="10dp"
+                        android:hint="e.g. +2348012345678, alex@gochat.io, or 8492A1"
+                        android:imeOptions="actionDone"
+                        android:importantForAutofill="no"
+                        android:inputType="textEmailAddress"
+                        android:paddingHorizontal="14dp"
+                        android:textColor="@color/gochat_text_primary"
+                        android:textColorHint="@color/gochat_text_muted"
+                        android:textSize="14.5sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="14dp"
+                            android:layout_height="14dp"
+                            android:contentDescription="Security"
+                            android:src="@drawable/ic_shield" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:text="Passwordless login. A 6-digit SMS OTP code will be verified."
+                            android:textColor="@color/gochat_text_muted"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+
+                    <!-- Send Code Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSendCode"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="20dp"
+                        android:backgroundTint="@color/gochat_accent"
+                        android:elevation="0dp"
+                        android:text="Send Verification Code"
+                        android:textAllCaps="false"
+                        android:textColor="@color/black"
+                        android:textSize="14.5sp"
+                        android:textStyle="bold"
+                        app:cornerRadius="12dp" />
+                </LinearLayout>
+
+                <!-- ════════════ OTP VERIFICATION VIEW ════════════ -->
+                <LinearLayout
+                    android:id="@+id/layoutOtpForm"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    tools:visibility="gone">
+
+                    <ImageView
+                        android:id="@+id/ivOtpStatusIcon"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:contentDescription="OTP Icon"
+                        android:src="@drawable/ic_vpn_key" />
+
+                    <TextView
+                        android:id="@+id/tvOtpHeader"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Account Created!"
+                        android:textColor="@color/gochat_text_primary"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <!-- Assigned Username Badge -->
+                    <LinearLayout
+                        android:id="@+id/layoutAssignedUsername"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_username_chip"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="5dp"
+                        android:visibility="gone"
+                        tools:visibility="visible">
+
+                        <ImageView
+                            android:layout_width="14dp"
+                            android:layout_height="14dp"
+                            android:contentDescription="AI generated"
+                            android:src="@drawable/ic_sparkle" />
+
+                        <TextView
+                            android:id="@+id/tvAssignedUsername"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:textColor="@color/gochat_emerald_light"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            tools:text="Assigned Username: User 4920" />
+                    </LinearLayout>
+
+                    <!-- Unique GoChat PIN -->
+                    <TextView
+                        android:id="@+id/tvGeneratedPin"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:fontFamily="monospace"
+                        android:letterSpacing="0.15"
+                        android:textColor="@color/gochat_emerald_light"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        tools:text="Your unique GOCHAT PIN: 8492A1" />
+
+                    <TextView
+                        android:id="@+id/tvPinSubtitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Share this PIN with friends to connect on GoChat"
+                        android:textColor="@color/gochat_text_muted"
+                        android:textSize="10.5sp" />
+
+                    <!-- SMS Detection Banner -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:background="@drawable/bg_otp_banner"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="12dp">
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <View
+                                android:layout_width="8dp"
+                                android:layout_height="8dp"
+                                android:background="@drawable/bg_circle_pulse" />
+
+                            <TextView
+                                android:id="@+id/tvOtpDetectionStatus"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="Detecting SMS OTP code..."
+                                android:textColor="@color/gochat_otp_banner_text"
+                                android:textSize="12sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/tvOtpDestination"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:textColor="@color/gochat_otp_banner_subtext"
+                            android:textSize="11sp"
+                            tools:text="Verification code sent to +2348012345678" />
+                    </LinearLayout>
+
+                    <!-- OTP Input Box -->
+                    <EditText
+                        android:id="@+id/etOtpCode"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:layout_marginTop="16dp"
+                        android:background="@drawable/bg_input_field"
+                        android:fontFamily="monospace"
+                        android:gravity="center"
+                        android:hint="000000"
+                        android:imeOptions="actionDone"
+                        android:importantForAutofill="no"
+                        android:inputType="number"
+                        android:letterSpacing="0.4"
+                        android:maxLength="6"
+                        android:textColor="@color/gochat_text_primary"
+                        android:textColorHint="@color/gochat_text_subtle"
+                        android:textSize="22sp"
+                        android:textStyle="bold" />
+
+                    <!-- Start Messaging Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnStartMessaging"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="18dp"
+                        android:backgroundTint="@color/gochat_accent"
+                        android:elevation="0dp"
+                        android:text="Start Messaging Now"
+                        android:textAllCaps="false"
+                        android:textColor="@color/black"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        app:cornerRadius="12dp"
+                        app:icon="@drawable/ic_sparkle"
+                        app:iconGravity="textStart"
+                        app:iconTint="@color/black" />
+                </LinearLayout>
+
+                <!-- Loading Progress Indicator -->
+                <ProgressBar
+                    android:id="@+id/pbLoading"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_gravity="center"
+                    android:layout_marginTop="16dp"
+                    android:indeterminateTint="@color/gochat_accent"
+                    android:visibility="gone"
+                    tools:visibility="gone" />
+
+                <!-- Bottom Toggle Sign In / Create Account Link -->
+                <TextView
+                    android:id="@+id/tvToggleAuthMode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginTop="18dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:padding="8dp"
+                    android:textColor="@color/gochat_text_muted"
+                    android:textSize="12.5sp"
+                    tools:text="Already have an account? Sign In" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
