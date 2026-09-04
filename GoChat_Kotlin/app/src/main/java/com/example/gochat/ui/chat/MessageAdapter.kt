@@ -1,5 +1,6 @@
 package com.example.gochat.ui.chat
 
+import android.graphics.Typeface
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -76,21 +77,47 @@ class MessageAdapter(
 
         fun bind(message: Message) {
             with(binding) {
+                // Forwarded status
+                layoutForwarded.visibility = if (message.isForwarded) View.VISIBLE else View.GONE
+
                 // Content text
-                if (message.isPing) {
+                if (message.isDeleted) {
+                    tvMessageContent.text = "🚫 This message was deleted"
+                    tvMessageContent.setTypeface(null, Typeface.ITALIC)
+                    tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_text_secondary))
+                } else if (message.isPing) {
                     tvMessageContent.text = "💥 PING!!!"
                     tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_emerald_light))
+                    tvMessageContent.setTypeface(null, Typeface.NORMAL)
                 } else {
                     tvMessageContent.text = message.content
                     tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_text_primary))
+                    tvMessageContent.setTypeface(null, Typeface.NORMAL)
                 }
-                tvMessageContent.visibility = if (message.content.isNotEmpty() || message.isPing) View.VISIBLE else View.GONE
+                tvMessageContent.visibility = if (message.content.isNotEmpty() || message.isPing || message.isDeleted) View.VISIBLE else View.GONE
+
+                // Edited status
+                tvEdited.visibility = if (message.isEdited && !message.isDeleted) View.VISIBLE else View.GONE
+
+                // Starred status
+                ivStarred.visibility = if (message.isStarred) View.VISIBLE else View.GONE
+
+                // Reactions
+                if (message.reactions.isNotEmpty() && !message.isDeleted) {
+                    layoutReactions.visibility = View.VISIBLE
+                    val reactionText = message.reactions.groupBy { it.emoji }
+                        .map { "${it.key} ${it.value.size}" }
+                        .joinToString("  ")
+                    tvReactions.text = reactionText
+                } else {
+                    layoutReactions.visibility = View.GONE
+                }
 
                 // Timestamp
                 tvMessageTime.text = formatTime(message.createdAt)
 
                 // Read Receipt status icon
-                ivMessageStatus.visibility = View.VISIBLE
+                ivMessageStatus.visibility = if (message.isDeleted) View.GONE else View.VISIBLE
                 when (message.status) {
                     MessageStatus.SENDING -> ivMessageStatus.setImageResource(R.drawable.ic_status_sent)
                     MessageStatus.SENT -> ivMessageStatus.setImageResource(R.drawable.ic_status_sent)
@@ -100,7 +127,7 @@ class MessageAdapter(
                 }
 
                 // Quoted Reply container
-                if (!message.replyToId.isNullOrBlank()) {
+                if (!message.replyToId.isNullOrBlank() && !message.isDeleted) {
                     layoutQuotedReply.visibility = View.VISIBLE
                     tvQuotedSender.text = message.replyToSenderName ?: "Original Message"
                     tvQuotedText.text = message.replyToText ?: ""
@@ -109,7 +136,7 @@ class MessageAdapter(
                 }
 
                 // Media Image Preview
-                if (message.type == MessageType.IMAGE && !message.mediaUrl.isNullOrBlank()) {
+                if (message.type == MessageType.IMAGE && !message.mediaUrl.isNullOrBlank() && !message.isDeleted) {
                     ivMessageImage.visibility = View.VISIBLE
                     ivMessageImage.load(message.mediaUrl) {
                         crossfade(true)
@@ -120,7 +147,7 @@ class MessageAdapter(
                 }
 
                 // Voice Note Row
-                if (message.type == MessageType.VOICE || message.type == MessageType.AUDIO) {
+                if ((message.type == MessageType.VOICE || message.type == MessageType.AUDIO) && !message.isDeleted) {
                     layoutVoiceNote.visibility = View.VISIBLE
                     val isPlayingThis = AudioPlayerManager.currentPlayingMessageId == message.id && AudioPlayerManager.isPlaying
                     btnPlayPauseVoice.setImageResource(if (isPlayingThis) R.drawable.ic_pause else R.drawable.ic_play)
@@ -151,7 +178,9 @@ class MessageAdapter(
 
                 // Long Click / Swipe to reply
                 root.setOnLongClickListener {
-                    onMessageLongClicked?.invoke(message)
+                    if (!message.isDeleted) {
+                        onMessageLongClicked?.invoke(message)
+                    }
                     true
                 }
             }
@@ -163,6 +192,9 @@ class MessageAdapter(
 
         fun bind(message: Message) {
             with(binding) {
+                // Forwarded status
+                layoutForwarded.visibility = if (message.isForwarded) View.VISIBLE else View.GONE
+
                 // Sender name
                 if (message.senderName.isNotBlank()) {
                     tvSenderName.visibility = View.VISIBLE
@@ -172,20 +204,43 @@ class MessageAdapter(
                 }
 
                 // Content text
-                if (message.isPing) {
+                if (message.isDeleted) {
+                    tvMessageContent.text = "🚫 This message was deleted"
+                    tvMessageContent.setTypeface(null, Typeface.ITALIC)
+                    tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_text_secondary))
+                } else if (message.isPing) {
                     tvMessageContent.text = "💥 PING!!!"
                     tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_emerald_light))
+                    tvMessageContent.setTypeface(null, Typeface.NORMAL)
                 } else {
                     tvMessageContent.text = message.content
                     tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_text_primary))
+                    tvMessageContent.setTypeface(null, Typeface.NORMAL)
                 }
-                tvMessageContent.visibility = if (message.content.isNotEmpty() || message.isPing) View.VISIBLE else View.GONE
+                tvMessageContent.visibility = if (message.content.isNotEmpty() || message.isPing || message.isDeleted) View.VISIBLE else View.GONE
+
+                // Edited status
+                tvEdited.visibility = if (message.isEdited && !message.isDeleted) View.VISIBLE else View.GONE
+
+                // Starred status
+                ivStarred.visibility = if (message.isStarred) View.VISIBLE else View.GONE
+
+                // Reactions
+                if (message.reactions.isNotEmpty() && !message.isDeleted) {
+                    layoutReactions.visibility = View.VISIBLE
+                    val reactionText = message.reactions.groupBy { it.emoji }
+                        .map { "${it.key} ${it.value.size}" }
+                        .joinToString("  ")
+                    tvReactions.text = reactionText
+                } else {
+                    layoutReactions.visibility = View.GONE
+                }
 
                 // Timestamp
                 tvMessageTime.text = formatTime(message.createdAt)
 
                 // Quoted Reply container
-                if (!message.replyToId.isNullOrBlank()) {
+                if (!message.replyToId.isNullOrBlank() && !message.isDeleted) {
                     layoutQuotedReply.visibility = View.VISIBLE
                     tvQuotedSender.text = message.replyToSenderName ?: "Original Message"
                     tvQuotedText.text = message.replyToText ?: ""
@@ -194,7 +249,7 @@ class MessageAdapter(
                 }
 
                 // Media Image Preview
-                if (message.type == MessageType.IMAGE && !message.mediaUrl.isNullOrBlank()) {
+                if (message.type == MessageType.IMAGE && !message.mediaUrl.isNullOrBlank() && !message.isDeleted) {
                     ivMessageImage.visibility = View.VISIBLE
                     ivMessageImage.load(message.mediaUrl) {
                         crossfade(true)
@@ -205,7 +260,7 @@ class MessageAdapter(
                 }
 
                 // Voice Note Row
-                if (message.type == MessageType.VOICE || message.type == MessageType.AUDIO) {
+                if ((message.type == MessageType.VOICE || message.type == MessageType.AUDIO) && !message.isDeleted) {
                     layoutVoiceNote.visibility = View.VISIBLE
                     val isPlayingThis = AudioPlayerManager.currentPlayingMessageId == message.id && AudioPlayerManager.isPlaying
                     btnPlayPauseVoice.setImageResource(if (isPlayingThis) R.drawable.ic_pause else R.drawable.ic_play)
@@ -236,7 +291,9 @@ class MessageAdapter(
 
                 // Long Click / Swipe to reply
                 root.setOnLongClickListener {
-                    onMessageLongClicked?.invoke(message)
+                    if (!message.isDeleted) {
+                        onMessageLongClicked?.invoke(message)
+                    }
                     true
                 }
             }

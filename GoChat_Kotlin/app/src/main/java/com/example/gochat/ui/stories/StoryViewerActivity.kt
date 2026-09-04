@@ -47,14 +47,14 @@ class StoryViewerActivity : AppCompatActivity() {
     private var isShowingBottomSheet = false
 
     companion object {
+        var activeUserStories: UserStories? = null
         const val EXTRA_USER_STORIES_JSON = "extra_user_stories_json"
         const val EXTRA_START_INDEX = "extra_start_index"
         private const val STORY_DURATION_MS = 5000L
 
         fun createIntent(context: Context, userStories: UserStories, startIndex: Int = 0): Intent {
+            activeUserStories = userStories
             return Intent(context, StoryViewerActivity::class.java).apply {
-                val jsonString = NetworkModule.json.encodeToString(UserStories.serializer(), userStories)
-                putExtra(EXTRA_USER_STORIES_JSON, jsonString)
                 putExtra(EXTRA_START_INDEX, startIndex)
             }
         }
@@ -68,17 +68,14 @@ class StoryViewerActivity : AppCompatActivity() {
         storyRepository = StoryRepository(this)
         chatRepository = ChatRepository(this)
 
-        val jsonStr = intent.getStringExtra(EXTRA_USER_STORIES_JSON)
-        if (jsonStr.isNullOrBlank()) {
-            finish()
-            return
-        }
-
-        try {
-            userStories = NetworkModule.json.decodeFromString(UserStories.serializer(), jsonStr)
-        } catch (e: Exception) {
-            finish()
-            return
+        userStories = activeUserStories
+        if (userStories == null) {
+            val jsonStr = intent.getStringExtra(EXTRA_USER_STORIES_JSON)
+            if (!jsonStr.isNullOrBlank()) {
+                try {
+                    userStories = NetworkModule.json.decodeFromString(UserStories.serializer(), jsonStr)
+                } catch (_: Exception) {}
+            }
         }
 
         val stories = userStories?.stories.orEmpty()
@@ -130,16 +127,13 @@ class StoryViewerActivity : AppCompatActivity() {
         val user = userStories ?: return
         binding.tvStoryHeaderName.text = user.userName
 
-        if (user.userAvatar.isNotBlank()) {
-            binding.ivStoryHeaderAvatar.load(user.userAvatar) {
-                crossfade(true)
-                placeholder(R.drawable.ic_account)
-                error(R.drawable.ic_account)
-                transformations(CircleCropTransformation())
-            }
-        } else {
-            binding.ivStoryHeaderAvatar.setImageResource(R.drawable.ic_account)
-        }
+        com.example.gochat.core.media.MediaImageHelper.loadSafeImage(
+            binding.ivStoryHeaderAvatar,
+            user.userAvatar,
+            isCircle = true,
+            placeholderRes = R.drawable.ic_account,
+            errorRes = R.drawable.ic_account
+        )
 
         binding.btnBackStory.setOnClickListener { finish() }
         binding.btnCloseStory.setOnClickListener { finish() }
@@ -255,10 +249,13 @@ class StoryViewerActivity : AppCompatActivity() {
             binding.layoutTextStory.visibility = View.GONE
             binding.ivMediaStory.visibility = View.VISIBLE
 
-            binding.ivMediaStory.load(story.mediaUrl) {
-                crossfade(true)
-                error(R.drawable.ic_tab_status)
-            }
+            com.example.gochat.core.media.MediaImageHelper.loadSafeImage(
+                binding.ivMediaStory,
+                story.mediaUrl,
+                isCircle = false,
+                placeholderRes = R.drawable.ic_tab_status,
+                errorRes = R.drawable.ic_tab_status
+            )
 
             if (story.caption.isNotBlank()) {
                 binding.tvImageStoryCaption.visibility = View.VISIBLE
@@ -410,6 +407,9 @@ class StoryViewerActivity : AppCompatActivity() {
     override fun onDestroy() {
         currentAnimator?.cancel()
         currentAnimator = null
+        if (activeUserStories === userStories) {
+            activeUserStories = null
+        }
         super.onDestroy()
     }
 }

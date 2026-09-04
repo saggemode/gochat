@@ -8,13 +8,16 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import coil.load
 import coil.transform.CircleCropTransformation
 import com.example.gochat.R
 import com.example.gochat.data.api.TokenManager
+import com.example.gochat.data.repository.AuthRepository
 import com.example.gochat.databinding.FragmentSettingsBinding
 import com.example.gochat.ui.auth.LoginActivity
 import com.example.gochat.ui.backup.ChatBackupActivity
+import kotlinx.coroutines.launch
 
 class SettingsFragment : Fragment() {
 
@@ -60,29 +63,43 @@ class SettingsFragment : Fragment() {
             }
 
             tilePrivacy.setOnClickListener {
-                Toast.makeText(requireContext(), "Privacy settings", Toast.LENGTH_SHORT).show()
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Privacy Settings")
+                    .setItems(arrayOf("Last Seen & Online: Everyone", "Read Receipts: Enabled", "Disappearing Messages: Off", "Blocked Contacts: None")) { _, _ -> }
+                    .setPositiveButton("Done", null)
+                    .show()
             }
 
             tileNotifications.setOnClickListener {
-                Toast.makeText(requireContext(), "Notification tones & preferences", Toast.LENGTH_SHORT).show()
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Notification Preferences")
+                    .setMultiChoiceItems(
+                        arrayOf("Message Notifications", "Group Notifications", "Call Vibration", "In-Chat Sounds"),
+                        booleanArrayOf(true, true, true, true)
+                    ) { _, _, _ -> }
+                    .setPositiveButton("Save", null)
+                    .show()
             }
 
             tileLogout.setOnClickListener {
-                showLogoutConfirmation(tokenManager)
+                showLogoutConfirmation()
             }
         }
     }
 
-    private fun showLogoutConfirmation(tokenManager: TokenManager) {
+    private fun showLogoutConfirmation() {
         AlertDialog.Builder(requireContext())
             .setTitle("Log Out")
             .setMessage("Are you sure you want to log out of GoChat?")
             .setPositiveButton("Log Out") { _, _ ->
-                tokenManager.clearAll()
-                val intent = Intent(requireContext(), LoginActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                val authRepository = AuthRepository(requireContext().applicationContext)
+                viewLifecycleOwner.lifecycleScope.launch {
+                    authRepository.logout()
+                    val intent = Intent(requireContext(), LoginActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    startActivity(intent)
                 }
-                startActivity(intent)
             }
             .setNegativeButton("Cancel", null)
             .show()

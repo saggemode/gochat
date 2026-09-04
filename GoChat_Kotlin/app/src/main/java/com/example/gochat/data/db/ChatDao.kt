@@ -5,6 +5,7 @@ import com.example.gochat.data.model.CallRecord
 import com.example.gochat.data.model.Conversation
 import com.example.gochat.data.model.Message
 import com.example.gochat.data.model.MessageStatus
+import com.example.gochat.data.model.Reaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -25,8 +26,23 @@ interface ChatDao {
     @Query("UPDATE conversations SET unreadCount = 0 WHERE id = :convId")
     suspend fun markConversationAsRead(convId: String): Int
 
+    @Query("UPDATE conversations SET lastMessageText = :lastText, lastMessageTime = :lastTime, updatedAt = :updatedAt, unreadCount = unreadCount + 1 WHERE id = :convId")
+    suspend fun updateLastMessageAndIncrementUnread(convId: String, lastText: String, lastTime: Long, updatedAt: Long): Int
+
+    @Query("UPDATE conversations SET lastMessageText = :lastText, lastMessageTime = :lastTime, updatedAt = :updatedAt WHERE id = :convId")
+    suspend fun updateLastMessage(convId: String, lastText: String, lastTime: Long, updatedAt: Long): Int
+
+    @Query("SELECT * FROM conversations")
+    suspend fun getAllConversationsList(): List<Conversation>
+
     @Query("DELETE FROM conversations WHERE id = :convId")
     suspend fun deleteConversation(convId: String): Int
+
+    @Query("DELETE FROM conversations")
+    suspend fun clearAllConversations(): Int
+
+    @Query("DELETE FROM messages")
+    suspend fun clearAllMessages(): Int
 
     // ── Messages ───────────────────────────────────────────────
     @Query("SELECT * FROM messages WHERE conversationId = :convId ORDER BY createdAt ASC")
@@ -43,6 +59,21 @@ interface ChatDao {
 
     @Query("UPDATE messages SET status = :status WHERE id = :messageId")
     suspend fun updateMessageStatus(messageId: String, status: MessageStatus): Int
+
+    @Query("UPDATE messages SET content = :newContent, isEdited = 1 WHERE id = :messageId")
+    suspend fun updateMessageContent(messageId: String, newContent: String): Int
+
+    @Query("UPDATE messages SET isDeleted = 1, content = 'This message was deleted' WHERE id = :messageId")
+    suspend fun markMessageAsDeleted(messageId: String): Int
+
+    @Query("UPDATE messages SET isStarred = :isStarred WHERE id = :messageId")
+    suspend fun updateMessageStarred(messageId: String, isStarred: Boolean): Int
+
+    @Query("UPDATE messages SET reactions = :reactions WHERE id = :messageId")
+    suspend fun updateMessageReactions(messageId: String, reactions: List<Reaction>): Int
+
+    @Query("SELECT * FROM messages WHERE isStarred = 1 ORDER BY createdAt DESC")
+    fun getStarredMessages(): Flow<List<Message>>
 
     @Query("DELETE FROM messages WHERE id = :messageId")
     suspend fun deleteMessage(messageId: String): Int

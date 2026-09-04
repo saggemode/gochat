@@ -4,12 +4,12 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/gochat_bg_dark">
+    android:background="@drawable/bg_chat_wallpaper_dark">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/gochat_surface_dark"
+        android:background="@color/whatsapp_toolbar_dark"
         app:elevation="0dp">
 
         <!-- Top Toolbar -->
@@ -17,7 +17,7 @@
             android:id="@+id/toolbarChatList"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="@color/gochat_surface_dark"
+            android:background="@color/whatsapp_toolbar_dark"
             app:contentInsetStart="16dp"
             app:contentInsetEnd="8dp">
 
@@ -298,6 +298,12 @@
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent">
+
+            <!-- Subtle WhatsApp Doodle Pattern Layer -->
+            <com.example.gochat.ui.chat.ChatDoodleView
+                android:id="@+id/chatListDoodleView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
 
             <!-- RecyclerView Conversations -->
             <androidx.recyclerview.widget.RecyclerView

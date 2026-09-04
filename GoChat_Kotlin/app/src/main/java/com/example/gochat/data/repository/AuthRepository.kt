@@ -1,10 +1,14 @@
 package com.example.gochat.data.repository
 
 import android.content.Context
+import com.example.gochat.core.backup.ChatBackupManager
 import com.example.gochat.data.api.GoChatApiService
 import com.example.gochat.data.api.NetworkModule
 import com.example.gochat.data.api.TokenManager
+import com.example.gochat.data.db.AppDatabase
 import com.example.gochat.data.model.User
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 
 /**
@@ -44,6 +48,7 @@ class AuthRepository(private val context: Context) {
             val response = api.register(body)
             if (response.isSuccessful) {
                 val data = response.body() ?: buildJsonObject {}
+                resetLocalDatabaseAndSession()
                 extractAndSaveToken(data)
                 extractAndSaveUser(data)
                 Result.success(data)
@@ -78,6 +83,11 @@ class AuthRepository(private val context: Context) {
             val response = api.login(body)
             if (response.isSuccessful) {
                 val data = response.body() ?: buildJsonObject {}
+                val userObj = data["user"]?.jsonObject ?: data
+                val newUserId = userObj["id"]?.jsonPrimitive?.contentOrNull
+                if (tokenManager.userId != newUserId || tokenManager.userId == null) {
+                    resetLocalDatabaseAndSession()
+                }
                 extractAndSaveToken(data)
                 extractAndSaveUser(data)
                 Result.success(data)
@@ -115,7 +125,13 @@ class AuthRepository(private val context: Context) {
             val response = api.verifyOtp(body)
             if (response.isSuccessful) {
                 val data = response.body() ?: buildJsonObject {}
+                val userObj = data["user"]?.jsonObject ?: data
+                val newUserId = userObj["id"]?.jsonPrimitive?.contentOrNull
+                if (tokenManager.userId != newUserId || tokenManager.userId == null) {
+                    resetLocalDatabaseAndSession()
+                }
                 extractAndSaveToken(data)
+                extractAndSaveUser(data)
                 Result.success(data)
             } else {
                 Result.failure(Exception("OTP verification failed (${response.code()})"))
@@ -207,8 +223,28 @@ class AuthRepository(private val context: Context) {
     val currentUserId: String? get() = tokenManager.userId
     val currentToken: String? get() = tokenManager.getToken()
 
-    fun logout() {
+    suspend fun logout() {
+        resetLocalDatabaseAndSession()
         tokenManager.clearAll()
+    }
+
+    /**
+     * Purges all local room tables, disconnects WebSocket, and resets backup prefs.
+     */
+    private suspend fun resetLocalDatabaseAndSession() {
+        try {
+            NetworkModule.getWebSocket(context).disconnect()
+        } catch (_: Exception) {}
+
+        withContext(Dispatchers.IO) {
+            try {
+                AppDatabase.getInstance(context).clearAllTables()
+            } catch (_: Exception) {}
+        }
+
+        try {
+            ChatBackupManager(context).clearBackupInfo()
+        } catch (_: Exception) {}
     }
 
     /**

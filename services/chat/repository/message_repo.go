@@ -363,7 +363,14 @@ func (r *MessageRepository) GetByID(ctx context.Context, id uuid.UUID) (*Message
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrMessageNotFound
 	}
-	return msg, err
+	if err != nil {
+		return nil, err
+	}
+
+	if msgs, err := r.hydrateMessages(ctx, []*Message{msg}); err == nil && len(msgs) > 0 {
+		return msgs[0], nil
+	}
+	return msg, nil
 }
 
 func (r *MessageRepository) GetLastMessage(ctx context.Context, convID uuid.UUID) (*Message, error) {
@@ -435,6 +442,8 @@ func (r *MessageRepository) List(ctx context.Context, convID uuid.UUID, cursor *
 		return nil, "", false, err
 	}
 
+	msgs, _ = r.hydrateMessages(ctx, msgs)
+
 	hasMore := len(msgs) > limit
 	if hasMore {
 		msgs = msgs[:limit]
@@ -489,6 +498,8 @@ func (r *MessageRepository) GetThread(ctx context.Context, parentID uuid.UUID, c
 	if err != nil {
 		return nil, "", false, err
 	}
+
+	msgs, _ = r.hydrateMessages(ctx, msgs)
 
 	hasMore := len(msgs) > limit
 	if hasMore {
@@ -897,6 +908,58 @@ func (r *MessageRepository) GetExpiredMessages(ctx context.Context) ([]*Message,
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
+
+func (r *MessageRepository) hydrateMessages(ctx context.Context, msgs []*Message) ([]*Message, error) {
+	if len(msgs) == 0 {
+		return msgs, nil
+	}
+
+	msgIDs := make([]uuid.UUID, len(msgs))
+	msgMap := make(map[uuid.UUID]*Message, len(msgs))
+	for i, m := range msgs {
+		msgIDs[i] = m.ID
+		msgMap[m.ID] = m
+		// Initialize slices to avoid nil in JSON
+		m.Reactions = []Reaction{}
+		m.Reads = []MessageRead{}
+	}
+
+	// 1. Fetch Reactions in bulk
+	rxRows, err := r.db.Query(ctx, `
+		SELECT message_id, user_id, emoji, created_at
+		FROM message_reactions WHERE message_id = ANY($1)
+	`, msgIDs)
+	if err == nil {
+		defer rxRows.Close()
+		for rxRows.Next() {
+			var rx Reaction
+			if err := rxRows.Scan(&rx.MessageID, &rx.UserID, &rx.Emoji, &rx.CreatedAt); err == nil {
+				if m, ok := msgMap[rx.MessageID]; ok {
+					m.Reactions = append(m.Reactions, rx)
+				}
+			}
+		}
+	}
+
+	// 2. Fetch Reads in bulk
+	rdRows, err := r.db.Query(ctx, `
+		SELECT message_id, user_id, read_at
+		FROM message_reads WHERE message_id = ANY($1)
+	`, msgIDs)
+	if err == nil {
+		defer rdRows.Close()
+		for rdRows.Next() {
+			var rd MessageRead
+			if err := rdRows.Scan(&rd.MessageID, &rd.UserID, &rd.ReadAt); err == nil {
+				if m, ok := msgMap[rd.MessageID]; ok {
+					m.Reads = append(m.Reads, rd)
+				}
+			}
+		}
+	}
+
+	return msgs, nil
+}
 
 func scanMessages(rows pgx.Rows) ([]*Message, error) {
 	var msgs []*Message

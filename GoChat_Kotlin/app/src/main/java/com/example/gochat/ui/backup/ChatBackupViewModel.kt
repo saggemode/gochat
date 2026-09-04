@@ -109,23 +109,19 @@ class ChatBackupViewModel(application: Application) : AndroidViewModel(applicati
                             _isOperating.value = false
                             _progress.value = 1.0f
                             onComplete(true, "Backup uploaded to Google Drive successfully!")
-                        }.onFailure {
+                        }.onFailure { err ->
+                            backupManager.saveLastBackupInfo(meta)
                             _lastBackup.value = meta
                             _isOperating.value = false
-                            onComplete(true, "Local backup created (Google Drive sync pending)")
+                            _progress.value = 1.0f
+                            onComplete(true, "Local encrypted backup created (${meta.formattedSize}). Google Drive upload failed: ${err.localizedMessage}")
                         }
                     } else {
-                        // Mark simulated cloud sync if email was configured
-                        val email = _googleAccountEmail.value
-                        val updatedMeta = if (!email.isNullOrBlank()) {
-                            meta.copy(isCloudBackup = true, accountEmail = email)
-                        } else {
-                            meta
-                        }
-                        backupManager.saveLastBackupInfo(updatedMeta)
-                        _lastBackup.value = updatedMeta
+                        backupManager.saveLastBackupInfo(meta)
+                        _lastBackup.value = meta
                         _isOperating.value = false
-                        onComplete(true, "Backup completed successfully! (${meta.formattedSize})")
+                        _progress.value = 1.0f
+                        onComplete(true, "Local encrypted backup created successfully! (${meta.formattedSize}). Connect Google Drive to sync to cloud.")
                     }
                 } else {
                     _lastBackup.value = meta
@@ -178,15 +174,8 @@ class ChatBackupViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             val signedIn = driveManager.getSignedInAccount()
             if (signedIn == null) {
-                // If no signed-in Google account, fallback to most recent local backup
-                val localBackups = backupManager.getLocalBackupFiles()
-                if (localBackups.isNotEmpty()) {
-                    val latest = localBackups.first()
-                    restoreFromLocal(latest, password, onComplete)
-                } else {
-                    _isOperating.value = false
-                    onComplete(false, "No Google Drive account connected and no local backup found.")
-                }
+                _isOperating.value = false
+                onComplete(false, "Please sign in with Google first to restore from Google Drive.")
                 return@launch
             }
 
@@ -219,15 +208,8 @@ class ChatBackupViewModel(application: Application) : AndroidViewModel(applicati
                     onComplete(false, "Failed to download backup: ${e.localizedMessage}")
                 }
             } else {
-                // Check local backups as fallback
-                val localBackups = backupManager.getLocalBackupFiles()
-                if (localBackups.isNotEmpty()) {
-                    val latest = localBackups.first()
-                    restoreFromLocal(latest, password, onComplete)
-                } else {
-                    _isOperating.value = false
-                    onComplete(false, "No backups found on Google Drive.")
-                }
+                _isOperating.value = false
+                onComplete(false, "No GoChat backup file found on Google Drive.")
             }
         }
     }

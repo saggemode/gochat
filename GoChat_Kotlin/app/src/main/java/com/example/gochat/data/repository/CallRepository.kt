@@ -19,7 +19,6 @@ class CallRepository(private val context: Context) {
     private val api: GoChatApiService get() = NetworkModule.getApiService(context)
     private val dao: ChatDao get() = AppDatabase.getInstance(context).chatDao()
     private val tokenManager: TokenManager get() = TokenManager.getInstance(context)
-    private val json = NetworkModule.json
 
     /** Room Flow for the calls history list. */
     fun observeCalls(): Flow<List<CallRecord>> = dao.getAllCalls()
@@ -37,7 +36,7 @@ class CallRepository(private val context: Context) {
             val response = api.startCall(body)
             if (response.isSuccessful) {
                 val data = response.body() ?: buildJsonObject {}
-                val call = json.decodeFromJsonElement<CallRecord>(data)
+                val call = CallRecord.fromJson(data, tokenManager.userId ?: "")
                 dao.insertCall(call)
                 Result.success(call)
             } else {
@@ -54,7 +53,7 @@ class CallRepository(private val context: Context) {
             val response = api.acceptCall(callId)
             if (response.isSuccessful) {
                 val data = response.body() ?: buildJsonObject {}
-                val call = json.decodeFromJsonElement<CallRecord>(data)
+                val call = CallRecord.fromJson(data, tokenManager.userId ?: "")
                 dao.insertCall(call)
                 Result.success(call)
             } else {
@@ -71,7 +70,7 @@ class CallRepository(private val context: Context) {
             val response = api.rejectCall(callId, body)
             if (response.isSuccessful) {
                 val data = response.body() ?: buildJsonObject {}
-                val call = json.decodeFromJsonElement<CallRecord>(data)
+                val call = CallRecord.fromJson(data, tokenManager.userId ?: "")
                 dao.insertCall(call)
                 Result.success(call)
             } else {
@@ -87,7 +86,7 @@ class CallRepository(private val context: Context) {
             val response = api.endCall(callId)
             if (response.isSuccessful) {
                 val data = response.body() ?: buildJsonObject {}
-                val call = json.decodeFromJsonElement<CallRecord>(data)
+                val call = CallRecord.fromJson(data, tokenManager.userId ?: "")
                 dao.insertCall(call)
                 Result.success(call)
             } else {
@@ -133,7 +132,11 @@ class CallRepository(private val context: Context) {
                     is JsonObject -> body["calls"]?.jsonArray ?: JsonArray(emptyList())
                     else -> JsonArray(emptyList())
                 }
-                val calls = rawList.map { json.decodeFromJsonElement<CallRecord>(it) }
+                val currentUserId = tokenManager.userId ?: ""
+                val calls = rawList.mapNotNull {
+                    if (it is JsonObject) CallRecord.fromJson(it, currentUserId) else null
+                }
+                dao.clearAllCalls()
                 calls.forEach { dao.insertCall(it) }
                 Result.success(calls)
             } else {

@@ -78,6 +78,18 @@ class ChatListViewModel(application: Application) : AndroidViewModel(application
     init {
         connectWebSocket()
         refreshData()
+
+        viewModelScope.launch {
+            webSocket.events.collect { event ->
+                val msg = chatRepository.handleIncomingWebSocketEvent(event)
+                if (msg != null) {
+                    val exists = allConversations.value.any { it.id == msg.conversationId }
+                    if (!exists) {
+                        chatRepository.refreshConversations()
+                    }
+                }
+            }
+        }
     }
 
     fun connectWebSocket() {

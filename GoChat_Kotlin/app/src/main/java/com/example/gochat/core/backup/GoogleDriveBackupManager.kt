@@ -145,15 +145,11 @@ class GoogleDriveBackupManager(private val context: Context) {
                 onProgress?.invoke(1.0f)
                 Result.success(fileId)
             } else {
-                // Fallback / simulated cloud ID on demo/local OAuth
-                val fallbackId = "drive_${backupFile.name}"
-                onProgress?.invoke(1.0f)
-                Result.success(fallbackId)
+                val errBody = response.body?.string().orEmpty()
+                Result.failure(Exception("Google Drive upload failed (${response.code}): ${errBody.ifBlank { response.message }}"))
             }
         } catch (e: Exception) {
-            // Simulated success for demo/offline test
-            onProgress?.invoke(1.0f)
-            Result.success("drive_${backupFile.name}")
+            Result.failure(e)
         }
     }
 

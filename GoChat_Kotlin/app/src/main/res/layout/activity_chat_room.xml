@@ -5,9 +5,16 @@
     android:id="@+id/chatRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/gochat_bg_dark">
+    android:background="@drawable/bg_chat_wallpaper_dark">
+
+    <!-- Subtle WhatsApp Doodle Pattern Layer -->
+    <com.example.gochat.ui.chat.ChatDoodleView
+        android:id="@+id/chatDoodleView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
     <LinearLayout
+        android:id="@+id/chatContentContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical">
@@ -16,14 +23,15 @@
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbarChatRoom"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="@color/gochat_surface_dark"
+            android:layout_height="wrap_content"
+            android:minHeight="?attr/actionBarSize"
+            android:background="@color/whatsapp_toolbar_dark"
             app:contentInsetStart="4dp"
             app:contentInsetEnd="6dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="56dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
@@ -198,6 +206,62 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:contentDescription="Cancel reply"
+                android:focusable="true"
+                android:padding="4dp"
+                android:src="@drawable/ic_close" />
+        </LinearLayout>
+
+        <!-- Editing Preview Bar -->
+        <LinearLayout
+            android:id="@+id/layoutEditPreview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="8dp"
+            android:background="@drawable/bg_reply_preview_bar"
+            android:orientation="horizontal"
+            android:padding="8dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <View
+                android:layout_width="4dp"
+                android:layout_height="match_parent"
+                android:background="@color/gochat_emerald_light" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/gochat_emerald_light"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:text="Edit message" />
+
+                <TextView
+                    android:id="@+id/tvEditPreviewText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/gochat_text_secondary"
+                    android:textSize="12sp"
+                    tools:text="Original message snippet..." />
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/btnCloseEditPreview"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="center_vertical"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="Cancel edit"
                 android:focusable="true"
                 android:padding="4dp"
                 android:src="@drawable/ic_close" />

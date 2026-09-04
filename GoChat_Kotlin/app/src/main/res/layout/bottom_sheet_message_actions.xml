@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#121B22"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- Quick Reactions -->
+    <LinearLayout
+        android:id="@+id/layoutQuickReactions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:layout_marginBottom="16dp">
+
+        <TextView android:id="@+id/btnReactLike" android:layout_width="48dp" android:layout_height="48dp" android:gravity="center" android:text="👍" android:textSize="24sp" android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackgroundBorderless"/>
+        <TextView android:id="@+id/btnReactHeart" android:layout_width="48dp" android:layout_height="48dp" android:gravity="center" android:text="❤️" android:textSize="24sp" android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackgroundBorderless"/>
+        <TextView android:id="@+id/btnReactLaugh" android:layout_width="48dp" android:layout_height="48dp" android:gravity="center" android:text="😂" android:textSize="24sp" android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackgroundBorderless"/>
+        <TextView android:id="@+id/btnReactWow" android:layout_width="48dp" android:layout_height="48dp" android:gravity="center" android:text="😮" android:textSize="24sp" android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackgroundBorderless"/>
+        <TextView android:id="@+id/btnReactSad" android:layout_width="48dp" android:layout_height="48dp" android:gravity="center" android:text="😢" android:textSize="24sp" android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackgroundBorderless"/>
+        <TextView android:id="@+id/btnReactPray" android:layout_width="48dp" android:layout_height="48dp" android:gravity="center" android:text="🙏" android:textSize="24sp" android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackgroundBorderless"/>
+    </LinearLayout>
+
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#1F2C33" android:layout_marginBottom="8dp"/>
+
+    <!-- Actions -->
+    <TextView android:id="@+id/btnReply" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:text="Reply" android:textColor="@color/white" android:textSize="16sp" android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground"/>
+    <TextView android:id="@+id/btnForward" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:text="Forward" android:textColor="@color/white" android:textSize="16sp" android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground"/>
+    <TextView android:id="@+id/btnStar" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:text="Star" android:textColor="@color/white" android:textSize="16sp" android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground"/>
+    <TextView android:id="@+id/btnEdit" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:text="Edit" android:textColor="@color/white" android:textSize="16sp" android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground" android:visibility="gone" tools:visibility="visible"/>
+    <TextView android:id="@+id/btnDelete" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:text="Delete" android:textColor="#F44336" android:textSize="16sp" android:clickable="true" android:focusable="true" android:background="?attr/selectableItemBackground"/>
+
+</LinearLayout>

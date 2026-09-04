@@ -46,16 +46,13 @@ class StoryAdapter(
                 userStory.userAvatar
             }
 
-            if (avatarToLoad.isNotBlank()) {
-                ivStoryUserAvatar.load(avatarToLoad) {
-                    crossfade(true)
-                    placeholder(R.drawable.ic_account)
-                    error(R.drawable.ic_account)
-                    transformations(CircleCropTransformation())
-                }
-            } else {
-                ivStoryUserAvatar.setImageResource(R.drawable.ic_account)
-            }
+            com.example.gochat.core.media.MediaImageHelper.loadSafeImage(
+                ivStoryUserAvatar,
+                avatarToLoad,
+                isCircle = true,
+                placeholderRes = R.drawable.ic_account,
+                errorRes = R.drawable.ic_account
+            )
 
             root.setOnClickListener {
                 onStoryClicked(userStory)

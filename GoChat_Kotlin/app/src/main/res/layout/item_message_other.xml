@@ -20,6 +20,36 @@
         android:paddingHorizontal="10dp"
         android:paddingVertical="7dp">
 
+        <!-- Forwarded Label -->
+        <LinearLayout
+            android:id="@+id/layoutForwarded"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <ImageView
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:alpha="0.6"
+                android:contentDescription="Forwarded"
+                android:src="@drawable/ic_forward"
+                app:tint="@color/gochat_text_secondary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:alpha="0.6"
+                android:text="Forwarded"
+                android:textColor="@color/gochat_text_secondary"
+                android:textSize="11sp"
+                android:textStyle="italic" />
+        </LinearLayout>
+
         <!-- Sender Name (for Groups) -->
         <TextView
             android:id="@+id/tvSenderName"
@@ -139,6 +169,27 @@
             android:textSize="14.5sp"
             tools:text="Hello! Are you ready for the meeting today?" />
 
+        <!-- Reactions Container -->
+        <LinearLayout
+            android:id="@+id/layoutReactions"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/bg_reactions"
+            android:orientation="horizontal"
+            android:paddingHorizontal="4dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <TextView
+                android:id="@+id/tvReactions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/white"
+                android:textSize="12sp"
+                tools:text="👍 2 ❤️ 1" />
+        </LinearLayout>
+
         <!-- Footer: Timestamp -->
         <LinearLayout
             android:layout_width="wrap_content"
@@ -147,6 +198,30 @@
             android:layout_marginTop="3dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/ivStarred"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:layout_marginEnd="4dp"
+                android:alpha="0.7"
+                android:contentDescription="Starred"
+                android:src="@drawable/ic_star"
+                android:visibility="gone"
+                app:tint="@color/gochat_text_secondary"
+                tools:visibility="visible" />
+
+            <TextView
+                android:id="@+id/tvEdited"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="4dp"
+                android:alpha="0.6"
+                android:text="edited"
+                android:textColor="#8696A0"
+                android:textSize="10sp"
+                android:visibility="gone"
+                tools:visibility="visible" />
 
             <TextView
                 android:id="@+id/tvMessageTime"

@@ -21,7 +21,6 @@ class ChatRepository(private val context: Context) {
     private val api: GoChatApiService get() = NetworkModule.getApiService(context)
     private val dao: ChatDao get() = AppDatabase.getInstance(context).chatDao()
     private val tokenManager: TokenManager get() = TokenManager.getInstance(context)
-    private val json = NetworkModule.json
 
     /** The ID of the conversation the user is currently viewing (null = chat list). */
     var activeConversationId: String? = null
@@ -46,8 +45,19 @@ class ChatRepository(private val context: Context) {
                     is JsonObject -> body["conversations"]?.jsonArray ?: JsonArray(emptyList())
                     else -> JsonArray(emptyList())
                 }
-                val conversations = rawList.map { json.decodeFromJsonElement<Conversation>(it) }
-                dao.insertConversations(conversations)
+                val currentUserId = tokenManager.userId ?: ""
+                val conversations = rawList.mapNotNull {
+                    if (it is JsonObject) Conversation.fromJson(it, currentUserId) else null
+                }
+                if (conversations.isEmpty()) {
+                    dao.clearAllConversations()
+                } else {
+                    val remoteIds = conversations.map { it.id }.toSet()
+                    val localConvs = dao.getAllConversationsList()
+                    val toDelete = localConvs.filter { it.id !in remoteIds }
+                    toDelete.forEach { dao.deleteConversation(it.id) }
+                    dao.insertConversations(conversations)
+                }
                 Result.success(conversations)
             } else {
                 Result.failure(Exception("Failed to fetch conversations (${response.code()})"))
@@ -76,7 +86,7 @@ class ChatRepository(private val context: Context) {
             if (response.isSuccessful) {
                 val data = response.body() ?: buildJsonObject {}
                 val convJson = data["conversation"]?.jsonObject ?: data
-                val conv = json.decodeFromJsonElement<Conversation>(convJson)
+                val conv = Conversation.fromJson(convJson, tokenManager.userId ?: "")
                 dao.insertConversation(conv)
                 Result.success(conv)
             } else {
@@ -118,9 +128,8 @@ class ChatRepository(private val context: Context) {
                     else -> JsonArray(emptyList())
                 }
                 val currentUserId = tokenManager.userId ?: ""
-                val messages = rawList.map { element ->
-                    val msg = json.decodeFromJsonElement<Message>(element)
-                    msg.copy(isMe = msg.senderId == currentUserId)
+                val messages = rawList.mapNotNull { element ->
+                    if (element is JsonObject) Message.fromJson(element, currentUserId) else null
                 }
                 dao.insertMessages(messages)
                 Result.success(messages)
@@ -160,33 +169,88 @@ class ChatRepository(private val context: Context) {
             if (response.isSuccessful) {
                 val data = response.body() ?: buildJsonObject {}
                 val msgJson = data["message"]?.jsonObject ?: data
-                val msg = json.decodeFromJsonElement<Message>(msgJson)
-                val finalMsg = msg.copy(isMe = true)
+                val finalMsg = Message.fromJson(msgJson, tokenManager.userId ?: "").copy(isMe = true)
                 dao.insertMessage(finalMsg)
+                dao.updateLastMessage(
+                    convId = conversationId,
+                    lastText = finalMsg.content.ifBlank { "Media" },
+                    lastTime = finalMsg.createdAt,
+                    updatedAt = System.currentTimeMillis()
+                )
                 Result.success(finalMsg)
             } else {
-                // Optimistic local message on API failure
+                val err = response.errorBody()?.string().orEmpty()
                 val localMsg = createOptimisticMessage(
                     conversationId, content, type, mediaUrl,
                     replyToId, replyToText, replyToSenderName
                 )
                 dao.insertMessage(localMsg)
-                Result.success(localMsg)
+                Result.failure(Exception(err.ifBlank { "Failed to send message (${response.code()})" }))
             }
         } catch (e: Exception) {
-            // Optimistic local message on network failure
             val localMsg = createOptimisticMessage(
                 conversationId, content, type, mediaUrl,
                 replyToId, replyToText, replyToSenderName
             )
             dao.insertMessage(localMsg)
-            Result.success(localMsg)
+            Result.failure(e)
         }
     }
 
     /**
-     * Insert a message received from WebSocket directly into Room.
+     * Ingest and process an incoming real-time WebSocket event.
      */
+    suspend fun handleIncomingWebSocketEvent(event: JsonObject): Message? {
+        val eventType = (event["event_type"] ?: event["eventType"] ?: event["type"])
+            ?.jsonPrimitive?.contentOrNull.orEmpty()
+        val rawMsg = event["message"] ?: event["Message"] ?: event["payload"] ?: event["data"]
+
+        val isMessageEvent = eventType == "0" ||
+                eventType == "1" ||
+                eventType.equals("EVENT_NEW_MESSAGE", ignoreCase = true) ||
+                eventType.equals("new_message", ignoreCase = true) ||
+                eventType.equals("chat_message", ignoreCase = true) ||
+                eventType.equals("message", ignoreCase = true) ||
+                (rawMsg is JsonObject && (rawMsg.containsKey("content") || rawMsg.containsKey("conversation_id")))
+
+        if (isMessageEvent) {
+            val convId = (event["conversation_id"] ?: event["conversationId"]
+                ?: if (rawMsg is JsonObject) rawMsg["conversation_id"] ?: rawMsg["conversationId"] else null)
+                ?.jsonPrimitive?.contentOrNull.orEmpty()
+
+            val msgObj = if (rawMsg is JsonObject) rawMsg else event
+            val currentUserId = tokenManager.userId ?: ""
+            var msg = Message.fromJson(msgObj, currentUserId)
+            if (msg.conversationId.isEmpty() && convId.isNotEmpty()) {
+                msg = msg.copy(conversationId = convId)
+            }
+
+            if (msg.conversationId.isNotEmpty()) {
+                dao.insertMessage(msg)
+
+                val isViewing = activeConversationId == msg.conversationId
+                if (isViewing) {
+                    dao.markConversationAsRead(msg.conversationId)
+                    dao.updateLastMessage(
+                        convId = msg.conversationId,
+                        lastText = msg.content.ifBlank { "Media" },
+                        lastTime = msg.createdAt,
+                        updatedAt = System.currentTimeMillis()
+                    )
+                } else {
+                    dao.updateLastMessageAndIncrementUnread(
+                        convId = msg.conversationId,
+                        lastText = msg.content.ifBlank { "Media" },
+                        lastTime = msg.createdAt,
+                        updatedAt = System.currentTimeMillis()
+                    )
+                }
+                return msg
+            }
+        }
+        return null
+    }
+
     suspend fun insertWebSocketMessage(message: Message) {
         val finalMsg = message.copy(
             isMe = message.senderId == (tokenManager.userId ?: "")
@@ -212,6 +276,64 @@ class ChatRepository(private val context: Context) {
             }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    // ── Messaging Enhancements ───────────────────────────────────
+
+    suspend fun toggleMessageStar(messageId: String, isStarred: Boolean) {
+        dao.updateMessageStarred(messageId, isStarred)
+    }
+
+    suspend fun deleteMessageLocally(messageId: String) {
+        dao.markMessageAsDeleted(messageId)
+        // Placeholder for API call: api.deleteMessage(messageId)
+    }
+
+    suspend fun editMessageLocally(messageId: String, newContent: String) {
+        dao.updateMessageContent(messageId, newContent)
+        // Placeholder for API call: api.editMessage(messageId, buildJsonObject { put("content", newContent) })
+    }
+
+    suspend fun addReactionLocally(messageId: String, emoji: String) {
+        val currentUserId = tokenManager.userId ?: "u_me"
+        val currentUserName = tokenManager.userDisplayName ?: "Me"
+        val reaction = Reaction(userId = currentUserId, userName = currentUserName, emoji = emoji)
+        
+        // This is a simplified logic for demo; real logic should merge with existing reactions
+        val reactions = listOf(reaction)
+        dao.updateMessageReactions(messageId, reactions)
+    }
+
+    fun observeStarredMessages(): Flow<List<Message>> = dao.getStarredMessages()
+
+    suspend fun forwardMessage(originalMessage: Message, targetConversationId: String): Result<Message> {
+        return sendMessage(
+            conversationId = targetConversationId,
+            content = originalMessage.content,
+            type = getMessageTypeInt(originalMessage.type),
+            mediaUrl = originalMessage.mediaUrl,
+            // Tagging as forwarded
+        ).onSuccess { forwardedMsg ->
+            dao.insertMessage(forwardedMsg.copy(
+                isForwarded = true,
+                originalSenderName = originalMessage.senderName
+            ))
+        }
+    }
+
+    private fun getMessageTypeInt(type: MessageType): Int {
+        return when (type) {
+            MessageType.TEXT -> 0
+            MessageType.IMAGE -> 1
+            MessageType.VIDEO -> 2
+            MessageType.VOICE -> 5
+            MessageType.AUDIO -> 3
+            MessageType.FILE -> 4
+            MessageType.POLL -> 6
+            MessageType.PRODUCT -> 7
+            MessageType.PING -> 8
+            else -> 0
         }
     }
 

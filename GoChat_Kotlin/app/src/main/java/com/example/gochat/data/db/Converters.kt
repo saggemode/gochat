@@ -24,6 +24,21 @@ class Converters {
     }
 
     @TypeConverter
+    fun fromReactionList(value: List<Reaction>?): String {
+        return value?.let { json.encodeToString(it) } ?: "[]"
+    }
+
+    @TypeConverter
+    fun toReactionList(value: String?): List<Reaction> {
+        if (value.isNullOrEmpty()) return emptyList()
+        return try {
+            json.decodeFromString(value)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    @TypeConverter
     fun fromMessageType(value: MessageType?): String = (value ?: MessageType.TEXT).name
 
     @TypeConverter

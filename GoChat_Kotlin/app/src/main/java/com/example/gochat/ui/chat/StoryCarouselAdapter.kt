@@ -34,17 +34,14 @@ class StoryCarouselAdapter(
                 userStory.userName.split(" ").firstOrNull() ?: userStory.userName
             }
 
-            // Avatar image loading with Coil
-            if (!userStory.userAvatar.isNullOrBlank()) {
-                ivStoryAvatar.load(userStory.userAvatar) {
-                    crossfade(true)
-                    placeholder(R.drawable.ic_account)
-                    error(R.drawable.ic_account)
-                    transformations(CircleCropTransformation())
-                }
-            } else {
-                ivStoryAvatar.setImageResource(R.drawable.ic_account)
-            }
+            // Avatar image loading with MediaImageHelper
+            com.example.gochat.core.media.MediaImageHelper.loadSafeImage(
+                ivStoryAvatar,
+                userStory.userAvatar,
+                isCircle = true,
+                placeholderRes = R.drawable.ic_account,
+                errorRes = R.drawable.ic_account
+            )
 
             // Green ring if user has active stories
             val hasStories = userStory.stories.isNotEmpty()

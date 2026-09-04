@@ -126,19 +126,21 @@ class StoriesFragment : Fragment() {
             viewModel.myStories.collectLatest { myStory ->
                 if (myStory == null) return@collectLatest
 
-                // Avatar
-                if (myStory.userAvatar.isNotBlank()) {
-                    binding.ivMyStatusAvatar.load(myStory.userAvatar) {
-                        crossfade(true)
-                        placeholder(R.drawable.ic_account)
-                        error(R.drawable.ic_account)
-                        transformations(CircleCropTransformation())
-                    }
+                val hasStories = myStory.stories.isNotEmpty()
+                val avatarToLoad = if (hasStories && myStory.stories.first().mediaUrl.isNotBlank()) {
+                    myStory.stories.first().mediaUrl
                 } else {
-                    binding.ivMyStatusAvatar.setImageResource(R.drawable.ic_account)
+                    myStory.userAvatar
                 }
 
-                val hasStories = myStory.stories.isNotEmpty()
+                com.example.gochat.core.media.MediaImageHelper.loadSafeImage(
+                    binding.ivMyStatusAvatar,
+                    avatarToLoad,
+                    isCircle = true,
+                    placeholderRes = R.drawable.ic_account,
+                    errorRes = R.drawable.ic_account
+                )
+
                 binding.viewMyStatusStoryRing.visibility = if (hasStories) View.VISIBLE else View.GONE
                 binding.ivMyStatusAddBadge.visibility = if (hasStories) View.GONE else View.VISIBLE
 
@@ -203,14 +205,9 @@ class StoriesFragment : Fragment() {
             val chosenColor = bgColors[currentColorIndex]
             dialogBinding.fabPostStatus.isEnabled = false
 
-            viewModel.postTextStatus(text, chosenColor) { success, err ->
-                dialogBinding.fabPostStatus.isEnabled = true
-                if (success) {
-                    Toast.makeText(requireContext(), "Status updated", Toast.LENGTH_SHORT).show()
-                    dialog.dismiss()
-                } else {
-                    Toast.makeText(requireContext(), err ?: "Failed to post status", Toast.LENGTH_SHORT).show()
-                }
+            viewModel.postTextStatus(text, chosenColor) { success, _ ->
+                dialog.dismiss()
+                Toast.makeText(requireContext(), "Status updated", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -220,23 +217,26 @@ class StoriesFragment : Fragment() {
     private fun handleSelectedImage(uri: Uri) {
         lifecycleScope.launch {
             try {
-                val dataUri = withContext(Dispatchers.IO) {
-                    val inputStream: InputStream? = requireContext().contentResolver.openInputStream(uri)
-                    val bytes = inputStream?.readBytes() ?: return@withContext null
-                    val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
-                    val mimeType = requireContext().contentResolver.getType(uri) ?: "image/jpeg"
-                    "data:$mimeType;base64,$base64"
+                val compressed = withContext(Dispatchers.IO) {
+                    com.example.gochat.core.media.ImageCompressor.compressImageUri(
+                        context = requireContext().applicationContext,
+                        uri = uri,
+                        maxDimension = 1280,
+                        quality = 80
+                    )
                 }
 
-                if (dataUri != null) {
-                    Toast.makeText(requireContext(), "Uploading status...", Toast.LENGTH_SHORT).show()
-                    viewModel.postMediaStatus(mediaUrl = dataUri, caption = "", mediaType = "image") { success, err ->
-                        if (success) {
-                            Toast.makeText(requireContext(), "Status posted!", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(requireContext(), err ?: "Failed to post status", Toast.LENGTH_SHORT).show()
-                        }
-                    }
+                if (compressed != null) {
+                    Toast.makeText(requireContext(), "Status updated!", Toast.LENGTH_SHORT).show()
+                    viewModel.postMediaStatus(
+                        mediaBytes = compressed.bytes,
+                        mimeType = compressed.mimeType,
+                        localDataUri = compressed.dataUri,
+                        caption = "",
+                        mediaType = "image"
+                    ) { _, _ -> }
+                } else {
+                    Toast.makeText(requireContext(), "Error processing image", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 Toast.makeText(requireContext(), "Error loading image", Toast.LENGTH_SHORT).show()

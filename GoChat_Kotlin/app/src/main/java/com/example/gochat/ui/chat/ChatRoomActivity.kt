@@ -26,6 +26,11 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsAnimationCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -122,6 +127,7 @@ class ChatRoomActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         binding = ActivityChatRoomBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -136,11 +142,60 @@ class ChatRoomActivity : AppCompatActivity() {
         setupInputBar()
         setupReplyPreview()
         setupVoiceRecordingControls()
+        setupWindowInsets()
         observeState()
 
         if (convId.isNotEmpty()) {
             viewModel.initConversation(convId)
         }
+    }
+
+    private fun setupWindowInsets() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.chatRoot) { _, windowInsets ->
+            val imeInsets = windowInsets.getInsets(WindowInsetsCompat.Type.ime())
+            val systemBarsInsets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+
+            // Top inset ensures toolbar content doesn't collide with status bar / camera notch
+            binding.toolbarChatRoom.updatePadding(
+                top = systemBarsInsets.top
+            )
+
+            // Bottom inset: lift the chat input directly above the software keyboard when open,
+            // or above the system navigation bar when keyboard is dismissed.
+            val bottomInset = if (imeInsets.bottom > 0) imeInsets.bottom else systemBarsInsets.bottom
+            binding.chatContentContainer.updatePadding(
+                bottom = bottomInset,
+                left = systemBarsInsets.left,
+                right = systemBarsInsets.right
+            )
+
+            // Auto-scroll messages to keep latest message visible when keyboard pops up
+            if (imeInsets.bottom > 0 && messageAdapter.itemCount > 0) {
+                binding.rvMessages.post {
+                    binding.rvMessages.scrollToPosition(messageAdapter.itemCount - 1)
+                }
+            }
+
+            windowInsets
+        }
+
+        // Smoothly animate the chat input bar as the keyboard slides up/down
+        ViewCompat.setWindowInsetsAnimationCallback(
+            binding.chatContentContainer,
+            object : WindowInsetsAnimationCompat.Callback(DISPATCH_MODE_STOP) {
+                override fun onProgress(
+                    insets: WindowInsetsCompat,
+                    runningAnimations: MutableList<WindowInsetsAnimationCompat>
+                ): WindowInsetsCompat {
+                    val imeInsets = insets.getInsets(WindowInsetsCompat.Type.ime())
+                    val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+                    val bottomInset = if (imeInsets.bottom > 0) imeInsets.bottom else systemBars.bottom
+
+                    binding.chatContentContainer.updatePadding(bottom = bottomInset)
+                    return insets
+                }
+            }
+        )
     }
 
     private fun setupToolbar(title: String, avatarUrl: String) {
@@ -209,6 +264,22 @@ class ChatRoomActivity : AppCompatActivity() {
                 viewModel.sendTypingEvent(hasText)
             }
 
+            etMessageInput.setOnClickListener {
+                if (messageAdapter.itemCount > 0) {
+                    rvMessages.postDelayed({
+                        rvMessages.smoothScrollToPosition(messageAdapter.itemCount - 1)
+                    }, 150)
+                }
+            }
+
+            etMessageInput.setOnFocusChangeListener { _, hasFocus ->
+                if (hasFocus && messageAdapter.itemCount > 0) {
+                    rvMessages.postDelayed({
+                        rvMessages.smoothScrollToPosition(messageAdapter.itemCount - 1)
+                    }, 150)
+                }
+            }
+
             btnSendOrVoice.setOnClickListener {
                 val text = etMessageInput.text?.toString().orEmpty()
                 if (text.isNotBlank()) {
@@ -228,6 +299,10 @@ class ChatRoomActivity : AppCompatActivity() {
     private fun setupReplyPreview() {
         binding.btnCloseReplyPreview.setOnClickListener {
             viewModel.clearReply()
+        }
+        binding.btnCloseEditPreview.setOnClickListener {
+            viewModel.clearEditing()
+            binding.etMessageInput.setText("")
         }
     }
 
@@ -386,18 +461,13 @@ class ChatRoomActivity : AppCompatActivity() {
     }
 
     private fun convertImageUriToBase64(uri: Uri): String? {
-        return try {
-            val inputStream: InputStream = contentResolver.openInputStream(uri) ?: return null
-            val bitmap = BitmapFactory.decodeStream(inputStream)
-            val outputStream = ByteArrayOutputStream()
-            // Compress to standard JPEG quality for efficient transfer
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 75, outputStream)
-            val bytes = outputStream.toByteArray()
-            val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
-            "data:image/jpeg;base64,$base64"
-        } catch (_: Exception) {
-            null
-        }
+        val compressed = com.example.gochat.core.media.ImageCompressor.compressImageUri(
+            context = applicationContext,
+            uri = uri,
+            maxDimension = 1280,
+            quality = 75
+        )
+        return compressed?.dataUri
     }
 
     private fun handleSelectedAudioFile(uri: Uri) {
@@ -444,10 +514,27 @@ class ChatRoomActivity : AppCompatActivity() {
                     viewModel.replyingTo.collect { replyMsg ->
                         if (replyMsg != null) {
                             binding.layoutReplyPreview.visibility = View.VISIBLE
+                            binding.layoutEditPreview.visibility = View.GONE
                             binding.tvReplyPreviewSender.text = "Replying to ${replyMsg.senderName.ifBlank { "Message" }}"
                             binding.tvReplyPreviewText.text = replyMsg.content
                         } else {
                             binding.layoutReplyPreview.visibility = View.GONE
+                        }
+                    }
+                }
+
+                launch {
+                    viewModel.editingMessage.collect { editMsg ->
+                        if (editMsg != null) {
+                            binding.layoutEditPreview.visibility = View.VISIBLE
+                            binding.layoutReplyPreview.visibility = View.GONE
+                            binding.tvEditPreviewText.text = editMsg.content
+                            binding.etMessageInput.setText(editMsg.content)
+                            binding.etMessageInput.requestFocus()
+                            // Move cursor to end
+                            binding.etMessageInput.setSelection(editMsg.content.length)
+                        } else {
+                            binding.layoutEditPreview.visibility = View.GONE
                         }
                     }
                 }
@@ -503,22 +590,36 @@ class ChatRoomActivity : AppCompatActivity() {
     }
 
     private fun showMessageOptionsDialog(message: Message) {
-        val options = arrayOf("Reply", "Copy text", "Star message", "Delete message")
-        AlertDialog.Builder(this)
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> viewModel.setReplyingTo(message)
-                    1 -> {
-                        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                        val clip = android.content.ClipData.newPlainText("GoChat Message", message.content)
-                        clipboard?.setPrimaryClip(clip)
-                        Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
-                    }
-                    2 -> Toast.makeText(this, "Message starred", Toast.LENGTH_SHORT).show()
-                    3 -> viewModel.deleteMessage(message.id)
+        val sheet = MessageActionBottomSheet(message) { action ->
+            when (action) {
+                MessageActionBottomSheet.Action.REPLY -> viewModel.setReplyingTo(message)
+                MessageActionBottomSheet.Action.FORWARD -> {
+                    Toast.makeText(this, "Select a chat to forward to", Toast.LENGTH_SHORT).show()
+                    // Real implementation would open a ChatPicker
                 }
+                MessageActionBottomSheet.Action.STAR -> {
+                    viewModel.toggleStar(message.id, !message.isStarred)
+                    val status = if (message.isStarred) "unstarred" else "starred"
+                    Toast.makeText(this, "Message $status", Toast.LENGTH_SHORT).show()
+                }
+                MessageActionBottomSheet.Action.EDIT -> viewModel.setEditingMessage(message)
+                MessageActionBottomSheet.Action.DELETE -> {
+                    AlertDialog.Builder(this)
+                        .setTitle("Delete message?")
+                        .setMessage("This message will be deleted for everyone.")
+                        .setPositiveButton("Delete") { _, _ -> viewModel.deleteMessageForEveryone(message.id) }
+                        .setNegativeButton("Cancel", null)
+                        .show()
+                }
+                MessageActionBottomSheet.Action.REACT_LIKE -> viewModel.addReaction(message.id, "👍")
+                MessageActionBottomSheet.Action.REACT_HEART -> viewModel.addReaction(message.id, "❤️")
+                MessageActionBottomSheet.Action.REACT_LAUGH -> viewModel.addReaction(message.id, "😂")
+                MessageActionBottomSheet.Action.REACT_WOW -> viewModel.addReaction(message.id, "😮")
+                MessageActionBottomSheet.Action.REACT_SAD -> viewModel.addReaction(message.id, "😢")
+                MessageActionBottomSheet.Action.REACT_PRAY -> viewModel.addReaction(message.id, "🙏")
             }
-            .show()
+        }
+        sheet.show(supportFragmentManager, MessageActionBottomSheet.TAG)
     }
 
     private fun showMoreMenu() {

@@ -263,6 +263,10 @@ class ChatBackupManager(private val context: Context) {
         prefs.edit().putString(PREF_LAST_BACKUP_JSON, str).apply()
     }
 
+    fun clearBackupInfo() {
+        prefs.edit().clear().apply()
+    }
+
     fun getLocalBackupFiles(): List<File> {
         val backupDir = File(context.filesDir, "backups")
         if (!backupDir.exists()) return emptyList()

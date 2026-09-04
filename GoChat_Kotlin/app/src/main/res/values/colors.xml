@@ -36,4 +36,10 @@
     <!-- Glow & Decoration -->
     <color name="gochat_glow_emerald">#1A00A884</color>
     <color name="gochat_glow_purple">#1A7C3AED</color>
+
+    <!-- WhatsApp Classic Dark Wallpaper & Toolbar -->
+    <color name="whatsapp_chat_bg_start">#111B21</color>
+    <color name="whatsapp_chat_bg_end">#0B141A</color>
+    <color name="whatsapp_toolbar_dark">#1F2C34</color>
+    <color name="whatsapp_doodle_tint">#E9EDEF</color>
 </resources>

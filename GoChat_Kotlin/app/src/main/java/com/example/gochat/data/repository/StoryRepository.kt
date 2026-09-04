@@ -3,6 +3,7 @@ package com.example.gochat.data.repository
 import android.content.Context
 import com.example.gochat.data.api.GoChatApiService
 import com.example.gochat.data.api.NetworkModule
+import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.model.*
 import kotlinx.serialization.json.*
 
@@ -13,7 +14,7 @@ import kotlinx.serialization.json.*
 class StoryRepository(private val context: Context) {
 
     private val api: GoChatApiService get() = NetworkModule.getApiService(context)
-    private val json = NetworkModule.json
+    private val tokenManager: TokenManager get() = TokenManager.getInstance(context)
 
     // ═══════════════════════════════════════════════════════════════
     // ── Get Stories Feed ──────────────────────────────────────────
@@ -34,27 +35,34 @@ class StoryRepository(private val context: Context) {
                     else -> JsonArray(emptyList())
                 }
 
+                val myUserId = tokenManager.userId ?: ""
+
                 val stories = rawList.mapNotNull { element ->
                     try {
                         val obj = element.jsonObject
-                        val userId = obj["user_id"]?.jsonPrimitive?.contentOrNull ?: ""
+                        val userId = (obj["user_id"] ?: obj["userId"])?.jsonPrimitive?.contentOrNull.orEmpty()
                         val userName = (obj["user_display_name"]
                             ?: obj["user_name"]
+                            ?: obj["userName"]
                             ?: obj["author_name"])?.jsonPrimitive?.contentOrNull ?: "Contact"
                         val userAvatar = (obj["user_avatar_url"]
                             ?: obj["user_avatar"]
-                            ?: obj["avatar_url"])?.jsonPrimitive?.contentOrNull ?: ""
+                            ?: obj["avatar_url"]
+                            ?: obj["avatarUrl"])?.jsonPrimitive?.contentOrNull.orEmpty()
 
                         val storiesArr = (obj["stories"] ?: obj["items"])?.jsonArray
                             ?: JsonArray(emptyList())
-                        val items = storiesArr.map { json.decodeFromJsonElement<StoryItem>(it) }
+                        val items = storiesArr.mapNotNull {
+                            if (it is JsonObject) StoryItem.fromJson(it) else null
+                        }
 
                         if (items.isEmpty()) null
                         else UserStories(
                             userId = userId,
                             userName = userName,
                             userAvatar = userAvatar,
-                            stories = items
+                            stories = items,
+                            isMe = myUserId.isNotBlank() && userId == myUserId
                         )
                     } catch (_: Exception) {
                         null
@@ -82,6 +90,7 @@ class StoryRepository(private val context: Context) {
         return try {
             val body = buildJsonObject {
                 put("media_url", mediaUrl)
+                put("content", caption)
                 put("caption", caption)
                 put("media_type", mediaType)
                 backgroundColor?.let { put("background_color", it) }
@@ -95,6 +104,30 @@ class StoryRepository(private val context: Context) {
             }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    suspend fun uploadMedia(bytes: ByteArray, mimeType: String = "image/jpeg", fileName: String = "story_image.jpg"): String? {
+        return try {
+            val mediaType = okhttp3.MediaType.Companion.run { mimeType.toMediaTypeOrNull() }
+            val reqBody = okhttp3.RequestBody.Companion.run { bytes.toRequestBody(mediaType) }
+            val part = okhttp3.MultipartBody.Part.createFormData("file", fileName, reqBody)
+            val response = api.uploadMedia(part)
+            if (response.isSuccessful) {
+                val json = response.body()
+                val rawUrl = (json?.get("url") ?: json?.get("Url") ?: json?.get("URL") ?: json?.get("media_url"))?.jsonPrimitive?.contentOrNull
+                if (!rawUrl.isNullOrBlank()) {
+                    if (rawUrl.startsWith("/")) {
+                        "${com.example.gochat.data.api.ApiConstants.BASE_URL.removeSuffix("/")}$rawUrl"
+                    } else {
+                        rawUrl
+                    }
+                } else null
+            } else {
+                null
+            }
+        } catch (_: Exception) {
+            null
         }
     }
 
@@ -125,7 +158,9 @@ class StoryRepository(private val context: Context) {
                     is JsonObject -> body["viewers"]?.jsonArray ?: JsonArray(emptyList())
                     else -> JsonArray(emptyList())
                 }
-                val viewers = rawList.map { json.decodeFromJsonElement<StoryViewer>(it) }
+                val viewers = rawList.mapNotNull {
+                    if (it is JsonObject) StoryViewer.fromJson(it) else null
+                }
                 Result.success(viewers)
             } else {
                 Result.success(emptyList())

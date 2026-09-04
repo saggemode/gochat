@@ -339,54 +339,24 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 	}
 
 	// Fan out to all conversation members connected via WebSocket immediately
-	if h.hub != nil && resp != nil && resp.Message != nil {
-		go func(m *chatpb.Message, cid, uid string) {
-			bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-
-			payloadMap := map[string]interface{}{
-				"type":            "new_message",
-				"event_type":      "EVENT_NEW_MESSAGE",
-				"conversation_id": cid,
-				"sender_id":       uid,
-				"message": map[string]interface{}{
-					"id":              m.Id,
-					"conversation_id": m.ConversationId,
-					"sender_id":       m.SenderId,
-					"content":         m.Content,
-					"type":            m.Type.String(),
-					"media_type":      m.Type.String(),
-					"status":          m.Status.String(),
-					"media_url":       m.MediaUrl,
-					"media_mime":      m.MediaMime,
-					"media_size":      m.MediaSize,
-					"parent_id":       m.ParentId,
-					"created_at":      m.CreatedAt,
-					"send_at":         m.SendAt,
-				},
-			}
-			data, _ := json.Marshal(payloadMap)
-
-			delivered := false
-			convResp, cErr := h.client.GetConversation(bgCtx, &chatpb.GetConversationRequest{
-				ConversationId: cid,
-				UserId:         uid,
-			})
-			if cErr == nil && convResp != nil && convResp.Conversation != nil {
-				for _, memberID := range convResp.Conversation.MemberIds {
-					if memberID != uid && memberID != "" {
-						if h.hub.SendToUser(memberID, data) {
-							delivered = true
-						}
-					}
-				}
-			}
-
-			// If direct delivery did not reach a registered connection, broadcast so peer receives it
-			if !delivered {
-				h.hub.Broadcast(data, uid)
-			}
-		}(resp.Message, convID, userID)
+	if resp != nil && resp.Message != nil {
+		h.fanOutEvent("new_message", resp.Message.Id, convID, userID, map[string]interface{}{
+			"message": map[string]interface{}{
+				"id":              resp.Message.Id,
+				"conversation_id": resp.Message.ConversationId,
+				"sender_id":       resp.Message.SenderId,
+				"content":         resp.Message.Content,
+				"type":            resp.Message.Type.String(),
+				"media_type":      resp.Message.Type.String(),
+				"status":          resp.Message.Status.String(),
+				"media_url":       resp.Message.MediaUrl,
+				"media_mime":      resp.Message.MediaMime,
+				"media_size":      resp.Message.MediaSize,
+				"parent_id":       resp.Message.ParentId,
+				"created_at":      resp.Message.CreatedAt,
+				"send_at":         resp.Message.SendAt,
+			},
+		})
 	}
 
 	c.JSON(http.StatusCreated, resp.Message)
@@ -499,6 +469,12 @@ func (h *ChatHandler) EditMessage(c *gin.Context) {
 		return
 	}
 
+	if resp != nil && resp.Message != nil {
+		h.fanOutEvent("message_edited", msgID, resp.Message.ConversationId, userID, map[string]interface{}{
+			"content": req.Content,
+		})
+	}
+
 	c.JSON(http.StatusOK, resp)
 }
 
@@ -518,6 +494,11 @@ func (h *ChatHandler) DeleteMessage(c *gin.Context) {
 		h.handleGrpcError(c, err, "failed to delete message")
 		return
 	}
+
+	// We need the conversation ID to fan out.
+	// For simplicity, we could fetch the message first, but Chat Service already publishes to Redis.
+	// If we want low-latency fan-out here, we'd need more info.
+	// Let's assume the client knows which conversation it's in.
 
 	c.JSON(http.StatusOK, gin.H{"success": resp.Success})
 }
@@ -546,6 +527,11 @@ func (h *ChatHandler) AddReaction(c *gin.Context) {
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to react")
 		return
+	}
+
+	if resp != nil && resp.Reaction != nil {
+		// Relying on Chat Service Redis -> Stream path for reaction fan-out
+		// as we don't have the conversation_id here to fan out manually.
 	}
 
 	c.JSON(http.StatusOK, resp.Reaction)
@@ -771,6 +757,20 @@ func (h *ChatHandler) ForwardMessage(c *gin.Context) {
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to forward message")
 		return
+	}
+
+	if resp != nil && resp.Message != nil {
+		h.fanOutEvent("new_message", resp.Message.Id, req.TargetConversationId, userID, map[string]interface{}{
+			"message": map[string]interface{}{
+				"id":              resp.Message.Id,
+				"conversation_id": resp.Message.ConversationId,
+				"sender_id":       resp.Message.SenderId,
+				"content":         resp.Message.Content,
+				"type":            resp.Message.Type.String(),
+				"status":          resp.Message.Status.String(),
+				"created_at":      resp.Message.CreatedAt,
+			},
+		})
 	}
 
 	c.JSON(http.StatusCreated, resp.Message)
@@ -1164,4 +1164,46 @@ func (h *ChatHandler) handleGrpcError(c *gin.Context, err error, actionMsg strin
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"error": st.Message()})
 	}
+}
+
+func (h *ChatHandler) fanOutEvent(eventType string, messageID string, convID string, userID string, extra map[string]interface{}) {
+	if h.hub == nil {
+		return
+	}
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		payloadMap := map[string]interface{}{
+			"type":            eventType,
+			"event_type":      eventType,
+			"conversation_id": convID,
+			"sender_id":       userID,
+			"msg_id":          messageID,
+		}
+		for k, v := range extra {
+			payloadMap[k] = v
+		}
+
+		data, _ := json.Marshal(payloadMap)
+
+		delivered := false
+		convResp, cErr := h.client.GetConversation(bgCtx, &chatpb.GetConversationRequest{
+			ConversationId: convID,
+			UserId:         userID,
+		})
+		if cErr == nil && convResp != nil && convResp.Conversation != nil {
+			for _, memberID := range convResp.Conversation.MemberIds {
+				if memberID != userID && memberID != "" {
+					if h.hub.SendToUser(memberID, data) {
+						delivered = true
+					}
+				}
+			}
+		}
+
+		if !delivered {
+			h.hub.Broadcast(data, userID)
+		}
+	}()
 }
