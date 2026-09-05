@@ -2,6 +2,7 @@ package com.example.gochat.data.api
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
@@ -35,17 +36,29 @@ class TokenManager private constructor(context: Context) {
     private val prefs: SharedPreferences
 
     init {
-        val masterKey = MasterKey.Builder(context.applicationContext)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
+        val masterKey = try {
+            MasterKey.Builder(context.applicationContext)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+        } catch (e: Throwable) {
+            // Android 15 workaround: If KeyStore initialization fails with Binder error during early startup,
+            // we log it and try a fallback or just let it fail gracefully if it's a platform bug.
+            Log.e("TokenManager", "MasterKey initialization failed: ${e.message}", e)
+            throw e
+        }
 
-        prefs = EncryptedSharedPreferences.create(
-            context.applicationContext,
-            PREFS_FILE,
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
+        prefs = try {
+            EncryptedSharedPreferences.create(
+                context.applicationContext,
+                PREFS_FILE,
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+        } catch (e: Throwable) {
+            Log.e("TokenManager", "EncryptedSharedPreferences creation failed: ${e.message}", e)
+            throw e
+        }
     }
 
     // ── Token ────────────────────────────────────────────────────

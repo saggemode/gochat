@@ -10,9 +10,8 @@ object ApiConstants {
     const val EMULATOR_BASE_URL = "http://10.0.2.2:8080"
 
     // Active base URL (swap for local dev when needed)
-    // To use local backend on emulator, use EMULATOR_BASE_URL (http://10.0.2.2:8080)
-    // To use local backend on physical device, use your computer's IP address (e.g., http://192.168.1.50:8080)
-    const val BASE_URL = EMULATOR_BASE_URL
+    // Active base URL
+    const val BASE_URL = PROD_BASE_URL
     const val API_V1 = "$BASE_URL/api/v1"
 
     // ── Auth ─────────────────────────────────────────────────────

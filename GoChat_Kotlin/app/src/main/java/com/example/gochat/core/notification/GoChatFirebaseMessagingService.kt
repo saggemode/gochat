@@ -17,15 +17,34 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Log.d(TAG, "New FCM Token received: $token")
+        handleRegistration(token, "onNewToken")
+    }
 
-        val tokenManager = TokenManager.getInstance(applicationContext)
-        tokenManager.fcmToken = token
+    override fun onRegistered(installationId: String) {
+        super.onRegistered(installationId)
+        handleRegistration(installationId, "onRegistered")
+    }
 
-        if (tokenManager.isLoggedIn) {
-            val authRepository = AuthRepository(applicationContext)
-            serviceScope.launch {
-                authRepository.subscribePush(token, "android")
+    override fun onUnregistered(installationId: String) {
+        super.onUnregistered(installationId)
+        Log.d(TAG, "FCM Unregistered: $installationId")
+    }
+
+    private fun handleRegistration(token: String, source: String) {
+        Log.d(TAG, "FCM Token received ($source): $token")
+
+        serviceScope.launch {
+            val tokenManager = TokenManager.getInstance(applicationContext)
+            tokenManager.fcmToken = token
+
+            if (tokenManager.isLoggedIn) {
+                val authRepository = AuthRepository(applicationContext)
+                try {
+                    authRepository.subscribePush(token, "android")
+                    Log.d(TAG, "Token from $source registered with backend successfully.")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to register token from $source with backend", e)
+                }
             }
         }
     }

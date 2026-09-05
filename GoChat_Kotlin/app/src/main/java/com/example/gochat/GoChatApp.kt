@@ -6,6 +6,7 @@ import com.example.gochat.core.notification.NotificationHelper
 import com.example.gochat.core.theme.ThemeManager
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.repository.AuthRepository
+import com.google.firebase.installations.FirebaseInstallations
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,31 +27,38 @@ class GoChatApp : Application() {
         NotificationHelper.createNotificationChannels(this)
 
         // 3. Initialize Firebase Cloud Messaging & sync Push Token
-        initFcm()
+        appScope.launch {
+            initFcm()
+        }
     }
 
     private fun initFcm() {
-        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+        FirebaseMessaging.getInstance().register().addOnCompleteListener { task ->
             if (!task.isSuccessful) {
-                Log.w(TAG, "Fetching FCM registration token failed", task.exception)
+                Log.w(TAG, "FCM registration failed", task.exception)
                 return@addOnCompleteListener
             }
 
-            val token = task.result
-            if (token.isNullOrBlank()) return@addOnCompleteListener
+            Log.d(TAG, "FCM registration triggered successfully.")
 
-            Log.d(TAG, "Current FCM Token: $token")
-            val tokenManager = TokenManager.getInstance(this)
-            tokenManager.fcmToken = token
+            // In V1, the token (FID) is delivered to GoChatFirebaseMessagingService.onRegistered.
+            // We can also retrieve it here using FirebaseInstallations.
+            FirebaseInstallations.getInstance().id.addOnSuccessListener { fid ->
+                if (fid.isNullOrBlank()) return@addOnSuccessListener
 
-            if (tokenManager.isLoggedIn) {
-                appScope.launch {
-                    try {
-                        val authRepo = AuthRepository(applicationContext)
-                        authRepo.subscribePush(token, "android")
-                        Log.d(TAG, "FCM push token registered with GoChat gateway backend.")
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Failed to register FCM token with backend: ${e.message}")
+                Log.d(TAG, "Current FCM Token (FID): $fid")
+                val tokenManager = TokenManager.getInstance(this)
+                tokenManager.fcmToken = fid
+
+                if (tokenManager.isLoggedIn) {
+                    appScope.launch {
+                        try {
+                            val authRepo = AuthRepository(applicationContext)
+                            authRepo.subscribePush(fid, "android")
+                            Log.d(TAG, "FCM push token registered with GoChat gateway backend.")
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Failed to register FCM token with backend: ${e.message}")
+                        }
                     }
                 }
             }
