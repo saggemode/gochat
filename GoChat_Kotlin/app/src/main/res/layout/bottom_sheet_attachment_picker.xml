@@ -56,7 +56,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Camera"
+                android:text="@string/attachment_camera"
                 android:textColor="@color/gochat_text_primary"
                 android:textSize="13sp" />
         </LinearLayout>
@@ -93,7 +93,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Gallery"
+                android:text="@string/attachment_gallery"
                 android:textColor="@color/gochat_text_primary"
                 android:textSize="13sp" />
         </LinearLayout>
@@ -130,7 +130,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Audio"
+                android:text="@string/attachment_audio"
                 android:textColor="@color/gochat_text_primary"
                 android:textSize="13sp" />
         </LinearLayout>
@@ -176,7 +176,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Location"
+                android:text="@string/attachment_location"
                 android:textColor="@color/gochat_text_primary"
                 android:textSize="13sp" />
         </LinearLayout>
@@ -213,7 +213,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="GIF"
+                android:text="@string/attachment_gif"
                 android:textColor="@color/gochat_text_primary"
                 android:textSize="13sp" />
         </LinearLayout>

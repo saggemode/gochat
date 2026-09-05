@@ -1,13 +1,17 @@
 package com.example.gochat.core.notification
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
+import android.util.Log
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -20,9 +24,9 @@ import com.example.gochat.ui.chat.ChatRoomActivity
  */
 object NotificationHelper {
 
-    const val CHANNEL_MESSAGES = "gochat_channel_messages"
-    const val CHANNEL_GROUPS = "gochat_channel_groups"
-    const val CHANNEL_CALLS = "gochat_channel_calls"
+    const val CHANNEL_MESSAGES = "gochat_channel_messages_v2"
+    const val CHANNEL_GROUPS = "gochat_channel_groups_v2"
+    const val CHANNEL_CALLS = "gochat_channel_calls_v2"
 
     fun createNotificationChannels(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -111,18 +115,28 @@ object NotificationHelper {
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
 
         try {
             val notificationManager = NotificationManagerCompat.from(context)
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    Log.w("NotificationHelper", "Missing POST_NOTIFICATIONS permission")
+                    return
+                }
+            }
+            
             notificationManager.notify(conversationId.hashCode(), notification)
-        } catch (_: SecurityException) {
-            // Android 13+ POST_NOTIFICATIONS permission not granted
+            Log.d("NotificationHelper", "Notification shown for $conversationId: $title - $body")
+        } catch (e: Exception) {
+            Log.e("NotificationHelper", "Failed to show notification", e)
         }
     }
 }

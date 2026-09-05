@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.example.gochat.R
 import com.example.gochat.data.repository.AuthRepository
 import com.example.gochat.databinding.ActivityPrivacySettingsBinding
 import kotlinx.coroutines.launch
@@ -38,9 +39,10 @@ class PrivacySettingsActivity : AppCompatActivity() {
     private fun loadSettings() {
         lifecycleScope.launch {
             authRepo.getPrivacySettings().onSuccess { json ->
-                binding.tvLastSeenValue.text = json["last_seen_privacy"]?.jsonPrimitive?.contentOrNull?.replaceFirstChar { it.uppercase() } ?: "Everyone"
-                binding.tvProfilePhotoValue.text = json["profile_photo_privacy"]?.jsonPrimitive?.contentOrNull?.replaceFirstChar { it.uppercase() } ?: "Everyone"
-                binding.tvStatusValue.text = json["status_privacy"]?.jsonPrimitive?.contentOrNull?.replaceFirstChar { it.uppercase() } ?: "Everyone"
+                val everyone = getString(R.string.visibility_everyone)
+                binding.tvLastSeenValue.text = json["last_seen_privacy"]?.jsonPrimitive?.contentOrNull?.replaceFirstChar { it.uppercase() } ?: everyone
+                binding.tvProfilePhotoValue.text = json["profile_photo_privacy"]?.jsonPrimitive?.contentOrNull?.replaceFirstChar { it.uppercase() } ?: everyone
+                binding.tvStatusValue.text = json["status_privacy"]?.jsonPrimitive?.contentOrNull?.replaceFirstChar { it.uppercase() } ?: everyone
                 binding.switchReadReceipts.isChecked = json["read_receipts_enabled"]?.jsonPrimitive?.booleanOrNull ?: true
             }
         }
@@ -59,11 +61,15 @@ class PrivacySettingsActivity : AppCompatActivity() {
     }
 
     private fun showPrivacyDialog(key: String) {
-        val options = arrayOf("Everyone", "My contacts", "Nobody")
+        val options = arrayOf(
+            getString(R.string.visibility_everyone),
+            getString(R.string.visibility_contacts),
+            getString(R.string.visibility_nobody)
+        )
         val values = arrayOf("everyone", "contacts", "nobody")
         
         AlertDialog.Builder(this)
-            .setTitle("Select visibility")
+            .setTitle(getString(R.string.dialog_select_visibility_title)) // need to add this
             .setItems(options) { _, which ->
                 val selectedValue = values[which]
                 lifecycleScope.launch {
@@ -76,7 +82,7 @@ class PrivacySettingsActivity : AppCompatActivity() {
                     if (result.isSuccess) {
                         loadSettings()
                     } else {
-                        Toast.makeText(this@PrivacySettingsActivity, "Failed to update", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@PrivacySettingsActivity, getString(R.string.error_privacy_update), Toast.LENGTH_SHORT).show()
                     }
                 }
             }

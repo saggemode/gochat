@@ -21,7 +21,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Updates"
+                android:text="@string/updates_title"
                 android:textColor="@color/gochat_text_primary"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -102,7 +102,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="My status"
+                            android:text="@string/my_status_label"
                             android:textColor="@color/gochat_text_primary"
                             android:textSize="16sp"
                             android:textStyle="bold" />
@@ -153,7 +153,7 @@
                     android:paddingHorizontal="16dp"
                     android:paddingTop="16dp"
                     android:paddingBottom="8dp"
-                    android:text="RECENT UPDATES"
+                    android:text="@string/recent_updates_header"
                     android:textColor="@color/gochat_text_secondary"
                     android:textSize="12sp"
                     android:textStyle="bold" />
@@ -188,7 +188,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:text="No Recent Updates"
+                        android:text="@string/no_recent_updates_title"
                         android:textColor="@color/gochat_text_secondary"
                         android:textSize="16sp"
                         android:textStyle="bold" />
@@ -198,7 +198,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
                         android:gravity="center"
-                        android:text="Status updates from your contacts will appear here and disappear after 24 hours."
+                        android:text="@string/no_recent_updates_desc"
                         android:textColor="@color/gochat_text_muted"
                         android:textSize="12.5sp" />
                 </LinearLayout>

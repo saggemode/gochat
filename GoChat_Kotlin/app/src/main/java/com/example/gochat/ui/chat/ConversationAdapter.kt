@@ -7,9 +7,8 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import coil.load
-import coil.transform.CircleCropTransformation
 import com.example.gochat.R
+import com.example.gochat.core.media.MediaImageHelper
 import com.example.gochat.data.model.Conversation
 import com.example.gochat.data.model.ConversationType
 import com.example.gochat.data.model.InvitationStatus
@@ -59,7 +58,7 @@ class ConversationAdapter(
             }
 
             // Online indicator dot
-            viewOnlineDot.visibility = if (conversation.isOnline && conversation.type == ConversationType.DIRECT) {
+            viewOnlineDot.visibility = if (conversation.isOnline && conversation.isDirect) {
                 View.VISIBLE
             } else {
                 View.GONE
@@ -70,16 +69,13 @@ class ConversationAdapter(
             ivMuted.visibility = if (conversation.isMuted) View.VISIBLE else View.GONE
 
             // Avatar loading with Coil
-            if (conversation.avatarUrl.isNotBlank()) {
-                ivAvatar.load(conversation.avatarUrl) {
-                    crossfade(true)
-                    placeholder(R.drawable.ic_account)
-                    error(R.drawable.ic_account)
-                    transformations(CircleCropTransformation())
-                }
-            } else {
-                ivAvatar.setImageResource(R.drawable.ic_account)
-            }
+            MediaImageHelper.loadSafeImage(
+                imageView = ivAvatar,
+                url = conversation.avatarUrl,
+                isCircle = true,
+                placeholderRes = R.drawable.ic_account,
+                errorRes = R.drawable.ic_account
+            )
 
             // Click Handlers
             root.setOnClickListener {

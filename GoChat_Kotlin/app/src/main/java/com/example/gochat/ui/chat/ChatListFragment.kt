@@ -60,7 +60,7 @@ class ChatListFragment : Fragment() {
                 val intent = StoryViewerActivity.createIntent(requireContext(), userStories)
                 startActivity(intent)
             } else {
-                Toast.makeText(requireContext(), "No recent updates", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), getString(R.string.no_recent_updates_title), Toast.LENGTH_SHORT).show()
             }
         }
         binding.rvStoriesCarousel.layoutManager =
@@ -187,14 +187,13 @@ class ChatListFragment : Fragment() {
                             binding.rvConversations.visibility = View.GONE
                             val query = viewModel.searchQuery.value
                             if (query.isNotEmpty()) {
-                                binding.tvEmptyTitle.text = "No Results Found"
-                                binding.tvEmptyDescription.text = "No chats match \"$query\""
-                                binding.btnEmptyAction.text = "Clear Search"
+                                binding.tvEmptyTitle.text = getString(R.string.no_results_found)
+                                binding.tvEmptyDescription.text = getString(R.string.no_chats_match_desc, query)
+                                binding.btnEmptyAction.text = getString(R.string.btn_clear_search)
                             } else {
-                                binding.tvEmptyTitle.text = "No Conversations"
-                                binding.tvEmptyDescription.text =
-                                    "Start chatting with your contacts using their GOCHAT PIN or phone number."
-                                binding.btnEmptyAction.text = "+ Chat by PIN"
+                                binding.tvEmptyTitle.text = getString(R.string.no_conversations_title)
+                                binding.tvEmptyDescription.text = getString(R.string.no_conversations_desc)
+                                binding.btnEmptyAction.text = getString(R.string.btn_chat_by_pin)
                             }
                         } else {
                             binding.layoutEmptyState.visibility = View.GONE
@@ -225,8 +224,11 @@ class ChatListFragment : Fragment() {
                     viewModel.pendingInvitationsCount.collect { count ->
                         if (count > 0) {
                             binding.layoutPendingBanner.visibility = View.VISIBLE
-                            binding.tvPendingBannerText.text =
-                                "$count new contact invitation request${if (count > 1) "s" else ""}"
+                            binding.tvPendingBannerText.text = if (count == 1) {
+                                getString(R.string.pending_invitation_singular)
+                            } else {
+                                getString(R.string.pending_invitation_plural, count)
+                            }
                         } else {
                             binding.layoutPendingBanner.visibility = View.GONE
                         }
@@ -256,7 +258,7 @@ class ChatListFragment : Fragment() {
             val pin = dialogBinding.etPinInput.text?.toString()?.trim()?.uppercase().orEmpty()
             if (pin.length < 4) {
                 dialogBinding.tvPinError.visibility = View.VISIBLE
-                dialogBinding.tvPinError.text = "Please enter a valid 6-character PIN"
+                dialogBinding.tvPinError.text = getString(R.string.error_invalid_pin)
                 return@setOnClickListener
             }
 
@@ -272,7 +274,7 @@ class ChatListFragment : Fragment() {
                     onFailure = { error ->
                         dialogBinding.btnConnectPin.isEnabled = true
                         dialogBinding.tvPinError.visibility = View.VISIBLE
-                        dialogBinding.tvPinError.text = error.message ?: "User not found"
+                        dialogBinding.tvPinError.text = error.message ?: getString(R.string.error_user_not_found)
                     }
                 )
             }
@@ -282,15 +284,20 @@ class ChatListFragment : Fragment() {
     }
 
     private fun showConversationOptionsDialog(conversation: Conversation) {
-        val options = arrayOf("Mark as read", "Pin conversation", "Mute notifications", "Delete conversation")
+        val options = arrayOf(
+            getString(R.string.option_mark_as_read),
+            getString(R.string.option_pin_conversation),
+            getString(R.string.option_mute_notifications),
+            getString(R.string.option_delete_conversation)
+        )
         AlertDialog.Builder(requireContext())
             .setTitle(conversation.title)
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> viewModel.markAsRead(conversation.id)
-                    1 -> Toast.makeText(requireContext(), "Conversation pinned", Toast.LENGTH_SHORT).show()
-                    2 -> Toast.makeText(requireContext(), "Notifications muted", Toast.LENGTH_SHORT).show()
-                    3 -> Toast.makeText(requireContext(), "Conversation deleted", Toast.LENGTH_SHORT).show()
+                    1 -> Toast.makeText(requireContext(), getString(R.string.toast_conversation_pinned), Toast.LENGTH_SHORT).show()
+                    2 -> Toast.makeText(requireContext(), getString(R.string.toast_notifications_muted), Toast.LENGTH_SHORT).show()
+                    3 -> Toast.makeText(requireContext(), getString(R.string.toast_conversation_deleted), Toast.LENGTH_SHORT).show()
                 }
             }
             .show()

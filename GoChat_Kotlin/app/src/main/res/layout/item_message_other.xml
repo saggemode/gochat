@@ -44,7 +44,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:alpha="0.6"
-                android:text="Forwarded"
+                android:text="@string/label_forwarded"
                 android:textColor="@color/gochat_text_secondary"
                 android:textSize="11sp"
                 android:textStyle="italic" />
@@ -217,7 +217,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="4dp"
                 android:alpha="0.6"
-                android:text="edited"
+                android:text="@string/label_edited"
                 android:textColor="#8696A0"
                 android:textSize="10sp"
                 android:visibility="gone"

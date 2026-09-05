@@ -26,6 +26,12 @@ interface ChatDao {
     @Query("UPDATE conversations SET unreadCount = 0 WHERE id = :convId")
     suspend fun markConversationAsRead(convId: String): Int
 
+    @Query("UPDATE messages SET status = 'READ' WHERE conversationId = :convId AND isMe = 1 AND status != 'READ'")
+    suspend fun markOutgoingMessagesAsRead(convId: String): Int
+
+    @Query("UPDATE messages SET status = 'READ' WHERE conversationId = :convId AND isMe = 0 AND status != 'READ'")
+    suspend fun markIncomingMessagesAsRead(convId: String): Int
+
     @Query("UPDATE conversations SET lastMessageText = :lastText, lastMessageTime = :lastTime, updatedAt = :updatedAt, unreadCount = unreadCount + 1 WHERE id = :convId")
     suspend fun updateLastMessageAndIncrementUnread(convId: String, lastText: String, lastTime: Long, updatedAt: Long): Int
 
@@ -56,6 +62,9 @@ interface ChatDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMessages(messages: List<Message>)
+
+    @Query("SELECT * FROM messages WHERE status = 'SENDING' ORDER BY createdAt ASC")
+    suspend fun getPendingMessages(): List<Message>
 
     @Query("UPDATE messages SET status = :status WHERE id = :messageId")
     suspend fun updateMessageStatus(messageId: String, status: MessageStatus): Int

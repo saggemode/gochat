@@ -6,9 +6,8 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import coil.load
-import coil.transform.CircleCropTransformation
 import com.example.gochat.R
+import com.example.gochat.core.media.MediaImageHelper
 import com.example.gochat.data.model.GroupMember
 import com.example.gochat.databinding.ItemGroupMemberBinding
 
@@ -34,14 +33,13 @@ class GroupMemberAdapter(
                 tvName.text = member.displayName.ifBlank { "User ${member.id.takeLast(4)}" }
                 tvStatus.text = if (member.isOnline) "Online" else "Offline"
                 
-                if (member.avatarUrl.isNotBlank()) {
-                    ivAvatar.load(member.avatarUrl) {
-                        crossfade(true)
-                        transformations(CircleCropTransformation())
-                    }
-                } else {
-                    ivAvatar.setImageResource(R.drawable.ic_account)
-                }
+                MediaImageHelper.loadSafeImage(
+                    imageView = ivAvatar,
+                    url = member.avatarUrl,
+                    isCircle = true,
+                    placeholderRes = R.drawable.ic_account,
+                    errorRes = R.drawable.ic_account
+                )
 
                 // Show role badge
                 if (member.role == "admin" || member.role == "owner") {

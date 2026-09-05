@@ -11,7 +11,7 @@
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Search GIFs"
+        android:hint="@string/search_gifs_hint"
         app:boxBackgroundColor="#1F2C33"
         app:endIconMode="clear_text">
 
@@ -22,11 +22,32 @@
             android:textColor="@color/white" />
     </com.google.android.material.textfield.TextInputLayout>
 
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#121B22"
+        app:tabIndicatorColor="@color/gochat_emerald_light"
+        app:tabSelectedTextColor="@color/gochat_emerald_light"
+        app:tabTextColor="@color/gochat_text_secondary">
+
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/trending_tab" />
+
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/stickers_tab" />
+
+    </com.google.android.material.tabs.TabLayout>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvGifs"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="8dp"
         android:layout_weight="1"
         app:layoutManager="androidx.recyclerview.widget.StaggeredGridLayoutManager"
         app:spanCount="2"

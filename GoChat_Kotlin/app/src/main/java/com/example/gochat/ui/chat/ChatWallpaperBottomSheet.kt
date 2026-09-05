@@ -1,5 +1,6 @@
 package com.example.gochat.ui.chat
 
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
@@ -13,8 +14,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.example.gochat.R
-import com.example.gochat.core.wallpaper.ChatWallpaper
-import com.example.gochat.core.wallpaper.ChatWallpaperManager
+import com.example.gochat.core.wallpaper.ChatTheme
+import com.example.gochat.core.wallpaper.ChatThemeManager
 import com.example.gochat.core.wallpaper.SolidColorOption
 import com.example.gochat.core.wallpaper.WallpaperType
 import com.example.gochat.databinding.BottomSheetChatWallpaperBinding
@@ -26,26 +27,27 @@ import java.io.File
 class ChatWallpaperBottomSheet(
     private val conversationId: String,
     private val conversationTitle: String,
-    private val onWallpaperChanged: (ChatWallpaper) -> Unit
+    private val onThemeChanged: (ChatTheme) -> Unit
 ) : BottomSheetDialogFragment() {
 
     private var _binding: BottomSheetChatWallpaperBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var wallpaperManager: ChatWallpaperManager
-    private lateinit var currentWallpaper: ChatWallpaper
+    private lateinit var themeManager: ChatThemeManager
+    private lateinit var currentTheme: ChatTheme
 
     private lateinit var presetAdapter: PresetAdapter
     private lateinit var solidAdapter: SolidAdapter
+    private lateinit var accentAdapter: AccentColorAdapter
 
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
             if (uri != null) {
                 val cachedPath = copyUriToInternalStorage(uri)
                 if (cachedPath != null) {
-                    currentWallpaper = currentWallpaper.copy(
+                    currentTheme = currentTheme.copy(
                         id = "custom_${System.currentTimeMillis()}",
-                        name = "Custom Photo",
+                        name = getString(R.string.label_custom_photo),
                         type = WallpaperType.CUSTOM_IMAGE,
                         imageUriOrPath = cachedPath,
                         solidColor = null
@@ -54,7 +56,7 @@ class ChatWallpaperBottomSheet(
                     solidAdapter.setSelectedColor(null)
                     updatePreviewUI()
                 } else {
-                    Toast.makeText(requireContext(), "Failed to load image", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), getString(R.string.error_load_image), Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -71,14 +73,15 @@ class ChatWallpaperBottomSheet(
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        wallpaperManager = ChatWallpaperManager(requireContext())
-        currentWallpaper = wallpaperManager.getWallpaper(conversationId)
+        themeManager = ChatThemeManager(requireContext())
+        currentTheme = themeManager.getTheme(conversationId)
 
-        binding.tvTargetChatSubtitle.text = "Customizing for $conversationTitle"
+        binding.tvTargetChatSubtitle.text = getString(R.string.customizing_for_format, conversationTitle)
         binding.btnCloseSheet.setOnClickListener { dismiss() }
 
         setupPresetRecyclerView()
         setupSolidColorRecyclerView()
+        setupAccentColorRecyclerView()
         setupDoodleControls()
         setupActionButtons()
 
@@ -87,15 +90,16 @@ class ChatWallpaperBottomSheet(
 
     private fun setupPresetRecyclerView() {
         presetAdapter = PresetAdapter(
-            presets = ChatWallpaper.PRESETS,
-            selectedId = if (currentWallpaper.type == WallpaperType.PRESET) currentWallpaper.id else null,
+            presets = ChatTheme.PRESETS,
+            selectedId = if (currentTheme.type == WallpaperType.PRESET) currentTheme.id else null,
             onPresetClick = { preset ->
-                currentWallpaper = preset.copy(
-                    showDoodle = currentWallpaper.showDoodle,
-                    doodleOpacity = currentWallpaper.doodleOpacity
+                currentTheme = preset.copy(
+                    showDoodle = currentTheme.showDoodle,
+                    doodleOpacity = currentTheme.doodleOpacity
                 )
                 presetAdapter.setSelectedId(preset.id)
                 solidAdapter.setSelectedColor(null)
+                accentAdapter.setSelectedColor(currentTheme.accentColor)
                 updatePreviewUI()
             }
         )
@@ -104,16 +108,15 @@ class ChatWallpaperBottomSheet(
 
     private fun setupSolidColorRecyclerView() {
         solidAdapter = SolidAdapter(
-            solidColors = ChatWallpaper.SOLID_COLORS,
-            selectedColor = if (currentWallpaper.type == WallpaperType.SOLID) currentWallpaper.solidColor else null,
+            solidColors = ChatTheme.SOLID_COLORS,
+            selectedColor = if (currentTheme.type == WallpaperType.SOLID) currentTheme.solidColor else null,
             onSolidColorClick = { solid ->
-                currentWallpaper = ChatWallpaper(
+                currentTheme = currentTheme.copy(
                     id = "solid_${solid.name.lowercase().replace(" ", "_")}",
                     name = solid.name,
                     type = WallpaperType.SOLID,
                     solidColor = solid.color,
-                    showDoodle = currentWallpaper.showDoodle,
-                    doodleOpacity = currentWallpaper.doodleOpacity
+                    imageUriOrPath = null
                 )
                 presetAdapter.setSelectedId(null)
                 solidAdapter.setSelectedColor(solid.color)
@@ -123,17 +126,30 @@ class ChatWallpaperBottomSheet(
         binding.rvSolidColors.adapter = solidAdapter
     }
 
+    private fun setupAccentColorRecyclerView() {
+        accentAdapter = AccentColorAdapter(
+            accentColors = ChatTheme.ACCENT_COLORS,
+            selectedColor = currentTheme.accentColor,
+            onAccentColorClick = { accent ->
+                currentTheme = currentTheme.copy(accentColor = accent.color)
+                accentAdapter.setSelectedColor(accent.color)
+                updatePreviewUI()
+            }
+        )
+        binding.rvAccentColors.adapter = accentAdapter
+    }
+
     private fun setupDoodleControls() {
-        binding.switchDoodle.isChecked = currentWallpaper.showDoodle
+        binding.switchDoodle.isChecked = currentTheme.showDoodle
         binding.switchDoodle.setOnCheckedChangeListener { _, isChecked ->
-            currentWallpaper = currentWallpaper.copy(showDoodle = isChecked)
+            currentTheme = currentTheme.copy(showDoodle = isChecked)
             updatePreviewUI()
         }
 
-        binding.sliderDoodleOpacity.value = (currentWallpaper.doodleOpacity * 100).coerceIn(1f, 25f)
+        binding.sliderDoodleOpacity.value = (currentTheme.doodleOpacity * 100).coerceIn(1f, 25f)
         binding.sliderDoodleOpacity.addOnChangeListener { _, value, _ ->
             val opacity = value / 100f
-            currentWallpaper = currentWallpaper.copy(doodleOpacity = opacity)
+            currentTheme = currentTheme.copy(doodleOpacity = opacity)
             binding.tvOpacityValue.text = "${value.toInt()}%"
             binding.doodlePreview.setDoodleOpacity(opacity)
         }
@@ -143,11 +159,12 @@ class ChatWallpaperBottomSheet(
         }
 
         binding.btnRemoveImage.setOnClickListener {
-            currentWallpaper = ChatWallpaper.DEFAULT_EMERALD.copy(
-                showDoodle = currentWallpaper.showDoodle,
-                doodleOpacity = currentWallpaper.doodleOpacity
+            currentTheme = ChatTheme.DEFAULT_EMERALD.copy(
+                showDoodle = currentTheme.showDoodle,
+                doodleOpacity = currentTheme.doodleOpacity,
+                accentColor = currentTheme.accentColor
             )
-            presetAdapter.setSelectedId(ChatWallpaper.DEFAULT_EMERALD.id)
+            presetAdapter.setSelectedId(ChatTheme.DEFAULT_EMERALD.id)
             solidAdapter.setSelectedColor(null)
             updatePreviewUI()
         }
@@ -155,61 +172,73 @@ class ChatWallpaperBottomSheet(
 
     private fun setupActionButtons() {
         binding.btnApplyThisChat.setOnClickListener {
-            wallpaperManager.setWallpaperForConversation(conversationId, currentWallpaper)
-            onWallpaperChanged(currentWallpaper)
-            Toast.makeText(requireContext(), "✨ Applied \"${currentWallpaper.name}\" to this chat", Toast.LENGTH_SHORT).show()
+            themeManager.setThemeForConversation(conversationId, currentTheme)
+            onThemeChanged(currentTheme)
+            Toast.makeText(requireContext(), getString(R.string.toast_applied_theme_single, currentTheme.name), Toast.LENGTH_SHORT).show()
             dismiss()
         }
 
         binding.btnApplyAllChats.setOnClickListener {
-            wallpaperManager.setGlobalWallpaper(currentWallpaper)
-            wallpaperManager.setWallpaperForConversation(conversationId, currentWallpaper)
-            onWallpaperChanged(currentWallpaper)
-            Toast.makeText(requireContext(), "✨ Applied \"${currentWallpaper.name}\" to all chats", Toast.LENGTH_SHORT).show()
+            themeManager.setGlobalTheme(currentTheme)
+            themeManager.setThemeForConversation(conversationId, currentTheme)
+            onThemeChanged(currentTheme)
+            Toast.makeText(requireContext(), getString(R.string.toast_applied_theme_all, currentTheme.name), Toast.LENGTH_SHORT).show()
             dismiss()
         }
 
         binding.btnResetDefault.setOnClickListener {
-            wallpaperManager.resetWallpaper(conversationId)
-            val defaultWp = wallpaperManager.getWallpaper(conversationId)
-            onWallpaperChanged(defaultWp)
-            Toast.makeText(requireContext(), "🔄 Reset to default wallpaper", Toast.LENGTH_SHORT).show()
+            themeManager.resetTheme(conversationId)
+            val defaultTheme = themeManager.getTheme(conversationId)
+            onThemeChanged(defaultTheme)
+            Toast.makeText(requireContext(), getString(R.string.toast_reset_theme), Toast.LENGTH_SHORT).show()
             dismiss()
         }
     }
 
     private fun updatePreviewUI() {
-        val wp = currentWallpaper
+        val theme = currentTheme
 
-        if (wp.type == WallpaperType.CUSTOM_IMAGE && !wp.imageUriOrPath.isNullOrBlank()) {
+        if (theme.type == WallpaperType.CUSTOM_IMAGE && !theme.imageUriOrPath.isNullOrBlank()) {
             binding.ivPreviewImage.visibility = View.VISIBLE
-            binding.ivPreviewImage.load(File(wp.imageUriOrPath))
+            binding.ivPreviewImage.load(File(theme.imageUriOrPath))
             binding.viewPreviewBg.setBackgroundColor(Color.BLACK)
-            binding.tvCustomImageStatus.text = "Custom photo selected"
+            binding.tvCustomImageStatus.text = getString(R.string.status_custom_photo_selected)
             binding.btnRemoveImage.visibility = View.VISIBLE
         } else {
             binding.ivPreviewImage.visibility = View.GONE
             binding.btnRemoveImage.visibility = View.GONE
-            binding.tvCustomImageStatus.text = "Choose from device gallery"
+            binding.tvCustomImageStatus.text = getString(R.string.choose_from_gallery)
 
-            if (wp.solidColor != null) {
-                binding.viewPreviewBg.setBackgroundColor(wp.solidColor)
+            if (theme.solidColor != null) {
+                binding.viewPreviewBg.setBackgroundColor(theme.solidColor)
             } else {
                 val drawable = GradientDrawable(
                     GradientDrawable.Orientation.TOP_BOTTOM,
-                    wp.bgGradientColors.toIntArray()
+                    theme.bgGradientColors.toIntArray()
                 )
                 binding.viewPreviewBg.background = drawable
             }
         }
 
-        binding.doodlePreview.visibility = if (wp.showDoodle) View.VISIBLE else View.GONE
-        binding.doodlePreview.setDoodleOpacity(wp.doodleOpacity)
+        binding.doodlePreview.visibility = if (theme.showDoodle) View.VISIBLE else View.GONE
+        binding.doodlePreview.setDoodleOpacity(theme.doodleOpacity)
 
-        binding.switchDoodle.isChecked = wp.showDoodle
-        binding.layoutDoodleOpacity.visibility = if (wp.showDoodle) View.VISIBLE else View.GONE
-        binding.sliderDoodleOpacity.value = (wp.doodleOpacity * 100).coerceIn(1f, 25f)
-        binding.tvOpacityValue.text = "${(wp.doodleOpacity * 100).toInt()}%"
+        binding.switchDoodle.isChecked = theme.showDoodle
+        binding.layoutDoodleOpacity.visibility = if (theme.showDoodle) View.VISIBLE else View.GONE
+        binding.sliderDoodleOpacity.value = (theme.doodleOpacity * 100).coerceIn(1f, 25f)
+        binding.tvOpacityValue.text = "${(theme.doodleOpacity * 100).toInt()}%"
+
+        // Apply accent color to preview
+        val accentColor = theme.accentColor
+        binding.btnApplyThisChat.backgroundTintList = ColorStateList.valueOf(accentColor)
+        binding.btnPickImage.backgroundTintList = ColorStateList.valueOf(accentColor)
+        binding.switchDoodle.thumbTintList = ColorStateList.valueOf(accentColor)
+        binding.sliderDoodleOpacity.thumbTintList = ColorStateList.valueOf(accentColor)
+        binding.sliderDoodleOpacity.trackActiveTintList = ColorStateList.valueOf(accentColor)
+        binding.tvOpacityValue.setTextColor(accentColor)
+        
+        // Mock chat bubbles accent
+        binding.previewBubbleMe.backgroundTintList = ColorStateList.valueOf(accentColor)
     }
 
     private fun copyUriToInternalStorage(uri: Uri): String? {
@@ -240,9 +269,9 @@ class ChatWallpaperBottomSheet(
 
     // ── Nested Preset Adapter ──────────────────────────────────────────
     private class PresetAdapter(
-        private val presets: List<ChatWallpaper>,
+        private val presets: List<ChatTheme>,
         private var selectedId: String?,
-        private val onPresetClick: (ChatWallpaper) -> Unit
+        private val onPresetClick: (ChatTheme) -> Unit
     ) : RecyclerView.Adapter<PresetAdapter.PresetViewHolder>() {
 
         fun setSelectedId(id: String?) {
@@ -271,7 +300,7 @@ class ChatWallpaperBottomSheet(
         inner class PresetViewHolder(private val binding: ItemWallpaperPresetBinding) :
             RecyclerView.ViewHolder(binding.root) {
 
-            fun bind(preset: ChatWallpaper) {
+            fun bind(preset: ChatTheme) {
                 binding.tvPresetName.text = preset.name.replace("GoChat ", "")
 
                 val gradient = GradientDrawable(
@@ -338,6 +367,55 @@ class ChatWallpaperBottomSheet(
 
                 binding.cardSolidColor.setOnClickListener {
                     onSolidColorClick(solid)
+                }
+            }
+        }
+    }
+
+    // ── Nested Accent Color Adapter ────────────────────────────────────
+    private class AccentColorAdapter(
+        private val accentColors: List<SolidColorOption>,
+        private var selectedColor: Int?,
+        private val onAccentColorClick: (SolidColorOption) -> Unit
+    ) : RecyclerView.Adapter<AccentColorAdapter.AccentViewHolder>() {
+
+        fun setSelectedColor(color: Int?) {
+            val oldPos = accentColors.indexOfFirst { it.color == selectedColor }
+            selectedColor = color
+            val newPos = accentColors.indexOfFirst { it.color == selectedColor }
+            if (oldPos != -1) notifyItemChanged(oldPos)
+            if (newPos != -1) notifyItemChanged(newPos)
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AccentViewHolder {
+            val binding = ItemWallpaperSolidBinding.inflate(
+                LayoutInflater.from(parent.context),
+                parent,
+                false
+            )
+            return AccentViewHolder(binding)
+        }
+
+        override fun onBindViewHolder(holder: AccentViewHolder, position: Int) {
+            holder.bind(accentColors[position])
+        }
+
+        override fun getItemCount(): Int = accentColors.size
+
+        inner class AccentViewHolder(private val binding: ItemWallpaperSolidBinding) :
+            RecyclerView.ViewHolder(binding.root) {
+
+            fun bind(accent: SolidColorOption) {
+                binding.tvSolidName.text = accent.name
+                binding.viewSolidColor.setBackgroundColor(accent.color)
+
+                val isSelected = accent.color == selectedColor
+                binding.cardSolidColor.strokeWidth = if (isSelected) 3 else 0
+                binding.ivSolidSelected.visibility = if (isSelected) View.VISIBLE else View.GONE
+                binding.ivSolidSelected.backgroundTintList = ColorStateList.valueOf(accent.color)
+
+                binding.cardSolidColor.setOnClickListener {
+                    onAccentColorClick(accent)
                 }
             }
         }

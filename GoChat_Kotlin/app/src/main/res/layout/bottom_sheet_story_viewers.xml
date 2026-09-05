@@ -83,7 +83,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:text="No views yet"
+                android:text="@string/no_views_yet"
                 android:textColor="@color/gochat_text_secondary"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -92,7 +92,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="Views from your contacts will appear here"
+                android:text="@string/no_views_desc"
                 android:textColor="@color/gochat_text_muted"
                 android:textSize="12sp" />
         </LinearLayout>

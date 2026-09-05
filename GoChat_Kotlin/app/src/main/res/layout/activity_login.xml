@@ -42,7 +42,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:text="Get Started with GoChat"
+                android:text="@string/login_title_get_started"
                 android:textColor="@color/gochat_text_primary"
                 android:textSize="26sp"
                 android:textStyle="bold" />
@@ -55,7 +55,7 @@
                 android:layout_marginTop="6dp"
                 android:gravity="center"
                 android:maxWidth="340dp"
-                android:text="Instant passwordless phone sign-up with SMS OTP verification"
+                android:text="@string/login_subtitle_get_started"
                 android:textColor="@color/gochat_text_secondary"
                 android:textSize="13sp" />
 
@@ -110,7 +110,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:letterSpacing="0.08"
-                        android:text="PHONE NUMBER"
+                        android:text="@string/phone_number_header"
                         android:textColor="@color/gochat_text_secondary"
                         android:textSize="11sp"
                         android:textStyle="bold" />
@@ -168,7 +168,7 @@
                             android:layout_marginStart="8dp"
                             android:layout_weight="1"
                             android:background="@drawable/bg_input_field"
-                            android:hint="Phone number"
+                            android:hint="@string/phone_number_hint"
                             android:imeOptions="actionDone"
                             android:importantForAutofill="no"
                             android:inputType="phone"
@@ -197,7 +197,7 @@
                             android:background="@drawable/bg_country_picker"
                             android:drawableStart="@drawable/ic_search"
                             android:drawablePadding="8dp"
-                            android:hint="Search country or code..."
+                            android:hint="@string/search_country_hint"
                             android:imeOptions="actionDone"
                             android:importantForAutofill="no"
                             android:inputType="text"
@@ -219,7 +219,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
                         android:lineSpacingMultiplier="1.2"
-                        android:text="Fast &amp; secure phone sign-up. Username &amp; email can be added anytime in Settings."
+                        android:text="@string/phone_signup_disclaimer"
                         android:textColor="@color/gochat_text_muted"
                         android:textSize="11sp" />
 
@@ -231,7 +231,7 @@
                         android:layout_marginTop="20dp"
                         android:backgroundTint="@color/gochat_accent"
                         android:elevation="0dp"
-                        android:text="Continue with Phone"
+                        android:text="@string/btn_continue_phone"
                         android:textAllCaps="false"
                         android:textColor="@color/black"
                         android:textSize="14.5sp"
@@ -252,7 +252,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:letterSpacing="0.08"
-                        android:text="PHONE NUMBER, EMAIL, OR GOCHAT PIN"
+                        android:text="@string/identifier_header"
                         android:textColor="@color/gochat_text_secondary"
                         android:textSize="11sp"
                         android:textStyle="bold" />
@@ -265,7 +265,7 @@
                         android:background="@drawable/bg_input_field"
                         android:drawableStart="@drawable/ic_account"
                         android:drawablePadding="10dp"
-                        android:hint="e.g. +2348012345678, alex@gochat.io, or 8492A1"
+                        android:hint="@string/identifier_hint"
                         android:imeOptions="actionDone"
                         android:importantForAutofill="no"
                         android:inputType="textEmailAddress"
@@ -291,7 +291,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="6dp"
-                            android:text="Passwordless login. A 6-digit SMS OTP code will be verified."
+                            android:text="@string/login_security_disclaimer"
                             android:textColor="@color/gochat_text_muted"
                             android:textSize="11sp" />
                     </LinearLayout>
@@ -304,7 +304,7 @@
                         android:layout_marginTop="20dp"
                         android:backgroundTint="@color/gochat_accent"
                         android:elevation="0dp"
-                        android:text="Send Verification Code"
+                        android:text="@string/btn_send_verification_code"
                         android:textAllCaps="false"
                         android:textColor="@color/black"
                         android:textSize="14.5sp"
@@ -334,7 +334,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="Account Created!"
+                        android:text="@string/account_created_header"
                         android:textColor="@color/gochat_text_primary"
                         android:textSize="18sp"
                         android:textStyle="bold" />
@@ -388,7 +388,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="Share this PIN with friends to connect on GoChat"
+                        android:text="@string/pin_share_subtitle"
                         android:textColor="@color/gochat_text_muted"
                         android:textSize="10.5sp" />
 
@@ -418,7 +418,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="8dp"
-                                android:text="Detecting SMS OTP code..."
+                                android:text="@string/detecting_otp_status"
                                 android:textColor="@color/gochat_otp_banner_text"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
@@ -443,7 +443,7 @@
                         android:background="@drawable/bg_input_field"
                         android:fontFamily="monospace"
                         android:gravity="center"
-                        android:hint="000000"
+                        android:hint="@string/otp_input_hint"
                         android:imeOptions="actionDone"
                         android:importantForAutofill="no"
                         android:inputType="number"
@@ -462,7 +462,7 @@
                         android:layout_marginTop="18dp"
                         android:backgroundTint="@color/gochat_accent"
                         android:elevation="0dp"
-                        android:text="Start Messaging Now"
+                        android:text="@string/btn_start_messaging"
                         android:textAllCaps="false"
                         android:textColor="@color/black"
                         android:textSize="14sp"

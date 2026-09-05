@@ -6,8 +6,7 @@ import android.app.Dialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
@@ -40,12 +39,13 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import coil.load
-import coil.transform.CircleCropTransformation
 import com.example.gochat.R
 import com.example.gochat.core.media.AudioPlayerManager
 import com.example.gochat.core.media.AudioRecorderManager
-import com.example.gochat.core.wallpaper.ChatWallpaper
-import com.example.gochat.core.wallpaper.ChatWallpaperManager
+import com.example.gochat.core.media.ImageCompressor
+import com.example.gochat.core.media.MediaImageHelper
+import com.example.gochat.core.wallpaper.ChatTheme
+import com.example.gochat.core.wallpaper.ChatThemeManager
 import com.example.gochat.core.wallpaper.WallpaperType
 import com.example.gochat.data.model.Message
 import com.example.gochat.databinding.ActivityChatRoomBinding
@@ -56,9 +56,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.InputStream
 import java.util.Locale
 
 class ChatRoomActivity : AppCompatActivity() {
@@ -98,7 +96,7 @@ class ChatRoomActivity : AppCompatActivity() {
         if (isGranted) {
             startVoiceRecording()
         } else {
-            Toast.makeText(this, "Microphone permission required for voice notes", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.error_mic_permission), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -108,7 +106,7 @@ class ChatRoomActivity : AppCompatActivity() {
         if (isGranted) {
             launchCameraCapture()
         } else {
-            Toast.makeText(this, "Camera permission required to take photos", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.error_camera_permission), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -146,7 +144,7 @@ class ChatRoomActivity : AppCompatActivity() {
         val avatarUrl = intent.getStringExtra(EXTRA_CONVERSATION_AVATAR).orEmpty()
 
         setupToolbar(title, avatarUrl)
-        setupWallpaper(convId)
+        setupTheme(convId)
         setupMessagesRecyclerView()
         setupInputBar()
         setupReplyPreview()
@@ -211,16 +209,13 @@ class ChatRoomActivity : AppCompatActivity() {
         with(binding) {
             tvChatTitle.text = title
 
-            if (avatarUrl.isNotBlank()) {
-                ivHeaderAvatar.load(avatarUrl) {
-                    crossfade(true)
-                    placeholder(R.drawable.ic_account)
-                    error(R.drawable.ic_account)
-                    transformations(CircleCropTransformation())
-                }
-            } else {
-                ivHeaderAvatar.setImageResource(R.drawable.ic_account)
-            }
+            MediaImageHelper.loadSafeImage(
+                imageView = ivHeaderAvatar,
+                url = avatarUrl,
+                isCircle = true,
+                placeholderRes = R.drawable.ic_account,
+                errorRes = R.drawable.ic_account
+            )
 
             layoutHeaderInfo.setOnClickListener {
                 val intent = Intent(this@ChatRoomActivity, GroupInfoActivity::class.java).apply {
@@ -271,7 +266,7 @@ class ChatRoomActivity : AppCompatActivity() {
                 if (audioUrl.isNotBlank()) {
                     AudioPlayerManager.playOrPause(this, message.id, audioUrl)
                 } else {
-                    Toast.makeText(this, "Voice note unavailable", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.error_voice_note_unavailable), Toast.LENGTH_SHORT).show()
                 }
             }
         ).apply {
@@ -397,7 +392,7 @@ class ChatRoomActivity : AppCompatActivity() {
             pulse.repeatCount = ObjectAnimator.INFINITE
             pulse.start()
         } else {
-            Toast.makeText(this, "Could not start audio recorder", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.error_audio_recorder_start), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -415,10 +410,10 @@ class ChatRoomActivity : AppCompatActivity() {
             viewModel.sendMediaMessage(
                 mediaUrl = result.base64DataUri,
                 type = 5, // Voice note
-                caption = "🎙️ Voice Note ($durationLabel)"
+                caption = getString(R.string.caption_voice_note, durationLabel)
             )
         } else {
-            Toast.makeText(this, "Recording failed or too short", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.error_recording_failed), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -428,7 +423,7 @@ class ChatRoomActivity : AppCompatActivity() {
 
         binding.layoutVoiceRecording.visibility = View.GONE
         binding.layoutNormalInput.visibility = View.VISIBLE
-        Toast.makeText(this, "Recording cancelled", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, getString(R.string.toast_recording_cancelled), Toast.LENGTH_SHORT).show()
     }
 
     private fun showAttachmentPickerBottomSheet() {
@@ -504,7 +499,7 @@ class ChatRoomActivity : AppCompatActivity() {
             cameraTempPhotoUri = uri
             takePictureLauncher.launch(uri)
         } catch (e: Exception) {
-            Toast.makeText(this, "Unable to initialize camera", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.error_camera_init), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -515,7 +510,7 @@ class ChatRoomActivity : AppCompatActivity() {
         val dialogBinding = DialogImagePreviewBinding.inflate(layoutInflater)
         dialog.setContentView(dialogBinding.root)
 
-        com.example.gochat.core.media.MediaImageHelper.loadSafeImage(
+        MediaImageHelper.loadSafeImage(
             imageView = dialogBinding.ivPreviewImage,
             url = imageUri.toString(),
             isCircle = false,
@@ -534,7 +529,7 @@ class ChatRoomActivity : AppCompatActivity() {
 
             lifecycleScope.launch {
                 val compressed = withContext(Dispatchers.IO) {
-                    com.example.gochat.core.media.ImageCompressor.compressImageUri(
+                    ImageCompressor.compressImageUri(
                         context = applicationContext,
                         uri = imageUri,
                         maxDimension = 1280,
@@ -546,13 +541,13 @@ class ChatRoomActivity : AppCompatActivity() {
                     viewModel.sendImageMessage(
                         bytes = compressed.bytes,
                         dataUriFallback = compressed.dataUri,
-                        caption = caption.ifBlank { "📷 Photo" }
+                        caption = caption.ifBlank { getString(R.string.caption_photo) }
                     )
                     dialog.dismiss()
                 } else {
                     dialogBinding.fabSendImage.isEnabled = true
                     dialogBinding.etImageCaption.isEnabled = true
-                    Toast.makeText(this@ChatRoomActivity, "Failed to process photo", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@ChatRoomActivity, getString(R.string.error_photo_process), Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -570,7 +565,7 @@ class ChatRoomActivity : AppCompatActivity() {
         dialogBinding.etImageCaption.visibility = View.GONE
         dialogBinding.fabSendImage.visibility = View.GONE
 
-        com.example.gochat.core.media.MediaImageHelper.loadSafeImage(
+        MediaImageHelper.loadSafeImage(
             imageView = dialogBinding.ivPreviewImage,
             url = mediaUrl,
             isCircle = false,
@@ -603,10 +598,10 @@ class ChatRoomActivity : AppCompatActivity() {
                 viewModel.sendMediaMessage(
                     mediaUrl = dataUri,
                     type = 5,
-                    caption = "🎵 Audio File"
+                    caption = getString(R.string.caption_audio_file)
                 )
             } else {
-                Toast.makeText(this@ChatRoomActivity, "Failed to process audio file", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ChatRoomActivity, getString(R.string.error_audio_process), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -630,7 +625,7 @@ class ChatRoomActivity : AppCompatActivity() {
                         if (replyMsg != null) {
                             binding.layoutReplyPreview.visibility = View.VISIBLE
                             binding.layoutEditPreview.visibility = View.GONE
-                            binding.tvReplyPreviewSender.text = "Replying to ${replyMsg.senderName.ifBlank { "Message" }}"
+                            binding.tvReplyPreviewSender.text = getString(R.string.replying_to_format, replyMsg.senderName.ifBlank { getString(R.string.message_hint) })
                             binding.tvReplyPreviewText.text = replyMsg.content
                         } else {
                             binding.layoutReplyPreview.visibility = View.GONE
@@ -656,7 +651,7 @@ class ChatRoomActivity : AppCompatActivity() {
 
                 launch {
                     viewModel.isOtherUserTyping.collect { isTyping ->
-                        binding.tvChatSubtitle.text = if (isTyping) "typing..." else "online"
+                        binding.tvChatSubtitle.text = if (isTyping) getString(R.string.status_typing) else getString(R.string.status_online)
                         binding.viewHeaderOnlineDot.visibility = View.VISIBLE
                     }
                 }
@@ -691,11 +686,11 @@ class ChatRoomActivity : AppCompatActivity() {
         // Haptic feedback
         try {
             val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val vm = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+                val vm = getSystemService(VIBRATOR_MANAGER_SERVICE) as? VibratorManager
                 vm?.defaultVibrator
             } else {
                 @Suppress("DEPRECATION")
-                getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+                getSystemService(VIBRATOR_SERVICE) as? Vibrator
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -712,7 +707,7 @@ class ChatRoomActivity : AppCompatActivity() {
         shakeAnimator.interpolator = CycleInterpolator(1f)
         shakeAnimator.start()
 
-        Toast.makeText(this, "💥 PING!!!", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, getString(R.string.ping_message), Toast.LENGTH_SHORT).show()
     }
 
     private fun showMessageOptionsDialog(message: Message) {
@@ -720,21 +715,20 @@ class ChatRoomActivity : AppCompatActivity() {
             when (action) {
                 MessageActionBottomSheet.Action.REPLY -> viewModel.setReplyingTo(message)
                 MessageActionBottomSheet.Action.FORWARD -> {
-                    Toast.makeText(this, "Select a chat to forward to", Toast.LENGTH_SHORT).show()
-                    // Real implementation would open a ChatPicker
+                    Toast.makeText(this, getString(R.string.prompt_forward_chat), Toast.LENGTH_SHORT).show()
                 }
                 MessageActionBottomSheet.Action.STAR -> {
                     viewModel.toggleStar(message.id, !message.isStarred)
                     val status = if (message.isStarred) "unstarred" else "starred"
-                    Toast.makeText(this, "Message $status", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.toast_message_status, status), Toast.LENGTH_SHORT).show()
                 }
                 MessageActionBottomSheet.Action.EDIT -> viewModel.setEditingMessage(message)
                 MessageActionBottomSheet.Action.DELETE -> {
                     AlertDialog.Builder(this)
-                        .setTitle("Delete message?")
-                        .setMessage("This message will be deleted for everyone.")
-                        .setPositiveButton("Delete") { _, _ -> viewModel.deleteMessageForEveryone(message.id) }
-                        .setNegativeButton("Cancel", null)
+                        .setTitle(getString(R.string.dialog_delete_message_title))
+                        .setMessage(getString(R.string.dialog_delete_message_desc))
+                        .setPositiveButton(getString(R.string.action_delete)) { _, _ -> viewModel.deleteMessageForEveryone(message.id) }
+                        .setNegativeButton(getString(R.string.btn_cancel), null)
                         .show()
                 }
                 MessageActionBottomSheet.Action.REACT_LIKE -> viewModel.addReaction(message.id, "👍")
@@ -749,54 +743,74 @@ class ChatRoomActivity : AppCompatActivity() {
     }
 
     private fun showMoreMenu() {
-        val items = arrayOf("Wallpaper / Theme", "Mute notifications", "Clear chat", "Export chat")
+        val items = arrayOf(
+            getString(R.string.option_wallpaper_theme),
+            getString(R.string.option_mute_notifications),
+            getString(R.string.option_clear_chat),
+            getString(R.string.option_export_chat)
+        )
         AlertDialog.Builder(this)
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> {
                         val convId = viewModel.conversationId.value ?: intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty()
-                        val title = intent.getStringExtra(EXTRA_CONVERSATION_TITLE) ?: "Chat"
+                        val title = intent.getStringExtra(EXTRA_CONVERSATION_TITLE) ?: getString(R.string.message_hint)
                         val sheet = ChatWallpaperBottomSheet(
                             conversationId = convId,
                             conversationTitle = title,
-                            onWallpaperChanged = { updatedWallpaper ->
-                                applyWallpaper(updatedWallpaper)
+                            onThemeChanged = { updatedTheme ->
+                                applyTheme(updatedTheme)
                             }
                         )
                         sheet.show(supportFragmentManager, ChatWallpaperBottomSheet.TAG)
                     }
-                    else -> Toast.makeText(this, "Option selected", Toast.LENGTH_SHORT).show()
+                    else -> Toast.makeText(this, getString(R.string.toast_option_selected), Toast.LENGTH_SHORT).show()
                 }
             }
             .show()
     }
 
-    private fun setupWallpaper(convId: String) {
-        val wallpaperManager = ChatWallpaperManager(this)
-        val wallpaper = wallpaperManager.getWallpaper(convId)
-        applyWallpaper(wallpaper)
+    private fun setupTheme(convId: String) {
+        val themeManager = ChatThemeManager(this)
+        val theme = themeManager.getTheme(convId)
+        applyTheme(theme)
     }
 
-    private fun applyWallpaper(wallpaper: ChatWallpaper) {
-        if (wallpaper.type == WallpaperType.CUSTOM_IMAGE && !wallpaper.imageUriOrPath.isNullOrBlank()) {
+    private fun applyTheme(theme: ChatTheme) {
+        // Apply Wallpaper
+        if (theme.type == WallpaperType.CUSTOM_IMAGE && !theme.imageUriOrPath.isNullOrBlank()) {
             binding.ivCustomWallpaper.visibility = View.VISIBLE
-            binding.ivCustomWallpaper.load(File(wallpaper.imageUriOrPath))
+            binding.ivCustomWallpaper.load(File(theme.imageUriOrPath))
             binding.chatRoot.setBackgroundColor(Color.BLACK)
         } else {
             binding.ivCustomWallpaper.visibility = View.GONE
-            if (wallpaper.solidColor != null) {
-                binding.chatRoot.setBackgroundColor(wallpaper.solidColor)
+            if (theme.solidColor != null) {
+                binding.chatRoot.setBackgroundColor(theme.solidColor)
             } else {
                 val drawable = GradientDrawable(
                     GradientDrawable.Orientation.TOP_BOTTOM,
-                    wallpaper.bgGradientColors.toIntArray()
+                    theme.bgGradientColors.toIntArray()
                 )
                 binding.chatRoot.background = drawable
             }
         }
 
-        binding.chatDoodleView.visibility = if (wallpaper.showDoodle) View.VISIBLE else View.GONE
-        binding.chatDoodleView.setDoodleOpacity(wallpaper.doodleOpacity)
+        binding.chatDoodleView.visibility = if (theme.showDoodle) View.VISIBLE else View.GONE
+        binding.chatDoodleView.setDoodleOpacity(theme.doodleOpacity)
+
+        // Apply Accent Color
+        val accentColor = theme.accentColor
+        binding.tvChatTitle.setTextColor(accentColor)
+        binding.ivSendIcon.imageTintList = ColorStateList.valueOf(accentColor)
+        binding.btnPing.imageTintList = ColorStateList.valueOf(accentColor)
+        binding.btnCall.imageTintList = ColorStateList.valueOf(accentColor)
+        binding.btnMoreChatOptions.imageTintList = ColorStateList.valueOf(accentColor)
+        binding.btnBack.imageTintList = ColorStateList.valueOf(accentColor)
+        
+        // Update adapter if it exists
+        if (::messageAdapter.isInitialized) {
+            messageAdapter.setAccentColor(accentColor)
+        }
     }
 
     override fun onPause() {

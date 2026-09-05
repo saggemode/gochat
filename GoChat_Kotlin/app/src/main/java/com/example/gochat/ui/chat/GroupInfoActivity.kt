@@ -10,8 +10,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import coil.load
 import com.example.gochat.R
+import com.example.gochat.core.media.MediaImageHelper
 import com.example.gochat.data.model.GroupMember
 import com.example.gochat.databinding.ActivityGroupInfoBinding
 import kotlinx.coroutines.launch
@@ -35,7 +35,7 @@ class GroupInfoActivity : AppCompatActivity() {
         binding = ActivityGroupInfoBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val groupName = intent.getStringExtra(EXTRA_GROUP_NAME) ?: "Group Info"
+        val groupName = intent.getStringExtra(EXTRA_GROUP_NAME) ?: getString(R.string.group_info_title)
         val groupAvatar = intent.getStringExtra(EXTRA_GROUP_AVATAR).orEmpty()
         val memberIds = intent.getStringArrayListExtra(EXTRA_MEMBER_IDS) ?: arrayListOf()
 
@@ -54,41 +54,45 @@ class GroupInfoActivity : AppCompatActivity() {
     }
 
     private fun setupUI(name: String, avatar: String) {
-        if (avatar.isNotBlank()) {
-            binding.ivGroupAvatar.load(avatar)
-        }
+        MediaImageHelper.loadSafeImage(
+            imageView = binding.ivGroupAvatar,
+            url = avatar,
+            isCircle = false,
+            placeholderRes = R.drawable.ic_account,
+            errorRes = R.drawable.ic_account
+        )
 
         binding.btnInviteLink.setOnClickListener {
             viewModel.generateInviteLink(convId) { code ->
                 val link = "https://gochat.link/join/$code"
                 AlertDialog.Builder(this)
-                    .setTitle("Group Invite Link")
+                    .setTitle(getString(R.string.dialog_invite_link_title))
                     .setMessage(link)
-                    .setPositiveButton("Copy") { _, _ ->
+                    .setPositiveButton(getString(R.string.btn_copy)) { _, _ ->
                         val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
                         val clip = ClipData.newPlainText("Group Link", link)
                         clipboard.setPrimaryClip(clip)
-                        Toast.makeText(this, "Link copied", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, getString(R.string.toast_link_copied), Toast.LENGTH_SHORT).show()
                     }
-                    .setNegativeButton("Close", null)
+                    .setNegativeButton(getString(R.string.btn_close), null)
                     .show()
             }
         }
 
         binding.btnExitGroup.setOnClickListener {
             AlertDialog.Builder(this)
-                .setTitle("Exit Group?")
-                .setMessage("Are you sure you want to exit this group?")
-                .setPositiveButton("Exit") { _, _ ->
+                .setTitle(getString(R.string.dialog_exit_group_title))
+                .setMessage(getString(R.string.dialog_exit_group_desc))
+                .setPositiveButton(getString(R.string.exit_group)) { _, _ ->
                     // viewModel.exitGroup(convId)
                     finish()
                 }
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.btn_cancel), null)
                 .show()
         }
         
         binding.btnAddMember.setOnClickListener {
-            Toast.makeText(this, "Add member functionality coming soon", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.toast_add_member_soon), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -96,7 +100,7 @@ class GroupInfoActivity : AppCompatActivity() {
         lifecycleScope.launch {
             viewModel.metadata.collect { meta ->
                 meta?.let {
-                    binding.tvDescription.text = it.description.ifBlank { "Add group description" }
+                    binding.tvDescription.text = it.description.ifBlank { getString(R.string.placeholder_group_description) }
                 }
             }
         }
@@ -112,14 +116,18 @@ class GroupInfoActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             viewModel.members.collect { memberList ->
-                binding.tvMemberCount.text = "${memberList.size} Members"
+                binding.tvMemberCount.text = getString(R.string.member_count_format, memberList.size)
                 memberAdapter.submitList(memberList)
             }
         }
     }
 
     private fun showMemberActions(member: GroupMember) {
-        val actions = arrayOf("Message ${member.displayName}", "Promote to Admin", "Remove from Group")
+        val actions = arrayOf(
+            getString(R.string.option_message_user, member.displayName),
+            getString(R.string.option_promote_admin),
+            getString(R.string.option_remove_group)
+        )
         AlertDialog.Builder(this)
             .setItems(actions) { _, which ->
                 when (which) {

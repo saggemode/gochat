@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_margin="4dp"
+    android:background="@drawable/bg_chip_unselected"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center"
+    android:orientation="horizontal"
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="8dp">
+
+    <TextView
+        android:id="@+id/tvCategoryName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/gochat_text_primary"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        tools:text="Electronics"
+        xmlns:tools="http://schemas.android.com/tools" />
+</LinearLayout>

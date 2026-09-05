@@ -158,18 +158,18 @@ class LoginActivity : AppCompatActivity() {
                 layoutOtpForm.visibility = View.VISIBLE
                 tvToggleAuthMode.visibility = View.GONE
 
-                tvAuthTitle.text = if (state.isRegister) "Account Created!" else "Welcome Back!"
-                tvAuthSubtitle.text = "Enter the 6-digit code sent to your device"
+                tvAuthTitle.text = if (state.isRegister) getString(R.string.account_created_header) else getString(R.string.login_title_welcome_back)
+                tvAuthSubtitle.text = getString(R.string.otp_subtitle)
 
                 ivOtpStatusIcon.setImageResource(
                     if (state.isRegister) R.drawable.ic_vpn_key else R.drawable.ic_email_verify
                 )
-                tvOtpHeader.text = if (state.isRegister) "Account Created!" else "Verify Your Identity"
+                tvOtpHeader.text = if (state.isRegister) getString(R.string.account_created_header) else getString(R.string.otp_header_verify)
 
                 // Assigned username chip
                 if (!state.assignedUsername.isNullOrBlank()) {
                     layoutAssignedUsername.visibility = View.VISIBLE
-                    tvAssignedUsername.text = "Assigned Username: ${state.assignedUsername}"
+                    tvAssignedUsername.text = getString(R.string.assigned_username_prefix, state.assignedUsername)
                 } else {
                     layoutAssignedUsername.visibility = View.GONE
                 }
@@ -178,7 +178,7 @@ class LoginActivity : AppCompatActivity() {
                 if (!state.generatedPin.isNullOrBlank()) {
                     tvGeneratedPin.visibility = View.VISIBLE
                     tvPinSubtitle.visibility = View.VISIBLE
-                    tvGeneratedPin.text = "Your unique GOCHAT PIN: ${state.generatedPin}"
+                    tvGeneratedPin.text = getString(R.string.generated_pin_prefix, state.generatedPin)
                 } else {
                     tvGeneratedPin.visibility = View.GONE
                     tvPinSubtitle.visibility = View.GONE
@@ -186,14 +186,14 @@ class LoginActivity : AppCompatActivity() {
 
                 // OTP Status Banner
                 if (state.isOtpVerified || state.otpCode.length == 6) {
-                    tvOtpDetectionStatus.text = "SMS OTP Verified! Redirecting..."
-                    btnStartMessaging.text = "Verifying & Opening Chat..."
+                    tvOtpDetectionStatus.text = getString(R.string.otp_verified_status)
+                    btnStartMessaging.text = getString(R.string.btn_verifying_otp)
                 } else {
-                    tvOtpDetectionStatus.text = "Detecting SMS OTP code..."
-                    btnStartMessaging.text = "Start Messaging Now"
+                    tvOtpDetectionStatus.text = getString(R.string.detecting_otp_status)
+                    btnStartMessaging.text = getString(R.string.btn_start_messaging)
                 }
 
-                tvOtpDestination.text = "Verification code sent to ${state.otpDestination}"
+                tvOtpDestination.text = getString(R.string.otp_sent_to_prefix, state.otpDestination)
 
                 // Sync OTP EditText if filled programmatically
                 if (etOtpCode.text.toString() != state.otpCode) {
@@ -208,12 +208,12 @@ class LoginActivity : AppCompatActivity() {
                 layoutOtpForm.visibility = View.GONE
                 tvToggleAuthMode.visibility = View.VISIBLE
 
-                tvAuthTitle.text = "Get Started with GoChat"
-                tvAuthSubtitle.text = "Instant passwordless phone sign-up with SMS OTP verification"
+                tvAuthTitle.text = getString(R.string.login_title_get_started)
+                tvAuthSubtitle.text = getString(R.string.login_subtitle_get_started)
 
                 setToggleText(
-                    prefix = "Already have an account? ",
-                    action = "Sign In"
+                    prefix = getString(R.string.already_have_account_prefix),
+                    action = getString(R.string.action_sign_in)
                 )
 
             } else {
@@ -223,12 +223,12 @@ class LoginActivity : AppCompatActivity() {
                 layoutOtpForm.visibility = View.GONE
                 tvToggleAuthMode.visibility = View.VISIBLE
 
-                tvAuthTitle.text = "Welcome Back to GoChat"
-                tvAuthSubtitle.text = "Sign in with your Phone, Email, or PIN via instant SMS OTP"
+                tvAuthTitle.text = getString(R.string.login_title_welcome_back_full)
+                tvAuthSubtitle.text = getString(R.string.login_security_disclaimer)
 
                 setToggleText(
-                    prefix = "New to GoChat? ",
-                    action = "Create Account"
+                    prefix = getString(R.string.new_to_gochat_prefix),
+                    action = getString(R.string.action_create_account)
                 )
             }
         }

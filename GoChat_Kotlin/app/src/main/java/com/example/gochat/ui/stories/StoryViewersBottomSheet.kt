@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.gochat.R
 import com.example.gochat.data.model.StoryViewer
 import com.example.gochat.databinding.BottomSheetStoryViewersBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
@@ -43,7 +44,7 @@ class StoryViewersBottomSheet : BottomSheetDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         with(binding) {
-            tvBottomSheetViewsTitle.text = "Viewed by ${viewers.size}"
+            tvBottomSheetViewsTitle.text = getString(R.string.viewed_by_format, viewers.size)
 
             if (viewers.isEmpty()) {
                 layoutNoViewers.visibility = View.VISIBLE

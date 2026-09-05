@@ -27,7 +27,8 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.GoChat">
+        android:theme="@style/Theme.GoChat"
+        android:usesCleartextTraffic="true">
 
         <!-- Login / Registration / OTP Activity (Launcher) -->
         <activity
@@ -95,9 +96,42 @@
             android:theme="@style/Theme.GoChat"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- Marketplace Activities -->
+        <activity
+            android:name=".ui.marketplace.ProductDetailsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+        <activity
+            android:name=".ui.marketplace.CartActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+        <activity
+            android:name=".ui.marketplace.CheckoutActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+        <activity
+            android:name=".ui.marketplace.OrdersActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+        <activity
+            android:name=".ui.marketplace.StorefrontActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="YOUR_GOOGLE_MAPS_API_KEY" />
+
+        <!-- Firebase Cloud Messaging Defaults -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_chat_bubble_rounded" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/gochat_accent" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="gochat_channel_messages_v2" />
 
         <!-- FileProvider for camera and media sharing -->
         <provider

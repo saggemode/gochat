@@ -15,6 +15,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.gochat.data.model.CallType
 import com.example.gochat.data.repository.CallRepository
+import com.example.gochat.data.api.ApiConstants
 import com.example.gochat.databinding.FragmentCallsBinding
 import kotlinx.coroutines.launch
 
@@ -75,7 +76,7 @@ class CallsFragment : Fragment() {
 
         binding.tileCreateCallLink.setOnClickListener {
             val linkId = System.currentTimeMillis().toString().takeLast(6)
-            val callLink = "https://gochat-kvpj.onrender.com/call/room_$linkId"
+            val callLink = "${ApiConstants.BASE_URL}/call/room_$linkId"
 
             val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             val clip = ClipData.newPlainText("GoChat Call Link", callLink)

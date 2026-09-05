@@ -34,6 +34,14 @@ class MessageAdapter(
 ) : ListAdapter<Message, RecyclerView.ViewHolder>(DiffCallback) {
 
     var onImageClicked: ((String) -> Unit)? = null
+    private var accentColor: Int = 0xFF00A884.toInt() // Default emerald
+
+    fun setAccentColor(color: Int) {
+        if (this.accentColor != color) {
+            this.accentColor = color
+            notifyDataSetChanged()
+        }
+    }
 
     private val mentionPattern = Pattern.compile("@[\\w]+")
 
@@ -113,15 +121,15 @@ class MessageAdapter(
 
                 // Content text
                 if (message.isDeleted) {
-                    tvMessageContent.text = "🚫 This message was deleted"
+                    tvMessageContent.text = binding.root.context.getString(R.string.message_deleted_notice)
                     tvMessageContent.setTypeface(null, Typeface.ITALIC)
                     tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_text_secondary))
                 } else if (message.isPing) {
-                    tvMessageContent.text = "💥 PING!!!"
+                    tvMessageContent.text = binding.root.context.getString(R.string.ping_message)
                     tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_emerald_light))
                     tvMessageContent.setTypeface(null, Typeface.NORMAL)
                 } else if (message.content.startsWith("📍 Location:")) {
-                    tvMessageContent.text = highlightMentions(message.content, binding.root.context.getColor(R.color.gochat_accent))
+                    tvMessageContent.text = highlightMentions(message.content, accentColor)
                     tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_emerald_light))
                     tvMessageContent.setOnClickListener {
                         val uri = Uri.parse(message.content.substringAfter("Location: ").trim())
@@ -129,7 +137,7 @@ class MessageAdapter(
                         binding.root.context.startActivity(intent)
                     }
                 } else {
-                    tvMessageContent.text = highlightMentions(message.content, binding.root.context.getColor(R.color.gochat_accent))
+                    tvMessageContent.text = highlightMentions(message.content, accentColor)
                     tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_text_primary))
                     tvMessageContent.setTypeface(null, Typeface.NORMAL)
                     tvMessageContent.setOnClickListener(null)
@@ -169,7 +177,7 @@ class MessageAdapter(
                 // Quoted Reply container
                 if (!message.replyToId.isNullOrBlank() && !message.isDeleted) {
                     layoutQuotedReply.visibility = View.VISIBLE
-                    tvQuotedSender.text = message.replyToSenderName ?: "Original Message"
+                    tvQuotedSender.text = message.replyToSenderName ?: binding.root.context.getString(R.string.original_message_label)
                     tvQuotedText.text = message.replyToText ?: ""
                 } else {
                     layoutQuotedReply.visibility = View.GONE
@@ -253,15 +261,15 @@ class MessageAdapter(
 
                 // Content text
                 if (message.isDeleted) {
-                    tvMessageContent.text = "🚫 This message was deleted"
+                    tvMessageContent.text = binding.root.context.getString(R.string.message_deleted_notice)
                     tvMessageContent.setTypeface(null, Typeface.ITALIC)
                     tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_text_secondary))
                 } else if (message.isPing) {
-                    tvMessageContent.text = "💥 PING!!!"
+                    tvMessageContent.text = binding.root.context.getString(R.string.ping_message)
                     tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_emerald_light))
                     tvMessageContent.setTypeface(null, Typeface.NORMAL)
                 } else if (message.content.startsWith("📍 Location:")) {
-                    tvMessageContent.text = highlightMentions(message.content, binding.root.context.getColor(R.color.gochat_accent))
+                    tvMessageContent.text = highlightMentions(message.content, accentColor)
                     tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_emerald_light))
                     tvMessageContent.setOnClickListener {
                         val uri = Uri.parse(message.content.substringAfter("Location: ").trim())
@@ -269,7 +277,7 @@ class MessageAdapter(
                         binding.root.context.startActivity(intent)
                     }
                 } else {
-                    tvMessageContent.text = highlightMentions(message.content, binding.root.context.getColor(R.color.gochat_accent))
+                    tvMessageContent.text = highlightMentions(message.content, accentColor)
                     tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_text_primary))
                     tvMessageContent.setTypeface(null, Typeface.NORMAL)
                     tvMessageContent.setOnClickListener(null)
@@ -299,7 +307,7 @@ class MessageAdapter(
                 // Quoted Reply container
                 if (!message.replyToId.isNullOrBlank() && !message.isDeleted) {
                     layoutQuotedReply.visibility = View.VISIBLE
-                    tvQuotedSender.text = message.replyToSenderName ?: "Original Message"
+                    tvQuotedSender.text = message.replyToSenderName ?: binding.root.context.getString(R.string.original_message_label)
                     tvQuotedText.text = message.replyToText ?: ""
                 } else {
                     layoutQuotedReply.visibility = View.GONE

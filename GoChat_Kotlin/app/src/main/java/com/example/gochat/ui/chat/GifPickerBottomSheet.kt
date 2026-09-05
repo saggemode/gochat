@@ -10,20 +10,19 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import coil.ImageLoader
 import coil.decode.GifDecoder
 import coil.decode.ImageDecoderDecoder
 import coil.load
 import com.example.gochat.R
-import com.example.gochat.data.api.NetworkModule
+import com.example.gochat.data.model.GifItem
+import com.example.gochat.data.repository.MediaRepository
 import com.example.gochat.databinding.BottomSheetGifPickerBinding
 import com.example.gochat.databinding.ItemGifBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.*
-import okhttp3.Request
 
 class GifPickerBottomSheet(
     private val onGifSelected: (String) -> Unit
@@ -32,6 +31,7 @@ class GifPickerBottomSheet(
     private var _binding: BottomSheetGifPickerBinding? = null
     private val binding get() = _binding!!
     private lateinit var gifAdapter: GifAdapter
+    private lateinit var mediaRepository: MediaRepository
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = BottomSheetGifPickerBinding.inflate(inflater, container, false)
@@ -41,12 +41,24 @@ class GifPickerBottomSheet(
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
+        mediaRepository = MediaRepository(requireContext())
         gifAdapter = GifAdapter { onGifSelected(it); dismiss() }
         binding.rvGifs.adapter = gifAdapter
         
         binding.etSearchGif.doAfterTextChanged {
             searchGifs(it?.toString().orEmpty())
         }
+
+        binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab?) {
+                when (tab?.position) {
+                    0 -> searchGifs(binding.etSearchGif.text.toString())
+                    1 -> loadStickers()
+                }
+            }
+            override fun onTabUnselected(tab: TabLayout.Tab?) {}
+            override fun onTabReselected(tab: TabLayout.Tab?) {}
+        })
         
         searchGifs("") // Initial trending
     }
@@ -54,35 +66,15 @@ class GifPickerBottomSheet(
     private fun searchGifs(query: String) {
         lifecycleScope.launch {
             val gifs = withContext(Dispatchers.IO) {
-                fetchGifsFromGiphy(query)
+                if (query.isBlank()) mediaRepository.getTrending() else mediaRepository.searchGifs(query)
             }
-            gifAdapter.submitList(gifs)
+            gifAdapter.submitList(gifs.map { it.fullUrl })
         }
     }
 
-    private fun fetchGifsFromGiphy(query: String): List<String> {
-        return try {
-            val apiKey = "dc6zaTOxFJmzC" // Public Beta Key
-            val url = if (query.isBlank()) {
-                "https://api.giphy.com/v1/gifs/trending?api_key=$apiKey&limit=20"
-            } else {
-                "https://api.giphy.com/v1/gifs/search?api_key=$apiKey&q=$query&limit=20"
-            }
-            
-            val response = NetworkModule.getOkHttpClient(requireContext()).newCall(
-                Request.Builder().url(url).build()
-            ).execute()
-            
-            val body = response.body?.string() ?: return emptyList()
-            val json = Json { ignoreUnknownKeys = true }.parseToJsonElement(body).jsonObject
-            val data = json["data"]?.jsonArray ?: return emptyList()
-            
-            data.map { 
-                it.jsonObject["images"]?.jsonObject?.get("fixed_height")?.jsonObject?.get("url")?.jsonPrimitive?.content ?: ""
-            }.filter { it.isNotBlank() }
-        } catch (e: Exception) {
-            emptyList()
-        }
+    private fun loadStickers() {
+        val stickers = mediaRepository.getStickerPacks().flatMap { it.stickers }
+        gifAdapter.submitList(stickers.map { it.url })
     }
 
     override fun onDestroyView() {

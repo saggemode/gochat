@@ -20,7 +20,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Calls"
+            android:text="@string/calls_title"
             android:textColor="@color/gochat_text_primary"
             android:textSize="20sp"
             android:textStyle="bold" />
@@ -87,7 +87,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Create call link"
+                            android:text="@string/create_call_link"
                             android:textColor="@color/gochat_text_primary"
                             android:textSize="16sp"
                             android:textStyle="bold" />
@@ -96,7 +96,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
-                            android:text="Share a link for your GoChat audio/video room"
+                            android:text="@string/create_call_link_desc"
                             android:textColor="@color/gochat_text_secondary"
                             android:textSize="13sp" />
                     </LinearLayout>
@@ -111,7 +111,7 @@
                     android:layout_marginStart="16dp"
                     android:layout_marginTop="12dp"
                     android:layout_marginBottom="6dp"
-                    android:text="Recent"
+                    android:text="@string/recent_header"
                     android:textColor="@color/gochat_text_secondary"
                     android:textSize="14sp"
                     android:textStyle="bold" />
@@ -148,7 +148,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="16dp"
-                        android:text="No calls yet"
+                        android:text="@string/no_calls_yet"
                         android:textColor="@color/gochat_text_primary"
                         android:textSize="18sp"
                         android:textStyle="bold" />
@@ -158,7 +158,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="6dp"
                         android:gravity="center"
-                        android:text="To start a VoIP call, tap on a contact or open a chat and tap the call button."
+                        android:text="@string/no_calls_desc"
                         android:textColor="@color/gochat_text_secondary"
                         android:textSize="13sp" />
 

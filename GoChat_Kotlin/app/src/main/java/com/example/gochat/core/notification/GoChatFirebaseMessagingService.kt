@@ -31,20 +31,24 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
-        super.onMessageReceived(remoteMessage)
-        Log.d(TAG, "FCM message received from=${remoteMessage.from}, data=${remoteMessage.data}")
+        // No need to call super.onMessageReceived()
+        Log.d(TAG, "FCM message received from=${remoteMessage.from}")
+        Log.d(TAG, "FCM Message Data: ${remoteMessage.data}")
+        Log.d(TAG, "FCM Message Notification: ${remoteMessage.notification?.body}")
 
         val data = remoteMessage.data
-        val title = data["title"]
-            ?: data["sender_name"]
-            ?: remoteMessage.notification?.title
-            ?: "GoChat Message"
-
-        val body = data["body"]
-            ?: data["content"]
-            ?: data["message"]
-            ?: remoteMessage.notification?.body
-            ?: "You received a new message"
+        
+        // Priority 1: Data payload (for custom handling and deep-linking)
+        var title = data["title"] ?: data["sender_name"] ?: data["senderName"]
+        var body = data["body"] ?: data["content"] ?: data["message"] ?: data["text"]
+        
+        // Priority 2: Fallback to system notification payload if data is missing
+        if (title == null) title = remoteMessage.notification?.title
+        if (body == null) body = remoteMessage.notification?.body
+        
+        // Defaults if all else fails
+        if (title == null) title = "GoChat Message"
+        if (body == null) body = "You received a new message"
 
         val conversationId = data["conversation_id"]
             ?: data["conv_id"]
@@ -53,12 +57,16 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
 
         val senderAvatar = data["sender_avatar"]
             ?: data["avatar_url"]
+            ?: data["avatarUrl"]
             ?: ""
 
-        val isGroup = data["is_group"]?.toBoolean() ?: false
+        val isGroup = data["is_group"]?.toBoolean() 
+            ?: data["isGroup"]?.toBoolean() 
+            ?: false
 
-        // Don't show notification if the user is currently looking at this active conversation
-        if (conversationId.isNotEmpty() && ChatRepository(applicationContext).activeConversationId == conversationId) {
+        // Suppression check: using a static/shared state is better, but for now we fix the instance issue
+        val activeConv = ChatRepository.activeConversationIdStatic
+        if (conversationId.isNotEmpty() && activeConv == conversationId) {
             Log.d(TAG, "Suppressing notification: user is active in conversation $conversationId")
             return
         }

@@ -31,7 +31,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
-            android:text="Send Photo"
+            android:text="@string/send_photo_title"
             android:textColor="@color/white"
             android:textSize="17sp"
             android:textStyle="bold" />
@@ -64,7 +64,7 @@
             android:layout_height="44dp"
             android:layout_weight="1"
             android:background="@drawable/bg_card_dark"
-            android:hint="Add a caption..."
+            android:hint="@string/add_caption_hint"
             android:importantForAutofill="no"
             android:inputType="textCapSentences"
             android:paddingHorizontal="16dp"

@@ -1,17 +1,21 @@
 package com.example.gochat.ui.settings
 
 import android.Manifest
+import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.RingtoneManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
@@ -23,6 +27,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.example.gochat.R
 import com.example.gochat.core.media.MediaImageHelper
+import com.example.gochat.core.sound.ChatSoundManager
 import com.example.gochat.core.theme.ThemeManager
 import com.example.gochat.data.repository.AuthRepository
 import com.example.gochat.databinding.BottomSheetPickAvatarBinding
@@ -40,6 +45,7 @@ class SettingsFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: SettingsViewModel by viewModels()
+    private lateinit var soundManager: ChatSoundManager
 
     private var cameraTempPhotoUri: Uri? = null
 
@@ -50,7 +56,7 @@ class SettingsFragment : Fragment() {
         if (isGranted) {
             launchCameraCapture()
         } else {
-            Toast.makeText(requireContext(), "Camera permission required to take photos", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), getString(R.string.error_camera_permission), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -72,6 +78,36 @@ class SettingsFragment : Fragment() {
         uri?.let { viewModel.uploadAndSetAvatar(it) }
     }
 
+    private val pickSentSoundLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                result.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                result.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+            }
+            soundManager.setSentSound(uri)
+            Toast.makeText(requireContext(), getString(R.string.toast_outgoing_sound_updated), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private val pickReceivedSoundLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                result.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                result.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+            }
+            soundManager.setReceivedSound(uri)
+            Toast.makeText(requireContext(), getString(R.string.toast_incoming_sound_updated), Toast.LENGTH_SHORT).show()
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -83,6 +119,7 @@ class SettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        soundManager = ChatSoundManager(requireContext())
 
         setupClickListeners()
         observeViewModel()
@@ -116,8 +153,8 @@ class SettingsFragment : Fragment() {
                 val pin = viewModel.pin.value
                 if (pin.isNotBlank() && pin != "N/A") {
                     val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("GoChat PIN", pin))
-                    Toast.makeText(requireContext(), "Copied PIN $pin to clipboard!", Toast.LENGTH_SHORT).show()
+                    clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.label_gochat_pin), pin))
+                    Toast.makeText(requireContext(), getString(R.string.toast_pin_copied, pin), Toast.LENGTH_SHORT).show()
                 }
             }
 
@@ -140,14 +177,7 @@ class SettingsFragment : Fragment() {
 
             // Notifications
             tileNotifications.setOnClickListener {
-                AlertDialog.Builder(requireContext())
-                    .setTitle("Notification Preferences")
-                    .setMultiChoiceItems(
-                        arrayOf("Message Notifications", "Group Notifications", "Call Vibration", "In-Chat Sounds"),
-                        booleanArrayOf(true, true, true, true)
-                    ) { _, _, _ -> }
-                    .setPositiveButton("Save", null)
-                    .show()
+                showNotificationSettingsDialog()
             }
 
             // Logout
@@ -163,28 +193,28 @@ class SettingsFragment : Fragment() {
                 // Display Name
                 launch {
                     viewModel.displayName.collect { name ->
-                        binding.tvSettingsUserName.text = name.ifBlank { "GoChat User" }
+                        binding.tvSettingsUserName.text = name.ifBlank { getString(R.string.placeholder_user_name) }
                     }
                 }
 
                 // Status Text / Bio
                 launch {
                     viewModel.statusText.collect { status ->
-                        binding.tvSettingsStatus.text = status.ifBlank { "Hey there! I am using GoChat." }
+                        binding.tvSettingsStatus.text = status.ifBlank { getString(R.string.default_status_text) }
                     }
                 }
 
                 // PIN
                 launch {
                     viewModel.pin.collect { pin ->
-                        binding.tvSettingsUserPin.text = "GoChat PIN: ${pin.ifBlank { "N/A" }}"
+                        binding.tvSettingsUserPin.text = getString(R.string.generated_pin_prefix, pin.ifBlank { "N/A" })
                     }
                 }
 
                 // Phone
                 launch {
                     viewModel.phone.collect { phone ->
-                        binding.tvSettingsPhone.text = phone.ifBlank { "Phone number connected" }
+                        binding.tvSettingsPhone.text = phone.ifBlank { getString(R.string.placeholder_phone_connected) }
                     }
                 }
 
@@ -255,7 +285,7 @@ class SettingsFragment : Fragment() {
             cameraTempPhotoUri = uri
             takePictureLauncher.launch(uri)
         } catch (e: Exception) {
-            Toast.makeText(requireContext(), "Unable to initialize camera: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), getString(R.string.error_camera_init_with_msg, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -273,11 +303,11 @@ class SettingsFragment : Fragment() {
 
         // Quick presets
         val statusInput = dialogBinding.etEditStatusText
-        dialogBinding.chipAvailable.setOnClickListener { statusInput.setText("Available") }
-        dialogBinding.chipBusy.setOnClickListener { statusInput.setText("Busy") }
-        dialogBinding.chipAtWork.setOnClickListener { statusInput.setText("At work") }
-        dialogBinding.chipInMeeting.setOnClickListener { statusInput.setText("In a meeting") }
-        dialogBinding.chipDefaultStatus.setOnClickListener { statusInput.setText("Hey there! I am using GoChat.") }
+        dialogBinding.chipAvailable.setOnClickListener { statusInput.setText(getString(R.string.status_available)) }
+        dialogBinding.chipBusy.setOnClickListener { statusInput.setText(getString(R.string.status_busy)) }
+        dialogBinding.chipAtWork.setOnClickListener { statusInput.setText(getString(R.string.status_at_work)) }
+        dialogBinding.chipInMeeting.setOnClickListener { statusInput.setText(getString(R.string.status_in_meeting)) }
+        dialogBinding.chipDefaultStatus.setOnClickListener { statusInput.setText(getString(R.string.default_status_text)) }
 
         dialogBinding.btnCancelEdit.setOnClickListener {
             dialog.dismiss()
@@ -288,7 +318,7 @@ class SettingsFragment : Fragment() {
             val newStatus = dialogBinding.etEditStatusText.text?.toString().orEmpty().trim()
 
             if (newName.isBlank()) {
-                Toast.makeText(requireContext(), "Display name cannot be empty", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), getString(R.string.error_empty_display_name), Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -305,9 +335,9 @@ class SettingsFragment : Fragment() {
     private fun showThemeDialog() {
         val currentMode = ThemeManager.getThemeMode(requireContext())
         val options = arrayOf(
-            "System Default (Auto)",
-            "Dark Mode (Emerald)",
-            "Light Mode (Clean)"
+            getString(R.string.theme_system_default),
+            getString(R.string.theme_dark_mode),
+            getString(R.string.theme_light_mode)
         )
         val selectedIndex = when (currentMode) {
             ThemeManager.THEME_DARK -> 1
@@ -316,7 +346,7 @@ class SettingsFragment : Fragment() {
         }
 
         AlertDialog.Builder(requireContext())
-            .setTitle("Choose Theme")
+            .setTitle(getString(R.string.settings_theme_title))
             .setSingleChoiceItems(options, selectedIndex) { dialog, which ->
                 val newMode = when (which) {
                     1 -> ThemeManager.THEME_DARK
@@ -327,15 +357,52 @@ class SettingsFragment : Fragment() {
                 binding.tvThemeSubtitle.text = ThemeManager.getThemeTitle(newMode)
                 dialog.dismiss()
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(getString(R.string.btn_cancel), null)
             .show()
+    }
+
+    private fun showNotificationSettingsDialog() {
+        val soundStatus = if (soundManager.isInChatSoundsEnabled()) getString(R.string.status_on) else getString(R.string.status_off)
+        val options = arrayOf(
+            getString(R.string.settings_in_chat_sounds_format, soundStatus),
+            getString(R.string.settings_outgoing_tone),
+            getString(R.string.settings_incoming_tone)
+        )
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.settings_notifications_title))
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        val current = soundManager.isInChatSoundsEnabled()
+                        soundManager.setInChatSoundsEnabled(!current)
+                        val status = if (!current) getString(R.string.status_enabled) else getString(R.string.status_disabled)
+                        Toast.makeText(requireContext(), getString(R.string.toast_in_chat_sounds_status, status), Toast.LENGTH_SHORT).show()
+                    }
+                    1 -> launchRingtonePicker(pickSentSoundLauncher, soundManager.getSentSound())
+                    2 -> launchRingtonePicker(pickReceivedSoundLauncher, soundManager.getReceivedSound())
+                }
+            }
+            .setPositiveButton(getString(R.string.btn_close), null)
+            .show()
+    }
+
+    private fun launchRingtonePicker(launcher: ActivityResultLauncher<Intent>, currentUri: Uri?) {
+        val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, getString(R.string.dialog_select_sound_title))
+            putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, currentUri)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+        }
+        launcher.launch(intent)
     }
 
     private fun showLogoutConfirmation() {
         AlertDialog.Builder(requireContext())
-            .setTitle("Log Out")
-            .setMessage("Are you sure you want to log out of GoChat?")
-            .setPositiveButton("Log Out") { _, _ ->
+            .setTitle(getString(R.string.btn_logout))
+            .setMessage(getString(R.string.dialog_logout_confirmation_desc)) // need to add
+            .setPositiveButton(getString(R.string.btn_logout)) { _, _ ->
                 val authRepository = AuthRepository(requireContext().applicationContext)
                 viewLifecycleOwner.lifecycleScope.launch {
                     authRepository.logout()
@@ -345,7 +412,7 @@ class SettingsFragment : Fragment() {
                     startActivity(intent)
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(getString(R.string.btn_cancel), null)
             .show()
     }
 

@@ -13,7 +13,7 @@
         android:layout_height="?attr/actionBarSize"
         android:background="@color/whatsapp_toolbar_dark"
         app:navigationIcon="@drawable/ic_back"
-        app:title="Privacy"
+        app:title="@string/privacy_title"
         app:titleTextColor="@color/white" />
 
     <androidx.core.widget.NestedScrollView
@@ -29,7 +29,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Who can see my personal info"
+                android:text="@string/privacy_info_header"
                 android:textColor="@color/gochat_emerald_light"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -47,7 +47,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Last seen"
+                    android:text="@string/privacy_last_seen"
                     android:textColor="@color/white"
                     android:textSize="16sp" />
 
@@ -55,7 +55,7 @@
                     android:id="@+id/tvLastSeenValue"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Everyone"
+                    android:text="@string/visibility_everyone"
                     android:textColor="@color/gochat_text_secondary"
                     android:textSize="14sp" />
             </LinearLayout>
@@ -73,7 +73,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Profile photo"
+                    android:text="@string/privacy_profile_photo"
                     android:textColor="@color/white"
                     android:textSize="16sp" />
 
@@ -81,7 +81,7 @@
                     android:id="@+id/tvProfilePhotoValue"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Everyone"
+                    android:text="@string/visibility_everyone"
                     android:textColor="@color/gochat_text_secondary"
                     android:textSize="14sp" />
             </LinearLayout>
@@ -99,7 +99,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Status"
+                    android:text="@string/privacy_status"
                     android:textColor="@color/white"
                     android:textSize="16sp" />
 
@@ -107,7 +107,7 @@
                     android:id="@+id/tvStatusValue"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Everyone"
+                    android:text="@string/visibility_everyone"
                     android:textColor="@color/gochat_text_secondary"
                     android:textSize="14sp" />
             </LinearLayout>
@@ -134,14 +134,14 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Read receipts"
+                        android:text="@string/privacy_read_receipts"
                         android:textColor="@color/white"
                         android:textSize="16sp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="If turned off, you won't send or receive Read receipts. Read receipts are always sent for group chats."
+                        android:text="@string/privacy_read_receipts_desc"
                         android:textColor="@color/gochat_text_secondary"
                         android:textSize="12sp" />
                 </LinearLayout>

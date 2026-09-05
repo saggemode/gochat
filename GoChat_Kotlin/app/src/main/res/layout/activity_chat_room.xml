@@ -250,7 +250,7 @@
                     android:textColor="@color/gochat_emerald_light"
                     android:textSize="12sp"
                     android:textStyle="bold"
-                    android:text="Edit message" />
+                    android:text="@string/edit_message_label" />
 
                 <TextView
                     android:id="@+id/tvEditPreviewText"
@@ -328,7 +328,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:background="@android:color/transparent"
-                    android:hint="Message"
+                    android:hint="@string/message_hint"
                     android:importantForAutofill="no"
                     android:inputType="textCapSentences|textMultiLine"
                     android:maxLines="5"
@@ -415,7 +415,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:layout_weight="1"
-                android:text="Recording voice note..."
+                android:text="@string/recording_voice_note"
                 android:textColor="@color/gochat_text_muted"
                 android:textSize="13sp" />
 

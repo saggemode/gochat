@@ -146,11 +146,11 @@ class StoriesFragment : Fragment() {
 
                 if (hasStories) {
                     val count = myStory.stories.size
-                    val countStr = if (count == 1) "1 update" else "$count updates"
-                    val latestTime = myStory.stories.firstOrNull()?.createdAt?.ifBlank { "Recently" } ?: "Recently"
+                    val countStr = if (count == 1) getString(R.string.story_count_singular) else getString(R.string.story_count_plural, count)
+                    val latestTime = myStory.stories.firstOrNull()?.createdAt?.ifBlank { getString(R.string.time_recently) } ?: getString(R.string.time_recently)
                     binding.tvMyStatusSubtitle.text = "$countStr • $latestTime"
                 } else {
-                    binding.tvMyStatusSubtitle.text = "Tap to add status update"
+                    binding.tvMyStatusSubtitle.text = getString(R.string.no_recent_updates_desc) // or similar
                 }
             }
         }
@@ -198,7 +198,7 @@ class StoriesFragment : Fragment() {
         dialogBinding.fabPostStatus.setOnClickListener {
             val text = dialogBinding.etStatusText.text?.toString()?.trim().orEmpty()
             if (text.isBlank()) {
-                Toast.makeText(requireContext(), "Status cannot be empty", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), getString(R.string.error_empty_status), Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -207,7 +207,7 @@ class StoriesFragment : Fragment() {
 
             viewModel.postTextStatus(text, chosenColor) { success, _ ->
                 dialog.dismiss()
-                Toast.makeText(requireContext(), "Status updated", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), getString(R.string.toast_status_updated), Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -227,7 +227,7 @@ class StoriesFragment : Fragment() {
                 }
 
                 if (compressed != null) {
-                    Toast.makeText(requireContext(), "Status updated!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), getString(R.string.toast_status_updated), Toast.LENGTH_SHORT).show()
                     viewModel.postMediaStatus(
                         mediaBytes = compressed.bytes,
                         mimeType = compressed.mimeType,
@@ -236,10 +236,10 @@ class StoriesFragment : Fragment() {
                         mediaType = "image"
                     ) { _, _ -> }
                 } else {
-                    Toast.makeText(requireContext(), "Error processing image", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), getString(R.string.error_image_processing), Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                Toast.makeText(requireContext(), "Error loading image", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), getString(R.string.error_image_loading), Toast.LENGTH_SHORT).show()
             }
         }
     }

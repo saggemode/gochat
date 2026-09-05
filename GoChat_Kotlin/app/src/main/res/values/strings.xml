@@ -43,4 +43,391 @@
         libero vel nunc consequat, quis tincidunt nisl eleifend. Cras bibendum enim a justo luctus
         vestibulum. Fusce dictum libero quis erat maximus, vitae volutpat diam dignissim.
     </string>
+
+    <string name="checkout">Checkout</string>
+    <string name="shipping_address">Shipping Address</string>
+    <string name="address_hint">Enter your full address</string>
+    <string name="order_summary">Order Summary</string>
+    <string name="total">Total</string>
+    <string name="place_order">Place Order</string>
+
+    <!-- Activity Cart -->
+    <string name="cart_title">Your Cart</string>
+    <string name="total_amount">Total Amount</string>
+    <string name="proceed_to_checkout">Proceed to Checkout</string>
+    <string name="empty_cart_message">Your cart is empty</string>
+
+    <!-- Activity Chat Backup -->
+    <string name="chat_backup_restore_title">Chat Backup &amp; Restore</string>
+    <string name="last_encrypted_backup">Last Encrypted Backup</string>
+    <string name="backup_size">Size</string>
+    <string name="backup_chats">Chats</string>
+    <string name="backup_messages">Messages</string>
+    <string name="backup_media">Media</string>
+    <string name="backup_to_google_drive">Back Up to Google Drive</string>
+    <string name="restore_from_google_drive">Restore from Google Drive</string>
+    <string name="restore_from_local_storage">Restore from Local Storage</string>
+    <string name="google_drive_settings_header">GOOGLE DRIVE SETTINGS</string>
+    <string name="google_account">Google Account</string>
+    <string name="auto_backup_label">Back up to Google Drive</string>
+    <string name="backup_frequency_daily">Daily</string>
+    <string name="include_media_label">Include Photos &amp; Voice Notes</string>
+    <string name="include_media_desc">Include voice notes and saved images in backup</string>
+    <string name="backup_security_disclaimer">End-to-End Encrypted Backups: Your backup is encrypted with your personal password using AES-256 and HMAC-SHA256. Nobody (including Google or GoChat) can read your backup without the password.</string>
+
+    <!-- Activity Chat Room -->
+    <string name="edit_message_label">Edit message</string>
+    <string name="message_hint">Message</string>
+    <string name="recording_voice_note">Recording voice note&#8230;</string>
+
+    <!-- Activity Group Info -->
+    <string name="invite_via_link">Invite via link</string>
+    <string name="exit_group">Exit group</string>
+
+    <!-- Activity Location Picker -->
+    <string name="send_location_title">Send Location</string>
+    <string name="send_current_location">Send Current Location</string>
+
+    <!-- Activity Login -->
+    <string name="login_title_get_started">Get Started with GoChat</string>
+    <string name="login_subtitle_get_started">Instant passwordless phone sign-up with SMS OTP verification</string>
+    <string name="phone_number_header">PHONE NUMBER</string>
+    <string name="phone_number_hint">Phone number</string>
+    <string name="search_country_hint">Search country or code&#8230;</string>
+    <string name="phone_signup_disclaimer">Fast &amp; secure phone sign-up. Username &amp; email can be added anytime in Settings.</string>
+    <string name="btn_continue_phone">Continue with Phone</string>
+    <string name="identifier_header">PHONE NUMBER, EMAIL, OR GOCHAT PIN</string>
+    <string name="identifier_hint">e.g. +2348012345678, alex@gochat.io, or 8492A1</string>
+    <string name="login_security_disclaimer">Passwordless login. A 6-digit SMS OTP code will be verified.</string>
+    <string name="btn_send_verification_code">Send Verification Code</string>
+    <string name="account_created_header">Account Created!</string>
+    <string name="pin_share_subtitle">Share this PIN with friends to connect on GoChat</string>
+    <string name="detecting_otp_status">Detecting SMS OTP code&#8230;</string>
+    <string name="otp_input_hint">000000</string>
+    <string name="btn_start_messaging">Start Messaging Now</string>
+
+    <!-- Activity Orders -->
+    <string name="orders_title">My Orders</string>
+    <string name="empty_orders_message">No orders yet</string>
+
+    <!-- Activity Privacy Settings -->
+    <string name="privacy_title">Privacy</string>
+    <string name="privacy_info_header">Who can see my personal info</string>
+    <string name="privacy_last_seen">Last seen</string>
+    <string name="visibility_everyone">Everyone</string>
+    <string name="privacy_profile_photo">Profile photo</string>
+    <string name="privacy_status">Status</string>
+    <string name="privacy_read_receipts">Read receipts</string>
+    <string name="privacy_read_receipts_desc">If turned off, you won\'t send or receive Read receipts. Read receipts are always sent for group chats.</string>
+
+    <!-- Activity Product Details -->
+    <string name="product_description_header">Description</string>
+    <string name="btn_add_to_cart">Add to Cart</string>
+
+    <!-- Activity Story Viewer -->
+    <string name="story_reply_hint">Reply&#8230;</string>
+
+    <!-- Bottom Sheet Attachment Picker -->
+    <string name="attachment_camera">Camera</string>
+    <string name="attachment_gallery">Gallery</string>
+    <string name="attachment_audio">Audio</string>
+    <string name="attachment_location">Location</string>
+    <string name="attachment_gif">GIF</string>
+
+    <!-- Bottom Sheet Chat Wallpaper -->
+    <string name="chat_wallpaper_title">Chat Wallpaper &amp; Theme</string>
+    <string name="chat_wallpaper_subtitle">Customize background for this conversation</string>
+    <string name="live_preview_header">LIVE PREVIEW</string>
+    <string name="mock_message_other">Hey, check out this wallpaper! ✨</string>
+    <string name="mock_message_me">Looks super sleek and clean! 🔥</string>
+    <string name="curated_themes_header">Curated Themes &amp; Gradients</string>
+    <string name="solid_colors_header">Solid Colors</string>
+    <string name="accent_color_header">Primary Accent Color</string>
+    <string name="custom_photo_wallpaper_header">Custom Photo Wallpaper</string>
+    <string name="choose_from_gallery">Choose from device gallery</string>
+    <string name="btn_select">Select</string>
+    <string name="btn_remove">Remove</string>
+    <string name="doodle_pattern_header">WhatsApp Doodle Pattern</string>
+    <string name="doodle_pattern_desc">Subtle chat illustration overlay</string>
+    <string name="pattern_opacity_label">Pattern Opacity</string>
+    <string name="btn_set_for_this_chat">Set for This Chat</string>
+    <string name="btn_set_for_all_chats">Set for All Chats</string>
+    <string name="btn_reset_default_wallpaper">Reset to Default Wallpaper</string>
+
+    <!-- Bottom Sheet GIF Picker -->
+    <string name="search_gifs_hint">Search GIFs</string>
+    <string name="trending_tab">Trending</string>
+    <string name="stickers_tab">Stickers</string>
+
+    <!-- Bottom Sheet Message Actions -->
+    <string name="action_reply">Reply</string>
+    <string name="action_forward">Forward</string>
+    <string name="action_star">Star</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_delete">Delete</string>
+
+    <!-- Bottom Sheet Pick Avatar -->
+    <string name="profile_photo_header">Profile Photo</string>
+    <string name="take_profile_photo">Take Profile Photo with Camera</string>
+    <string name="choose_profile_photo">Choose Photo from Gallery</string>
+
+    <!-- Bottom Sheet Story Viewers -->
+    <string name="no_views_yet">No views yet</string>
+    <string name="no_views_desc">Views from your contacts will appear here</string>
+
+    <!-- Dialog Backup Password -->
+    <string name="backup_password_title">Encrypted Backup Password</string>
+    <string name="backup_password_desc">Set a password to protect your chat backup. You will need this password to restore your chats on another device.</string>
+    <string name="backup_password_hint">Backup Password</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_continue">Continue</string>
+
+    <!-- Dialog Create Text Status -->
+    <string name="type_status_hint">Type a status&#8230;</string>
+
+    <!-- Dialog Edit Profile -->
+    <string name="edit_profile_title">Edit Profile</string>
+    <string name="edit_profile_subtitle">Update your display name and status</string>
+    <string name="display_name_label">Display Name</string>
+    <string name="your_name_hint">Your Name</string>
+    <string name="status_about_label">Status / About</string>
+    <string name="default_status_text">Hey there! I am using GoChat.</string>
+    <string name="status_presets_label">Quick Status Presets</string>
+    <string name="status_available">Available</string>
+    <string name="status_busy">Busy</string>
+    <string name="status_at_work">At work</string>
+    <string name="status_in_meeting">In a meeting</string>
+    <string name="btn_save">Save</string>
+
+    <!-- Dialog Image Preview -->
+    <string name="send_photo_title">Send Photo</string>
+    <string name="add_caption_hint">Add a caption&#8230;</string>
+
+    <!-- Dialog New Chat by PIN -->
+    <string name="chat_by_pin_title">Start Chat by GOCHAT PIN</string>
+    <string name="chat_by_pin_desc">Enter your contact\'s 6-character unique GoChat PIN (e.g. 8492A1)</string>
+    <string name="btn_connect">Connect</string>
+
+    <!-- Fragment Calls -->
+    <string name="calls_title">Calls</string>
+    <string name="create_call_link">Create call link</string>
+    <string name="create_call_link_desc">Share a link for your GoChat audio/video room</string>
+    <string name="recent_header">Recent</string>
+    <string name="no_calls_yet">No calls yet</string>
+    <string name="no_calls_desc">To start a VoIP call, tap on a contact or open a chat and tap the call button.</string>
+
+    <!-- Fragment Chat List -->
+    <string name="search_chats_hint">Search chats, contacts, or messages&#8230;</string>
+    <string name="btn_chat_by_pin">+ Chat by PIN</string>
+    <string name="filter_all">All</string>
+    <string name="filter_unread">Unread</string>
+    <string name="filter_groups">Groups</string>
+    <string name="filter_channels">Channels</string>
+    <string name="btn_review">Review</string>
+    <string name="no_conversations_title">No Conversations</string>
+    <string name="no_conversations_desc">Start chatting with your contacts using their GOCHAT PIN or phone number.</string>
+    <string name="btn_select_contact">Select Contact</string>
+
+    <!-- Fragment Marketplace -->
+    <string name="marketplace_title">Marketplace</string>
+
+    <!-- Fragment Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_backup_title">Chat Backup &amp; Google Drive</string>
+    <string name="settings_backup_desc">Back up chats to Google Drive, restore, auto-backup</string>
+    <string name="settings_theme_title">Theme &amp; Dark Mode</string>
+    <string name="settings_theme_default">System Default</string>
+    <string name="settings_privacy_title">Privacy &amp; Security</string>
+    <string name="settings_privacy_desc">Blocked contacts, disappearing messages</string>
+    <string name="settings_notifications_title">Notifications</string>
+    <string name="settings_notifications_desc">Message, group &amp; call ringtones</string>
+    <string name="btn_logout">Log Out</string>
+
+    <!-- Fragment Simple Tab -->
+    <string name="updates_title">Updates</string>
+    <string name="updates_empty_message">Status updates from your contacts will appear here.</string>
+
+    <!-- Fragment Stories -->
+    <string name="my_status_label">My status</string>
+    <string name="recent_updates_header">RECENT UPDATES</string>
+    <string name="no_recent_updates_title">No Recent Updates</string>
+    <string name="no_recent_updates_desc">Status updates from your contacts will appear here and disappear after 24 hours.</string>
+
+    <!-- Item Layouts -->
+    <string name="role_admin">Admin</string>
+    <string name="label_forwarded">Forwarded</string>
+    <string name="label_edited">edited</string>
+    <string name="label_you">You</string>
+
+    <!-- LoginActivity Kotlin -->
+    <string name="otp_subtitle">Enter the 6-digit code sent to your device</string>
+    <string name="assigned_username_prefix">Assigned Username: %1$s</string>
+    <string name="generated_pin_prefix">Your unique GOCHAT PIN: %1$s</string>
+    <string name="otp_verified_status">SMS OTP Verified! Redirecting&#8230;</string>
+    <string name="btn_verifying_otp">Verifying &amp; Opening Chat&#8230;</string>
+    <string name="otp_sent_to_prefix">Verification code sent to %1$s</string>
+    <string name="already_have_account_prefix">Already have an account? </string>
+    <string name="action_sign_in">Sign In</string>
+    <string name="new_to_gochat_prefix">New to GoChat? </string>
+    <string name="action_create_account">Create Account</string>
+    <string name="login_title_welcome_back">Welcome Back!</string>
+    <string name="otp_header_verify">Verify Your Identity</string>
+
+    <!-- ChatBackupActivity Kotlin -->
+    <string name="never_backed_up">Never backed up</string>
+    <string name="unit_files">files</string>
+    <string name="decrypt_backup_title">Decrypt Backup</string>
+    <string name="decrypt_backup_desc">Enter the password used when creating this backup to restore chats.</string>
+    <string name="btn_restore">Restore</string>
+    <string name="set_backup_password_title">Set Backup Password</string>
+    <string name="set_backup_password_desc">Enter a password to encrypt your chat backup. You will need this password to restore your chats.</string>
+    <string name="btn_back_up">Back Up</string>
+    <string name="error_password_length">Password must be at least 4 characters</string>
+    <string name="select_local_backup_title">Select Local Backup</string>
+    <string name="auto_backup_dialog_title">Auto-Backup to Google Drive</string>
+    <string name="connect_google_account_title">Connect Google Account</string>
+    <string name="connect_google_account_desc">Enter the Google Drive account email for cloud backups:</string>
+    <string name="google_account_connected_toast">Connected Google Account: %1$s</string>
+    <string name="google_signin_failed_toast">Google Sign-In failed: %1$s</string>
+    <string name="tap_to_connect_google">Tap to connect Google Drive</string>
+
+    <!-- ChatListFragment Kotlin -->
+    <string name="no_results_found">No Results Found</string>
+    <string name="no_chats_match_desc">No chats match \"%1$s\"</string>
+    <string name="btn_clear_search">Clear Search</string>
+    <string name="error_invalid_pin">Please enter a valid 6-character PIN</string>
+    <string name="pending_invitation_singular">1 new contact invitation request</string>
+    <string name="pending_invitation_plural">%1$d new contact invitation requests</string>
+    <string name="option_mark_as_read">Mark as read</string>
+    <string name="option_pin_conversation">Pin conversation</string>
+    <string name="option_mute_notifications">Mute notifications</string>
+    <string name="option_delete_conversation">Delete conversation</string>
+    <string name="login_title_welcome_back_full">Welcome Back to GoChat</string>
+    <string name="meta_media_format">%1$d files</string>
+    <string name="error_no_local_backup">No local .gcbackup file found. Create a backup first.</string>
+    <string name="freq_daily">Daily</string>
+    <string name="freq_weekly">Weekly</string>
+    <string name="freq_monthly">Monthly</string>
+    <string name="freq_off">Off</string>
+    <string name="error_user_not_found">User not found</string>
+    <string name="toast_conversation_pinned">Conversation pinned</string>
+    <string name="toast_notifications_muted">Notifications muted</string>
+    <string name="toast_conversation_deleted">Conversation deleted</string>
+
+    <!-- ChatRoomActivity Kotlin -->
+    <string name="error_mic_permission">Microphone permission required for voice notes</string>
+    <string name="error_camera_permission">Camera permission required to take photos</string>
+    <string name="error_voice_note_unavailable">Voice note unavailable</string>
+    <string name="error_audio_recorder_start">Could not start audio recorder</string>
+    <string name="caption_voice_note">🎙️ Voice Note (%1$s)</string>
+    <string name="error_recording_failed">Recording failed or too short</string>
+    <string name="toast_recording_cancelled">Recording cancelled</string>
+    <string name="error_camera_init">Unable to initialize camera</string>
+    <string name="caption_photo">📷 Photo</string>
+    <string name="error_photo_process">Failed to process photo</string>
+    <string name="caption_audio_file">🎵 Audio File</string>
+    <string name="error_audio_process">Failed to process audio file</string>
+    <string name="replying_to_format">Replying to %1$s</string>
+    <string name="status_typing">typing&#8230;</string>
+    <string name="status_online">online</string>
+    <string name="ping_message">💥 PING!!!</string>
+    <string name="prompt_forward_chat">Select a chat to forward to</string>
+    <string name="toast_message_status">Message %1$s</string>
+    <string name="dialog_delete_message_title">Delete message?</string>
+    <string name="dialog_delete_message_desc">This message will be deleted for everyone.</string>
+    <string name="option_wallpaper_theme">Wallpaper / Theme</string>
+    <string name="option_clear_chat">Clear chat</string>
+    <string name="option_export_chat">Export chat</string>
+    <string name="toast_option_selected">Option selected</string>
+
+    <!-- ChatWallpaperBottomSheet Kotlin -->
+    <string name="error_load_image">Failed to load image</string>
+    <string name="label_custom_photo">Custom Photo</string>
+    <string name="customizing_for_format">Customizing for %1$s</string>
+    <string name="toast_applied_theme_single">✨ Applied \"%1$s\" to this chat</string>
+    <string name="toast_applied_theme_all">✨ Applied \"%1$s\" to all chats</string>
+    <string name="toast_reset_theme">🔄 Reset to default theme</string>
+    <string name="status_custom_photo_selected">Custom photo selected</string>
+
+    <!-- GroupInfoActivity Kotlin -->
+    <string name="group_info_title">Group Info</string>
+    <string name="dialog_invite_link_title">Group Invite Link</string>
+    <string name="toast_link_copied">Link copied</string>
+    <string name="dialog_exit_group_title">Exit Group?</string>
+    <string name="dialog_exit_group_desc">Are you sure you want to exit this group?</string>
+    <string name="toast_add_member_soon">Add member functionality coming soon</string>
+    <string name="placeholder_group_description">Add group description</string>
+    <string name="member_count_format">%1$d Members</string>
+    <string name="option_message_user">Message %1$s</string>
+    <string name="option_promote_admin">Promote to Admin</string>
+    <string name="option_remove_group">Remove from Group</string>
+    <string name="btn_copy">Copy</string>
+    <string name="btn_close">Close</string>
+
+    <!-- MessageAdapter Kotlin -->
+    <string name="message_deleted_notice">🚫 This message was deleted</string>
+    <string name="original_message_label">Original Message</string>
+
+    <!-- Marketplace Kotlin -->
+    <string name="error_load_cart">Failed to load cart</string>
+    <string name="error_update_quantity">Failed to update quantity</string>
+    <string name="price_format_usd">USD %1$s</string>
+    <string name="placeholder_product_name">Product</string>
+
+    <!-- Marketplace Continued -->
+    <string name="error_load_cart_summary">Failed to load cart summary</string>
+    <string name="error_empty_address">Please enter an address</string>
+    <string name="toast_order_placed_success">Order placed successfully!</string>
+    <string name="error_place_order">Failed to place order</string>
+    <string name="order_summary_item_format">%1$s x %2$d = USD %3$s</string>
+    <string name="order_id_format">Order #%1$s</string>
+    <string name="store_id_format">Store ID: %1$s</string>
+    <string name="error_product_not_found">Product not found</string>
+    <string name="toast_added_to_cart">Added to cart</string>
+    <string name="error_add_to_cart">Failed to add to cart</string>
+    <string name="status_verified">Verified</string>
+    <string name="status_standard">Standard</string>
+    <string name="store_rating_format">%1$s ★ | %2$s</string>
+
+    <!-- Privacy Settings Continued -->
+    <string name="visibility_contacts">My contacts</string>
+    <string name="visibility_nobody">Nobody</string>
+    <string name="error_privacy_update">Failed to update</string>
+
+    <!-- Settings Fragment Continued -->
+    <string name="toast_outgoing_sound_updated">Outgoing sound updated</string>
+    <string name="toast_incoming_sound_updated">Incoming sound updated</string>
+    <string name="toast_pin_copied">Copied PIN %1$s to clipboard!</string>
+    <string name="label_gochat_pin">GoChat PIN</string>
+    <string name="placeholder_user_name">GoChat User</string>
+    <string name="placeholder_phone_connected">Phone number connected</string>
+    <string name="error_empty_display_name">Display name cannot be empty</string>
+    <string name="theme_system_default">System Default (Auto)</string>
+    <string name="theme_dark_mode">Dark Mode (Emerald)</string>
+    <string name="theme_light_mode">Light Mode (Clean)</string>
+    <string name="settings_in_chat_sounds_format">In-Chat Sounds: %1$s</string>
+    <string name="settings_outgoing_tone">Outgoing Tone (Sent)</string>
+    <string name="settings_incoming_tone">Incoming Tone (Received)</string>
+    <string name="status_on">ON</string>
+    <string name="status_off">OFF</string>
+    <string name="toast_in_chat_sounds_status">In-chat sounds %1$s</string>
+    <string name="status_enabled">enabled</string>
+    <string name="status_disabled">disabled</string>
+    <string name="dialog_select_sound_title">Select Sound</string>
+
+    <!-- Stories Continued -->
+    <string name="story_count_singular">1 update</string>
+    <string name="story_count_plural">%1$d updates</string>
+    <string name="time_recently">Recently</string>
+    <string name="error_empty_status">Status cannot be empty</string>
+    <string name="toast_status_updated">Status updated</string>
+    <string name="error_image_processing">Error processing image</string>
+    <string name="error_image_loading">Error loading image</string>
+
+    <!-- Story Viewers Continued -->
+    <string name="viewed_by_format">Viewed by %1$d</string>
+    <string name="dialog_select_visibility_title">Select visibility</string>
+    <string name="error_camera_init_with_msg">Unable to initialize camera: %1$s</string>
+    <string name="dialog_logout_confirmation_desc">Are you sure you want to log out of GoChat?</string>
+    <string name="price_format">%1$s %2$s</string>
 </resources>

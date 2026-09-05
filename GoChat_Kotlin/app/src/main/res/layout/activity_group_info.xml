@@ -106,7 +106,7 @@
                 android:layout_height="48dp"
                 android:background="?attr/selectableItemBackground"
                 android:gravity="center_vertical"
-                android:text="Invite via link"
+                android:text="@string/invite_via_link"
                 android:textColor="@color/white"
                 android:textSize="16sp" />
 
@@ -116,7 +116,7 @@
                 android:layout_height="48dp"
                 android:background="?attr/selectableItemBackground"
                 android:gravity="center_vertical"
-                android:text="Exit group"
+                android:text="@string/exit_group"
                 android:textColor="#F44336"
                 android:textSize="16sp" />
 

@@ -242,6 +242,40 @@ interface GoChatApiService {
     @GET(ApiConstants.PRODUCTS)
     suspend fun getProducts(): Response<JsonElement>
 
+    @GET(ApiConstants.CATEGORIES)
+    suspend fun getCategories(): Response<JsonElement>
+
+    @GET("api/v1/marketplace/stores/{id}")
+    suspend fun getStore(
+        @Path("id") storeId: String
+    ): Response<JsonObject>
+
+    @GET("api/v1/marketplace/stores/{id}/products")
+    suspend fun getStoreProducts(
+        @Path("id") storeId: String
+    ): Response<JsonElement>
+
+    @GET(ApiConstants.CART)
+    suspend fun getCart(): Response<JsonElement>
+
+    @POST(ApiConstants.CART)
+    suspend fun addToCart(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @HTTP(method = "DELETE", path = ApiConstants.CART, hasBody = true)
+    suspend fun removeFromCart(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @GET(ApiConstants.ORDERS)
+    suspend fun getOrders(): Response<JsonElement>
+
+    @POST(ApiConstants.ORDERS)
+    suspend fun placeOrder(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
     @GET(ApiConstants.BUSINESS_PROFILE)
     suspend fun getBusinessProfile(): Response<JsonObject>
 

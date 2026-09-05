@@ -231,7 +231,7 @@
             android:layout_height="44dp"
             android:layout_weight="1"
             android:background="@drawable/bg_card_dark"
-            android:hint="Reply..."
+            android:hint="@string/story_reply_hint"
             android:importantForAutofill="no"
             android:inputType="textCapSentences"
             android:paddingHorizontal="16dp"

@@ -40,7 +40,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Edit Profile"
+                android:text="@string/edit_profile_title"
                 android:textColor="@color/gochat_text_primary"
                 android:textSize="18sp"
                 android:textStyle="bold" />
@@ -49,7 +49,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="Update your display name and status"
+                android:text="@string/edit_profile_subtitle"
                 android:textColor="@color/gochat_text_secondary"
                 android:textSize="12.5sp" />
         </LinearLayout>
@@ -65,7 +65,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Display Name"
+        android:text="@string/display_name_label"
         android:textColor="@color/gochat_emerald_light"
         android:textSize="13sp"
         android:textStyle="bold" />
@@ -76,7 +76,7 @@
         android:layout_height="48dp"
         android:layout_marginTop="6dp"
         android:background="@drawable/bg_input_field"
-        android:hint="Your Name"
+        android:hint="@string/your_name_hint"
         android:imeOptions="actionNext"
         android:importantForAutofill="no"
         android:inputType="textPersonName|textCapWords"
@@ -92,7 +92,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="Status / About"
+        android:text="@string/status_about_label"
         android:textColor="@color/gochat_emerald_light"
         android:textSize="13sp"
         android:textStyle="bold" />
@@ -105,7 +105,7 @@
         android:layout_marginTop="6dp"
         android:background="@drawable/bg_input_field"
         android:gravity="top|start"
-        android:hint="Hey there! I am using GoChat."
+        android:hint="@string/default_status_text"
         android:imeOptions="actionDone"
         android:importantForAutofill="no"
         android:inputType="textMultiLine|textCapSentences"
@@ -123,7 +123,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="14dp"
-        android:text="Quick Status Presets"
+        android:text="@string/status_presets_label"
         android:textColor="@color/gochat_text_muted"
         android:textSize="12sp" />
 
@@ -147,7 +147,7 @@
                 android:focusable="true"
                 android:paddingHorizontal="12dp"
                 android:paddingVertical="6dp"
-                android:text="Available"
+                android:text="@string/status_available"
                 android:textColor="@color/gochat_text_secondary"
                 android:textSize="12sp" />
 
@@ -161,7 +161,7 @@
                 android:focusable="true"
                 android:paddingHorizontal="12dp"
                 android:paddingVertical="6dp"
-                android:text="Busy"
+                android:text="@string/status_busy"
                 android:textColor="@color/gochat_text_secondary"
                 android:textSize="12sp" />
 
@@ -175,7 +175,7 @@
                 android:focusable="true"
                 android:paddingHorizontal="12dp"
                 android:paddingVertical="6dp"
-                android:text="At work"
+                android:text="@string/status_at_work"
                 android:textColor="@color/gochat_text_secondary"
                 android:textSize="12sp" />
 
@@ -189,7 +189,7 @@
                 android:focusable="true"
                 android:paddingHorizontal="12dp"
                 android:paddingVertical="6dp"
-                android:text="In a meeting"
+                android:text="@string/status_in_meeting"
                 android:textColor="@color/gochat_text_secondary"
                 android:textSize="12sp" />
 
@@ -203,7 +203,7 @@
                 android:focusable="true"
                 android:paddingHorizontal="12dp"
                 android:paddingVertical="6dp"
-                android:text="Hey there! I am using GoChat."
+                android:text="@string/default_status_text"
                 android:textColor="@color/gochat_text_secondary"
                 android:textSize="12sp" />
         </LinearLayout>
@@ -226,7 +226,7 @@
             android:focusable="true"
             android:gravity="center"
             android:paddingHorizontal="18dp"
-            android:text="Cancel"
+            android:text="@string/btn_cancel"
             android:textColor="@color/gochat_text_muted"
             android:textSize="14sp"
             android:textStyle="bold" />
@@ -243,7 +243,7 @@
                 android:minWidth="90dp"
                 android:background="@drawable/bg_button_emerald"
                 android:paddingHorizontal="20dp"
-                android:text="Save"
+                android:text="@string/btn_save"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
                 android:textSize="14sp"

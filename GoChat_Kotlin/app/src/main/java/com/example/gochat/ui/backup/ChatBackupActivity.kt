@@ -40,9 +40,9 @@ class ChatBackupActivity : AppCompatActivity() {
             try {
                 val account = task.getResult(ApiException::class.java)
                 viewModel.setGoogleAccount(account.email)
-                Toast.makeText(this, "Connected Google Account: ${account.email}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.google_account_connected_toast, account.email), Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Toast.makeText(this, "Google Sign-In failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.google_signin_failed_toast, e.localizedMessage), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -116,14 +116,14 @@ class ChatBackupActivity : AppCompatActivity() {
                             binding.tvLastBackupDate.text = "$prefix$dateStr"
 
                             binding.tvMetaSize.text = meta.formattedSize
-                            binding.tvMetaChats.text = "${meta.conversationCount}"
-                            binding.tvMetaMessages.text = "${meta.messageCount}"
-                            binding.tvMetaMedia.text = "${meta.mediaCount} files"
+                            binding.tvMetaChats.text = meta.conversationCount.toString()
+                            binding.tvMetaMessages.text = meta.messageCount.toString()
+                            binding.tvMetaMedia.text = getString(R.string.meta_media_format, meta.mediaCount)
 
                             binding.dividerMeta.visibility = View.VISIBLE
                             binding.layoutMetaDetails.visibility = View.VISIBLE
                         } else {
-                            binding.tvLastBackupDate.text = "Never backed up"
+                            binding.tvLastBackupDate.text = getString(R.string.never_backed_up)
                             binding.dividerMeta.visibility = View.GONE
                             binding.layoutMetaDetails.visibility = View.GONE
                         }
@@ -155,7 +155,7 @@ class ChatBackupActivity : AppCompatActivity() {
 
                 launch {
                     viewModel.googleAccountEmail.collect { email ->
-                        binding.tvGoogleAccountEmail.text = email ?: "Tap to connect Google Drive"
+                        binding.tvGoogleAccountEmail.text = email ?: getString(R.string.tap_to_connect_google)
                     }
                 }
 
@@ -182,13 +182,13 @@ class ChatBackupActivity : AppCompatActivity() {
         dialog.setContentView(dialogBinding.root)
 
         if (isRestore) {
-            dialogBinding.tvBackupPasswordTitle.text = "Decrypt Backup"
-            dialogBinding.tvBackupPasswordDesc.text = "Enter the password used when creating this backup to restore chats."
-            dialogBinding.btnConfirmBackupPassword.text = "Restore"
+            dialogBinding.tvBackupPasswordTitle.text = getString(R.string.decrypt_backup_title)
+            dialogBinding.tvBackupPasswordDesc.text = getString(R.string.decrypt_backup_desc)
+            dialogBinding.btnConfirmBackupPassword.text = getString(R.string.btn_restore)
         } else {
-            dialogBinding.tvBackupPasswordTitle.text = "Set Backup Password"
-            dialogBinding.tvBackupPasswordDesc.text = "Enter a password to encrypt your chat backup. You will need this password to restore your chats."
-            dialogBinding.btnConfirmBackupPassword.text = "Back Up"
+            dialogBinding.tvBackupPasswordTitle.text = getString(R.string.set_backup_password_title)
+            dialogBinding.tvBackupPasswordDesc.text = getString(R.string.set_backup_password_desc)
+            dialogBinding.btnConfirmBackupPassword.text = getString(R.string.btn_back_up)
         }
 
         dialogBinding.btnCancelBackupPassword.setOnClickListener {
@@ -198,7 +198,7 @@ class ChatBackupActivity : AppCompatActivity() {
         dialogBinding.btnConfirmBackupPassword.setOnClickListener {
             val pass = dialogBinding.etBackupPassword.text?.toString().orEmpty()
             if (pass.length < 4) {
-                dialogBinding.tilBackupPassword.error = "Password must be at least 4 characters"
+                dialogBinding.tilBackupPassword.error = getString(R.string.error_password_length)
                 return@setOnClickListener
             }
             dialog.dismiss()
@@ -211,13 +211,13 @@ class ChatBackupActivity : AppCompatActivity() {
     private fun showLocalBackupsPicker() {
         val localFiles = viewModel.getLocalBackupFiles()
         if (localFiles.isEmpty()) {
-            Toast.makeText(this, "No local .gcbackup file found. Create a backup first.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.error_no_local_backup), Toast.LENGTH_LONG).show()
             return
         }
 
         val names = localFiles.map { it.name }.toTypedArray()
         AlertDialog.Builder(this)
-            .setTitle("Select Local Backup")
+            .setTitle(getString(R.string.select_local_backup_title))
             .setItems(names) { _, which ->
                 val selectedFile = localFiles[which]
                 showPasswordDialog(isRestore = true) { password ->
@@ -226,18 +226,23 @@ class ChatBackupActivity : AppCompatActivity() {
                     }
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(getString(R.string.btn_cancel), null)
             .show()
     }
 
     private fun showFrequencyDialog() {
-        val options = arrayOf("Daily", "Weekly", "Monthly", "Off")
+        val options = arrayOf(
+            getString(R.string.freq_daily),
+            getString(R.string.freq_weekly),
+            getString(R.string.freq_monthly),
+            getString(R.string.freq_off)
+        )
         AlertDialog.Builder(this)
-            .setTitle("Auto-Backup to Google Drive")
+            .setTitle(getString(R.string.auto_backup_dialog_title))
             .setItems(options) { _, which ->
                 viewModel.setAutoBackupFrequency(options[which])
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(getString(R.string.btn_cancel), null)
             .show()
     }
 
@@ -249,17 +254,17 @@ class ChatBackupActivity : AppCompatActivity() {
         }
 
         AlertDialog.Builder(this)
-            .setTitle("Connect Google Account")
-            .setMessage("Enter the Google Drive account email for cloud backups:")
+            .setTitle(getString(R.string.connect_google_account_title))
+            .setMessage(getString(R.string.connect_google_account_desc))
             .setView(input)
-            .setPositiveButton("Connect") { _, _ ->
+            .setPositiveButton(getString(R.string.btn_connect)) { _, _ ->
                 val email = input.text.toString().trim()
                 if (email.contains("@")) {
                     viewModel.setGoogleAccount(email)
-                    Toast.makeText(this, "Google Account connected: $email", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.google_account_connected_toast, email), Toast.LENGTH_SHORT).show()
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(getString(R.string.btn_cancel), null)
             .show()
     }
 }

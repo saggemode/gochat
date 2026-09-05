@@ -41,6 +41,10 @@ data class Conversation(
     @SerialName("last_message_time") val lastMessageTime: Long? = null,
     @SerialName("updated_at") val updatedAt: Long = System.currentTimeMillis()
 ) {
+    val isGroup: Boolean get() = type == ConversationType.GROUP
+    val isDirect: Boolean get() = type == ConversationType.DIRECT
+    val isChannel: Boolean get() = type == ConversationType.CHANNEL
+
     companion object {
         fun fromJson(json: JsonObject, currentUserId: String = ""): Conversation {
             val id = (json["id"] ?: json["Id"] ?: json["conversation_id"] ?: json["conversationId"])

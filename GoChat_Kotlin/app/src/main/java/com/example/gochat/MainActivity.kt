@@ -22,6 +22,7 @@ import com.example.gochat.ui.chat.ChatListFragment
 import com.example.gochat.ui.chat.ChatListViewModel
 import com.example.gochat.ui.settings.SettingsFragment
 import com.example.gochat.ui.stories.StoriesFragment
+import com.example.gochat.ui.marketplace.MarketplaceFragment
 import com.example.gochat.core.crypto.EncryptionManager
 import kotlinx.coroutines.launch
 
@@ -33,6 +34,7 @@ class MainActivity : AppCompatActivity() {
 
     private val chatListFragment by lazy { ChatListFragment() }
     private val storiesFragment by lazy { StoriesFragment() }
+    private val marketplaceFragment by lazy { MarketplaceFragment() }
     private val callsFragment by lazy { CallsFragment() }
     private val settingsFragment by lazy { SettingsFragment() }
 
@@ -98,6 +100,10 @@ class MainActivity : AppCompatActivity() {
                 }
                 R.id.nav_status -> {
                     switchFragment(storiesFragment)
+                    true
+                }
+                R.id.nav_marketplace -> {
+                    switchFragment(marketplaceFragment)
                     true
                 }
                 R.id.nav_calls -> {

@@ -21,7 +21,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Chat Backup &amp; Restore"
+                android:text="@string/chat_backup_restore_title"
                 android:textColor="@color/gochat_text_primary"
                 android:textSize="19sp"
                 android:textStyle="bold" />
@@ -78,7 +78,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Last Encrypted Backup"
+                            android:text="@string/last_encrypted_backup"
                             android:textColor="@color/gochat_text_primary"
                             android:textSize="16sp"
                             android:textStyle="bold" />
@@ -121,7 +121,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Size"
+                            android:text="@string/backup_size"
                             android:textColor="@color/gochat_text_muted"
                             android:textSize="11sp" />
 
@@ -145,7 +145,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Chats"
+                            android:text="@string/backup_chats"
                             android:textColor="@color/gochat_text_muted"
                             android:textSize="11sp" />
 
@@ -169,7 +169,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Messages"
+                            android:text="@string/backup_messages"
                             android:textColor="@color/gochat_text_muted"
                             android:textSize="11sp" />
 
@@ -193,7 +193,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Media"
+                            android:text="@string/backup_media"
                             android:textColor="@color/gochat_text_muted"
                             android:textSize="11sp" />
 
@@ -273,7 +273,7 @@
                 android:layout_height="54dp"
                 android:layout_marginTop="20dp"
                 android:backgroundTint="@color/gochat_accent"
-                android:text="Back Up to Google Drive"
+                android:text="@string/backup_to_google_drive"
                 android:textColor="@color/black"
                 android:textSize="15sp"
                 android:textStyle="bold"
@@ -287,7 +287,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
                 android:layout_marginTop="10dp"
-                android:text="Restore from Google Drive"
+                android:text="@string/restore_from_google_drive"
                 android:textColor="@color/gochat_emerald_light"
                 android:textSize="14sp"
                 android:textStyle="bold"
@@ -301,7 +301,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
                 android:layout_marginTop="6dp"
-                android:text="Restore from Local Storage"
+                android:text="@string/restore_from_local_storage"
                 android:textColor="@color/gochat_text_secondary"
                 android:textSize="13sp" />
 
@@ -311,7 +311,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:letterSpacing="0.08"
-                android:text="GOOGLE DRIVE SETTINGS"
+                android:text="@string/google_drive_settings_header"
                 android:textColor="@color/gochat_emerald_light"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -345,7 +345,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Google Account"
+                            android:text="@string/google_account"
                             android:textColor="@color/gochat_text_primary"
                             android:textSize="15sp"
                             android:textStyle="bold" />
@@ -396,7 +396,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Back up to Google Drive"
+                            android:text="@string/auto_backup_label"
                             android:textColor="@color/gochat_text_primary"
                             android:textSize="15sp"
                             android:textStyle="bold" />
@@ -406,7 +406,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
-                            android:text="Daily"
+                            android:text="@string/backup_frequency_daily"
                             android:textColor="@color/gochat_text_muted"
                             android:textSize="12.5sp" />
                     </LinearLayout>
@@ -443,7 +443,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Include Photos &amp; Voice Notes"
+                            android:text="@string/include_media_label"
                             android:textColor="@color/gochat_text_primary"
                             android:textSize="15sp"
                             android:textStyle="bold" />
@@ -452,7 +452,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
-                            android:text="Include voice notes and saved images in backup"
+                            android:text="@string/include_media_desc"
                             android:textColor="@color/gochat_text_muted"
                             android:textSize="12sp" />
                     </LinearLayout>
@@ -489,7 +489,7 @@
                     android:layout_marginStart="12dp"
                     android:layout_weight="1"
                     android:lineSpacingMultiplier="1.2"
-                    android:text="End-to-End Encrypted Backups: Your backup is encrypted with your personal password using AES-256 and HMAC-SHA256. Nobody (including Google or GoChat) can read your backup without the password."
+                    android:text="@string/backup_security_disclaimer"
                     android:textColor="@color/gochat_text_muted"
                     android:textSize="12sp" />
             </LinearLayout>

@@ -12,7 +12,7 @@
         android:background="@color/whatsapp_toolbar_dark"
         app:layout_constraintTop_toTopOf="parent"
         app:navigationIcon="@drawable/ic_back"
-        app:title="Send Location"
+        app:title="@string/send_location_title"
         app:titleTextColor="@color/white" />
 
     <fragment
@@ -29,7 +29,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        android:text="Send Current Location"
+        android:text="@string/send_current_location"
         android:backgroundTint="@color/gochat_emerald_primary"
         app:layout_constraintBottom_toBottomOf="parent" />
 

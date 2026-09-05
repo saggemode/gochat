@@ -59,7 +59,7 @@
             android:layout_gravity="center"
             android:background="@android:color/transparent"
             android:gravity="center"
-            android:hint="Type a status..."
+            android:hint="@string/type_status_hint"
             android:importantForAutofill="no"
             android:inputType="textCapSentences|textMultiLine"
             android:maxLines="6"

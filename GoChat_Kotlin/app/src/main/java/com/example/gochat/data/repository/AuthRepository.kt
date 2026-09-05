@@ -55,6 +55,7 @@ class AuthRepository(private val context: Context) {
                 resetLocalDatabaseAndSession()
                 extractAndSaveToken(data)
                 extractAndSaveUser(data)
+                syncPushTokenIfAvailable()
                 Result.success(data)
             } else {
                 // If user already exists, try login

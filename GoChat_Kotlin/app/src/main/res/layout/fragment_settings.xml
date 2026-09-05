@@ -22,7 +22,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Settings"
+                android:text="@string/settings_title"
                 android:textColor="@color/gochat_text_primary"
                 android:textSize="20sp"
                 android:textStyle="bold" />
@@ -210,7 +210,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Chat Backup &amp; Google Drive"
+                        android:text="@string/settings_backup_title"
                         android:textColor="@color/gochat_text_primary"
                         android:textSize="15.5sp"
                         android:textStyle="bold" />
@@ -220,7 +220,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="Back up chats to Google Drive, restore, auto-backup"
+                        android:text="@string/settings_backup_desc"
                         android:textColor="@color/gochat_text_muted"
                         android:textSize="12.5sp" />
                 </LinearLayout>
@@ -264,7 +264,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Theme &amp; Dark Mode"
+                        android:text="@string/settings_theme_title"
                         android:textColor="@color/gochat_text_primary"
                         android:textSize="15.5sp"
                         android:textStyle="bold" />
@@ -274,7 +274,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="System Default"
+                        android:text="@string/settings_theme_default"
                         android:textColor="@color/gochat_text_muted"
                         android:textSize="12.5sp" />
                 </LinearLayout>
@@ -318,7 +318,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Privacy &amp; Security"
+                        android:text="@string/settings_privacy_title"
                         android:textColor="@color/gochat_text_primary"
                         android:textSize="15.5sp" />
 
@@ -326,7 +326,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="Blocked contacts, disappearing messages"
+                        android:text="@string/settings_privacy_desc"
                         android:textColor="@color/gochat_text_muted"
                         android:textSize="12.5sp" />
                 </LinearLayout>
@@ -362,7 +362,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Notifications"
+                        android:text="@string/settings_notifications_title"
                         android:textColor="@color/gochat_text_primary"
                         android:textSize="15.5sp" />
 
@@ -370,7 +370,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="Message, group &amp; call ringtones"
+                        android:text="@string/settings_notifications_desc"
                         android:textColor="@color/gochat_text_muted"
                         android:textSize="12.5sp" />
                 </LinearLayout>
@@ -401,7 +401,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="20dp"
                     android:layout_weight="1"
-                    android:text="Log Out"
+                    android:text="@string/btn_logout"
                     android:textColor="#FF3B30"
                     android:textSize="15.5sp"
                     android:textStyle="bold" />

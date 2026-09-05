@@ -34,7 +34,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="GoChat"
+                    android:text="@string/app_name"
                     android:textColor="@color/gochat_text_primary"
                     android:textSize="22sp"
                     android:textStyle="bold" />
@@ -104,7 +104,7 @@
                     android:layout_height="40dp"
                     android:layout_weight="1"
                     android:background="@android:color/transparent"
-                    android:hint="Search chats, contacts, or messages..."
+                    android:hint="@string/search_chats_hint"
                     android:imeOptions="actionDone"
                     android:importantForAutofill="no"
                     android:inputType="text"
@@ -165,7 +165,7 @@
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
                     android:paddingHorizontal="12dp"
-                    android:text="+ Chat by PIN"
+                    android:text="@string/btn_chat_by_pin"
                     android:textAllCaps="false"
                     android:textColor="@color/black"
                     android:textSize="12sp"
@@ -188,7 +188,7 @@
                     android:focusable="true"
                     android:gravity="center"
                     android:paddingHorizontal="14dp"
-                    android:text="All"
+                    android:text="@string/filter_all"
                     android:textColor="@color/gochat_accent"
                     android:textSize="12.5sp"
                     android:textStyle="bold" />
@@ -204,7 +204,7 @@
                     android:focusable="true"
                     android:gravity="center"
                     android:paddingHorizontal="14dp"
-                    android:text="Unread"
+                    android:text="@string/filter_unread"
                     android:textColor="@color/gochat_text_muted"
                     android:textSize="12.5sp" />
 
@@ -219,7 +219,7 @@
                     android:focusable="true"
                     android:gravity="center"
                     android:paddingHorizontal="14dp"
-                    android:text="Groups"
+                    android:text="@string/filter_groups"
                     android:textColor="@color/gochat_text_muted"
                     android:textSize="12.5sp" />
 
@@ -234,7 +234,7 @@
                     android:focusable="true"
                     android:gravity="center"
                     android:paddingHorizontal="14dp"
-                    android:text="Channels"
+                    android:text="@string/filter_channels"
                     android:textColor="@color/gochat_text_muted"
                     android:textSize="12.5sp" />
 
@@ -280,7 +280,7 @@
                 android:background="@drawable/bg_unread_badge"
                 android:paddingHorizontal="10dp"
                 android:paddingVertical="4dp"
-                android:text="Review"
+                android:text="@string/btn_review"
                 android:textColor="@color/black"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -338,7 +338,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="No Conversations"
+                    android:text="@string/no_conversations_title"
                     android:textColor="@color/gochat_text_primary"
                     android:textSize="18sp"
                     android:textStyle="bold" />
@@ -350,7 +350,7 @@
                     android:layout_marginTop="6dp"
                     android:gravity="center"
                     android:maxWidth="280dp"
-                    android:text="Start chatting with your contacts using their GOCHAT PIN or phone number."
+                    android:text="@string/no_conversations_desc"
                     android:textColor="@color/gochat_text_secondary"
                     android:textSize="13sp" />
 
@@ -360,7 +360,7 @@
                     android:layout_height="44dp"
                     android:layout_marginTop="20dp"
                     android:backgroundTint="@color/gochat_accent"
-                    android:text="Select Contact"
+                    android:text="@string/btn_select_contact"
                     android:textAllCaps="false"
                     android:textColor="@color/black"
                     android:textStyle="bold"

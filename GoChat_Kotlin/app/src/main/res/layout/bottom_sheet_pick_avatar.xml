@@ -22,7 +22,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
-        android:text="Profile Photo"
+        android:text="@string/profile_photo_header"
         android:textColor="@color/gochat_text_primary"
         android:textSize="18sp"
         android:textStyle="bold" />
@@ -59,7 +59,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:layout_weight="1"
-            android:text="Take Profile Photo with Camera"
+            android:text="@string/take_profile_photo"
             android:textColor="@color/gochat_text_primary"
             android:textSize="15.5sp"
             android:textStyle="bold" />
@@ -103,7 +103,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:layout_weight="1"
-            android:text="Choose Photo from Gallery"
+            android:text="@string/choose_profile_photo"
             android:textColor="@color/gochat_text_primary"
             android:textSize="15.5sp"
             android:textStyle="bold" />

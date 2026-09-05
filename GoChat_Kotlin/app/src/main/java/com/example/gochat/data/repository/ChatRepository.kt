@@ -10,11 +10,14 @@ import com.example.gochat.data.model.*
 import com.example.gochat.core.crypto.EncryptionManager
 import com.example.gochat.core.notification.NotificationHelper
 import com.example.gochat.data.api.ApiConstants
+import androidx.work.*
+import com.example.gochat.core.sync.MessageSyncWorker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.concurrent.TimeUnit
 
 /**
  * Central repository for conversations, messages, and real-time event processing.
@@ -26,9 +29,17 @@ class ChatRepository(private val context: Context) {
     private val dao: ChatDao get() = AppDatabase.getInstance(context).chatDao()
     private val tokenManager: TokenManager get() = TokenManager.getInstance(context)
     private val encryptionManager = EncryptionManager(context)
+    private val workManager = WorkManager.getInstance(context)
 
     /** The ID of the conversation the user is currently viewing (null = chat list). */
-    var activeConversationId: String? = null
+    var activeConversationId: String?
+        get() = activeConversationIdStatic
+        set(value) { activeConversationIdStatic = value }
+
+    companion object {
+        /** Global tracking of the active conversation to avoid new instances losing state. */
+        var activeConversationIdStatic: String? = null
+    }
 
     // ═══════════════════════════════════════════════════════════════
     // ── Conversations ────────────────────────────────────────────
@@ -97,6 +108,11 @@ class ChatRepository(private val context: Context) {
 
     suspend fun markConversationAsRead(convId: String) {
         dao.markConversationAsRead(convId)
+        dao.markIncomingMessagesAsRead(convId)
+    }
+
+    suspend fun markOutgoingMessagesAsRead(convId: String) {
+        dao.markOutgoingMessagesAsRead(convId)
     }
 
     suspend fun deleteConversation(convId: String) {
@@ -151,51 +167,24 @@ class ChatRepository(private val context: Context) {
         mentionedUserIds: List<String> = emptyList()
     ): Result<Message> {
         return try {
-            val body = buildJsonObject {
-                put("content", content)
-                put("type", type)
-                mediaUrl?.let { put("media_url", it) }
-                telegramFileId?.let { put("telegram_file_id", it) }
-                mediaThumbnail?.let { put("media_thumbnail", it) }
-                replyToId?.let { put("parent_id", it) }
-                if (mentionedUserIds.isNotEmpty()) {
-                    put("mentioned_user_ids", JsonArray(mentionedUserIds.map { JsonPrimitive(it) }))
-                }
-            }
-
-            val response = api.sendMessage(conversationId, body)
-            if (response.isSuccessful) {
-                val data = response.body() ?: buildJsonObject {}
-                val msgJson = data["message"]?.jsonObject ?: data
-                val parsed = Message.fromJson(msgJson, tokenManager.userId ?: "")
-                val finalMsg = parsed.copy(
-                    isMe = true,
-                    content = content, // Preserve original text typed by user
-                    mediaUrl = if (!parsed.mediaUrl.isNullOrBlank()) parsed.mediaUrl else mediaUrl
-                )
-                dao.insertMessage(finalMsg)
-                dao.updateLastMessage(
-                    convId = conversationId,
-                    lastText = if (finalMsg.content.length > 50) finalMsg.content.take(47) + "..." else finalMsg.content.ifBlank { "Media" },
-                    lastTime = finalMsg.createdAt,
-                    updatedAt = System.currentTimeMillis()
-                )
-                Result.success(finalMsg)
-            } else {
-                val err = response.errorBody()?.string().orEmpty()
-                val localMsg = createOptimisticMessage(
-                    conversationId, content, type, mediaUrl,
-                    replyToId, replyToText, replyToSenderName
-                )
-                dao.insertMessage(localMsg)
-                Result.failure(Exception(err.ifBlank { "Failed to send message" }))
-            }
-        } catch (e: Exception) {
+            // Reliable Sync: Insert into local DB with SENDING status first
             val localMsg = createOptimisticMessage(
                 conversationId, content, type, mediaUrl,
                 replyToId, replyToText, replyToSenderName
-            )
+            ).copy(status = MessageStatus.SENDING)
+            
             dao.insertMessage(localMsg)
+            
+            // Trigger WorkManager for background delivery
+            val syncRequest = OneTimeWorkRequestBuilder<MessageSyncWorker>()
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
+                .build()
+            
+            workManager.enqueueUniqueWork("msg_sync_${localMsg.id}", ExistingWorkPolicy.REPLACE, syncRequest)
+
+            Result.success(localMsg)
+        } catch (e: Exception) {
             Result.failure(e)
         }
     }

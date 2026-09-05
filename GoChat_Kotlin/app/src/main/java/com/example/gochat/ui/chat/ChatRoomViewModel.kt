@@ -7,9 +7,11 @@ import com.example.gochat.data.api.NetworkModule
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.model.GroupMember
 import com.example.gochat.data.model.Message
+import com.example.gochat.data.model.MessageStatus
 import com.example.gochat.data.model.MessageType
 import com.example.gochat.data.model.User
 import com.example.gochat.data.repository.ChatRepository
+import com.example.gochat.core.sound.ChatSoundManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -23,6 +25,7 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
     private val chatRepository = ChatRepository(application)
     private val tokenManager = TokenManager.getInstance(application)
     private val webSocket = NetworkModule.getWebSocket(application)
+    private val soundManager = ChatSoundManager(application)
 
     private val _conversationId = MutableStateFlow("")
     val conversationId: StateFlow<String> = _conversationId.asStateFlow()
@@ -70,6 +73,9 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             chatRepository.markConversationAsRead(convId)
             chatRepository.refreshMessages(convId)
+            
+            // Send read receipt to server
+            sendReadReceipt(convId)
             
             // Populate members for mentions
             loadMembersFromLocal(convId)
@@ -262,6 +268,15 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
         webSocket.send(payload)
     }
 
+    fun sendReadReceipt(convId: String) {
+        val payload = buildJsonObject {
+            put("type", "read_receipt")
+            put("conversation_id", convId)
+            put("sender_id", tokenManager.userId ?: "")
+        }
+        webSocket.send(payload)
+    }
+
     fun onInputTextChanged(text: String, cursorPosition: Int) {
         val beforeCursor = text.take(cursorPosition)
         val lastAt = beforeCursor.lastIndexOf('@')
@@ -297,6 +312,36 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
                 val isTyping = event["is_typing"]?.jsonPrimitive?.booleanOrNull ?: false
                 _isOtherUserTyping.value = isTyping
             }
+            type == "read_receipt" || type == "event_read_receipt" -> {
+                val readerId = (event["sender_id"] ?: event["user_id"])?.jsonPrimitive?.contentOrNull.orEmpty()
+                val currentUserId = tokenManager.userId ?: ""
+                if (readerId.isNotEmpty() && readerId != currentUserId) {
+                    viewModelScope.launch {
+                        chatRepository.markOutgoingMessagesAsRead(convId)
+                    }
+                }
+            }
+            type == "message_status" || type == "status_update" -> {
+                val msgId = (event["message_id"] ?: event["messageId"])?.jsonPrimitive?.contentOrNull.orEmpty()
+                val statusStr = (event["status"] ?: event["Status"])?.jsonPrimitive?.contentOrNull.orEmpty().lowercase()
+                
+                val status = when {
+                    statusStr.contains("read") -> MessageStatus.READ
+                    statusStr.contains("deliver") -> MessageStatus.DELIVERED
+                    statusStr.contains("sent") -> MessageStatus.SENT
+                    else -> null
+                }
+                
+                if (msgId.isNotEmpty() && status != null) {
+                    viewModelScope.launch {
+                        chatRepository.updateMessageStatus(msgId, status)
+                        // Play sound only on 'delivered' for my message
+                        if (status == MessageStatus.DELIVERED) {
+                            soundManager.playSentSound()
+                        }
+                    }
+                }
+            }
             type == "new_message" || type == "message_edited" || type == "message_deleted" || 
             type == "reaction_added" || type == "reaction_removed" || 
             type == "event_new_message" || type == "message" || type == "chat_message" || event.containsKey("message") -> {
@@ -306,6 +351,13 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
                     val msg = Message.fromJson(msgObj, currentUserId)
                     if (msg.type == MessageType.PING) {
                         _screenShakeEvent.tryEmit(Unit)
+                    }
+                    if (msg.senderId != currentUserId) {
+                        soundManager.playReceivedSound()
+                        // If we are active, mark as read immediately
+                        if (convId == _conversationId.value) {
+                            sendReadReceipt(convId)
+                        }
                     }
                     viewModelScope.launch {
                         chatRepository.insertWebSocketMessage(msg)
