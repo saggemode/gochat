@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- DayNight Overrides for Night Mode -->
+    <color name="gochat_bg_dark">#050507</color>
+    <color name="gochat_surface_dark">#121215</color>
+    <color name="gochat_card_dark">#18181B</color>
+    <color name="gochat_card_lighter">#27272A</color>
+    <color name="gochat_border_dark">#27272A</color>
+    <color name="gochat_border_focused">#10B981</color>
+
+    <!-- Text Colors in Night Mode -->
+    <color name="gochat_text_primary">#FFFFFF</color>
+    <color name="gochat_text_secondary">#A1A1AA</color>
+    <color name="gochat_text_muted">#71717A</color>
+    <color name="gochat_text_subtle">#52525B</color>
+
+    <!-- WhatsApp Theme in Night Mode -->
+    <color name="whatsapp_chat_bg_start">#111B21</color>
+    <color name="whatsapp_chat_bg_end">#0B141A</color>
+    <color name="whatsapp_toolbar_dark">#1F2C34</color>
+    <color name="whatsapp_doodle_tint">#E9EDEF</color>
+    <color name="whatsapp_emerald">#00A884</color>
+    <color name="gochat_input_bg">#27272A</color>
+</resources>

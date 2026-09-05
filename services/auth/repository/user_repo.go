@@ -943,15 +943,16 @@ func (r *UserRepository) VerifyAndResetPin(ctx context.Context, identifier, reco
 
 // ── Granular Privacy Settings Methods ───────────────────────────────────────
 
-func (r *UserRepository) UpdatePrivacySettings(ctx context.Context, userID uuid.UUID, profilePhoto, statusPrivacy string, readReceipts bool, onlinePrivacy string) error {
+func (r *UserRepository) UpdatePrivacySettings(ctx context.Context, userID uuid.UUID, profilePhoto, statusPrivacy string, readReceipts bool, onlinePrivacy, lastSeenPrivacy string) error {
 	_, err := r.db.Exec(ctx, `
 		UPDATE users 
 		SET profile_photo_privacy = $2,
 		    status_privacy = $3,
 		    read_receipts_enabled = $4,
-		    online_privacy = $5
+		    online_privacy = $5,
+		    last_seen_privacy = $6
 		WHERE id = $1
-	`, userID, profilePhoto, statusPrivacy, readReceipts, onlinePrivacy)
+	`, userID, profilePhoto, statusPrivacy, readReceipts, onlinePrivacy, lastSeenPrivacy)
 	return err
 }
 
@@ -961,9 +962,10 @@ func (r *UserRepository) GetPrivacySettings(ctx context.Context, userID uuid.UUI
 		SELECT COALESCE(profile_photo_privacy, 'everyone'),
 		       COALESCE(status_privacy, 'everyone'),
 		       COALESCE(read_receipts_enabled, true),
-		       COALESCE(online_privacy, 'everyone')
+		       COALESCE(online_privacy, 'everyone'),
+		       COALESCE(last_seen_privacy, 'everyone')
 		FROM users WHERE id = $1
-	`, userID).Scan(&ps.ProfilePhotoPrivacy, &ps.StatusPrivacy, &ps.ReadReceiptsEnabled, &ps.OnlinePrivacy)
+	`, userID).Scan(&ps.ProfilePhotoPrivacy, &ps.StatusPrivacy, &ps.ReadReceiptsEnabled, &ps.OnlinePrivacy, &ps.LastSeenPrivacy)
 	if err != nil {
 		return nil, err
 	}

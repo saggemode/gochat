@@ -41,12 +41,56 @@
             android:paddingHorizontal="16dp"
             android:paddingVertical="18dp">
 
-            <ImageView
-                android:id="@+id/ivSettingsAvatar"
-                android:layout_width="60dp"
-                android:layout_height="60dp"
-                android:contentDescription="Profile photo"
-                android:src="@drawable/ic_account" />
+            <FrameLayout
+                android:id="@+id/layoutAvatarContainer"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackgroundBorderless">
+
+                <ImageView
+                    android:id="@+id/ivSettingsAvatar"
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:contentDescription="Profile photo"
+                    android:src="@drawable/ic_account" />
+
+                <!-- Uploading Scrim & Progress Bar -->
+                <FrameLayout
+                    android:id="@+id/layoutAvatarLoading"
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:background="@drawable/bg_circle_pulse"
+                    android:backgroundTint="#99000000"
+                    android:visibility="gone">
+
+                    <ProgressBar
+                        android:id="@+id/pbAvatarLoading"
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:layout_gravity="center"
+                        android:indeterminateTint="@color/white" />
+                </FrameLayout>
+
+                <!-- Camera badge at bottom-end -->
+                <FrameLayout
+                    android:id="@+id/ivCameraBadge"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="bottom|end"
+                    android:background="@drawable/bg_circle_pulse"
+                    android:backgroundTint="@color/gochat_emerald_primary">
+
+                    <ImageView
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="Change photo"
+                        android:src="@drawable/ic_camera_status"
+                        app:tint="@color/white" />
+                </FrameLayout>
+            </FrameLayout>
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -55,22 +99,49 @@
                 android:layout_weight="1"
                 android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/tvSettingsUserName"
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/gochat_text_primary"
-                    android:textSize="17sp"
-                    android:textStyle="bold"
-                    tools:text="Alex Morgan" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tvSettingsUserName"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/gochat_text_primary"
+                        android:textSize="17sp"
+                        android:textStyle="bold"
+                        tools:text="Alex Morgan" />
+
+                    <ImageView
+                        android:id="@+id/ivVerifiedBadge"
+                        android:layout_width="15dp"
+                        android:layout_height="15dp"
+                        android:layout_marginStart="6dp"
+                        android:contentDescription="Verified"
+                        android:src="@drawable/ic_shield"
+                        app:tint="@color/gochat_accent" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvSettingsStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:textColor="@color/gochat_text_secondary"
+                    android:textSize="13sp"
+                    tools:text="Building microservices in Go &amp; Kotlin" />
 
                 <TextView
                     android:id="@+id/tvSettingsUserPin"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
+                    android:layout_marginTop="3dp"
                     android:textColor="@color/gochat_emerald_light"
-                    android:textSize="13sp"
+                    android:textSize="12.5sp"
                     android:textStyle="bold"
                     tools:text="GoChat PIN: 7A9F02B1" />
 
@@ -83,6 +154,18 @@
                     android:textSize="12sp"
                     tools:text="+1 (555) 019-2834" />
             </LinearLayout>
+
+            <ImageView
+                android:id="@+id/btnEditProfile"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="8dp"
+                android:contentDescription="Edit profile"
+                android:src="@drawable/ic_edit_status"
+                app:tint="@color/gochat_accent" />
         </LinearLayout>
 
         <View
@@ -138,6 +221,60 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:text="Back up chats to Google Drive, restore, auto-backup"
+                        android:textColor="@color/gochat_text_muted"
+                        android:textSize="12.5sp" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:contentDescription="Open"
+                    android:src="@drawable/ic_back"
+                    android:rotation="180"
+                    app:tint="@color/gochat_text_muted" />
+            </LinearLayout>
+
+            <!-- Theme & Dark Mode Row -->
+            <LinearLayout
+                android:id="@+id/tileTheme"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="20dp"
+                android:paddingVertical="16dp">
+
+                <ImageView
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:contentDescription="Theme"
+                    android:src="@drawable/ic_theme_mode"
+                    app:tint="@color/gochat_accent" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Theme &amp; Dark Mode"
+                        android:textColor="@color/gochat_text_primary"
+                        android:textSize="15.5sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvThemeSubtitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="System Default"
                         android:textColor="@color/gochat_text_muted"
                         android:textSize="12.5sp" />
                 </LinearLayout>

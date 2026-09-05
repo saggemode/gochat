@@ -1,6 +1,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.GoChat" parent="Theme.Material3.Dark.NoActionBar">
+    <!-- Base application theme (Light / Day Mode). -->
+    <style name="Base.Theme.GoChat" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Brand Colors -->
         <item name="colorPrimary">@color/gochat_accent</item>
         <item name="colorPrimaryDark">@color/gochat_emerald_dark</item>
@@ -10,16 +10,16 @@
         <item name="colorError">@color/gochat_error</item>
 
         <!-- On Colors -->
-        <item name="colorOnPrimary">@color/black</item>
-        <item name="colorOnSecondary">@color/black</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorOnSecondary">@color/white</item>
         <item name="colorOnSurface">@color/gochat_text_primary</item>
 
-        <!-- System Window Bars -->
+        <!-- System Window Bars (Light Mode) -->
         <item name="android:windowBackground">@color/gochat_bg_dark</item>
-        <item name="android:statusBarColor">@color/gochat_bg_dark</item>
-        <item name="android:navigationBarColor">@color/gochat_bg_dark</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:statusBarColor">@color/gochat_surface_dark</item>
+        <item name="android:navigationBarColor">@color/gochat_surface_dark</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
 
     <style name="Theme.GoChat" parent="Base.Theme.GoChat" />

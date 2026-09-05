@@ -60,6 +60,14 @@ class ChatDoodleView @JvmOverloads constructor(
         invalidate()
     }
 
+    fun getDoodleOpacity(): Float = doodleOpacity
+
+    fun setDoodleColor(color: Int) {
+        this.doodleColor = color
+        updatePaintAlphas()
+        invalidate()
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 

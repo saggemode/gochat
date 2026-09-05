@@ -1,9 +1,16 @@
 package com.example.gochat.ui.chat
 
+import android.content.Intent
 import android.graphics.Typeface
+import android.net.Uri
+import android.text.Spannable
+import android.text.SpannableString
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.SeekBar
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -16,15 +23,39 @@ import com.example.gochat.data.model.MessageStatus
 import com.example.gochat.data.model.MessageType
 import com.example.gochat.databinding.ItemMessageMeBinding
 import com.example.gochat.databinding.ItemMessageOtherBinding
-import android.widget.SeekBar
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.regex.Pattern
 
 class MessageAdapter(
     private val onReplyClicked: (Message) -> Unit,
     private val onMessageLongClicked: ((Message) -> Unit)? = null,
     private val onPlayVoiceClicked: ((Message) -> Unit)? = null
 ) : ListAdapter<Message, RecyclerView.ViewHolder>(DiffCallback) {
+
+    var onImageClicked: ((String) -> Unit)? = null
+
+    private val mentionPattern = Pattern.compile("@[\\w]+")
+
+    private fun highlightMentions(text: String, color: Int): CharSequence {
+        val spannable = SpannableString(text)
+        val matcher = mentionPattern.matcher(text)
+        while (matcher.find()) {
+            spannable.setSpan(
+                ForegroundColorSpan(color),
+                matcher.start(),
+                matcher.end(),
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            spannable.setSpan(
+                StyleSpan(Typeface.BOLD),
+                matcher.start(),
+                matcher.end(),
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+        return spannable
+    }
 
     private var recyclerView: RecyclerView? = null
 
@@ -89,10 +120,19 @@ class MessageAdapter(
                     tvMessageContent.text = "💥 PING!!!"
                     tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_emerald_light))
                     tvMessageContent.setTypeface(null, Typeface.NORMAL)
+                } else if (message.content.startsWith("📍 Location:")) {
+                    tvMessageContent.text = highlightMentions(message.content, binding.root.context.getColor(R.color.gochat_accent))
+                    tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_emerald_light))
+                    tvMessageContent.setOnClickListener {
+                        val uri = Uri.parse(message.content.substringAfter("Location: ").trim())
+                        val intent = Intent(Intent.ACTION_VIEW, uri)
+                        binding.root.context.startActivity(intent)
+                    }
                 } else {
-                    tvMessageContent.text = message.content
+                    tvMessageContent.text = highlightMentions(message.content, binding.root.context.getColor(R.color.gochat_accent))
                     tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_text_primary))
                     tvMessageContent.setTypeface(null, Typeface.NORMAL)
+                    tvMessageContent.setOnClickListener(null)
                 }
                 tvMessageContent.visibility = if (message.content.isNotEmpty() || message.isPing || message.isDeleted) View.VISIBLE else View.GONE
 
@@ -138,12 +178,20 @@ class MessageAdapter(
                 // Media Image Preview
                 if (message.type == MessageType.IMAGE && !message.mediaUrl.isNullOrBlank() && !message.isDeleted) {
                     ivMessageImage.visibility = View.VISIBLE
-                    ivMessageImage.load(message.mediaUrl) {
-                        crossfade(true)
-                        transformations(RoundedCornersTransformation(12f))
+                    com.example.gochat.core.media.MediaImageHelper.loadSafeImage(
+                        imageView = ivMessageImage,
+                        url = message.mediaUrl,
+                        isCircle = false,
+                        cornerRadiusDp = 12f,
+                        placeholderRes = R.drawable.ic_gallery,
+                        errorRes = R.drawable.ic_gallery
+                    )
+                    ivMessageImage.setOnClickListener {
+                        message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
                     }
                 } else {
                     ivMessageImage.visibility = View.GONE
+                    ivMessageImage.setOnClickListener(null)
                 }
 
                 // Voice Note Row
@@ -212,10 +260,19 @@ class MessageAdapter(
                     tvMessageContent.text = "💥 PING!!!"
                     tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_emerald_light))
                     tvMessageContent.setTypeface(null, Typeface.NORMAL)
+                } else if (message.content.startsWith("📍 Location:")) {
+                    tvMessageContent.text = highlightMentions(message.content, binding.root.context.getColor(R.color.gochat_accent))
+                    tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_emerald_light))
+                    tvMessageContent.setOnClickListener {
+                        val uri = Uri.parse(message.content.substringAfter("Location: ").trim())
+                        val intent = Intent(Intent.ACTION_VIEW, uri)
+                        binding.root.context.startActivity(intent)
+                    }
                 } else {
-                    tvMessageContent.text = message.content
+                    tvMessageContent.text = highlightMentions(message.content, binding.root.context.getColor(R.color.gochat_accent))
                     tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_text_primary))
                     tvMessageContent.setTypeface(null, Typeface.NORMAL)
+                    tvMessageContent.setOnClickListener(null)
                 }
                 tvMessageContent.visibility = if (message.content.isNotEmpty() || message.isPing || message.isDeleted) View.VISIBLE else View.GONE
 
@@ -251,12 +308,20 @@ class MessageAdapter(
                 // Media Image Preview
                 if (message.type == MessageType.IMAGE && !message.mediaUrl.isNullOrBlank() && !message.isDeleted) {
                     ivMessageImage.visibility = View.VISIBLE
-                    ivMessageImage.load(message.mediaUrl) {
-                        crossfade(true)
-                        transformations(RoundedCornersTransformation(12f))
+                    com.example.gochat.core.media.MediaImageHelper.loadSafeImage(
+                        imageView = ivMessageImage,
+                        url = message.mediaUrl,
+                        isCircle = false,
+                        cornerRadiusDp = 12f,
+                        placeholderRes = R.drawable.ic_gallery,
+                        errorRes = R.drawable.ic_gallery
+                    )
+                    ivMessageImage.setOnClickListener {
+                        message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
                     }
                 } else {
                     ivMessageImage.visibility = View.GONE
+                    ivMessageImage.setOnClickListener(null)
                 }
 
                 // Voice Note Row

@@ -7,20 +7,25 @@ import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.db.AppDatabase
 import com.example.gochat.data.db.ChatDao
 import com.example.gochat.data.model.*
+import com.example.gochat.core.crypto.EncryptionManager
+import com.example.gochat.core.notification.NotificationHelper
+import com.example.gochat.data.api.ApiConstants
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.*
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 /**
  * Central repository for conversations, messages, and real-time event processing.
  * Combines Retrofit API, Room DB (offline-first), and WebSocket event handling.
- *
- * Replaces the conversation/message portions of Flutter's monolithic `AppState`.
  */
 class ChatRepository(private val context: Context) {
 
     private val api: GoChatApiService get() = NetworkModule.getApiService(context)
     private val dao: ChatDao get() = AppDatabase.getInstance(context).chatDao()
     private val tokenManager: TokenManager get() = TokenManager.getInstance(context)
+    private val encryptionManager = EncryptionManager(context)
 
     /** The ID of the conversation the user is currently viewing (null = chat list). */
     var activeConversationId: String? = null
@@ -29,12 +34,8 @@ class ChatRepository(private val context: Context) {
     // ── Conversations ────────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════
 
-    /** Room Flow that auto-updates the UI when conversations change. */
     fun observeConversations(): Flow<List<Conversation>> = dao.getAllConversations()
 
-    /**
-     * Fetch conversations from the API and upsert into Room.
-     */
     suspend fun refreshConversations(): Result<List<Conversation>> {
         return try {
             val response = api.getConversations()
@@ -67,9 +68,6 @@ class ChatRepository(private val context: Context) {
         }
     }
 
-    /**
-     * Create a new conversation (direct or group).
-     */
     suspend fun createConversation(
         name: String,
         memberIds: List<String>,
@@ -110,13 +108,9 @@ class ChatRepository(private val context: Context) {
     // ── Messages ─────────────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════
 
-    /** Room Flow for real-time message list updates in a chat room. */
     fun observeMessages(convId: String): Flow<List<Message>> =
         dao.getMessagesForConversation(convId)
 
-    /**
-     * Fetch messages from the API and cache in Room.
-     */
     suspend fun refreshMessages(convId: String): Result<List<Message>> {
         return try {
             val response = api.getMessages(convId)
@@ -129,7 +123,10 @@ class ChatRepository(private val context: Context) {
                 }
                 val currentUserId = tokenManager.userId ?: ""
                 val messages = rawList.mapNotNull { element ->
-                    if (element is JsonObject) Message.fromJson(element, currentUserId) else null
+                    if (element is JsonObject) {
+                        val msg = Message.fromJson(element, currentUserId)
+                        tryDecryptMessage(msg)
+                    } else null
                 }
                 dao.insertMessages(messages)
                 Result.success(messages)
@@ -141,9 +138,6 @@ class ChatRepository(private val context: Context) {
         }
     }
 
-    /**
-     * Send a text or media message to a conversation.
-     */
     suspend fun sendMessage(
         conversationId: String,
         content: String,
@@ -153,7 +147,8 @@ class ChatRepository(private val context: Context) {
         mediaThumbnail: String? = null,
         replyToId: String? = null,
         replyToText: String? = null,
-        replyToSenderName: String? = null
+        replyToSenderName: String? = null,
+        mentionedUserIds: List<String> = emptyList()
     ): Result<Message> {
         return try {
             val body = buildJsonObject {
@@ -163,17 +158,25 @@ class ChatRepository(private val context: Context) {
                 telegramFileId?.let { put("telegram_file_id", it) }
                 mediaThumbnail?.let { put("media_thumbnail", it) }
                 replyToId?.let { put("parent_id", it) }
+                if (mentionedUserIds.isNotEmpty()) {
+                    put("mentioned_user_ids", JsonArray(mentionedUserIds.map { JsonPrimitive(it) }))
+                }
             }
 
             val response = api.sendMessage(conversationId, body)
             if (response.isSuccessful) {
                 val data = response.body() ?: buildJsonObject {}
                 val msgJson = data["message"]?.jsonObject ?: data
-                val finalMsg = Message.fromJson(msgJson, tokenManager.userId ?: "").copy(isMe = true)
+                val parsed = Message.fromJson(msgJson, tokenManager.userId ?: "")
+                val finalMsg = parsed.copy(
+                    isMe = true,
+                    content = content, // Preserve original text typed by user
+                    mediaUrl = if (!parsed.mediaUrl.isNullOrBlank()) parsed.mediaUrl else mediaUrl
+                )
                 dao.insertMessage(finalMsg)
                 dao.updateLastMessage(
                     convId = conversationId,
-                    lastText = finalMsg.content.ifBlank { "Media" },
+                    lastText = if (finalMsg.content.length > 50) finalMsg.content.take(47) + "..." else finalMsg.content.ifBlank { "Media" },
                     lastTime = finalMsg.createdAt,
                     updatedAt = System.currentTimeMillis()
                 )
@@ -185,7 +188,7 @@ class ChatRepository(private val context: Context) {
                     replyToId, replyToText, replyToSenderName
                 )
                 dao.insertMessage(localMsg)
-                Result.failure(Exception(err.ifBlank { "Failed to send message (${response.code()})" }))
+                Result.failure(Exception(err.ifBlank { "Failed to send message" }))
             }
         } catch (e: Exception) {
             val localMsg = createOptimisticMessage(
@@ -197,9 +200,6 @@ class ChatRepository(private val context: Context) {
         }
     }
 
-    /**
-     * Ingest and process an incoming real-time WebSocket event.
-     */
     suspend fun handleIncomingWebSocketEvent(event: JsonObject): Message? {
         val eventType = (event["event_type"] ?: event["eventType"] ?: event["type"])
             ?.jsonPrimitive?.contentOrNull.orEmpty()
@@ -220,7 +220,7 @@ class ChatRepository(private val context: Context) {
 
             val msgObj = if (rawMsg is JsonObject) rawMsg else event
             val currentUserId = tokenManager.userId ?: ""
-            var msg = Message.fromJson(msgObj, currentUserId)
+            var msg = tryDecryptMessage(Message.fromJson(msgObj, currentUserId))
             if (msg.conversationId.isEmpty() && convId.isNotEmpty()) {
                 msg = msg.copy(conversationId = convId)
             }
@@ -252,31 +252,43 @@ class ChatRepository(private val context: Context) {
     }
 
     suspend fun insertWebSocketMessage(message: Message) {
-        val finalMsg = message.copy(
-            isMe = message.senderId == (tokenManager.userId ?: "")
+        val decrypted = tryDecryptMessage(message)
+        val finalMsg = decrypted.copy(
+            isMe = decrypted.senderId == (tokenManager.userId ?: "")
         )
         dao.insertMessage(finalMsg)
+
+        // If the message is from another user and the recipient is not currently looking at this conversation,
+        // show the notification banner in the notification bar
+        if (!finalMsg.isMe && activeConversationId != finalMsg.conversationId) {
+            NotificationHelper.showChatNotification(
+                context = context,
+                conversationId = finalMsg.conversationId,
+                title = finalMsg.senderName.ifBlank { "GoChat Message" },
+                body = finalMsg.content.ifBlank { "New message" },
+                senderAvatar = finalMsg.mediaThumbnail.orEmpty(),
+                isGroup = false
+            )
+        }
+    }
+
+    private fun tryDecryptMessage(message: Message): Message {
+        if (message.type != MessageType.TEXT || message.isMe || message.content.isBlank()) {
+            return message
+        }
+        val trimmed = message.content.trim()
+        // Only attempt Signal decryption if it matches a long base64 payload
+        if (trimmed.length > 40 && trimmed.matches(Regex("^[A-Za-z0-9+/=]+$"))) {
+            val decrypted = encryptionManager.decryptMessage(message.senderId, trimmed)
+            if (decrypted.isNotBlank() && decrypted != "[Encrypted Message]" && decrypted != trimmed) {
+                return message.copy(content = decrypted)
+            }
+        }
+        return message
     }
 
     suspend fun updateMessageStatus(messageId: String, status: MessageStatus) {
         dao.updateMessageStatus(messageId, status)
-    }
-
-    // ── Polls ────────────────────────────────────────────────────
-
-    suspend fun votePoll(pollId: String, optionId: String): Result<Unit> {
-        return try {
-            val body = buildJsonObject { put("option_id", optionId) }
-            val response = api.votePoll(pollId, body)
-            if (response.isSuccessful) {
-                Result.success(Unit)
-            } else {
-                val err = response.errorBody()?.string().orEmpty()
-                Result.failure(Exception(err.ifBlank { "Vote failed" }))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
     }
 
     // ── Messaging Enhancements ───────────────────────────────────
@@ -287,20 +299,16 @@ class ChatRepository(private val context: Context) {
 
     suspend fun deleteMessageLocally(messageId: String) {
         dao.markMessageAsDeleted(messageId)
-        // Placeholder for API call: api.deleteMessage(messageId)
     }
 
     suspend fun editMessageLocally(messageId: String, newContent: String) {
         dao.updateMessageContent(messageId, newContent)
-        // Placeholder for API call: api.editMessage(messageId, buildJsonObject { put("content", newContent) })
     }
 
     suspend fun addReactionLocally(messageId: String, emoji: String) {
         val currentUserId = tokenManager.userId ?: "u_me"
         val currentUserName = tokenManager.userDisplayName ?: "Me"
         val reaction = Reaction(userId = currentUserId, userName = currentUserName, emoji = emoji)
-        
-        // This is a simplified logic for demo; real logic should merge with existing reactions
         val reactions = listOf(reaction)
         dao.updateMessageReactions(messageId, reactions)
     }
@@ -313,7 +321,6 @@ class ChatRepository(private val context: Context) {
             content = originalMessage.content,
             type = getMessageTypeInt(originalMessage.type),
             mediaUrl = originalMessage.mediaUrl,
-            // Tagging as forwarded
         ).onSuccess { forwardedMsg ->
             dao.insertMessage(forwardedMsg.copy(
                 isForwarded = true,
@@ -337,7 +344,44 @@ class ChatRepository(private val context: Context) {
         }
     }
 
-    // ── Private Helpers ──────────────────────────────────────────
+    suspend fun votePoll(pollId: String, optionId: String): Result<Unit> {
+        return try {
+            val body = buildJsonObject { put("option_id", optionId) }
+            val response = api.votePoll(pollId, body)
+            if (response.isSuccessful) Result.success(Unit)
+            else Result.failure(Exception("Vote failed"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun uploadMedia(
+        bytes: ByteArray,
+        mimeType: String = "image/jpeg",
+        fileName: String = "chat_image.jpg"
+    ): String? {
+        return try {
+            val mediaType = mimeType.toMediaTypeOrNull()
+            val reqBody = bytes.toRequestBody(mediaType)
+            val part = MultipartBody.Part.createFormData("file", fileName, reqBody)
+            val response = api.uploadMedia(part)
+            if (response.isSuccessful) {
+                val json = response.body()
+                val rawUrl = (json?.get("url") ?: json?.get("Url") ?: json?.get("URL") ?: json?.get("media_url"))?.jsonPrimitive?.contentOrNull
+                if (!rawUrl.isNullOrBlank()) {
+                    if (rawUrl.startsWith("/")) {
+                        "${ApiConstants.BASE_URL.removeSuffix("/")}$rawUrl"
+                    } else {
+                        rawUrl
+                    }
+                } else null
+            } else {
+                null
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     private fun createOptimisticMessage(
         conversationId: String,
@@ -351,11 +395,12 @@ class ChatRepository(private val context: Context) {
         val msgType = when (type) {
             1 -> MessageType.IMAGE
             2 -> MessageType.VIDEO
-            3 -> MessageType.VOICE
+            3 -> MessageType.AUDIO
             4 -> MessageType.FILE
-            5 -> MessageType.POLL
-            6 -> MessageType.PRODUCT
-            7 -> MessageType.PING
+            5 -> MessageType.VOICE
+            6 -> MessageType.POLL
+            7 -> MessageType.PRODUCT
+            8 -> MessageType.PING
             else -> MessageType.TEXT
         }
         return Message(

@@ -1,7 +1,12 @@
 package com.example.gochat
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -17,17 +22,27 @@ import com.example.gochat.ui.chat.ChatListFragment
 import com.example.gochat.ui.chat.ChatListViewModel
 import com.example.gochat.ui.settings.SettingsFragment
 import com.example.gochat.ui.stories.StoriesFragment
+import com.example.gochat.core.crypto.EncryptionManager
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val chatViewModel: ChatListViewModel by viewModels()
+    private val encryptionManager by lazy { EncryptionManager(this) }
 
     private val chatListFragment by lazy { ChatListFragment() }
     private val storiesFragment by lazy { StoriesFragment() }
     private val callsFragment by lazy { CallsFragment() }
     private val settingsFragment by lazy { SettingsFragment() }
+
+    private val requestNotificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (!isGranted) {
+            Log.w("MainActivity", "POST_NOTIFICATIONS permission not granted by user")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,12 +59,29 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        checkNotificationPermission()
+
         if (savedInstanceState == null) {
             switchFragment(chatListFragment)
         }
 
         setupBottomNavigation()
         observeUnreadBadge()
+
+        // Initialize E2EE Keys
+        lifecycleScope.launch {
+            encryptionManager.initializeAndRegisterKeys()
+        }
+    }
+
+    private fun checkNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
     }
 
     override fun onResume() {

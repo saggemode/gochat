@@ -380,8 +380,31 @@ func (h *AuthHandler) VerifyAccountRecovery(c *gin.Context) {
 	})
 }
 
+// GetPrivacySettings retrieves user privacy preferences.
+func (h *AuthHandler) GetPrivacySettings(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+
+	resp, err := h.client.GetPrivacySettings(c.Request.Context(), &authpb.GetPrivacySettingsRequest{
+		UserId: userID,
+	})
+	if err != nil {
+		h.handleGrpcError(c, err, "failed to get privacy settings")
+		return
+	}
+
+	c.JSON(http.StatusOK, resp.Settings)
+}
+
 // UpdatePrivacySettings modifies granular privacy preferences.
 func (h *AuthHandler) UpdatePrivacySettings(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+
 	var req struct {
 		ProfilePhotoPrivacy string `json:"profile_photo_privacy"`
 		StatusPrivacy       string `json:"status_privacy"`
@@ -395,16 +418,22 @@ func (h *AuthHandler) UpdatePrivacySettings(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"privacy_settings": gin.H{
-			"profile_photo_privacy": req.ProfilePhotoPrivacy,
-			"status_privacy":        req.StatusPrivacy,
-			"read_receipts_enabled": req.ReadReceiptsEnabled,
-			"online_privacy":        req.OnlinePrivacy,
-			"last_seen_privacy":     req.LastSeenPrivacy,
+	resp, err := h.client.UpdatePrivacySettings(c.Request.Context(), &authpb.UpdatePrivacySettingsRequest{
+		UserId: userID,
+		Settings: &authpb.PrivacySettings{
+			ProfilePhotoPrivacy: req.ProfilePhotoPrivacy,
+			StatusPrivacy:       req.StatusPrivacy,
+			ReadReceiptsEnabled: req.ReadReceiptsEnabled,
+			OnlinePrivacy:       req.OnlinePrivacy,
+			LastSeenPrivacy:     req.LastSeenPrivacy,
 		},
 	})
+	if err != nil {
+		h.handleGrpcError(c, err, "failed to update privacy settings")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": resp.Success})
 }
 
 // UpdateUser modifies details for the currently logged-in user.

@@ -3,8 +3,10 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,6 +17,7 @@ import (
 
 	authpb "gochat/gen/auth"
 	chatpb "gochat/gen/chat"
+	"gochat/pkg/fcm"
 	"gochat/services/gateway/ws"
 )
 
@@ -1204,6 +1207,58 @@ func (h *ChatHandler) fanOutEvent(eventType string, messageID string, convID str
 
 		if !delivered {
 			h.hub.Broadcast(data, userID)
+		}
+
+		// Dispatch high-priority FCM Push Notification for new messages
+		if eventType == "new_message" && convResp != nil && convResp.Conversation != nil {
+			senderTitle := "New Message"
+			if convResp.Conversation.Name != "" {
+				senderTitle = convResp.Conversation.Name
+			}
+			contentBody := "You received a new message"
+			mediaURL := ""
+
+			if msgMap, ok := extra["message"].(map[string]interface{}); ok {
+				if c, ok := msgMap["content"].(string); ok && c != "" {
+					contentBody = c
+				}
+				if m, ok := msgMap["media_url"].(string); ok {
+					mediaURL = m
+				}
+				typeStr := fmt.Sprintf("%v", msgMap["type"])
+				if strings.Contains(strings.ToUpper(typeStr), "IMAGE") {
+					contentBody = "📷 Photo"
+				} else if strings.Contains(strings.ToUpper(typeStr), "VOICE") || strings.Contains(strings.ToUpper(typeStr), "AUDIO") {
+					contentBody = "🎵 Voice Note"
+				} else if strings.Contains(strings.ToUpper(typeStr), "VIDEO") {
+					contentBody = "🎥 Video"
+				} else if strings.Contains(strings.ToUpper(typeStr), "PING") || strings.Contains(contentBody, "PING") {
+					contentBody = "💥 PING!!!"
+					senderTitle = "💥 PING Alert!"
+				}
+			}
+
+			for _, memberID := range convResp.Conversation.MemberIds {
+				if memberID != userID && memberID != "" {
+					targetID := memberID
+					go func() {
+						pushCtx, pCancel := context.WithTimeout(context.Background(), 8*time.Second)
+						defer pCancel()
+
+						pushData := map[string]string{
+							"type":            "chat_message",
+							"conversation_id": convID,
+							"sender_id":       userID,
+							"sender_name":     senderTitle,
+							"message_id":      messageID,
+							"content":         contentBody,
+							"media_url":       mediaURL,
+						}
+
+						_ = fcm.SendToUser(pushCtx, targetID, senderTitle, contentBody, pushData)
+					}()
+				}
+			}
 		}
 	}()
 }

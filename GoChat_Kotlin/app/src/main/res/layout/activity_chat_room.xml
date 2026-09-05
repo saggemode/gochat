@@ -7,6 +7,15 @@
     android:layout_height="match_parent"
     android:background="@drawable/bg_chat_wallpaper_dark">
 
+    <!-- Background custom photo/image wallpaper -->
+    <ImageView
+        android:id="@+id/ivCustomWallpaper"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="Custom Chat Wallpaper"
+        android:scaleType="centerCrop"
+        android:visibility="gone" />
+
     <!-- Subtle WhatsApp Doodle Pattern Layer -->
     <com.example.gochat.ui.chat.ChatDoodleView
         android:id="@+id/chatDoodleView"
@@ -266,6 +275,18 @@
                 android:padding="4dp"
                 android:src="@drawable/ic_close" />
         </LinearLayout>
+
+        <!-- Mentions Suggestions -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvMentionSuggestions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="8dp"
+            android:background="@drawable/bg_card_dark"
+            android:elevation="4dp"
+            android:visibility="gone"
+            tools:listitem="@layout/item_group_member"
+            tools:visibility="visible" />
 
         <!-- Chat Input Bar -->
         <LinearLayout

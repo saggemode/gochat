@@ -4,9 +4,12 @@ import android.Manifest
 import android.animation.ObjectAnimator
 import android.app.Dialog
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -41,10 +44,14 @@ import coil.transform.CircleCropTransformation
 import com.example.gochat.R
 import com.example.gochat.core.media.AudioPlayerManager
 import com.example.gochat.core.media.AudioRecorderManager
+import com.example.gochat.core.wallpaper.ChatWallpaper
+import com.example.gochat.core.wallpaper.ChatWallpaperManager
+import com.example.gochat.core.wallpaper.WallpaperType
 import com.example.gochat.data.model.Message
 import com.example.gochat.databinding.ActivityChatRoomBinding
 import com.example.gochat.databinding.BottomSheetAttachmentPickerBinding
 import com.example.gochat.databinding.DialogImagePreviewBinding
+import com.example.gochat.ui.calls.CallActivity
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -65,6 +72,7 @@ class ChatRoomActivity : AppCompatActivity() {
     private lateinit var binding: ActivityChatRoomBinding
     private val viewModel: ChatRoomViewModel by viewModels()
     private lateinit var messageAdapter: MessageAdapter
+    private lateinit var mentionAdapter: GroupMemberAdapter
     private lateinit var audioRecorderManager: AudioRecorderManager
 
     private var recordingDurationSeconds = 0
@@ -138,6 +146,7 @@ class ChatRoomActivity : AppCompatActivity() {
         val avatarUrl = intent.getStringExtra(EXTRA_CONVERSATION_AVATAR).orEmpty()
 
         setupToolbar(title, avatarUrl)
+        setupWallpaper(convId)
         setupMessagesRecyclerView()
         setupInputBar()
         setupReplyPreview()
@@ -213,6 +222,20 @@ class ChatRoomActivity : AppCompatActivity() {
                 ivHeaderAvatar.setImageResource(R.drawable.ic_account)
             }
 
+            layoutHeaderInfo.setOnClickListener {
+                val intent = Intent(this@ChatRoomActivity, GroupInfoActivity::class.java).apply {
+                    putExtra(GroupInfoActivity.EXTRA_CONVERSATION_ID, viewModel.conversationId.value)
+                    putExtra(GroupInfoActivity.EXTRA_GROUP_NAME, title)
+                    putExtra(GroupInfoActivity.EXTRA_GROUP_AVATAR, avatarUrl)
+                    
+                    val memberIds = viewModel.mentionSuggestions.value.map { it.id }
+                    if (memberIds.isNotEmpty()) {
+                        putStringArrayListExtra(GroupInfoActivity.EXTRA_MEMBER_IDS, ArrayList(memberIds))
+                    }
+                }
+                startActivity(intent)
+            }
+
             btnBack.setOnClickListener { finish() }
 
             btnPing.setOnClickListener {
@@ -220,7 +243,13 @@ class ChatRoomActivity : AppCompatActivity() {
             }
 
             btnCall.setOnClickListener {
-                Toast.makeText(this@ChatRoomActivity, "Starting VoIP Call...", Toast.LENGTH_SHORT).show()
+                val intent = Intent(this@ChatRoomActivity, CallActivity::class.java).apply {
+                    putExtra(CallActivity.EXTRA_CALL_ID, "call_${System.currentTimeMillis()}")
+                    putExtra(CallActivity.EXTRA_TARGET_USER_ID, viewModel.conversationId.value)
+                    putExtra(CallActivity.EXTRA_IS_OUTGOING, true)
+                    putExtra(CallActivity.EXTRA_CALL_TYPE, "voice")
+                }
+                startActivity(intent)
             }
 
             btnMoreChatOptions.setOnClickListener {
@@ -245,7 +274,11 @@ class ChatRoomActivity : AppCompatActivity() {
                     Toast.makeText(this, "Voice note unavailable", Toast.LENGTH_SHORT).show()
                 }
             }
-        )
+        ).apply {
+            onImageClicked = { imageUrl ->
+                showFullScreenImage(imageUrl)
+            }
+        }
 
         val layoutManager = LinearLayoutManager(this).apply {
             stackFromEnd = true
@@ -253,6 +286,28 @@ class ChatRoomActivity : AppCompatActivity() {
 
         binding.rvMessages.layoutManager = layoutManager
         binding.rvMessages.adapter = messageAdapter
+
+        // Mention suggestions
+        mentionAdapter = GroupMemberAdapter(
+            onItemClicked = { user ->
+                insertMention(user.displayName)
+            }
+        )
+        binding.rvMentionSuggestions.layoutManager = LinearLayoutManager(this)
+        binding.rvMentionSuggestions.adapter = mentionAdapter
+    }
+
+    private fun insertMention(name: String) {
+        val text = binding.etMessageInput.text.toString()
+        val pos = binding.etMessageInput.selectionStart
+        val beforeCursor = text.take(pos)
+        val lastAt = beforeCursor.lastIndexOf('@')
+        if (lastAt != -1) {
+            val newText = text.substring(0, lastAt) + "@$name " + text.substring(pos)
+            binding.etMessageInput.setText(newText)
+            binding.etMessageInput.setSelection(lastAt + name.length + 2)
+        }
+        viewModel.onInputTextChanged(binding.etMessageInput.text.toString(), binding.etMessageInput.selectionStart)
     }
 
     private fun setupInputBar() {
@@ -262,6 +317,8 @@ class ChatRoomActivity : AppCompatActivity() {
                 ivSendIcon.visibility = if (hasText) View.VISIBLE else View.GONE
                 ivMicIcon.visibility = if (hasText) View.GONE else View.VISIBLE
                 viewModel.sendTypingEvent(hasText)
+                
+                viewModel.onInputTextChanged(text?.toString().orEmpty(), etMessageInput.selectionStart)
             }
 
             etMessageInput.setOnClickListener {
@@ -398,7 +455,39 @@ class ChatRoomActivity : AppCompatActivity() {
             pickAudioLauncher.launch("audio/*")
         }
 
+        sheetBinding.btnPickLocation.setOnClickListener {
+            sheet.dismiss()
+            startLocationPicker()
+        }
+
+        sheetBinding.btnPickGif.setOnClickListener {
+            sheet.dismiss()
+            showGifPicker()
+        }
+
         sheet.show()
+    }
+
+    private fun startLocationPicker() {
+        val intent = Intent(this, LocationPickerActivity::class.java)
+        startActivityForResult(intent, 1002)
+    }
+
+    private fun showGifPicker() {
+        val gifPicker = GifPickerBottomSheet { url ->
+            viewModel.sendMediaMessage(url, 1, "GIF") // Using type IMAGE for GIFs
+        }
+        gifPicker.show(supportFragmentManager, "GifPicker")
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 1002 && resultCode == RESULT_OK && data != null) {
+            val lat = data.getDoubleExtra("lat", 0.0)
+            val lng = data.getDoubleExtra("lng", 0.0)
+            viewModel.sendTextMessage("📍 Location: https://maps.google.com/maps?q=$lat,$lng")
+        }
     }
 
     private fun launchCameraCapture() {
@@ -426,9 +515,13 @@ class ChatRoomActivity : AppCompatActivity() {
         val dialogBinding = DialogImagePreviewBinding.inflate(layoutInflater)
         dialog.setContentView(dialogBinding.root)
 
-        dialogBinding.ivPreviewImage.load(imageUri) {
-            crossfade(true)
-        }
+        com.example.gochat.core.media.MediaImageHelper.loadSafeImage(
+            imageView = dialogBinding.ivPreviewImage,
+            url = imageUri.toString(),
+            isCircle = false,
+            placeholderRes = R.drawable.ic_gallery,
+            errorRes = R.drawable.ic_gallery
+        )
 
         dialogBinding.btnCloseImagePreview.setOnClickListener {
             dialog.dismiss()
@@ -437,21 +530,28 @@ class ChatRoomActivity : AppCompatActivity() {
         dialogBinding.fabSendImage.setOnClickListener {
             val caption = dialogBinding.etImageCaption.text?.toString()?.trim().orEmpty()
             dialogBinding.fabSendImage.isEnabled = false
+            dialogBinding.etImageCaption.isEnabled = false
 
             lifecycleScope.launch {
-                val dataUri = withContext(Dispatchers.IO) {
-                    convertImageUriToBase64(imageUri)
+                val compressed = withContext(Dispatchers.IO) {
+                    com.example.gochat.core.media.ImageCompressor.compressImageUri(
+                        context = applicationContext,
+                        uri = imageUri,
+                        maxDimension = 1280,
+                        quality = 80
+                    )
                 }
 
-                if (dataUri != null) {
-                    viewModel.sendMediaMessage(
-                        mediaUrl = dataUri,
-                        type = 1, // Image
+                if (compressed != null) {
+                    viewModel.sendImageMessage(
+                        bytes = compressed.bytes,
+                        dataUriFallback = compressed.dataUri,
                         caption = caption.ifBlank { "📷 Photo" }
                     )
                     dialog.dismiss()
                 } else {
                     dialogBinding.fabSendImage.isEnabled = true
+                    dialogBinding.etImageCaption.isEnabled = true
                     Toast.makeText(this@ChatRoomActivity, "Failed to process photo", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -460,14 +560,29 @@ class ChatRoomActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private fun convertImageUriToBase64(uri: Uri): String? {
-        val compressed = com.example.gochat.core.media.ImageCompressor.compressImageUri(
-            context = applicationContext,
-            uri = uri,
-            maxDimension = 1280,
-            quality = 75
+    private fun showFullScreenImage(mediaUrl: String) {
+        val dialog = Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+
+        val dialogBinding = DialogImagePreviewBinding.inflate(layoutInflater)
+        dialog.setContentView(dialogBinding.root)
+
+        dialogBinding.etImageCaption.visibility = View.GONE
+        dialogBinding.fabSendImage.visibility = View.GONE
+
+        com.example.gochat.core.media.MediaImageHelper.loadSafeImage(
+            imageView = dialogBinding.ivPreviewImage,
+            url = mediaUrl,
+            isCircle = false,
+            placeholderRes = R.drawable.ic_gallery,
+            errorRes = R.drawable.ic_gallery
         )
-        return compressed?.dataUri
+
+        dialogBinding.btnCloseImagePreview.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
     private fun handleSelectedAudioFile(uri: Uri) {
@@ -551,6 +666,17 @@ class ChatRoomActivity : AppCompatActivity() {
                         triggerScreenShake()
                     }
                 }
+
+                launch {
+                    viewModel.mentionSuggestions.collect { suggestions ->
+                        if (suggestions.isNotEmpty()) {
+                            binding.rvMentionSuggestions.visibility = View.VISIBLE
+                            mentionAdapter.submitList(suggestions)
+                        } else {
+                            binding.rvMentionSuggestions.visibility = View.GONE
+                        }
+                    }
+                }
             }
         }
     }
@@ -626,9 +752,51 @@ class ChatRoomActivity : AppCompatActivity() {
         val items = arrayOf("Wallpaper / Theme", "Mute notifications", "Clear chat", "Export chat")
         AlertDialog.Builder(this)
             .setItems(items) { _, which ->
-                Toast.makeText(this, "Option selected", Toast.LENGTH_SHORT).show()
+                when (which) {
+                    0 -> {
+                        val convId = viewModel.conversationId.value ?: intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty()
+                        val title = intent.getStringExtra(EXTRA_CONVERSATION_TITLE) ?: "Chat"
+                        val sheet = ChatWallpaperBottomSheet(
+                            conversationId = convId,
+                            conversationTitle = title,
+                            onWallpaperChanged = { updatedWallpaper ->
+                                applyWallpaper(updatedWallpaper)
+                            }
+                        )
+                        sheet.show(supportFragmentManager, ChatWallpaperBottomSheet.TAG)
+                    }
+                    else -> Toast.makeText(this, "Option selected", Toast.LENGTH_SHORT).show()
+                }
             }
             .show()
+    }
+
+    private fun setupWallpaper(convId: String) {
+        val wallpaperManager = ChatWallpaperManager(this)
+        val wallpaper = wallpaperManager.getWallpaper(convId)
+        applyWallpaper(wallpaper)
+    }
+
+    private fun applyWallpaper(wallpaper: ChatWallpaper) {
+        if (wallpaper.type == WallpaperType.CUSTOM_IMAGE && !wallpaper.imageUriOrPath.isNullOrBlank()) {
+            binding.ivCustomWallpaper.visibility = View.VISIBLE
+            binding.ivCustomWallpaper.load(File(wallpaper.imageUriOrPath))
+            binding.chatRoot.setBackgroundColor(Color.BLACK)
+        } else {
+            binding.ivCustomWallpaper.visibility = View.GONE
+            if (wallpaper.solidColor != null) {
+                binding.chatRoot.setBackgroundColor(wallpaper.solidColor)
+            } else {
+                val drawable = GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    wallpaper.bgGradientColors.toIntArray()
+                )
+                binding.chatRoot.background = drawable
+            }
+        }
+
+        binding.chatDoodleView.visibility = if (wallpaper.showDoodle) View.VISIBLE else View.GONE
+        binding.chatDoodleView.setDoodleOpacity(wallpaper.doodleOpacity)
     }
 
     override fun onPause() {

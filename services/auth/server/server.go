@@ -590,3 +590,52 @@ func (s *AuthServer) SubscribePush(ctx context.Context, req *authpb.SubscribePus
 
 	return &authpb.SubscribePushResponse{Success: true}, nil
 }
+
+func (s *AuthServer) UpdatePrivacySettings(ctx context.Context, req *authpb.UpdatePrivacySettingsRequest) (*authpb.UpdatePrivacySettingsResponse, error) {
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user ID")
+	}
+
+	if req.Settings == nil {
+		return nil, status.Error(codes.InvalidArgument, "settings required")
+	}
+
+	err = s.repo.UpdatePrivacySettings(
+		ctx,
+		uid,
+		req.Settings.ProfilePhotoPrivacy,
+		req.Settings.StatusPrivacy,
+		req.Settings.ReadReceiptsEnabled,
+		req.Settings.OnlinePrivacy,
+		req.Settings.LastSeenPrivacy,
+	)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update privacy settings: %v", err)
+	}
+
+	return &authpb.UpdatePrivacySettingsResponse{Success: true}, nil
+}
+
+func (s *AuthServer) GetPrivacySettings(ctx context.Context, req *authpb.GetPrivacySettingsRequest) (*authpb.GetPrivacySettingsResponse, error) {
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user ID")
+	}
+
+	settings, err := s.repo.GetPrivacySettings(ctx, uid)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to fetch privacy settings: %v", err)
+	}
+
+	return &authpb.GetPrivacySettingsResponse{
+		Settings: &authpb.PrivacySettings{
+			ProfilePhotoPrivacy: settings.ProfilePhotoPrivacy,
+			StatusPrivacy:       settings.StatusPrivacy,
+			ReadReceiptsEnabled: settings.ReadReceiptsEnabled,
+			OnlinePrivacy:       settings.OnlinePrivacy,
+			LastSeenPrivacy:     settings.LastSeenPrivacy,
+		},
+	}, nil
+}
+

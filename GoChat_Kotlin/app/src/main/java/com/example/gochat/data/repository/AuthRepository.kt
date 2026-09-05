@@ -2,6 +2,7 @@ package com.example.gochat.data.repository
 
 import android.content.Context
 import com.example.gochat.core.backup.ChatBackupManager
+import com.example.gochat.data.api.ApiConstants
 import com.example.gochat.data.api.GoChatApiService
 import com.example.gochat.data.api.NetworkModule
 import com.example.gochat.data.api.TokenManager
@@ -10,6 +11,9 @@ import com.example.gochat.data.model.User
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 /**
  * Handles authentication flows — register, login, OTP, profile updates.
@@ -90,6 +94,7 @@ class AuthRepository(private val context: Context) {
                 }
                 extractAndSaveToken(data)
                 extractAndSaveUser(data)
+                syncPushTokenIfAvailable()
                 Result.success(data)
             } else {
                 val errorBody = response.errorBody()?.string().orEmpty()
@@ -132,6 +137,7 @@ class AuthRepository(private val context: Context) {
                 }
                 extractAndSaveToken(data)
                 extractAndSaveUser(data)
+                syncPushTokenIfAvailable()
                 Result.success(data)
             } else {
                 Result.failure(Exception("OTP verification failed (${response.code()})"))
@@ -151,7 +157,10 @@ class AuthRepository(private val context: Context) {
         return try {
             val body = buildJsonObject {
                 displayName?.let { put("display_name", it) }
-                statusText?.let { put("status_text", it) }
+                statusText?.let {
+                    put("status_text", it)
+                    put("bio", it)
+                }
                 avatarUrl?.let { put("avatar_url", it) }
             }
             val response = api.updateProfile(body)
@@ -159,15 +168,168 @@ class AuthRepository(private val context: Context) {
                 val data = response.body() ?: buildJsonObject {}
                 val userJson = data["user"]?.jsonObject ?: data
                 val user = json.decodeFromJsonElement<User>(userJson)
+
                 // Update local cache
-                tokenManager.userDisplayName = user.displayName
-                tokenManager.userAvatarUrl = user.avatarUrl
+                if (user.displayName.isNotBlank()) tokenManager.userDisplayName = user.displayName
+                else displayName?.let { tokenManager.userDisplayName = it }
+
+                if (user.avatarUrl.isNotBlank()) tokenManager.userAvatarUrl = user.avatarUrl
+                else avatarUrl?.let { tokenManager.userAvatarUrl = it }
+
+                val resolvedStatus = user.statusText.ifBlank { user.bio }
+                if (resolvedStatus.isNotBlank()) tokenManager.userStatusText = resolvedStatus
+                else statusText?.let { tokenManager.userStatusText = it }
+
+                // Broadcast profile update via WebSocket mirroring Flutter
+                try {
+                    val ws = NetworkModule.getWebSocket(context)
+                    val wsPayload = buildJsonObject {
+                        put("type", "user_profile_updated")
+                        put("event_type", "EVENT_USER_PROFILE_UPDATED")
+                        put("user", buildJsonObject {
+                            put("id", user.id.ifBlank { tokenManager.userId.orEmpty() })
+                            put("display_name", tokenManager.userDisplayName.orEmpty())
+                            put("status_text", tokenManager.userStatusText.orEmpty())
+                            put("avatar_url", tokenManager.userAvatarUrl.orEmpty())
+                            put("pin", user.pin.ifBlank { tokenManager.userPin.orEmpty() })
+                        })
+                    }
+                    ws.send(wsPayload)
+                } catch (_: Exception) {}
+
                 Result.success(user)
             } else {
                 Result.failure(Exception("Profile update failed (${response.code()})"))
             }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    // ── Push Notifications ─────────────────────────────────────────
+
+    suspend fun subscribePush(token: String, platform: String = "android"): Result<Boolean> {
+        return try {
+            val body = buildJsonObject {
+                put("push_token", token)
+                put("platform", platform)
+            }
+            val response = api.subscribePush(body)
+            if (response.isSuccessful) {
+                tokenManager.fcmToken = token
+                Result.success(true)
+            } else {
+                Result.failure(Exception("Failed to register push token (${response.code()})"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // ── E2EE ──────────────────────────────────────────────────────
+
+    suspend fun uploadE2EEKeys(
+        registrationId: Int,
+        identityKey: String,
+        signedPreKey: String,
+        signedPreKeySignature: String,
+        oneTimeKeys: List<JsonObject>
+    ): Result<Unit> {
+        return try {
+            val body = buildJsonObject {
+                put("registration_id", registrationId)
+                put("prekey_identity", identityKey)
+                put("prekey_signed", signedPreKey)
+                put("prekey_signature", signedPreKeySignature)
+                put("one_time_keys", JsonArray(oneTimeKeys))
+            }
+            val response = api.uploadE2EEKeys(body)
+            if (response.isSuccessful) Result.success(Unit)
+            else Result.failure(Exception("Failed to upload E2EE keys (${response.code()})"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getE2EEKeys(userId: String): Result<JsonObject> {
+        return try {
+            val response = api.getE2EEKeys(userId)
+            if (response.isSuccessful) {
+                Result.success(response.body() ?: buildJsonObject {})
+            } else {
+                Result.failure(Exception("Failed to get E2EE keys (${response.code()})"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // ── Privacy Settings ─────────────────────────────────────────
+
+    suspend fun getPrivacySettings(): Result<JsonObject> {
+        return try {
+            val response = api.getPrivacySettings()
+            if (response.isSuccessful) {
+                Result.success(response.body() ?: buildJsonObject {})
+            } else {
+                Result.failure(Exception("Failed to fetch privacy settings"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updatePrivacySettings(
+        profilePhoto: String? = null,
+        status: String? = null,
+        readReceipts: Boolean? = null,
+        online: String? = null,
+        lastSeen: String? = null
+    ): Result<Unit> {
+        return try {
+            val body = buildJsonObject {
+                profilePhoto?.let { put("profile_photo_privacy", it) }
+                status?.let { put("status_privacy", it) }
+                readReceipts?.let { put("read_receipts_enabled", it) }
+                online?.let { put("online_privacy", it) }
+                lastSeen?.let { put("last_seen_privacy", it) }
+            }
+            val response = api.updatePrivacySettings(body)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to update privacy settings"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun uploadMedia(
+        bytes: ByteArray,
+        mimeType: String = "image/jpeg",
+        fileName: String = "avatar.jpg"
+    ): String? {
+        return try {
+            val mediaType = mimeType.toMediaTypeOrNull()
+            val reqBody = bytes.toRequestBody(mediaType)
+            val part = MultipartBody.Part.createFormData("file", fileName, reqBody)
+            val response = api.uploadMedia(part)
+            if (response.isSuccessful) {
+                val json = response.body()
+                val rawUrl = (json?.get("url") ?: json?.get("Url") ?: json?.get("URL") ?: json?.get("media_url"))?.jsonPrimitive?.contentOrNull
+                if (!rawUrl.isNullOrBlank()) {
+                    if (rawUrl.startsWith("/")) {
+                        "${ApiConstants.BASE_URL.removeSuffix("/")}$rawUrl"
+                    } else {
+                        rawUrl
+                    }
+                } else null
+            } else {
+                null
+            }
+        } catch (_: Exception) {
+            null
         }
     }
 
@@ -281,6 +443,20 @@ class AuthRepository(private val context: Context) {
             ?.jsonPrimitive?.contentOrNull
         tokenManager.userAvatarUrl = (userObj["avatar_url"] ?: userObj["avatarUrl"])
             ?.jsonPrimitive?.contentOrNull
+        val status = (userObj["status_text"] ?: userObj["statusText"] ?: userObj["bio"])
+            ?.jsonPrimitive?.contentOrNull
+        if (!status.isNullOrBlank()) {
+            tokenManager.userStatusText = status
+        }
+    }
+
+    private suspend fun syncPushTokenIfAvailable() {
+        val pushToken = tokenManager.fcmToken
+        if (!pushToken.isNullOrBlank()) {
+            try {
+                subscribePush(pushToken, "android")
+            } catch (_: Exception) {}
+        }
     }
 
     private fun parseError(body: String, code: Int): String {

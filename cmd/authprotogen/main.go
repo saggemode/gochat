@@ -238,13 +238,17 @@ func applyDeviceSessions(fd *descriptorpb.FileDescriptorProto) {
 			fatalf("message %q not found in descriptor", p.name)
 		}
 		for _, f := range p.fields {
+			alreadyExists := false
 			for _, existing := range m.Field {
 				if existing.GetNumber() == f.number {
-					fatalf("field number %d already used in %s", f.number, p.name)
+					alreadyExists = true
+					break
 				}
 			}
+			if !alreadyExists {
+				m.Field = append(m.Field, field(f))
+			}
 		}
-		appendFields(m, p.fields...)
 	}
 
 	// ── new messages ───────────────────────────────────────────────────────────
@@ -284,6 +288,26 @@ func applyDeviceSessions(fd *descriptorpb.FileDescriptorProto) {
 		newMessage("UpdateDeviceResponse",
 			messageField("device", 1, ".auth.Device", false),
 		),
+		newMessage("PrivacySettings",
+			stringField("profile_photo_privacy", 1),
+			stringField("status_privacy", 2),
+			boolField("read_receipts_enabled", 3),
+			stringField("online_privacy", 4),
+			stringField("last_seen_privacy", 5),
+		),
+		newMessage("GetPrivacySettingsRequest",
+			stringField("user_id", 1),
+		),
+		newMessage("GetPrivacySettingsResponse",
+			messageField("settings", 1, ".auth.PrivacySettings", false),
+		),
+		newMessage("UpdatePrivacySettingsRequest",
+			stringField("user_id", 1),
+			messageField("settings", 2, ".auth.PrivacySettings", false),
+		),
+		newMessage("UpdatePrivacySettingsResponse",
+			boolField("success", 1),
+		),
 	}
 	fd.MessageType = append(fd.MessageType, newMessages...)
 
@@ -293,6 +317,8 @@ func applyDeviceSessions(fd *descriptorpb.FileDescriptorProto) {
 		method("ListDevices", ".auth.ListDevicesRequest", ".auth.ListDevicesResponse"),
 		method("RevokeDevice", ".auth.RevokeDeviceRequest", ".auth.RevokeDeviceResponse"),
 		method("UpdateDevice", ".auth.UpdateDeviceRequest", ".auth.UpdateDeviceResponse"),
+		method("GetPrivacySettings", ".auth.GetPrivacySettingsRequest", ".auth.GetPrivacySettingsResponse"),
+		method("UpdatePrivacySettings", ".auth.UpdatePrivacySettingsRequest", ".auth.UpdatePrivacySettingsResponse"),
 	)
 }
 

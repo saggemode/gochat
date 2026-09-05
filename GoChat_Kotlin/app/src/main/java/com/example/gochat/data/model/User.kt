@@ -11,6 +11,7 @@ data class User(
     @SerialName("display_name") val displayName: String = "",
     @SerialName("avatar_url") val avatarUrl: String = "",
     val bio: String = "Hey there! I am using GoChat.",
+    @SerialName("status_text") val statusText: String = "Hey there! I am using GoChat.",
     val status: String = "offline",
     @SerialName("is_online") val isOnline: Boolean = false,
     @SerialName("last_seen") val lastSeen: String? = null

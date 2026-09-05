@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.gms.google.services)
 }
 
 android {
@@ -39,6 +40,7 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
+    implementation(libs.firebase.messaging)
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.activity.ktx)
@@ -68,11 +70,20 @@ dependencies {
 
     // Coil & Media3
     implementation(libs.coil)
+    implementation(libs.coil.gif)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
 
     // Google Play Services Auth (Google Drive backup)
     implementation(libs.google.play.services.auth)
+    implementation(libs.google.maps)
+    implementation(libs.google.location)
+
+    // WebRTC
+    implementation(libs.webrtc)
+
+    // E2EE
+    implementation(libs.signal.protocol)
 
     // Testing
     testImplementation(libs.junit)

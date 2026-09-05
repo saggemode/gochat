@@ -344,6 +344,10 @@ func main() {
 		authRequired.POST("/auth/2fa", authHandler.SetTwoStepPIN)
 		authRequired.POST("/auth/2fa/verify", authHandler.VerifyTwoStepPIN)
 
+		// Privacy & Settings
+		authRequired.GET("/users/privacy", authHandler.GetPrivacySettings)
+		authRequired.PUT("/users/privacy", authHandler.UpdatePrivacySettings)
+
 		// Phone OTP & Registration
 		authRequired.POST("/auth/phone", authHandler.RegisterPhone)
 		authRequired.POST("/auth/phone/verify", authHandler.VerifyPhoneOTP)

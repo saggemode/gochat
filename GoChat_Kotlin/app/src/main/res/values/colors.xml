@@ -10,19 +10,19 @@
     <color name="gochat_accent">#10B981</color>
     <color name="gochat_accent_hover">#059669</color>
 
-    <!-- GoChat Dark Background & Surfaces -->
-    <color name="gochat_bg_dark">#050507</color>
-    <color name="gochat_surface_dark">#121215</color>
-    <color name="gochat_card_dark">#18181B</color>
-    <color name="gochat_card_lighter">#27272A</color>
-    <color name="gochat_border_dark">#27272A</color>
+    <!-- GoChat Day/Night Background & Surfaces (Default: Light Mode) -->
+    <color name="gochat_bg_dark">#F0F2F5</color>
+    <color name="gochat_surface_dark">#FFFFFF</color>
+    <color name="gochat_card_dark">#FFFFFF</color>
+    <color name="gochat_card_lighter">#F7F8FA</color>
+    <color name="gochat_border_dark">#E4E6EB</color>
     <color name="gochat_border_focused">#10B981</color>
 
-    <!-- Text Colors -->
-    <color name="gochat_text_primary">#FFFFFF</color>
-    <color name="gochat_text_secondary">#A1A1AA</color>
-    <color name="gochat_text_muted">#71717A</color>
-    <color name="gochat_text_subtle">#52525B</color>
+    <!-- Text Colors (Default: Light Mode) -->
+    <color name="gochat_text_primary">#111B21</color>
+    <color name="gochat_text_secondary">#54656F</color>
+    <color name="gochat_text_muted">#667781</color>
+    <color name="gochat_text_subtle">#8696A0</color>
 
     <!-- Feedback & Alerts -->
     <color name="gochat_error">#EF4444</color>
@@ -30,16 +30,18 @@
     <color name="gochat_error_border">#4DEF4444</color>
     <color name="gochat_otp_banner_bg">#26064E3B</color>
     <color name="gochat_otp_banner_border">#3310B981</color>
-    <color name="gochat_otp_banner_text">#6EE7B7</color>
+    <color name="gochat_otp_banner_text">#008069</color>
     <color name="gochat_otp_banner_subtext">#059669</color>
 
     <!-- Glow & Decoration -->
     <color name="gochat_glow_emerald">#1A00A884</color>
     <color name="gochat_glow_purple">#1A7C3AED</color>
 
-    <!-- WhatsApp Classic Dark Wallpaper & Toolbar -->
-    <color name="whatsapp_chat_bg_start">#111B21</color>
-    <color name="whatsapp_chat_bg_end">#0B141A</color>
-    <color name="whatsapp_toolbar_dark">#1F2C34</color>
-    <color name="whatsapp_doodle_tint">#E9EDEF</color>
+    <!-- WhatsApp Theme (Default: Light Mode) -->
+    <color name="whatsapp_chat_bg_start">#EFEAE2</color>
+    <color name="whatsapp_chat_bg_end">#EAE5DC</color>
+    <color name="whatsapp_toolbar_dark">#FFFFFF</color>
+    <color name="whatsapp_doodle_tint">#111B21</color>
+    <color name="whatsapp_emerald">#00A884</color>
+    <color name="gochat_input_bg">#F7F8FA</color>
 </resources>

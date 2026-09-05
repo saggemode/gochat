@@ -56,6 +56,10 @@ service AuthService {
 
   // Push Notifications Subscription
   rpc SubscribePush(SubscribePushRequest) returns (SubscribePushResponse);
+
+  // Granular Privacy Settings
+  rpc UpdatePrivacySettings(UpdatePrivacySettingsRequest) returns (UpdatePrivacySettingsResponse);
+  rpc GetPrivacySettings(GetPrivacySettingsRequest) returns (GetPrivacySettingsResponse);
 }
 
 // ── Messages ─────────────────────────────────────────────────────────────────
@@ -73,6 +77,31 @@ message User {
   bool   phone_verified = 10;
   string pin            = 11; // BBM-style unique PIN for user discovery
   string country_code   = 12; // ISO 3166-1 alpha-2 (e.g. "US", "NG", "GB")
+}
+
+message PrivacySettings {
+  string profile_photo_privacy = 1; // "everyone", "contacts", "nobody"
+  string status_privacy        = 2; // "everyone", "contacts", "nobody"
+  bool   read_receipts_enabled = 3;
+  string online_privacy        = 4; // "everyone", "contacts", "nobody"
+  string last_seen_privacy     = 5; // "everyone", "contacts", "nobody"
+}
+
+message UpdatePrivacySettingsRequest {
+  string user_id = 1;
+  PrivacySettings settings = 2;
+}
+
+message UpdatePrivacySettingsResponse {
+  bool success = 1;
+}
+
+message GetPrivacySettingsRequest {
+  string user_id = 1;
+}
+
+message GetPrivacySettingsResponse {
+  PrivacySettings settings = 1;
 }
 
 message RegisterRequest {

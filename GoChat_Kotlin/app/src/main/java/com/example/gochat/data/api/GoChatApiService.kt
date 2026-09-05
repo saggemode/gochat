@@ -52,6 +52,29 @@ interface GoChatApiService {
         @Body body: JsonObject
     ): Response<JsonObject>
 
+    @POST(ApiConstants.SUBSCRIBE_PUSH)
+    suspend fun subscribePush(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @GET("api/v1/users/privacy")
+    suspend fun getPrivacySettings(): Response<JsonObject>
+
+    @PUT("api/v1/users/privacy")
+    suspend fun updatePrivacySettings(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @POST("api/v1/auth/e2ee/keys")
+    suspend fun uploadE2EEKeys(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @GET("api/v1/auth/e2ee/keys/{user_id}")
+    suspend fun getE2EEKeys(
+        @Path("user_id") userId: String
+    ): Response<JsonObject>
+
     // ═══════════════════════════════════════════════════════════════
     // ── Contacts ─────────────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════
@@ -73,6 +96,18 @@ interface GoChatApiService {
         @Body body: JsonObject
     ): Response<JsonObject>
 
+    @POST("api/v1/chat/conversations/{id}/members")
+    suspend fun addMember(
+        @Path("id") convId: String,
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @HTTP(method = "DELETE", path = "api/v1/chat/conversations/{id}/members", hasBody = true)
+    suspend fun removeMember(
+        @Path("id") convId: String,
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
     @GET("api/v1/chat/conversations/{id}/messages")
     suspend fun getMessages(
         @Path("id") convId: String
@@ -82,6 +117,44 @@ interface GoChatApiService {
     suspend fun sendMessage(
         @Path("id") convId: String,
         @Body body: JsonObject
+    ): Response<JsonObject>
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── Group Management ─────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════
+
+    @GET("api/v1/groups/{id}/metadata")
+    suspend fun getGroupMetadata(
+        @Path("id") convId: String
+    ): Response<GroupMetadata>
+
+    @POST("api/v1/groups/{id}/metadata")
+    suspend fun updateGroupMetadata(
+        @Path("id") convId: String,
+        @Body body: JsonObject
+    ): Response<GroupMetadata>
+
+    @POST("api/v1/groups/{id}/invite-link")
+    suspend fun generateInviteLink(
+        @Path("id") convId: String
+    ): Response<JsonObject>
+
+    @POST("api/v1/groups/join")
+    suspend fun joinByInviteCode(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @POST("api/v1/groups/{id}/members/{userId}/promote")
+    suspend fun promoteMember(
+        @Path("id") convId: String,
+        @Path("userId") userId: String,
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @POST("api/v1/groups/{id}/members/{userId}/demote")
+    suspend fun demoteMember(
+        @Path("id") convId: String,
+        @Path("userId") userId: String
     ): Response<JsonObject>
 
     // ═══════════════════════════════════════════════════════════════

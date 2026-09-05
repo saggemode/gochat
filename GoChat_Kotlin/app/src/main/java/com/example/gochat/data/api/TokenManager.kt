@@ -19,6 +19,8 @@ class TokenManager private constructor(context: Context) {
         private const val KEY_USER_PHONE = "user_phone"
         private const val KEY_USER_NAME = "user_display_name"
         private const val KEY_USER_AVATAR = "user_avatar_url"
+        private const val KEY_USER_STATUS = "user_status_text"
+        private const val KEY_FCM_TOKEN = "fcm_token"
 
         @Volatile
         private var INSTANCE: TokenManager? = null
@@ -88,6 +90,14 @@ class TokenManager private constructor(context: Context) {
     var userAvatarUrl: String?
         get() = prefs.getString(KEY_USER_AVATAR, null)
         set(value) = prefs.edit().putString(KEY_USER_AVATAR, value).apply()
+
+    var userStatusText: String?
+        get() = prefs.getString(KEY_USER_STATUS, "Hey there! I am using GoChat.")
+        set(value) = prefs.edit().putString(KEY_USER_STATUS, value).apply()
+
+    var fcmToken: String?
+        get() = prefs.getString(KEY_FCM_TOKEN, null)
+        set(value) = prefs.edit().putString(KEY_FCM_TOKEN, value).apply()
 
     // ── Session Helpers ──────────────────────────────────────────
 

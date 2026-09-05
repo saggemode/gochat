@@ -1,0 +1,419 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_card_dark"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="24dp">
+
+        <!-- Bottom Sheet Drag Handle -->
+        <View
+            android:layout_width="40dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/bg_chip_unselected"
+            android:backgroundTint="@color/gochat_input_bg" />
+
+        <!-- Header -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Chat Wallpaper &amp; Theme"
+                    android:textColor="@color/gochat_text_primary"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvTargetChatSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Customize background for this conversation"
+                    android:textColor="@color/gochat_text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/btnCloseSheet"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="Close"
+                android:focusable="true"
+                android:padding="6dp"
+                android:src="@drawable/ic_close"
+                app:tint="@color/gochat_text_secondary" />
+        </RelativeLayout>
+
+        <!-- Live Interactive Preview Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="170dp"
+            android:layout_marginBottom="18dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:strokeColor="@color/whatsapp_emerald"
+            app:strokeWidth="1dp">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <!-- Solid / Gradient Background -->
+                <View
+                    android:id="@+id/viewPreviewBg"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <!-- Custom Photo Wallpaper -->
+                <ImageView
+                    android:id="@+id/ivPreviewImage"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="Wallpaper Preview"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone" />
+
+                <!-- WhatsApp Doodle Overlay -->
+                <com.example.gochat.ui.chat.ChatDoodleView
+                    android:id="@+id/doodlePreview"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <!-- Top Pill: Preview Tag -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|center_horizontal"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_username_chip"
+                    android:backgroundTint="#99000000"
+                    android:paddingStart="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="2dp"
+                    android:text="LIVE PREVIEW"
+                    android:textColor="@color/white"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
+
+                <!-- Mock Chat Messages -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <!-- Left Bubble (Other) -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="start"
+                        android:layout_marginEnd="40dp"
+                        android:layout_marginBottom="6dp"
+                        android:background="@drawable/bg_bubble_other"
+                        android:paddingStart="10dp"
+                        android:paddingTop="6dp"
+                        android:paddingEnd="10dp"
+                        android:paddingBottom="6dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Hey, check out this wallpaper! ✨"
+                            android:textColor="@color/gochat_text_primary"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <!-- Right Bubble (Me) -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="end"
+                        android:layout_marginStart="40dp"
+                        android:background="@drawable/bg_bubble_me"
+                        android:paddingStart="10dp"
+                        android:paddingTop="6dp"
+                        android:paddingEnd="10dp"
+                        android:paddingBottom="6dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Looks super sleek and clean! 🔥"
+                            android:textColor="@color/white"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+            </FrameLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Presets Title -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="Curated Themes &amp; Gradients"
+            android:textColor="@color/gochat_text_primary"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <!-- Presets RecyclerView -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvPresets"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:clipToPadding="false"
+            android:orientation="horizontal"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            tools:listitem="@layout/item_wallpaper_preset" />
+
+        <!-- Solid Colors Title -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="Solid Colors"
+            android:textColor="@color/gochat_text_primary"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <!-- Solid Colors RecyclerView -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvSolidColors"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:clipToPadding="false"
+            android:orientation="horizontal"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            tools:listitem="@layout/item_wallpaper_solid" />
+
+        <!-- Custom Image Section -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/bg_input_field"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="12dp">
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_gallery"
+                app:tint="@color/whatsapp_emerald" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Custom Photo Wallpaper"
+                    android:textColor="@color/gochat_text_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvCustomImageStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Choose from device gallery"
+                    android:textColor="@color/gochat_text_secondary"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPickImage"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:backgroundTint="@color/whatsapp_emerald"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="Select"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                android:textSize="12sp"
+                app:cornerRadius="18dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRemoveImage"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_marginStart="6dp"
+                android:backgroundTint="@color/gochat_input_bg"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="Remove"
+                android:textAllCaps="false"
+                android:textColor="@color/gochat_text_secondary"
+                android:textSize="12sp"
+                android:visibility="gone"
+                app:cornerRadius="18dp" />
+        </LinearLayout>
+
+        <!-- Doodle Settings Section -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="18dp"
+            android:background="@drawable/bg_input_field"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="WhatsApp Doodle Pattern"
+                        android:textColor="@color/gochat_text_primary"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Subtle chat illustration overlay"
+                        android:textColor="@color/gochat_text_secondary"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switchDoodle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/layoutDoodleOpacity"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Pattern Opacity"
+                        android:textColor="@color/gochat_text_secondary"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/tvOpacityValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="6%"
+                        android:textColor="@color/whatsapp_emerald"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/sliderDoodleOpacity"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:stepSize="1"
+                    android:value="6"
+                    android:valueFrom="1"
+                    android:valueTo="25"
+                    app:thumbColor="@color/whatsapp_emerald"
+                    app:trackColorActive="@color/whatsapp_emerald"
+                    app:trackColorInactive="@color/gochat_input_bg" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Action Buttons -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnApplyThisChat"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:backgroundTint="@color/whatsapp_emerald"
+            android:text="Set for This Chat"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:cornerRadius="24dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnApplyAllChats"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="@color/gochat_input_bg"
+            android:text="Set for All Chats"
+            android:textAllCaps="false"
+            android:textColor="@color/gochat_text_primary"
+            android:textSize="13sp"
+            app:cornerRadius="22dp"
+            app:strokeColor="@color/whatsapp_emerald"
+            app:strokeWidth="1dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnResetDefault"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_marginTop="4dp"
+            android:text="Reset to Default Wallpaper"
+            android:textAllCaps="false"
+            android:textColor="@color/gochat_text_secondary"
+            android:textSize="12sp" />
+
+    </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>

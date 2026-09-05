@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_card_dark"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <!-- Header Icon & Title -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <FrameLayout
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_circle_pulse"
+            android:backgroundTint="#2600A884">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:contentDescription="Edit Profile"
+                android:src="@drawable/ic_edit_status"
+                app:tint="@color/gochat_accent" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Edit Profile"
+                android:textColor="@color/gochat_text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Update your display name and status"
+                android:textColor="@color/gochat_text_secondary"
+                android:textSize="12.5sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:layout_marginVertical="16dp"
+        android:background="@color/gochat_border_dark" />
+
+    <!-- Display Name Label & Input -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Display Name"
+        android:textColor="@color/gochat_emerald_light"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+    <EditText
+        android:id="@+id/etEditDisplayName"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/bg_input_field"
+        android:hint="Your Name"
+        android:imeOptions="actionNext"
+        android:importantForAutofill="no"
+        android:inputType="textPersonName|textCapWords"
+        android:maxLines="1"
+        android:paddingHorizontal="14dp"
+        android:textColor="@color/gochat_text_primary"
+        android:textColorHint="@color/gochat_text_muted"
+        android:textSize="15sp"
+        tools:text="Alex Morgan" />
+
+    <!-- Status / Bio Label & Input -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Status / About"
+        android:textColor="@color/gochat_emerald_light"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+    <EditText
+        android:id="@+id/etEditStatusText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/bg_input_field"
+        android:gravity="top|start"
+        android:hint="Hey there! I am using GoChat."
+        android:imeOptions="actionDone"
+        android:importantForAutofill="no"
+        android:inputType="textMultiLine|textCapSentences"
+        android:maxLength="140"
+        android:maxLines="3"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="10dp"
+        android:textColor="@color/gochat_text_primary"
+        android:textColorHint="@color/gochat_text_muted"
+        android:textSize="14sp"
+        tools:text="Building microservices in Go &amp; Kotlin" />
+
+    <!-- Quick Status Presets -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:text="Quick Status Presets"
+        android:textColor="@color/gochat_text_muted"
+        android:textSize="12sp" />
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/chipAvailable"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_chip_unselected"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp"
+                android:text="Available"
+                android:textColor="@color/gochat_text_secondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/chipBusy"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_chip_unselected"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp"
+                android:text="Busy"
+                android:textColor="@color/gochat_text_secondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/chipAtWork"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_chip_unselected"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp"
+                android:text="At work"
+                android:textColor="@color/gochat_text_secondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/chipInMeeting"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_chip_unselected"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp"
+                android:text="In a meeting"
+                android:textColor="@color/gochat_text_secondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/chipDefaultStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_chip_unselected"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp"
+                android:text="Hey there! I am using GoChat."
+                android:textColor="@color/gochat_text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <!-- Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="22dp"
+        android:gravity="end|center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/btnCancelEdit"
+            android:layout_width="wrap_content"
+            android:layout_height="42dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:paddingHorizontal="18dp"
+            android:text="Cancel"
+            android:textColor="@color/gochat_text_muted"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp">
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnSaveEdit"
+                android:layout_width="wrap_content"
+                android:layout_height="42dp"
+                android:minWidth="90dp"
+                android:background="@drawable/bg_button_emerald"
+                android:paddingHorizontal="20dp"
+                android:text="Save"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <ProgressBar
+                android:id="@+id/pbSavingProfile"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_gravity="center"
+                android:indeterminateTint="@color/white"
+                android:visibility="gone" />
+        </FrameLayout>
+    </LinearLayout>
+
+</LinearLayout>

@@ -21,6 +21,7 @@ object ApiConstants {
     const val VERIFY_OTP = "api/v1/auth/otp/verify"
     const val SYNC_CONTACTS = "api/v1/users/sync"
     const val USER_PROFILE = "api/v1/users/me"
+    const val SUBSCRIBE_PUSH = "api/v1/auth/push/subscribe"
 
     // ── Conversations & Messages ─────────────────────────────────
     const val CONVERSATIONS = "api/v1/chat/conversations"
