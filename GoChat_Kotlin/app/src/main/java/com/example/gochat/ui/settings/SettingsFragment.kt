@@ -35,6 +35,7 @@ import com.example.gochat.databinding.DialogEditProfileBinding
 import com.example.gochat.databinding.FragmentSettingsBinding
 import com.example.gochat.ui.auth.LoginActivity
 import com.example.gochat.ui.backup.ChatBackupActivity
+import com.example.gochat.ui.devices.LinkedDevicesActivity
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.coroutines.launch
 import java.io.File
@@ -156,6 +157,11 @@ class SettingsFragment : Fragment() {
                     clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.label_gochat_pin), pin))
                     Toast.makeText(requireContext(), getString(R.string.toast_pin_copied, pin), Toast.LENGTH_SHORT).show()
                 }
+            }
+
+            // Linked Devices
+            tileLinkedDevices.setOnClickListener {
+                startActivity(Intent(requireContext(), LinkedDevicesActivity::class.java))
             }
 
             // Chat Backup

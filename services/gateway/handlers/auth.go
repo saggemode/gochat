@@ -3,12 +3,15 @@ package handlers
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -16,15 +19,34 @@ import (
 	authpb "gochat/gen/auth"
 )
 
+// DeviceSession represents an active linked device or web session.
+type DeviceSession struct {
+	ID           string    `json:"id"`
+	DeviceName   string    `json:"device_name"`
+	OS           string    `json:"os"`
+	Browser      string    `json:"browser"`
+	Platform     string    `json:"platform"`
+	IPAddress    string    `json:"ip_address"`
+	LastActiveAt time.Time `json:"last_active_at"`
+	IsCurrent    bool      `json:"is_current"`
+}
+
 // AuthHandler wraps the Auth Service gRPC client.
 type AuthHandler struct {
 	client authpb.AuthServiceClient
+	redis  *redis.Client
 	log    *zap.Logger
 }
 
 // NewAuthHandler constructs the AuthHandler.
 func NewAuthHandler(client authpb.AuthServiceClient, log *zap.Logger) *AuthHandler {
 	return &AuthHandler{client: client, log: log}
+}
+
+// WithRedis sets the Redis client for device/session tracking.
+func (h *AuthHandler) WithRedis(redis *redis.Client) *AuthHandler {
+	h.redis = redis
+	return h
 }
 
 const (
@@ -235,6 +257,64 @@ func (h *AuthHandler) GetUser(c *gin.Context) {
 	c.JSON(http.StatusOK, resp.User)
 }
 
+// RegisterDevice registers or heartbeats a client device session.
+func (h *AuthHandler) RegisterDevice(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	var req struct {
+		DeviceID   string `json:"device_id"`
+		DeviceName string `json:"device_name"`
+		Platform   string `json:"platform"`
+		OS         string `json:"os"`
+		Browser    string `json:"browser"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.DeviceID == "" {
+		req.DeviceID = fmt.Sprintf("dev_%d", time.Now().UnixNano())
+	}
+	if req.DeviceName == "" {
+		req.DeviceName = "Android Device"
+	}
+	if req.Platform == "" {
+		req.Platform = "android"
+	}
+	if req.OS == "" {
+		req.OS = "Android"
+	}
+	if req.Browser == "" {
+		req.Browser = "GoChat App"
+	}
+
+	sess := DeviceSession{
+		ID:           req.DeviceID,
+		DeviceName:   req.DeviceName,
+		Platform:     req.Platform,
+		OS:           req.OS,
+		Browser:      req.Browser,
+		IPAddress:    c.ClientIP(),
+		LastActiveAt: time.Now(),
+		IsCurrent:    true,
+	}
+
+	if h.redis != nil {
+		data, _ := json.Marshal(sess)
+		_ = h.redis.HSet(c.Request.Context(), "user:devices:"+userID, req.DeviceID, data).Err()
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"device":  sess,
+	})
+}
+
 // GetActiveSessions lists active user sessions/devices.
 func (h *AuthHandler) GetActiveSessions(c *gin.Context) {
 	userID := getUserID(c)
@@ -243,42 +323,118 @@ func (h *AuthHandler) GetActiveSessions(c *gin.Context) {
 		return
 	}
 
-	sessions := []gin.H{
-		{
-			"id":             "sess-curr-01",
-			"device_name":    "Chrome Desktop",
-			"os":             "Windows 11",
-			"browser":        "Chrome 122.0",
-			"ip_address":     c.ClientIP(),
-			"last_active_at": time.Now().Format(time.RFC3339),
-			"is_current":     true,
-		},
-		{
-			"id":             "sess-mob-02",
-			"device_name":    "iPhone 15 Pro",
-			"os":             "iOS 17.4",
-			"browser":        "GoChat Mobile App",
-			"ip_address":     "197.210.64.12",
-			"last_active_at": time.Now().Add(-2 * time.Hour).Format(time.RFC3339),
-			"is_current":     false,
-		},
+	currentDeviceID := c.GetHeader("X-Device-Id")
+	var sessions []DeviceSession
+
+	if h.redis != nil {
+		vals, err := h.redis.HGetAll(c.Request.Context(), "user:devices:"+userID).Result()
+		if err == nil && len(vals) > 0 {
+			for _, raw := range vals {
+				var s DeviceSession
+				if json.Unmarshal([]byte(raw), &s) == nil {
+					if currentDeviceID != "" && s.ID == currentDeviceID {
+						s.IsCurrent = true
+					}
+					sessions = append(sessions, s)
+				}
+			}
+		}
 	}
-	c.JSON(http.StatusOK, gin.H{"sessions": sessions})
+
+	// Sort sessions by last active time descending
+	if len(sessions) > 1 {
+		sort.Slice(sessions, func(i, j int) bool {
+			return sessions[i].LastActiveAt.After(sessions[j].LastActiveAt)
+		})
+	}
+
+	// If no devices registered yet, provide default current device entry
+	if len(sessions) == 0 {
+		ua := c.GetHeader("User-Agent")
+		osName := "Android"
+		browserName := "GoChat Mobile App"
+		platform := "android"
+		if strings.Contains(strings.ToLower(ua), "windows") {
+			osName = "Windows"
+			platform = "desktop"
+			browserName = "Chrome / Web"
+		} else if strings.Contains(strings.ToLower(ua), "mac") {
+			osName = "macOS"
+			platform = "desktop"
+			browserName = "Safari / Web"
+		} else if strings.Contains(strings.ToLower(ua), "iphone") {
+			osName = "iOS"
+			platform = "ios"
+			browserName = "GoChat iOS"
+		}
+
+		sessions = []DeviceSession{
+			{
+				ID:           "primary_device",
+				DeviceName:   "This Phone (" + osName + ")",
+				OS:           osName,
+				Browser:      browserName,
+				Platform:     platform,
+				IPAddress:    c.ClientIP(),
+				LastActiveAt: time.Now(),
+				IsCurrent:    true,
+			},
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"sessions": sessions,
+		"devices":  sessions,
+	})
 }
 
-// TerminateSession revokes a specific session by ID.
+// TerminateSession revokes a specific session or unlinks a device by ID.
 func (h *AuthHandler) TerminateSession(c *gin.Context) {
+	userID := getUserID(c)
 	sessionID := c.Param("id")
+	if sessionID == "" {
+		sessionID = c.Param("device_id")
+	}
 	if sessionID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "session_id required"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "terminated_id": sessionID})
+
+	if h.redis != nil && userID != "" {
+		_ = h.redis.HDel(c.Request.Context(), "user:devices:"+userID, sessionID).Err()
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":       true,
+		"terminated_id": sessionID,
+		"device_id":     sessionID,
+	})
 }
 
 // TerminateAllOtherSessions logs out all other active devices.
 func (h *AuthHandler) TerminateAllOtherSessions(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": "All other active sessions terminated"})
+	userID := getUserID(c)
+	currentDeviceID := c.GetHeader("X-Device-Id")
+
+	if h.redis != nil && userID != "" {
+		if currentDeviceID != "" {
+			vals, err := h.redis.HGetAll(c.Request.Context(), "user:devices:"+userID).Result()
+			if err == nil {
+				for devID := range vals {
+					if devID != currentDeviceID {
+						_ = h.redis.HDel(c.Request.Context(), "user:devices:"+userID, devID).Err()
+					}
+				}
+			}
+		} else {
+			_ = h.redis.Del(c.Request.Context(), "user:devices:"+userID).Err()
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "All other active sessions terminated",
+	})
 }
 
 // GetSecurityAuditLogs returns recent security event logs for the user.

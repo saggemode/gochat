@@ -265,6 +265,80 @@ class AuthRepository(private val context: Context) {
         }
     }
 
+    // ── Linked Devices ───────────────────────────────────────────
+
+    suspend fun getLinkedDevices(): Result<List<LinkedDevice>> {
+        return try {
+            val response = api.getLinkedDevices()
+            if (response.isSuccessful) {
+                val data = response.body() ?: buildJsonObject {}
+                val list = (data["devices"] ?: data["sessions"])?.jsonArray ?: JsonArray(emptyList())
+                val devices = list.mapNotNull { element ->
+                    if (element !is JsonObject) return@mapNotNull null
+                    LinkedDevice(
+                        id = element["id"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                        deviceName = element["device_name"]?.jsonPrimitive?.contentOrNull.orEmpty().ifBlank { "Device" },
+                        platform = element["platform"]?.jsonPrimitive?.contentOrNull.orEmpty().ifBlank { "android" },
+                        os = element["os"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                        browser = element["browser"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                        ipAddress = element["ip_address"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                        lastActiveAt = element["last_active_at"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                        isCurrent = element["is_current"]?.jsonPrimitive?.booleanOrNull ?: false
+                    )
+                }
+                Result.success(devices)
+            } else {
+                Result.failure(Exception("Failed to fetch linked devices (${response.code()})"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun registerCurrentDevice(
+        deviceId: String = "",
+        deviceName: String = "",
+        platform: String = "android",
+        os: String = "Android",
+        browser: String = "GoChat App"
+    ): Result<Unit> {
+        return try {
+            val devId = deviceId.ifBlank {
+                android.provider.Settings.Secure.getString(
+                    context.contentResolver,
+                    android.provider.Settings.Secure.ANDROID_ID
+                ) ?: "dev_android"
+            }
+            val devName = deviceName.ifBlank {
+                "${android.os.Build.MANUFACTURER.replaceFirstChar { it.uppercase() }} ${android.os.Build.MODEL}"
+            }
+
+            val body = buildJsonObject {
+                put("device_id", devId)
+                put("device_name", devName)
+                put("platform", platform)
+                put("os", os)
+                put("browser", browser)
+            }
+
+            val response = api.registerDevice(body)
+            if (response.isSuccessful) Result.success(Unit)
+            else Result.failure(Exception("Failed to register device (${response.code()})"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun unlinkDevice(deviceId: String): Result<Unit> {
+        return try {
+            val response = api.unlinkDevice(deviceId)
+            if (response.isSuccessful) Result.success(Unit)
+            else Result.failure(Exception("Failed to unlink device (${response.code()})"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     // ── Privacy Settings ─────────────────────────────────────────
 
     suspend fun getPrivacySettings(): Result<JsonObject> {

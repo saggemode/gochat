@@ -128,6 +128,13 @@
             android:theme="@style/Theme.GoChat"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- Linked Devices Activity -->
+        <activity
+            android:name=".ui.devices.LinkedDevicesActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- Marketplace Activities -->
         <activity
             android:name=".ui.marketplace.ProductDetailsActivity"

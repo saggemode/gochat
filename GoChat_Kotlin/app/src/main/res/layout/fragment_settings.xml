@@ -180,6 +180,59 @@
             android:orientation="vertical"
             android:paddingTop="8dp">
 
+            <!-- Linked Devices Row -->
+            <LinearLayout
+                android:id="@+id/tileLinkedDevices"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="20dp"
+                android:paddingVertical="16dp">
+
+                <ImageView
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:contentDescription="Linked Devices"
+                    android:src="@drawable/ic_devices"
+                    app:tint="@color/gochat_accent" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Linked Devices"
+                        android:textColor="@color/gochat_text_primary"
+                        android:textSize="15.5sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvLinkedDevicesSubtitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Web, Desktop, and other linked devices"
+                        android:textColor="@color/gochat_text_muted"
+                        android:textSize="12.5sp" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="Go to linked devices"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/gochat_text_muted" />
+            </LinearLayout>
+
             <!-- Chat Backup & Restore Row -->
             <LinearLayout
                 android:id="@+id/tileChatBackup"

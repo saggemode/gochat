@@ -252,7 +252,7 @@ func main() {
 	_ = bus // available for async publishing in handlers
 
 	// Handlers
-	authHandler := handlers.NewAuthHandler(authClient, log)
+	authHandler := handlers.NewAuthHandler(authClient, log).WithRedis(redisClient)
 	chatHandler := handlers.NewChatHandler(chatClient, authClient, hub, log)
 	aiHandler := handlers.NewAIHandler(aiClient, log)
 	mediaHandler := handlers.NewMediaHandler(mediaClient, cfg.TelegramBotToken, log)
@@ -334,10 +334,14 @@ func main() {
 		authRequired.POST("/users/presence", authHandler.UpdatePresence)
 		authRequired.POST("/users/sync", authHandler.SyncContacts)
 
-		// Sessions & Security Audit Logs
+		// Sessions, Linked Devices & Security Audit Logs
 		authRequired.GET("/auth/sessions", authHandler.GetActiveSessions)
 		authRequired.DELETE("/auth/sessions/other", authHandler.TerminateAllOtherSessions)
 		authRequired.DELETE("/auth/sessions/:id", authHandler.TerminateSession)
+		authRequired.GET("/auth/devices", authHandler.GetActiveSessions)
+		authRequired.POST("/auth/devices", authHandler.RegisterDevice)
+		authRequired.DELETE("/auth/devices/:id", authHandler.TerminateSession)
+		authRequired.DELETE("/auth/devices", authHandler.TerminateAllOtherSessions)
 		authRequired.GET("/auth/audit-logs", authHandler.GetSecurityAuditLogs)
 		authRequired.POST("/users/report", authHandler.ReportUser)
 		authRequired.PUT("/users/privacy", authHandler.UpdatePrivacySettings)

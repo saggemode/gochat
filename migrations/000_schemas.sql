@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS core.users (
     prekey_identity     TEXT,
     prekey_signed       TEXT,
     prekey_signature    TEXT,
+    prekey_registration_id INT         DEFAULT 0,
     country_code        TEXT        NOT NULL DEFAULT '',
     pin                 TEXT        DEFAULT '',
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),

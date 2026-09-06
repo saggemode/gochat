@@ -42,9 +42,20 @@ func AutoMigrate(ctx context.Context, pool *pgxpool.Pool, serviceName string, lo
 		phone           TEXT,
 		phone_verified  BOOLEAN     NOT NULL DEFAULT FALSE,
 		country_code    TEXT        NOT NULL DEFAULT '',
+		pin             TEXT        DEFAULT '',
+		prekey_identity TEXT,
+		prekey_signed   TEXT,
+		prekey_signature TEXT,
+		prekey_registration_id INT DEFAULT 0,
 		created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 		updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
-	);`)
+	);
+	ALTER TABLE core.users ADD COLUMN IF NOT EXISTS pin TEXT DEFAULT '';
+	ALTER TABLE core.users ADD COLUMN IF NOT EXISTS prekey_identity TEXT;
+	ALTER TABLE core.users ADD COLUMN IF NOT EXISTS prekey_signed TEXT;
+	ALTER TABLE core.users ADD COLUMN IF NOT EXISTS prekey_signature TEXT;
+	ALTER TABLE core.users ADD COLUMN IF NOT EXISTS prekey_registration_id INT DEFAULT 0;
+	`)
 
 	// 3. Locate candidate migrations directory
 	candidatePaths := []string{

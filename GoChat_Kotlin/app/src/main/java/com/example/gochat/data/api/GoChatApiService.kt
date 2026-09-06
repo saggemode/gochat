@@ -75,6 +75,20 @@ interface GoChatApiService {
         @Path("user_id") userId: String
     ): Response<JsonObject>
 
+    // ── Linked Devices ───────────────────────────────────────────
+    @GET("api/v1/auth/devices")
+    suspend fun getLinkedDevices(): Response<JsonObject>
+
+    @POST("api/v1/auth/devices")
+    suspend fun registerDevice(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @DELETE("api/v1/auth/devices/{id}")
+    suspend fun unlinkDevice(
+        @Path("id") deviceId: String
+    ): Response<JsonObject>
+
     // ═══════════════════════════════════════════════════════════════
     // ── Contacts ─────────────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════
