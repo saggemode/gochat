@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -11,6 +12,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -20,6 +22,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.gochat.R
+import com.example.gochat.core.media.ImageCompressor
 import com.example.gochat.core.media.MediaImageHelper
 import com.example.gochat.data.model.Category
 import com.example.gochat.data.model.Product
@@ -28,7 +31,9 @@ import com.example.gochat.databinding.DialogAddProductBinding
 import com.example.gochat.databinding.FragmentMarketplaceBinding
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.tabs.TabLayout
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 class MarketplaceFragment : Fragment() {
@@ -40,6 +45,39 @@ class MarketplaceFragment : Fragment() {
     private lateinit var productAdapter: ProductAdapter
     private lateinit var categoryAdapter: CategoryAdapter
     private lateinit var storeProductAdapter: StoreProductAdapter
+
+    private var selectedStoreLogoUri: Uri? = null
+    private var onProductImagesPicked: ((List<Uri>) -> Unit)? = null
+
+    private val pickStoreLogoLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        selectedStoreLogoUri = uri
+        if (uri != null) {
+            binding.ivStoreLogoPreview.setPadding(0, 0, 0, 0)
+            MediaImageHelper.loadSafeImage(binding.ivStoreLogoPreview, uri.toString(), cornerRadiusDp = 12f)
+            binding.btnRemoveStoreLogo.visibility = View.VISIBLE
+            binding.tvStoreLogoSubtitle.text = "Logo selected from phone"
+        } else {
+            resetStoreLogoPreview()
+        }
+    }
+
+    private val pickProductImagesLauncher = registerForActivityResult(
+        ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        onProductImagesPicked?.invoke(uris)
+    }
+
+    private fun resetStoreLogoPreview() {
+        selectedStoreLogoUri = null
+        binding.ivStoreLogoPreview.setImageDrawable(null)
+        binding.ivStoreLogoPreview.setImageResource(R.drawable.ic_camera_status)
+        val pad = (14 * resources.displayMetrics.density).toInt()
+        binding.ivStoreLogoPreview.setPadding(pad, pad, pad, pad)
+        binding.btnRemoveStoreLogo.visibility = View.GONE
+        binding.tvStoreLogoSubtitle.text = "Tap to select logo from phone"
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentMarketplaceBinding.inflate(inflater, container, false)
@@ -153,6 +191,14 @@ class MarketplaceFragment : Fragment() {
         }
 
         // Seller Hub actions
+        binding.layoutSelectStoreLogo.setOnClickListener {
+            pickStoreLogoLauncher.launch("image/*")
+        }
+
+        binding.btnRemoveStoreLogo.setOnClickListener {
+            resetStoreLogoPreview()
+        }
+
         binding.btnCreateStore.setOnClickListener {
             handleCreateStore()
         }
@@ -177,7 +223,6 @@ class MarketplaceFragment : Fragment() {
         val location = binding.etStoreLocation.text.toString().trim()
         val phone = binding.etStorePhone.text.toString().trim()
         val description = binding.etStoreDescription.text.toString().trim()
-        val logoUrl = binding.etStoreLogoUrl.text.toString().trim()
 
         if (name.isBlank()) {
             binding.etStoreName.error = "Store name is required"
@@ -188,20 +233,53 @@ class MarketplaceFragment : Fragment() {
             return
         }
 
-        viewModel.createStore(
-            name = name,
-            category = category,
-            location = location,
-            phone = phone,
-            description = description,
-            logoUrl = logoUrl,
-            onSuccess = {
-                Toast.makeText(requireContext(), "🎉 Store \"$name\" is now live on GoChat!", Toast.LENGTH_LONG).show()
-            },
-            onError = { err ->
-                Toast.makeText(requireContext(), err, Toast.LENGTH_SHORT).show()
+        binding.btnCreateStore.isEnabled = false
+        binding.btnCreateStore.text = "Creating store..."
+
+        lifecycleScope.launch {
+            var uploadedLogoUrl: String? = null
+            val logoUri = selectedStoreLogoUri
+            if (logoUri != null) {
+                withContext(Dispatchers.IO) {
+                    val compressed = ImageCompressor.compressImageUri(
+                        requireContext(),
+                        logoUri,
+                        maxDimension = 512,
+                        quality = 80
+                    )
+                    if (compressed != null) {
+                        uploadedLogoUrl = viewModel.uploadMedia(
+                            bytes = compressed.bytes,
+                            mimeType = compressed.mimeType,
+                            fileName = "store_logo_${System.currentTimeMillis()}.jpg"
+                        )
+                        if (uploadedLogoUrl.isNullOrBlank()) {
+                            uploadedLogoUrl = compressed.dataUri
+                        }
+                    }
+                }
             }
-        )
+
+            viewModel.createStore(
+                name = name,
+                category = category,
+                location = location,
+                phone = phone,
+                description = description,
+                logoUrl = uploadedLogoUrl,
+                onSuccess = {
+                    binding.btnCreateStore.isEnabled = true
+                    binding.btnCreateStore.text = "Create Business Store"
+                    resetStoreLogoPreview()
+                    Toast.makeText(requireContext(), "🎉 Store \"$name\" is now live on GoChat!", Toast.LENGTH_LONG).show()
+                },
+                onError = { err ->
+                    binding.btnCreateStore.isEnabled = true
+                    binding.btnCreateStore.text = "Create Business Store"
+                    Toast.makeText(requireContext(), err, Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
     }
 
     private fun showAddProductBottomSheet() {
@@ -209,13 +287,78 @@ class MarketplaceFragment : Fragment() {
         val dialogBinding = DialogAddProductBinding.inflate(layoutInflater)
         dialog.setContentView(dialogBinding.root)
 
+        val selectedProductUris = mutableListOf<Uri>()
+
+        fun updatePreviews() {
+            val count = selectedProductUris.size
+            dialogBinding.tvPhotosCount.text = "$count/3 selected"
+
+            // Preview 1
+            if (count >= 1) {
+                dialogBinding.framePreview1.visibility = View.VISIBLE
+                MediaImageHelper.loadSafeImage(dialogBinding.ivPreview1, selectedProductUris[0].toString(), cornerRadiusDp = 8f)
+                dialogBinding.btnRemovePhoto1.setOnClickListener {
+                    selectedProductUris.removeAt(0)
+                    updatePreviews()
+                }
+            } else {
+                dialogBinding.framePreview1.visibility = View.GONE
+            }
+
+            // Preview 2
+            if (count >= 2) {
+                dialogBinding.framePreview2.visibility = View.VISIBLE
+                MediaImageHelper.loadSafeImage(dialogBinding.ivPreview2, selectedProductUris[1].toString(), cornerRadiusDp = 8f)
+                dialogBinding.btnRemovePhoto2.setOnClickListener {
+                    selectedProductUris.removeAt(1)
+                    updatePreviews()
+                }
+            } else {
+                dialogBinding.framePreview2.visibility = View.GONE
+            }
+
+            // Preview 3
+            if (count >= 3) {
+                dialogBinding.framePreview3.visibility = View.VISIBLE
+                MediaImageHelper.loadSafeImage(dialogBinding.ivPreview3, selectedProductUris[2].toString(), cornerRadiusDp = 8f)
+                dialogBinding.btnRemovePhoto3.setOnClickListener {
+                    selectedProductUris.removeAt(2)
+                    updatePreviews()
+                }
+            } else {
+                dialogBinding.framePreview3.visibility = View.GONE
+            }
+
+            // Add photo button slot visibility
+            dialogBinding.layoutAddPhoto.visibility = if (count >= 3) View.GONE else View.VISIBLE
+        }
+
+        dialogBinding.layoutAddPhoto.setOnClickListener {
+            val remaining = 3 - selectedProductUris.size
+            if (remaining <= 0) {
+                Toast.makeText(requireContext(), "Maximum 3 photos allowed", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            onProductImagesPicked = { uris ->
+                if (uris.isNotEmpty()) {
+                    val available = 3 - selectedProductUris.size
+                    val toAdd = uris.take(available)
+                    selectedProductUris.addAll(toAdd)
+                    if (uris.size > available) {
+                        Toast.makeText(requireContext(), "Maximum 3 photos allowed. Added $available photo(s).", Toast.LENGTH_SHORT).show()
+                    }
+                    updatePreviews()
+                }
+            }
+            pickProductImagesLauncher.launch("image/*")
+        }
+
         dialogBinding.btnSubmitProduct.setOnClickListener {
             val title = dialogBinding.etProductName.text.toString().trim()
             val priceStr = dialogBinding.etProductPrice.text.toString().trim()
             val originalPriceStr = dialogBinding.etProductOriginalPrice.text.toString().trim()
             val category = dialogBinding.etProductCategory.text.toString().trim()
             val stockStr = dialogBinding.etProductStock.text.toString().trim()
-            val imageUrl = dialogBinding.etProductImageUrl.text.toString().trim()
             val description = dialogBinding.etProductDescription.text.toString().trim()
 
             if (title.isBlank()) {
@@ -229,24 +372,62 @@ class MarketplaceFragment : Fragment() {
             val originalPrice = originalPriceStr.toDoubleOrNull() ?: 0.0
             val stock = stockStr.toIntOrNull() ?: 10
 
-            viewModel.addProduct(
-                name = title,
-                price = price,
-                originalPrice = originalPrice,
-                category = category,
-                stock = stock,
-                imageUrl = imageUrl,
-                description = description,
-                onSuccess = {
-                    dialog.dismiss()
-                    Toast.makeText(requireContext(), "✅ Product listed successfully!", Toast.LENGTH_SHORT).show()
-                },
-                onError = { err ->
-                    Toast.makeText(requireContext(), err, Toast.LENGTH_SHORT).show()
+            dialogBinding.btnSubmitProduct.isEnabled = false
+            dialogBinding.layoutUploadProgress.visibility = View.VISIBLE
+            dialogBinding.tvUploadStatus.text = if (selectedProductUris.isNotEmpty()) {
+                "Uploading ${selectedProductUris.size} photo(s)..."
+            } else {
+                "Publishing product..."
+            }
+
+            lifecycleScope.launch {
+                val uploadedUrls = mutableListOf<String>()
+
+                withContext(Dispatchers.IO) {
+                    selectedProductUris.forEachIndexed { idx, uri ->
+                        val compressed = ImageCompressor.compressImageUri(
+                            requireContext(),
+                            uri,
+                            maxDimension = 1024,
+                            quality = 80
+                        )
+                        if (compressed != null) {
+                            val uploaded = viewModel.uploadMedia(
+                                bytes = compressed.bytes,
+                                mimeType = compressed.mimeType,
+                                fileName = "product_${System.currentTimeMillis()}_$idx.jpg"
+                            )
+                            if (!uploaded.isNullOrBlank()) {
+                                uploadedUrls.add(uploaded)
+                            } else {
+                                uploadedUrls.add(compressed.dataUri)
+                            }
+                        }
+                    }
                 }
-            )
+
+                viewModel.addProduct(
+                    name = title,
+                    price = price,
+                    originalPrice = originalPrice,
+                    category = category,
+                    stock = stock,
+                    imageUrls = uploadedUrls,
+                    description = description,
+                    onSuccess = {
+                        dialog.dismiss()
+                        Toast.makeText(requireContext(), "✅ Product published instantly to Marketplace!", Toast.LENGTH_SHORT).show()
+                    },
+                    onError = { err ->
+                        dialogBinding.btnSubmitProduct.isEnabled = true
+                        dialogBinding.layoutUploadProgress.visibility = View.GONE
+                        Toast.makeText(requireContext(), err, Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
         }
 
+        updatePreviews()
         dialog.show()
     }
 

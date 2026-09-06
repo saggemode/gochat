@@ -107,7 +107,20 @@ class ProductDetailsActivity : AppCompatActivity() {
             "Available on GoChat Marketplace. Fast delivery and secure escrow protection guaranteed."
         }
 
-        MediaImageHelper.loadSafeImage(binding.ivProductImage, product.primaryImage)
+        val allImages = if (product.imageUrls.isNotEmpty()) product.imageUrls else listOfNotNull(product.primaryImage.ifBlank { null })
+        var currentImgIdx = 0
+        if (allImages.isNotEmpty()) {
+            MediaImageHelper.loadSafeImage(binding.ivProductImage, allImages[0])
+            binding.ivProductImage.setOnClickListener {
+                if (allImages.size > 1) {
+                    currentImgIdx = (currentImgIdx + 1) % allImages.size
+                    MediaImageHelper.loadSafeImage(binding.ivProductImage, allImages[currentImgIdx])
+                    Toast.makeText(this@ProductDetailsActivity, "Photo ${currentImgIdx + 1}/${allImages.size}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } else {
+            MediaImageHelper.loadSafeImage(binding.ivProductImage, product.primaryImage)
+        }
 
         // Store initial display before fetch finishes
         binding.tvStoreName.text = product.storeName
