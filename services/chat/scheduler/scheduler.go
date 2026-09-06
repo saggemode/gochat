@@ -100,7 +100,7 @@ func (s *Scheduler) deleteExpiredMessages() {
 	}
 
 	for _, msg := range msgs {
-		if err := s.msgRepo.Delete(ctx, msg.ID, msg.SenderID); err != nil {
+		if err := s.msgRepo.Delete(ctx, msg.ID, msg.SenderID, true); err != nil {
 			s.log.Error("scheduler: deleting expired message",
 				zap.String("msg_id", msg.ID.String()),
 				zap.Error(err),

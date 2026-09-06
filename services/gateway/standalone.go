@@ -28,9 +28,11 @@ import (
 	storypb "gochat/gen/story"
 
 	"gochat/pkg/authz"
+	"gochat/pkg/chat"
 	"gochat/pkg/config"
 	"gochat/pkg/crypto"
 	"gochat/pkg/database"
+	"gochat/pkg/group"
 	"gochat/pkg/jwtutil"
 
 	aiserver "gochat/services/ai/server"
@@ -160,10 +162,11 @@ func startInProcessGRPC(
 		if authzDB != nil {
 			// In-process authz client if needed
 		}
+		var groupCl *group.Client
 
 		chatpb.RegisterChatServiceServer(s, chatserver.New(
 			convRepo, msgRepo, folderRepo, labelRepo, analyticsRepo, notifRepo, pollRepo,
-			redisClient, authzCl, log,
+			redisClient, authzCl, groupCl, log,
 		))
 		log.Info("in-process Chat Service registered")
 	}
@@ -172,7 +175,8 @@ func startInProcessGRPC(
 	groupDSN := getServiceDSN("GROUP_DB_DSN", neonGroupDSN)
 	if groupDB, err := database.NewPostgres(ctx, groupDSN, log); err == nil {
 		_ = database.AutoMigrate(ctx, groupDB, "grp", log)
-		grouppb.RegisterGroupServiceServer(s, groupserver.New(grouprepo.New(groupDB), log))
+		var chatCl *chat.Client
+		grouppb.RegisterGroupServiceServer(s, groupserver.New(grouprepo.New(groupDB), chatCl, log))
 	}
 
 	// 5. Story Service

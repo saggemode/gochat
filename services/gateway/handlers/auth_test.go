@@ -114,3 +114,9 @@ func (s *stubAuthServiceClient) VerifyPhoneOTP(context.Context, *authpb.VerifyPh
 func (s *stubAuthServiceClient) SubscribePush(context.Context, *authpb.SubscribePushRequest, ...grpc.CallOption) (*authpb.SubscribePushResponse, error) {
 	panic("not implemented")
 }
+func (s *stubAuthServiceClient) GetPrivacySettings(context.Context, *authpb.GetPrivacySettingsRequest, ...grpc.CallOption) (*authpb.GetPrivacySettingsResponse, error) {
+	panic("not implemented")
+}
+func (s *stubAuthServiceClient) UpdatePrivacySettings(context.Context, *authpb.UpdatePrivacySettingsRequest, ...grpc.CallOption) (*authpb.UpdatePrivacySettingsResponse, error) {
+	panic("not implemented")
+}

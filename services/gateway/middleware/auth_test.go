@@ -186,3 +186,9 @@ func (m *mockAuthClient) VerifyPhoneOTP(_ context.Context, _ *authpb.VerifyPhone
 func (m *mockAuthClient) SubscribePush(_ context.Context, _ *authpb.SubscribePushRequest, _ ...grpc.CallOption) (*authpb.SubscribePushResponse, error) {
 	panic("not used in middleware tests")
 }
+func (m *mockAuthClient) GetPrivacySettings(_ context.Context, _ *authpb.GetPrivacySettingsRequest, _ ...grpc.CallOption) (*authpb.GetPrivacySettingsResponse, error) {
+	panic("not used in middleware tests")
+}
+func (m *mockAuthClient) UpdatePrivacySettings(_ context.Context, _ *authpb.UpdatePrivacySettingsRequest, _ ...grpc.CallOption) (*authpb.UpdatePrivacySettingsResponse, error) {
+	panic("not used in middleware tests")
+}
