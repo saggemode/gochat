@@ -152,6 +152,13 @@
     <string name="live_preview_header">LIVE PREVIEW</string>
     <string name="mock_message_other">Hey, check out this wallpaper! ✨</string>
     <string name="mock_message_me">Looks super sleek and clean! 🔥</string>
+    <string name="bubble_style_header">Chat Bubble Style</string>
+    <string name="bubble_classic">Classic</string>
+    <string name="bubble_pill">Pill Capsule</string>
+    <string name="bubble_glass">Frosted Glass</string>
+    <string name="bubble_neon">Neon Glow</string>
+    <string name="bubble_minimal">Minimal Flat</string>
+    <string name="bubble_vintage">Retro Soft</string>
     <string name="curated_themes_header">Curated Themes &amp; Gradients</string>
     <string name="solid_colors_header">Solid Colors</string>
     <string name="accent_color_header">Primary Accent Color</string>

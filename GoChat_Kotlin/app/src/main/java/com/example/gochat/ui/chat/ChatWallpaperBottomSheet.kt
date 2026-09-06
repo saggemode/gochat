@@ -14,6 +14,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.example.gochat.R
+import com.example.gochat.core.wallpaper.BubbleShape
+import com.example.gochat.core.wallpaper.ChatBubbleHelper
 import com.example.gochat.core.wallpaper.ChatTheme
 import com.example.gochat.core.wallpaper.ChatThemeManager
 import com.example.gochat.core.wallpaper.SolidColorOption
@@ -36,6 +38,7 @@ class ChatWallpaperBottomSheet(
     private lateinit var themeManager: ChatThemeManager
     private lateinit var currentTheme: ChatTheme
 
+    private lateinit var bubbleShapeAdapter: BubbleShapeAdapter
     private lateinit var presetAdapter: PresetAdapter
     private lateinit var solidAdapter: SolidAdapter
     private lateinit var accentAdapter: AccentColorAdapter
@@ -79,6 +82,7 @@ class ChatWallpaperBottomSheet(
         binding.tvTargetChatSubtitle.text = getString(R.string.customizing_for_format, conversationTitle)
         binding.btnCloseSheet.setOnClickListener { dismiss() }
 
+        setupBubbleShapeRecyclerView()
         setupPresetRecyclerView()
         setupSolidColorRecyclerView()
         setupAccentColorRecyclerView()
@@ -86,6 +90,19 @@ class ChatWallpaperBottomSheet(
         setupActionButtons()
 
         updatePreviewUI()
+    }
+
+    private fun setupBubbleShapeRecyclerView() {
+        bubbleShapeAdapter = BubbleShapeAdapter(
+            selectedShape = currentTheme.bubbleShape,
+            accentColor = currentTheme.accentColor,
+            onShapeClick = { shape ->
+                currentTheme = currentTheme.copy(bubbleShape = shape)
+                bubbleShapeAdapter.setSelectedShape(shape)
+                updatePreviewUI()
+            }
+        )
+        binding.rvBubbleShapes.adapter = bubbleShapeAdapter
     }
 
     private fun setupPresetRecyclerView() {
@@ -100,6 +117,8 @@ class ChatWallpaperBottomSheet(
                 presetAdapter.setSelectedId(preset.id)
                 solidAdapter.setSelectedColor(null)
                 accentAdapter.setSelectedColor(currentTheme.accentColor)
+                bubbleShapeAdapter.setSelectedShape(currentTheme.bubbleShape)
+                bubbleShapeAdapter.setAccentColor(currentTheme.accentColor)
                 updatePreviewUI()
             }
         )
@@ -133,6 +152,7 @@ class ChatWallpaperBottomSheet(
             onAccentColorClick = { accent ->
                 currentTheme = currentTheme.copy(accentColor = accent.color)
                 accentAdapter.setSelectedColor(accent.color)
+                bubbleShapeAdapter.setAccentColor(accent.color)
                 updatePreviewUI()
             }
         )
@@ -189,6 +209,13 @@ class ChatWallpaperBottomSheet(
         binding.btnResetDefault.setOnClickListener {
             themeManager.resetTheme(conversationId)
             val defaultTheme = themeManager.getTheme(conversationId)
+            currentTheme = defaultTheme
+            presetAdapter.setSelectedId(defaultTheme.id)
+            solidAdapter.setSelectedColor(null)
+            accentAdapter.setSelectedColor(defaultTheme.accentColor)
+            bubbleShapeAdapter.setSelectedShape(defaultTheme.bubbleShape)
+            bubbleShapeAdapter.setAccentColor(defaultTheme.accentColor)
+            updatePreviewUI()
             onThemeChanged(defaultTheme)
             Toast.makeText(requireContext(), getString(R.string.toast_reset_theme), Toast.LENGTH_SHORT).show()
             dismiss()
@@ -228,7 +255,7 @@ class ChatWallpaperBottomSheet(
         binding.sliderDoodleOpacity.value = (theme.doodleOpacity * 100).coerceIn(1f, 25f)
         binding.tvOpacityValue.text = "${(theme.doodleOpacity * 100).toInt()}%"
 
-        // Apply accent color to preview
+        // Apply accent color to preview controls
         val accentColor = theme.accentColor
         binding.btnApplyThisChat.backgroundTintList = ColorStateList.valueOf(accentColor)
         binding.btnPickImage.backgroundTintList = ColorStateList.valueOf(accentColor)
@@ -237,9 +264,27 @@ class ChatWallpaperBottomSheet(
         binding.sliderDoodleOpacity.trackActiveTintList = ColorStateList.valueOf(accentColor)
         binding.tvOpacityValue.setTextColor(accentColor)
         
-        // Mock chat bubbles accent
-        binding.previewBubbleMe.backgroundTintList = ColorStateList.valueOf(accentColor)
-    }
+        // Mock chat bubbles styled according to selected bubble shape and accent
+        binding.previewBubbleMe.backgroundTintList = null
+        binding.previewBubbleOther.backgroundTintList = null
+        binding.previewBubbleMe.background = ChatBubbleHelper.getBubbleDrawable(
+            requireContext(),
+            isMe = true,
+            shape = theme.bubbleShape,
+            accentColor = accentColor
+        )
+        binding.previewBubbleOther.background = ChatBubbleHelper.getBubbleDrawable(
+            requireContext(),
+            isMe = false,
+            shape = theme.bubbleShape,
+            accentColor = accentColor
+        )
+        binding.tvPreviewMeMessage.setTextColor(
+            ChatBubbleHelper.getMessageTextColor(isMe = true, shape = theme.bubbleShape)
+        )
+        binding.tvPreviewOtherMessage.setTextColor(
+            ChatBubbleHelper.getMessageTextColor(isMe = false, shape = theme.bubbleShape)
+        )
 
     private fun copyUriToInternalStorage(uri: Uri): String? {
         return try {

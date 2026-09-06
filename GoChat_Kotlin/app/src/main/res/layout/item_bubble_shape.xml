@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="86dp"
+    android:layout_height="wrap_content"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:padding="4dp">
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardBubbleShape"
+        android:layout_width="78dp"
+        android:layout_height="64dp"
+        android:clickable="true"
+        android:focusable="true"
+        app:cardCornerRadius="14dp"
+        app:cardElevation="2dp"
+        app:cardBackgroundColor="#182229"
+        app:strokeColor="@color/whatsapp_emerald"
+        app:strokeWidth="0dp">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <!-- Bubble Shape Graphic Preview -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="8dp">
+
+                <FrameLayout
+                    android:id="@+id/viewMiniBubble"
+                    android:layout_width="52dp"
+                    android:layout_height="28dp"
+                    android:layout_gravity="center">
+
+                    <TextView
+                        android:id="@+id/tvMiniBubbleText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:text="Aa"
+                        android:textColor="@color/white"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+                </FrameLayout>
+            </LinearLayout>
+
+            <!-- Selected checkmark badge -->
+            <ImageView
+                android:id="@+id/ivBubbleSelected"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_gravity="top|end"
+                android:layout_margin="4dp"
+                android:background="@drawable/bg_circle_pulse"
+                android:backgroundTint="@color/whatsapp_emerald"
+                android:padding="4dp"
+                android:src="@drawable/ic_check"
+                android:visibility="gone"
+                app:tint="@color/white"
+                tools:visibility="visible" />
+
+        </FrameLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <TextView
+        android:id="@+id/tvBubbleName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="1"
+        android:textColor="@color/gochat_text_primary"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        tools:text="Classic" />
+
+</LinearLayout>

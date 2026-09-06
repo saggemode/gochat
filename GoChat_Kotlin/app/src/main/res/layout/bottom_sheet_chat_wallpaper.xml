@@ -133,6 +133,7 @@
 
                     <!-- Left Bubble (Other) -->
                     <LinearLayout
+                        android:id="@+id/previewBubbleOther"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="start"
@@ -145,6 +146,7 @@
                         android:paddingBottom="6dp">
 
                         <TextView
+                            android:id="@+id/tvPreviewOtherMessage"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/mock_message_other"
@@ -166,6 +168,7 @@
                         android:paddingBottom="6dp">
 
                         <TextView
+                            android:id="@+id/tvPreviewMeMessage"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/mock_message_me"
@@ -177,6 +180,27 @@
             </FrameLayout>
 
         </com.google.android.material.card.MaterialCardView>
+
+        <!-- Bubble Shapes Title -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="@string/bubble_style_header"
+            android:textColor="@color/gochat_text_primary"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <!-- Bubble Shapes RecyclerView -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvBubbleShapes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:clipToPadding="false"
+            android:orientation="horizontal"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            tools:listitem="@layout/item_bubble_shape" />
 
         <!-- Presets Title -->
         <TextView

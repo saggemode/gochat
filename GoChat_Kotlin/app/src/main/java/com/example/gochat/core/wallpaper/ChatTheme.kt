@@ -9,6 +9,21 @@ enum class WallpaperType {
     CUSTOM_IMAGE
 }
 
+enum class BubbleShape(val id: String, val displayName: String, val description: String) {
+    CLASSIC("classic", "Classic", "Traditional WhatsApp rounded bubble"),
+    ROUNDED_PILL("rounded_pill", "Pill Capsule", "Smooth modern curved capsule"),
+    GLASSMORPHISM("glassmorphism", "Frosted Glass", "Translucent glass with fine border"),
+    NEON_GLOW("neon_glow", "Neon Glow", "Cyberpunk vibrant contour"),
+    MINIMAL_FLAT("minimal_flat", "Minimal Flat", "Compact sleek minimal radius"),
+    VINTAGE_CURVE("vintage_curve", "Retro Soft", "Elegant curved asymmetrical corners");
+
+    companion object {
+        fun fromId(id: String?): BubbleShape {
+            return entries.firstOrNull { it.id.equals(id, ignoreCase = true) } ?: CLASSIC
+        }
+    }
+}
+
 data class SolidColorOption(
     val name: String,
     val color: Int
@@ -23,7 +38,8 @@ data class ChatTheme(
     val imageUriOrPath: String? = null,
     val showDoodle: Boolean = true,
     val doodleOpacity: Float = 0.06f,
-    val accentColor: Int = 0xFF00A884.toInt() // Default GoChat Emerald
+    val accentColor: Int = 0xFF00A884.toInt(), // Default GoChat Emerald
+    val bubbleShape: BubbleShape = BubbleShape.CLASSIC
 ) {
     fun toJson(): String {
         val json = JSONObject()
@@ -38,6 +54,7 @@ data class ChatTheme(
         json.put("showDoodle", showDoodle)
         json.put("doodleOpacity", doodleOpacity.toDouble())
         json.put("accentColor", accentColor)
+        json.put("bubbleShape", bubbleShape.id)
         return json.toString()
     }
 
@@ -69,6 +86,8 @@ data class ChatTheme(
                 val showDoodle = json.optBoolean("showDoodle", true)
                 val doodleOpacity = json.optDouble("doodleOpacity", 0.06).toFloat()
                 val accentColor = json.optInt("accentColor", 0xFF00A884.toInt())
+                val bubbleShapeStr = json.optString("bubbleShape", BubbleShape.CLASSIC.id)
+                val bubbleShape = BubbleShape.fromId(bubbleShapeStr)
 
                 ChatTheme(
                     id = id,
@@ -79,7 +98,8 @@ data class ChatTheme(
                     imageUriOrPath = imageUriOrPath,
                     showDoodle = showDoodle,
                     doodleOpacity = doodleOpacity,
-                    accentColor = accentColor
+                    accentColor = accentColor,
+                    bubbleShape = bubbleShape
                 )
             } catch (_: Exception) {
                 null
@@ -94,7 +114,8 @@ data class ChatTheme(
             bgGradientColors = listOf(0xFF111B21.toInt(), 0xFF0B141A.toInt()),
             showDoodle = true,
             doodleOpacity = 0.06f,
-            accentColor = 0xFF00A884.toInt()
+            accentColor = 0xFF00A884.toInt(),
+            bubbleShape = BubbleShape.CLASSIC
         )
 
         val CYBERPUNK_NEON = ChatTheme(
@@ -104,7 +125,8 @@ data class ChatTheme(
             bgGradientColors = listOf(0xFF0D0221.toInt(), 0xFF05010D.toInt()),
             showDoodle = true,
             doodleOpacity = 0.08f,
-            accentColor = 0xFFBB86FC.toInt()
+            accentColor = 0xFFBB86FC.toInt(),
+            bubbleShape = BubbleShape.NEON_GLOW
         )
 
         val EMERALD_GLASS = ChatTheme(
@@ -114,7 +136,8 @@ data class ChatTheme(
             bgGradientColors = listOf(0xFF0A231C.toInt(), 0xFF03140F.toInt()),
             showDoodle = true,
             doodleOpacity = 0.07f,
-            accentColor = 0xFF34D399.toInt()
+            accentColor = 0xFF34D399.toInt(),
+            bubbleShape = BubbleShape.GLASSMORPHISM
         )
 
         val SUNSET_AURORA = ChatTheme(
@@ -124,7 +147,8 @@ data class ChatTheme(
             bgGradientColors = listOf(0xFF200F21.toInt(), 0xFF0F0612.toInt()),
             showDoodle = true,
             doodleOpacity = 0.06f,
-            accentColor = 0xFFFB923C.toInt()
+            accentColor = 0xFFFB923C.toInt(),
+            bubbleShape = BubbleShape.GLASSMORPHISM
         )
 
         val MIDNIGHT_OLED = ChatTheme(
@@ -134,7 +158,8 @@ data class ChatTheme(
             bgGradientColors = listOf(0xFF000000.toInt(), 0xFF000000.toInt()),
             showDoodle = false,
             doodleOpacity = 0.0f,
-            accentColor = 0xFFFFFFFF.toInt()
+            accentColor = 0xFFFFFFFF.toInt(),
+            bubbleShape = BubbleShape.MINIMAL_FLAT
         )
 
         val NORDIC_ICE = ChatTheme(
@@ -144,7 +169,8 @@ data class ChatTheme(
             bgGradientColors = listOf(0xFF0F172A.toInt(), 0xFF020617.toInt()),
             showDoodle = true,
             doodleOpacity = 0.05f,
-            accentColor = 0xFF38BDF8.toInt()
+            accentColor = 0xFF38BDF8.toInt(),
+            bubbleShape = BubbleShape.ROUNDED_PILL
         )
 
         val LAVENDER_DREAM = ChatTheme(
@@ -154,7 +180,8 @@ data class ChatTheme(
             bgGradientColors = listOf(0xFF1E1035.toInt(), 0xFF0F071D.toInt()),
             showDoodle = true,
             doodleOpacity = 0.06f,
-            accentColor = 0xFFC084FC.toInt()
+            accentColor = 0xFFC084FC.toInt(),
+            bubbleShape = BubbleShape.VINTAGE_CURVE
         )
 
         val CYBER_MATRIX = ChatTheme(
@@ -164,7 +191,8 @@ data class ChatTheme(
             bgGradientColors = listOf(0xFF041208.toInt(), 0xFF000502.toInt()),
             showDoodle = true,
             doodleOpacity = 0.10f,
-            accentColor = 0xFF4ADE80.toInt()
+            accentColor = 0xFF4ADE80.toInt(),
+            bubbleShape = BubbleShape.NEON_GLOW
         )
 
         val DEEP_OCEAN = ChatTheme(
@@ -174,7 +202,8 @@ data class ChatTheme(
             bgGradientColors = listOf(0xFF031B33.toInt(), 0xFF010E1A.toInt()),
             showDoodle = true,
             doodleOpacity = 0.06f,
-            accentColor = 0xFF60A5FA.toInt()
+            accentColor = 0xFF60A5FA.toInt(),
+            bubbleShape = BubbleShape.ROUNDED_PILL
         )
 
         val SLATE_CHARCOAL = ChatTheme(
@@ -184,7 +213,8 @@ data class ChatTheme(
             bgGradientColors = listOf(0xFF1E293B.toInt(), 0xFF0F172A.toInt()),
             showDoodle = true,
             doodleOpacity = 0.05f,
-            accentColor = 0xFF94A3B8.toInt()
+            accentColor = 0xFF94A3B8.toInt(),
+            bubbleShape = BubbleShape.MINIMAL_FLAT
         )
 
         val PRESETS = listOf(

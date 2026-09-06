@@ -18,6 +18,9 @@ import coil.load
 import coil.transform.RoundedCornersTransformation
 import com.example.gochat.R
 import com.example.gochat.core.media.AudioPlayerManager
+import com.example.gochat.core.wallpaper.BubbleShape
+import com.example.gochat.core.wallpaper.ChatBubbleHelper
+import com.example.gochat.core.wallpaper.ChatTheme
 import com.example.gochat.data.model.Message
 import com.example.gochat.data.model.MessageStatus
 import com.example.gochat.data.model.MessageType
@@ -35,6 +38,22 @@ class MessageAdapter(
 
     var onImageClicked: ((String) -> Unit)? = null
     private var accentColor: Int = 0xFF00A884.toInt() // Default emerald
+    private var bubbleShape: BubbleShape = BubbleShape.CLASSIC
+
+    fun setBubbleTheme(shape: BubbleShape, accent: Int) {
+        var changed = false
+        if (this.bubbleShape != shape) {
+            this.bubbleShape = shape
+            changed = true
+        }
+        if (this.accentColor != accent) {
+            this.accentColor = accent
+            changed = true
+        }
+        if (changed) {
+            notifyDataSetChanged()
+        }
+    }
 
     fun setAccentColor(color: Int) {
         if (this.accentColor != color) {
@@ -116,6 +135,17 @@ class MessageAdapter(
 
         fun bind(message: Message) {
             with(binding) {
+                // Apply dynamic bubble shape & background
+                layoutBubbleContainer.background = ChatBubbleHelper.getBubbleDrawable(
+                    context = root.context,
+                    isMe = true,
+                    shape = bubbleShape,
+                    accentColor = accentColor
+                )
+
+                val textColor = ChatBubbleHelper.getMessageTextColor(isMe = true, shape = bubbleShape)
+                val timeColor = ChatBubbleHelper.getTimestampTextColor(isMe = true, shape = bubbleShape)
+
                 // Forwarded status
                 layoutForwarded.visibility = if (message.isForwarded) View.VISIBLE else View.GONE
 
@@ -138,7 +168,7 @@ class MessageAdapter(
                     }
                 } else {
                     tvMessageContent.text = highlightMentions(message.content, accentColor)
-                    tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_text_primary))
+                    tvMessageContent.setTextColor(textColor)
                     tvMessageContent.setTypeface(null, Typeface.NORMAL)
                     tvMessageContent.setOnClickListener(null)
                 }
@@ -171,6 +201,7 @@ class MessageAdapter(
 
                 // Timestamp
                 tvMessageTime.text = formatTime(message.createdAt)
+                tvMessageTime.setTextColor(timeColor)
 
                 // Read Receipt status icon
                 ivMessageStatus.visibility = if (message.isDeleted) View.GONE else View.VISIBLE
@@ -256,6 +287,17 @@ class MessageAdapter(
 
         fun bind(message: Message) {
             with(binding) {
+                // Apply dynamic bubble shape & background
+                layoutBubbleContainer.background = ChatBubbleHelper.getBubbleDrawable(
+                    context = root.context,
+                    isMe = false,
+                    shape = bubbleShape,
+                    accentColor = accentColor
+                )
+
+                val textColor = ChatBubbleHelper.getMessageTextColor(isMe = false, shape = bubbleShape)
+                val timeColor = ChatBubbleHelper.getTimestampTextColor(isMe = false, shape = bubbleShape)
+
                 // Forwarded status
                 layoutForwarded.visibility = if (message.isForwarded) View.VISIBLE else View.GONE
 
@@ -286,7 +328,7 @@ class MessageAdapter(
                     }
                 } else {
                     tvMessageContent.text = highlightMentions(message.content, accentColor)
-                    tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_text_primary))
+                    tvMessageContent.setTextColor(textColor)
                     tvMessageContent.setTypeface(null, Typeface.NORMAL)
                     tvMessageContent.setOnClickListener(null)
                 }
@@ -319,6 +361,7 @@ class MessageAdapter(
 
                 // Timestamp
                 tvMessageTime.text = formatTime(message.createdAt)
+                tvMessageTime.setTextColor(timeColor)
 
                 // Quoted Reply container
                 if (!message.replyToId.isNullOrBlank() && !message.isDeleted) {
