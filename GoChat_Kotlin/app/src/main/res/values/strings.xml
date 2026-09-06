@@ -471,4 +471,9 @@
     <string name="listed_products">Listed Products</string>
     <string name="store_views">Store Views</string>
     <string name="btn_create_store">Create My Store &amp; Start Selling</string>
+
+    <!-- Contact Profile -->
+    <string name="profile">Profile</string>
+    <string name="gochat_pin">GoChat PIN</string>
+    <string name="create_group_with_format">Create group with %1$s</string>
 </resources>

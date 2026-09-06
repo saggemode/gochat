@@ -226,6 +226,18 @@
             android:layout_gravity="center"
             android:indeterminateTint="@color/gochat_accent"
             android:visibility="gone" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabNext"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="16dp"
+            android:src="@drawable/ic_chevron_right"
+            android:visibility="gone"
+            app:backgroundTint="@color/gochat_accent"
+            app:tint="@color/black"
+            tools:visibility="visible" />
     </FrameLayout>
 
 </LinearLayout>

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	pb "gochat/gen/business"
+	"gochat/services/gateway/ws"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -11,11 +12,12 @@ import (
 
 type BusinessHandler struct {
 	client pb.BusinessServiceClient
+	hub    *ws.Hub
 	log    *zap.Logger
 }
 
-func NewBusinessHandler(client pb.BusinessServiceClient, log *zap.Logger) *BusinessHandler {
-	return &BusinessHandler{client: client, log: log}
+func NewBusinessHandler(client pb.BusinessServiceClient, hub *ws.Hub, log *zap.Logger) *BusinessHandler {
+	return &BusinessHandler{client: client, hub: hub, log: log}
 }
 
 func (h *BusinessHandler) CreateBusinessProfile(c *gin.Context) {

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -86,6 +87,47 @@ func (h *BusinessHandler) CreateMarketplaceProduct(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	if h.hub != nil && resp != nil && resp.Product != nil {
+		primaryImg := ""
+		if len(resp.Product.ImageUrls) > 0 {
+			primaryImg = resp.Product.ImageUrls[0]
+		}
+		storeName := resp.Product.SellerName
+		if storeName == "" {
+			storeName = "Official Store"
+		}
+		catName := resp.Product.CategoryName
+		if catName == "" {
+			catName = req.Category
+		}
+		productMap := map[string]interface{}{
+			"id":               resp.Product.Id,
+			"name":             resp.Product.Name,
+			"description":      resp.Product.Description,
+			"price":            resp.Product.Price,
+			"discount_percent": resp.Product.DiscountPercent,
+			"currency":         resp.Product.Currency,
+			"stock":            resp.Product.Quantity,
+			"image_urls":       resp.Product.ImageUrls,
+			"image_url":        primaryImg,
+			"store_id":         resp.Product.BusinessId,
+			"store_name":       storeName,
+			"seller_id":        resp.Product.OwnerId,
+			"category_id":      resp.Product.CategoryId,
+			"category":         catName,
+			"is_verified":      true,
+			"created_at":       resp.Product.CreatedAt,
+		}
+		evt := map[string]interface{}{
+			"type":    "new_product",
+			"product": productMap,
+		}
+		if b, err := json.Marshal(evt); err == nil {
+			h.hub.Broadcast(b, "")
+		}
+	}
+
 	c.JSON(http.StatusCreated, resp.Product)
 }
 

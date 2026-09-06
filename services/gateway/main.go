@@ -262,7 +262,7 @@ func main() {
 	channelHandler := handlers.NewChannelHandler(channelClient, log)
 	socialHandler := handlers.NewSocialHandler(socialClient, authClient, log)
 	miniappHandler := handlers.NewMiniAppHandler(miniappClient, log)
-	businessHandler := handlers.NewBusinessHandler(businessClient, log)
+	businessHandler := handlers.NewBusinessHandler(businessClient, hub, log)
 	docsHandler := handlers.NewDocsHandler()
 
 	// ── Root Status & Health Endpoints ──────────────────────────────────────

@@ -52,6 +52,7 @@ import com.example.gochat.databinding.ActivityChatRoomBinding
 import com.example.gochat.databinding.BottomSheetAttachmentPickerBinding
 import com.example.gochat.databinding.DialogImagePreviewBinding
 import com.example.gochat.ui.calls.CallActivity
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -234,17 +235,30 @@ class ChatRoomActivity : AppCompatActivity() {
             )
 
             layoutHeaderInfo.setOnClickListener {
-                val intent = Intent(this@ChatRoomActivity, GroupInfoActivity::class.java).apply {
-                    putExtra(GroupInfoActivity.EXTRA_CONVERSATION_ID, viewModel.conversationId.value)
-                    putExtra(GroupInfoActivity.EXTRA_GROUP_NAME, title)
-                    putExtra(GroupInfoActivity.EXTRA_GROUP_AVATAR, avatarUrl)
-                    
-                    val memberIds = viewModel.mentionSuggestions.value.map { it.id }
-                    if (memberIds.isNotEmpty()) {
-                        putStringArrayListExtra(GroupInfoActivity.EXTRA_MEMBER_IDS, ArrayList(memberIds))
+                val isGroup = intent.getBooleanExtra(EXTRA_IS_GROUP, false)
+                if (isGroup) {
+                    val intent = Intent(this@ChatRoomActivity, GroupInfoActivity::class.java).apply {
+                        putExtra(GroupInfoActivity.EXTRA_CONVERSATION_ID, viewModel.conversationId.value)
+                        putExtra(GroupInfoActivity.EXTRA_GROUP_NAME, title)
+                        putExtra(GroupInfoActivity.EXTRA_GROUP_AVATAR, avatarUrl)
+                        
+                        val memberIds = viewModel.mentionSuggestions.value.map { it.id }
+                        if (memberIds.isNotEmpty()) {
+                            putStringArrayListExtra(GroupInfoActivity.EXTRA_MEMBER_IDS, ArrayList(memberIds))
+                        }
                     }
+                    startActivity(intent)
+                } else {
+                    val intent = Intent(this@ChatRoomActivity, ContactProfileActivity::class.java).apply {
+                        putExtra(ContactProfileActivity.EXTRA_CONVERSATION_ID, viewModel.conversationId.value)
+                        putExtra(ContactProfileActivity.EXTRA_USER_NAME, title)
+                        putExtra(ContactProfileActivity.EXTRA_USER_AVATAR, avatarUrl)
+                        putExtra(ContactProfileActivity.EXTRA_IS_ONLINE, viewModel.isPartnerOnline.value)
+                        putExtra(ContactProfileActivity.EXTRA_LAST_SEEN, viewModel.partnerLastSeen.value ?: 0L)
+                        putExtra(ContactProfileActivity.EXTRA_TARGET_USER_ID, viewModel.conversationId.value)
+                    }
+                    startActivity(intent)
                 }
-                startActivity(intent)
             }
 
             btnBack.setOnClickListener { finish() }

@@ -3,6 +3,7 @@ package com.example.gochat.ui.marketplace
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.gochat.data.api.NetworkModule
 import com.example.gochat.data.model.Category
 import com.example.gochat.data.model.Order
 import com.example.gochat.data.model.Product
@@ -12,10 +13,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonPrimitive
 
 class MarketplaceViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = MarketplaceRepository(application)
+    private val webSocket = NetworkModule.getWebSocket(application)
+    private val json = NetworkModule.json
 
     private val _products = MutableStateFlow<List<Product>>(emptyList())
     val products: StateFlow<List<Product>> = _products.asStateFlow()
@@ -47,7 +52,28 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
     private var currentSortBy: String? = null
 
     init {
+        observeWebSocketEvents()
         loadData()
+    }
+
+    private fun observeWebSocketEvents() {
+        viewModelScope.launch {
+            webSocket.events.collect { event ->
+                val type = event["type"]?.jsonPrimitive?.contentOrNull
+                if (type == "new_product") {
+                    val prodElement = event["product"]
+                    if (prodElement != null) {
+                        try {
+                            val newProd = json.decodeFromJsonElement<Product>(prodElement)
+                            // Real-time instant delivery: prepend to feed like chat!
+                            _products.value = listOf(newProd) + _products.value.filter { it.id != newProd.id }
+                        } catch (_: Exception) {
+                            loadExploreProducts()
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fun loadData() {
@@ -141,7 +167,7 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
         location: String,
         phone: String,
         description: String,
-        logoUrl: String,
+        logoUrl: String?,
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
@@ -154,7 +180,7 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
                 address = location,
                 phone = phone,
                 description = description,
-                logoUrl = logoUrl.ifBlank { null },
+                logoUrl = logoUrl?.ifBlank { null },
                 isVerified = true
             )
             val result = repository.createBusinessProfile(newStore)
@@ -169,13 +195,17 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    suspend fun uploadMedia(bytes: ByteArray, mimeType: String = "image/jpeg", fileName: String = "upload.jpg"): String? {
+        return repository.uploadMedia(bytes, mimeType, fileName)
+    }
+
     fun addProduct(
         name: String,
         price: Double,
         originalPrice: Double,
         category: String,
         stock: Int,
-        imageUrl: String,
+        imageUrls: List<String>,
         description: String,
         onSuccess: () -> Unit,
         onError: (String) -> Unit
@@ -183,6 +213,7 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             _isLoading.value = true
             val currentStore = _myStore.value
+            val primaryImage = imageUrls.firstOrNull().orEmpty()
             val newProduct = Product(
                 id = "prod_${System.currentTimeMillis()}",
                 name = name,
@@ -192,17 +223,23 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
                 category = category.ifBlank { "Electronics" },
                 categoryId = category.lowercase(),
                 stock = stock,
-                imageUrls = if (imageUrl.isNotBlank()) listOf(imageUrl) else emptyList(),
-                imageUrl = imageUrl,
+                imageUrls = imageUrls,
+                imageUrl = primaryImage,
                 storeId = currentStore?.id ?: "my_store",
                 storeName = currentStore?.name ?: "My Store",
                 isVerifiedSeller = true
             )
+
+            // OPTIMISTIC UPDATE: appears immediately on device just like a sent chat message!
+            _products.value = listOf(newProduct) + _products.value.filter { it.id != newProduct.id }
+            _myProducts.value = listOf(newProduct) + _myProducts.value.filter { it.id != newProduct.id }
+
             val result = repository.createProduct(newProduct)
             _isLoading.value = false
             if (result.isSuccess) {
-                loadMyStore()
-                loadExploreProducts()
+                val created = result.getOrNull() ?: newProduct
+                _products.value = listOf(created) + _products.value.filter { it.id != created.id && it.id != newProduct.id }
+                _myProducts.value = listOf(created) + _myProducts.value.filter { it.id != created.id && it.id != newProduct.id }
                 onSuccess()
             } else {
                 onError(result.exceptionOrNull()?.message ?: "Failed to add product")

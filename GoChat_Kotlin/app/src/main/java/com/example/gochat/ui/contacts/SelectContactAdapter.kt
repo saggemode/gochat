@@ -16,7 +16,7 @@ import com.example.gochat.databinding.ItemContactSelectBinding
 sealed class ContactListItem {
     data class Action(val id: String, val title: String, val iconRes: Int) : ContactListItem()
     data class Header(val title: String, val count: Int) : ContactListItem()
-    data class Contact(val contact: SyncedContact) : ContactListItem()
+    data class Contact(val contact: SyncedContact, val isSelected: Boolean = false) : ContactListItem()
 }
 
 class SelectContactAdapter(
@@ -24,6 +24,12 @@ class SelectContactAdapter(
     private val onContactClicked: (SyncedContact) -> Unit,
     private val onInviteClicked: (SyncedContact) -> Unit
 ) : ListAdapter<ContactListItem, RecyclerView.ViewHolder>(ContactDiffCallback) {
+
+    var isMultiSelectMode = false
+        set(value) {
+            field = value
+            notifyDataSetChanged()
+        }
 
     companion object {
         private const val TYPE_ACTION = 0
@@ -61,7 +67,7 @@ class SelectContactAdapter(
         when (val item = getItem(position)) {
             is ContactListItem.Action -> (holder as ActionViewHolder).bind(item)
             is ContactListItem.Header -> (holder as HeaderViewHolder).bind(item)
-            is ContactListItem.Contact -> (holder as ContactViewHolder).bind(item.contact)
+            is ContactListItem.Contact -> (holder as ContactViewHolder).bind(item)
         }
     }
 
@@ -87,7 +93,8 @@ class SelectContactAdapter(
     inner class ContactViewHolder(private val binding: ItemContactSelectBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(contact: SyncedContact) {
+        fun bind(item: ContactListItem.Contact) {
+            val contact = item.contact
             with(binding) {
                 tvName.text = contact.displayName
 
@@ -108,6 +115,9 @@ class SelectContactAdapter(
                         errorRes = R.drawable.ic_account
                     )
 
+                    cbSelect.visibility = if (isMultiSelectMode) View.VISIBLE else View.GONE
+                    cbSelect.isChecked = item.isSelected
+
                     root.setOnClickListener { onContactClicked(contact) }
                 } else {
                     // Unregistered contact to invite
@@ -116,6 +126,7 @@ class SelectContactAdapter(
 
                     viewOnlineDot.visibility = View.GONE
                     btnInvite.visibility = View.VISIBLE
+                    cbSelect.visibility = View.GONE
                     ivAvatar.setImageResource(R.drawable.ic_account)
 
                     btnInvite.setOnClickListener { onInviteClicked(contact) }

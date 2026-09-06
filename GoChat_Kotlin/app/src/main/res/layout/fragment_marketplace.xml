@@ -104,7 +104,6 @@
                 android:text="Marketplace" />
 
             <com.google.android.material.tabs.TabItem
-                android:id="@+id/tabStore"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:icon="@drawable/ic_storefront"
@@ -426,22 +425,80 @@
                             android:textColor="@color/gochat_text_primary" />
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- Store Logo URL -->
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    <!-- Store Logo Picker (From Phone) -->
+                    <LinearLayout
+                        android:id="@+id/layoutSelectStoreLogo"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="10dp"
-                        android:hint="Store Logo URL (Optional)"
-                        android:textColorHint="@color/gochat_text_muted"
-                        app:boxStrokeColor="@color/whatsapp_teal_light">
+                        android:layout_marginBottom="14dp"
+                        android:background="@drawable/bg_store_logo_picker"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?attr/selectableItemBackground"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:padding="12dp">
 
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/etStoreLogoUrl"
-                            android:layout_width="match_parent"
+                        <FrameLayout
+                            android:layout_width="64dp"
+                            android:layout_height="64dp">
+
+                            <com.google.android.material.imageview.ShapeableImageView
+                                android:id="@+id/ivStoreLogoPreview"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:background="@drawable/bg_photo_add_slot"
+                                android:padding="14dp"
+                                android:scaleType="centerInside"
+                                android:src="@drawable/ic_camera_status"
+                                app:shapeAppearanceOverlay="@style/ShapeAppearance.MaterialComponents.MediumComponent"
+                                app:tint="@color/whatsapp_teal_light" />
+
+                            <ImageButton
+                                android:id="@+id/btnRemoveStoreLogo"
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:layout_gravity="top|end"
+                                android:background="@drawable/bg_circle_close_badge"
+                                android:contentDescription="Remove logo"
+                                android:padding="3dp"
+                                android:src="@drawable/ic_close"
+                                android:visibility="gone"
+                                app:tint="@color/white" />
+                        </FrameLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:textColor="@color/gochat_text_primary" />
-                    </com.google.android.material.textfield.TextInputLayout>
+                            android:layout_marginStart="12dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvStoreLogoTitle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Store Logo"
+                                android:textColor="@color/gochat_text_primary"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tvStoreLogoSubtitle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="Tap to select logo from phone"
+                                android:textColor="@color/gochat_text_muted"
+                                android:textSize="12sp" />
+                        </LinearLayout>
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/gochat_text_muted" />
+                    </LinearLayout>
 
                     <!-- Store Description -->
                     <com.google.android.material.textfield.TextInputLayout

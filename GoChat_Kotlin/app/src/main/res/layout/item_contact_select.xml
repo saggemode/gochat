@@ -82,4 +82,15 @@
         app:strokeColor="@color/gochat_accent"
         tools:visibility="visible" />
 
+    <!-- Selection Checkbox (for multi-select mode) -->
+    <CheckBox
+        android:id="@+id/cbSelect"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:clickable="false"
+        android:focusable="false"
+        app:buttonTint="@color/gochat_accent"
+        tools:visibility="visible" />
+
 </LinearLayout>

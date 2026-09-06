@@ -194,8 +194,23 @@ class ChatRepository(private val context: Context) {
     }
 
     suspend fun handleIncomingWebSocketEvent(event: JsonObject): Message? {
-        val eventType = (event["event_type"] ?: event["eventType"] ?: event["type"])
-            ?.jsonPrimitive?.contentOrNull.orEmpty()
+        val eventType = (event["type"] ?: event["event_type"] ?: event["eventType"])
+            ?.jsonPrimitive?.contentOrNull.orEmpty().lowercase()
+
+        if (eventType == "presence") {
+            val userId = (event["user_id"] ?: event["userId"])?.jsonPrimitive?.contentOrNull.orEmpty()
+            val isOnline = (event["is_online"] ?: event["isOnline"])?.jsonPrimitive?.booleanOrNull ?: false
+            val lastSeenSec = (event["last_seen"] ?: event["lastSeen"])?.jsonPrimitive?.longOrNull
+            val lastSeenMs = if (lastSeenSec != null) {
+                if (lastSeenSec < 100_000_000_000L) lastSeenSec * 1000L else lastSeenSec
+            } else System.currentTimeMillis()
+
+            if (userId.isNotEmpty() && userId != (tokenManager.userId ?: "")) {
+                dao.updatePresenceGlobal(userId, isOnline, lastSeenMs)
+            }
+            return null
+        }
+
         val rawMsg = event["message"] ?: event["Message"] ?: event["payload"] ?: event["data"]
 
         val isMessageEvent = eventType == "0" ||

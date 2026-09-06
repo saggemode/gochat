@@ -20,5 +20,11 @@
     <color name="whatsapp_toolbar_dark">#1F2C34</color>
     <color name="whatsapp_doodle_tint">#E9EDEF</color>
     <color name="whatsapp_emerald">#00A884</color>
+    <color name="whatsapp_teal_light">#128C7E</color>
     <color name="gochat_input_bg">#27272A</color>
+
+    <!-- UI Semantic Night Aliases -->
+    <color name="bg_surface_card">#18181B</color>
+    <color name="border_subtle">#27272A</color>
+    <color name="text_secondary">#A1A1AA</color>
 </resources>

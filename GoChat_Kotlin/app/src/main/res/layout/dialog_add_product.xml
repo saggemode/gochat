@@ -143,22 +143,204 @@
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
 
-        <!-- Product Image URL -->
-        <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        <!-- Product Images Picker (Max 3) -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="10dp"
-            android:hint="Image URL (https://...)"
-            android:textColorHint="@color/gochat_text_muted"
-            app:boxStrokeColor="@color/whatsapp_teal_light">
+            android:layout_marginBottom="14dp"
+            android:orientation="vertical">
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etProductImageUrl"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textColor="@color/gochat_text_primary" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:layout_marginBottom="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Product Photos (Max 3) *"
+                    android:textColor="@color/gochat_text_primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvPhotosCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0/3 selected"
+                    android:textColor="@color/whatsapp_teal_light"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Horizontal container for photo pickers and previews -->
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:id="@+id/layoutPhotoThumbnailsRow"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <!-- Add Photo Card Button -->
+                    <LinearLayout
+                        android:id="@+id/layoutAddPhoto"
+                        android:layout_width="88dp"
+                        android:layout_height="88dp"
+                        android:layout_marginEnd="10dp"
+                        android:background="@drawable/bg_photo_add_slot"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:foreground="?attr/selectableItemBackground"
+                        android:gravity="center"
+                        android:orientation="vertical">
+
+                        <ImageView
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:src="@drawable/ic_camera_status"
+                            app:tint="@color/whatsapp_teal_light" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="+ Add"
+                            android:textColor="@color/whatsapp_teal_light"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Preview Frame 1 -->
+                    <FrameLayout
+                        android:id="@+id/framePreview1"
+                        android:layout_width="88dp"
+                        android:layout_height="88dp"
+                        android:layout_marginEnd="10dp"
+                        android:visibility="gone"
+                        tools:visibility="visible">
+
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:id="@+id/ivPreview1"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            app:shapeAppearanceOverlay="@style/ShapeAppearance.MaterialComponents.MediumComponent" />
+
+                        <ImageButton
+                            android:id="@+id/btnRemovePhoto1"
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:layout_gravity="top|end"
+                            android:layout_margin="4dp"
+                            android:background="@drawable/bg_circle_close_badge"
+                            android:contentDescription="Remove photo"
+                            android:padding="4dp"
+                            android:src="@drawable/ic_close"
+                            app:tint="@color/white" />
+                    </FrameLayout>
+
+                    <!-- Preview Frame 2 -->
+                    <FrameLayout
+                        android:id="@+id/framePreview2"
+                        android:layout_width="88dp"
+                        android:layout_height="88dp"
+                        android:layout_marginEnd="10dp"
+                        android:visibility="gone"
+                        tools:visibility="visible">
+
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:id="@+id/ivPreview2"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            app:shapeAppearanceOverlay="@style/ShapeAppearance.MaterialComponents.MediumComponent" />
+
+                        <ImageButton
+                            android:id="@+id/btnRemovePhoto2"
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:layout_gravity="top|end"
+                            android:layout_margin="4dp"
+                            android:background="@drawable/bg_circle_close_badge"
+                            android:contentDescription="Remove photo"
+                            android:padding="4dp"
+                            android:src="@drawable/ic_close"
+                            app:tint="@color/white" />
+                    </FrameLayout>
+
+                    <!-- Preview Frame 3 -->
+                    <FrameLayout
+                        android:id="@+id/framePreview3"
+                        android:layout_width="88dp"
+                        android:layout_height="88dp"
+                        android:layout_marginEnd="10dp"
+                        android:visibility="gone"
+                        tools:visibility="visible">
+
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:id="@+id/ivPreview3"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            app:shapeAppearanceOverlay="@style/ShapeAppearance.MaterialComponents.MediumComponent" />
+
+                        <ImageButton
+                            android:id="@+id/btnRemovePhoto3"
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:layout_gravity="top|end"
+                            android:layout_margin="4dp"
+                            android:background="@drawable/bg_circle_close_badge"
+                            android:contentDescription="Remove photo"
+                            android:padding="4dp"
+                            android:src="@drawable/ic_close"
+                            app:tint="@color/white" />
+                    </FrameLayout>
+                </LinearLayout>
+            </HorizontalScrollView>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Tap '+ Add' to select up to 3 pictures from your phone."
+                android:textColor="@color/gochat_text_muted"
+                android:textSize="12sp" />
+
+            <!-- Upload progress indicator -->
+            <LinearLayout
+                android:id="@+id/layoutUploadProgress"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <ProgressBar
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:indeterminate="true"
+                    android:indeterminateTint="@color/whatsapp_teal_light" />
+
+                <TextView
+                    android:id="@+id/tvUploadStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="Uploading photos..."
+                    android:textColor="@color/whatsapp_teal_light"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </LinearLayout>
 
         <!-- Description -->
         <com.google.android.material.textfield.TextInputLayout

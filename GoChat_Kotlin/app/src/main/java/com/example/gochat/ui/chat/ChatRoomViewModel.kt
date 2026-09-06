@@ -42,6 +42,8 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
     private val _partnerLastSeen = MutableStateFlow<Long?>(null)
     val partnerLastSeen: StateFlow<Long?> = _partnerLastSeen.asStateFlow()
 
+    private var currentPartnerId: String? = null
+
     fun setInitialPresence(isOnline: Boolean, lastSeen: Long?) {
         _isPartnerOnline.value = isOnline
         _partnerLastSeen.value = if (lastSeen != null && lastSeen > 0L) lastSeen else null
@@ -84,6 +86,11 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             val conv = chatRepository.getConversationById(convId)
             if (conv != null) {
+                val currentUserId = tokenManager.userId ?: ""
+                if (conv.isDirect) {
+                    currentPartnerId = conv.memberIds.find { it != currentUserId }
+                }
+
                 _isPartnerOnline.value = conv.isOnline
                 if (conv.lastSeen != null && conv.lastSeen > 0L) {
                     _partnerLastSeen.value = conv.lastSeen
@@ -340,8 +347,10 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
 
             val currentUserId = tokenManager.userId ?: ""
             if (userId.isNotEmpty() && userId != currentUserId) {
-                val matchesPartner = _members.value.any { it.id == userId }
-                if (matchesPartner || _members.value.isEmpty()) {
+                val isPartner = userId == currentPartnerId
+                val isMember = _members.value.any { it.id == userId }
+                
+                if (isPartner || isMember || _members.value.isEmpty()) {
                     _isPartnerOnline.value = isOnline
                     if (!isOnline) {
                         _partnerLastSeen.value = lastSeenMs

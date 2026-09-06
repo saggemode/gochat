@@ -27,6 +27,12 @@ class SelectContactViewModel(application: Application) : AndroidViewModel(applic
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _isMultiSelectMode = MutableStateFlow(false)
+    val isMultiSelectMode: StateFlow<Boolean> = _isMultiSelectMode.asStateFlow()
+
+    private val _selectedContactIds = MutableStateFlow<Set<String>>(emptySet())
+    val selectedContactIds: StateFlow<Set<String>> = _selectedContactIds.asStateFlow()
+
     private val _hasPermission = MutableStateFlow(syncManager.hasPermission())
     val hasPermission: StateFlow<Boolean> = _hasPermission.asStateFlow()
 
@@ -36,8 +42,10 @@ class SelectContactViewModel(application: Application) : AndroidViewModel(applic
 
     val uiItems: StateFlow<List<ContactListItem>> = combine(
         _allContacts,
-        _searchQuery
-    ) { contacts, query ->
+        _searchQuery,
+        _isMultiSelectMode,
+        _selectedContactIds
+    ) { contacts, query, isMulti, selectedIds ->
         val trimmedQuery = query.trim().lowercase()
 
         val registered = contacts.filter { it.isRegistered }
@@ -46,30 +54,34 @@ class SelectContactViewModel(application: Application) : AndroidViewModel(applic
         val items = mutableListOf<ContactListItem>()
 
         if (trimmedQuery.isBlank()) {
-            // 1. Top Quick Action Tiles
-            items.add(
-                ContactListItem.Action(
-                    id = "action_group",
-                    title = "New group",
-                    iconRes = R.drawable.ic_tab_chats
+            if (!isMulti) {
+                // 1. Top Quick Action Tiles
+                items.add(
+                    ContactListItem.Action(
+                        id = "action_group",
+                        title = "New group",
+                        iconRes = R.drawable.ic_tab_chats
+                    )
                 )
-            )
-            items.add(
-                ContactListItem.Action(
-                    id = "action_pin",
-                    title = "New contact by PIN",
-                    iconRes = R.drawable.ic_message_add
+                items.add(
+                    ContactListItem.Action(
+                        id = "action_pin",
+                        title = "New contact by PIN",
+                        iconRes = R.drawable.ic_message_add
+                    )
                 )
-            )
+            }
 
             // 2. Contacts on GoChat
             if (registered.isNotEmpty()) {
                 items.add(ContactListItem.Header("CONTACTS ON GOCHAT", registered.size))
-                registered.forEach { items.add(ContactListItem.Contact(it)) }
+                registered.forEach { 
+                    items.add(ContactListItem.Contact(it, isSelected = selectedIds.contains(it.finalUserId))) 
+                }
             }
 
             // 3. Invite to GoChat
-            if (invite.isNotEmpty()) {
+            if (invite.isNotEmpty() && !isMulti) {
                 items.add(ContactListItem.Header("INVITE TO GOCHAT", invite.size))
                 invite.forEach { items.add(ContactListItem.Contact(it)) }
             }
@@ -87,10 +99,12 @@ class SelectContactViewModel(application: Application) : AndroidViewModel(applic
 
             if (filteredReg.isNotEmpty()) {
                 items.add(ContactListItem.Header("CONTACTS ON GOCHAT", filteredReg.size))
-                filteredReg.forEach { items.add(ContactListItem.Contact(it)) }
+                filteredReg.forEach { 
+                    items.add(ContactListItem.Contact(it, isSelected = selectedIds.contains(it.finalUserId))) 
+                }
             }
 
-            if (filteredInvite.isNotEmpty()) {
+            if (filteredInvite.isNotEmpty() && !isMulti) {
                 items.add(ContactListItem.Header("INVITE TO GOCHAT", filteredInvite.size))
                 filteredInvite.forEach { items.add(ContactListItem.Contact(it)) }
             }
@@ -118,6 +132,28 @@ class SelectContactViewModel(application: Application) : AndroidViewModel(applic
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
+    }
+
+    fun setMultiSelectMode(enabled: Boolean) {
+        _isMultiSelectMode.value = enabled
+        if (!enabled) {
+            _selectedContactIds.value = emptySet()
+        }
+    }
+
+    fun toggleContactSelection(contactId: String) {
+        val current = _selectedContactIds.value.toMutableSet()
+        if (current.contains(contactId)) {
+            current.remove(contactId)
+        } else {
+            current.add(contactId)
+        }
+        _selectedContactIds.value = current
+    }
+
+    fun getSelectedContacts(): List<SyncedContact> {
+        val ids = _selectedContactIds.value
+        return _allContacts.value.filter { ids.contains(it.finalUserId) }
     }
 
     fun checkPermissionAndSync(force: Boolean) {

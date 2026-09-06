@@ -22,6 +22,7 @@ import com.example.gochat.data.model.SyncedContact
 import com.example.gochat.databinding.ActivitySelectContactBinding
 import com.example.gochat.databinding.DialogNewChatByPinBinding
 import com.example.gochat.ui.chat.ChatRoomActivity
+import com.example.gochat.ui.chat.GroupCreateActivity
 import kotlinx.coroutines.launch
 
 class SelectContactActivity : AppCompatActivity() {
@@ -52,11 +53,31 @@ class SelectContactActivity : AppCompatActivity() {
         binding = ActivitySelectContactBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        val action = intent.getStringExtra("action")
+        val preselectName = intent.getStringExtra("preselect_contact_name")
+        
+        if (action == "create_group") {
+            viewModel.setMultiSelectMode(true)
+        }
+
         setupToolbar()
         setupRecyclerView()
         setupSearch()
         setupListeners()
         observeViewModel()
+        
+        if (!preselectName.isNullOrBlank()) {
+            lifecycleScope.launch {
+                repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    viewModel.allContacts.collect { contacts ->
+                        val contact = contacts.firstOrNull { it.displayName.equals(preselectName, ignoreCase = true) }
+                        if (contact != null) {
+                            viewModel.toggleContactSelection(contact.finalUserId)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun setupToolbar() {
@@ -77,7 +98,7 @@ class SelectContactActivity : AppCompatActivity() {
             onActionClicked = { actionId ->
                 when (actionId) {
                     "action_group" -> {
-                        Toast.makeText(this, "Group creation coming soon!", Toast.LENGTH_SHORT).show()
+                        viewModel.setMultiSelectMode(true)
                     }
                     "action_pin" -> {
                         showChatByPinDialog()
@@ -85,7 +106,11 @@ class SelectContactActivity : AppCompatActivity() {
                 }
             },
             onContactClicked = { contact ->
-                openChatWithContact(contact)
+                if (viewModel.isMultiSelectMode.value) {
+                    viewModel.toggleContactSelection(contact.finalUserId)
+                } else {
+                    openChatWithContact(contact)
+                }
             },
             onInviteClicked = { contact ->
                 inviteContact(contact)
@@ -115,6 +140,22 @@ class SelectContactActivity : AppCompatActivity() {
 
         binding.swipeRefresh.setOnRefreshListener {
             viewModel.checkPermissionAndSync(force = true)
+        }
+
+        binding.fabNext.setOnClickListener {
+            val selected = viewModel.getSelectedContacts()
+            if (selected.isEmpty()) {
+                Toast.makeText(this, "Select at least one contact", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            
+            val intent = Intent(this, GroupCreateActivity::class.java).apply {
+                val memberIds = selected.map { it.finalUserId }.toTypedArray()
+                val memberNames = selected.map { it.displayName }.toTypedArray()
+                putExtra(GroupCreateActivity.EXTRA_MEMBER_IDS, memberIds)
+                putExtra(GroupCreateActivity.EXTRA_MEMBER_NAMES, memberNames)
+            }
+            startActivity(intent)
         }
     }
 
@@ -161,6 +202,24 @@ class SelectContactActivity : AppCompatActivity() {
                             binding.tvEmptySubtitle.text = "Invite your friends to GoChat or start a chat using their 6-character PIN."
                         } else {
                             binding.layoutEmptyState.visibility = View.GONE
+                        }
+                    }
+                }
+
+                launch {
+                    viewModel.isMultiSelectMode.collect { isMulti ->
+                        adapter.isMultiSelectMode = isMulti
+                        binding.toolbar.title = if (isMulti) "New group" else "Select contact"
+                        if (!isMulti) binding.fabNext.visibility = View.GONE
+                    }
+                }
+
+                launch {
+                    viewModel.selectedContactIds.collect { selected ->
+                        if (viewModel.isMultiSelectMode.value) {
+                            val count = selected.size
+                            binding.toolbar.subtitle = if (count > 0) "$count selected" else "Add members"
+                            binding.fabNext.visibility = if (count > 0) View.VISIBLE else View.GONE
                         }
                     }
                 }

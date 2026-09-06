@@ -69,6 +69,19 @@
             android:exported="false"
             android:theme="@style/Theme.GoChat" />
 
+        <!-- Group Create Activity -->
+        <activity
+            android:name=".ui.chat.GroupCreateActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Contact Profile Activity -->
+        <activity
+            android:name=".ui.chat.ContactProfileActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+
         <activity
             android:name=".ui.chat.BotManagementActivity"
             android:exported="false"
