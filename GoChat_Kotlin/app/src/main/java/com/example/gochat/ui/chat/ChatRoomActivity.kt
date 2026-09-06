@@ -286,6 +286,11 @@ class ChatRoomActivity : AppCompatActivity() {
             stackFromEnd = true
         }
 
+        val themeManager = ChatThemeManager(this)
+        val convId = intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty()
+        val currentTheme = themeManager.getTheme(convId)
+        messageAdapter.setBubbleTheme(currentTheme.bubbleShape, currentTheme.accentColor)
+
         binding.rvMessages.layoutManager = layoutManager
         binding.rvMessages.adapter = messageAdapter
 
@@ -822,7 +827,7 @@ class ChatRoomActivity : AppCompatActivity() {
         
         // Update adapter if it exists
         if (::messageAdapter.isInitialized) {
-            messageAdapter.setAccentColor(accentColor)
+            messageAdapter.setBubbleTheme(theme.bubbleShape, accentColor)
         }
     }
 
