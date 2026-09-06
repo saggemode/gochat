@@ -285,6 +285,7 @@ class ChatWallpaperBottomSheet(
         binding.tvPreviewOtherMessage.setTextColor(
             ChatBubbleHelper.getMessageTextColor(isMe = false, shape = theme.bubbleShape)
         )
+    }
 
     private fun copyUriToInternalStorage(uri: Uri): String? {
         return try {
