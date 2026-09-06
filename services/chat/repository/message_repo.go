@@ -256,6 +256,17 @@ func (r *ConversationRepository) IsMember(ctx context.Context, convID, userID uu
 	return exists, err
 }
 
+func (r *ConversationRepository) GetMemberInfo(ctx context.Context, convID, userID uuid.UUID) (role string, isBot bool, err error) {
+	err = r.db.QueryRow(ctx, `
+		SELECT role, is_bot FROM conversation_members
+		WHERE conversation_id = $1 AND user_id = $2
+	`, convID, userID).Scan(&role, &isBot)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
+	}
+	return role, isBot, err
+}
+
 func (r *ConversationRepository) AddMember(ctx context.Context, convID, userID uuid.UUID) error {
 	_, err := r.db.Exec(ctx, `
 		INSERT INTO conversation_members (conversation_id, user_id)
@@ -583,11 +594,19 @@ func (r *MessageRepository) GetEditHistory(ctx context.Context, msgID uuid.UUID)
 	return entries, rows.Err()
 }
 
-func (r *MessageRepository) Delete(ctx context.Context, msgID, deleterID uuid.UUID) error {
-	tag, err := r.db.Exec(ctx, `
-		UPDATE messages SET is_deleted = TRUE
-		WHERE id = $1 AND sender_id = $2
-	`, msgID, deleterID)
+func (r *MessageRepository) Delete(ctx context.Context, msgID, deleterID uuid.UUID, bypassAuthorCheck bool) error {
+	var query string
+	var args []interface{}
+
+	if bypassAuthorCheck {
+		query = `UPDATE messages SET is_deleted = TRUE WHERE id = $1`
+		args = []interface{}{msgID}
+	} else {
+		query = `UPDATE messages SET is_deleted = TRUE WHERE id = $1 AND sender_id = $2`
+		args = []interface{}{msgID, deleterID}
+	}
+
+	tag, err := r.db.Exec(ctx, query, args...)
 	if err != nil {
 		return err
 	}

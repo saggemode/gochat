@@ -14,7 +14,10 @@ import (
 	"google.golang.org/grpc/status"
 
 	chatpb "gochat/gen/chat"
+	grouppb "gochat/gen/group"
 	"gochat/pkg/authz"
+	"gochat/pkg/group"
+	"gochat/pkg/moderator"
 	"gochat/services/chat/repository"
 )
 
@@ -31,6 +34,7 @@ type ChatServer struct {
 	pollRepo      *repository.PollRepository
 	redis         *redis.Client
 	authz         *authz.Client
+	group         *group.Client
 	log           *zap.Logger
 }
 
@@ -45,6 +49,7 @@ func New(
 	pollRepo *repository.PollRepository,
 	redisClient *redis.Client,
 	authzClient *authz.Client,
+	groupClient *group.Client,
 	log *zap.Logger,
 ) *ChatServer {
 	return &ChatServer{
@@ -57,6 +62,7 @@ func New(
 		pollRepo:      pollRepo,
 		redis:         redisClient,
 		authz:         authzClient,
+		group:         groupClient,
 		log:           log,
 	}
 }
@@ -195,6 +201,27 @@ func (s *ChatServer) SendMessage(ctx context.Context, req *chatpb.SendMessageReq
 	}
 	if !isMember {
 		return nil, status.Error(codes.PermissionDenied, "you are not a member of this conversation")
+	}
+
+	// ── Bot Moderation ──────────────────────────────────────────────────────────
+	// If it's a group conversation, perform bot moderation checks
+	conv, _ := s.convRepo.GetByID(ctx, convID)
+	if conv != nil && conv.Type == repository.ConversationGroup && s.group != nil {
+		botConfig, err := s.group.GetBotConfig(ctx, convID.String(), senderID.String())
+		if err == nil && botConfig != nil && botConfig.IsActive {
+			modResult := moderator.CheckMessage(ctx, botConfig, req.Content)
+			if !modResult.Allowed {
+				s.log.Info("message blocked by bot moderator",
+					zap.String("conv_id", convID.String()),
+					zap.String("sender_id", senderID.String()),
+					zap.String("reason", modResult.Reason),
+				)
+				// Log to audit log
+				_ = s.group.LogAuditAction(ctx, convID.String(), botConfig.BotId, "block_message", senderID.String(), modResult.Reason)
+
+				return nil, status.Errorf(codes.PermissionDenied, "moderation bot: %s", modResult.Reason)
+			}
+		}
 	}
 
 	msg := &repository.Message{
@@ -410,21 +437,44 @@ func (s *ChatServer) DeleteMessage(ctx context.Context, req *chatpb.DeleteMessag
 		return nil, status.Error(codes.NotFound, "message not found")
 	}
 
-	// Authorization Check (RBAC + ABAC)
-	attrs := map[string]string{
-		"resource.sender_id": msg.SenderID.String(),
-	}
-	allowed, reason, authErr := s.authz.Can(ctx, req.DeleterId, "message:delete_own", msg.ID.String(), attrs)
-	if authErr != nil {
-		s.log.Error("failed to authorize message delete", zap.Error(authErr))
-		return nil, status.Error(codes.Internal, "authorization check failed")
-	}
-	if !allowed {
-		return nil, status.Error(codes.PermissionDenied, "unauthorized: "+reason)
+	role, isBot, _ := s.convRepo.GetMemberInfo(ctx, msg.ConversationID, deleterID)
+
+	bypass := false
+	if isBot {
+		botConfig, err := s.group.GetBotConfig(ctx, msg.ConversationID.String(), deleterID.String())
+		if err == nil && botConfig != nil && botConfig.IsActive {
+			for _, p := range botConfig.Permissions {
+				if p == grouppb.BotPermission_MANAGE_MESSAGES {
+					bypass = true
+					break
+				}
+			}
+		}
+	} else if role == "owner" || role == "admin" {
+		bypass = true
 	}
 
-	if err := s.msgRepo.Delete(ctx, msgID, deleterID); err != nil {
+	if !bypass {
+		// Authorization Check (RBAC + ABAC) for normal users
+		attrs := map[string]string{
+			"resource.sender_id": msg.SenderID.String(),
+		}
+		allowed, reason, authErr := s.authz.Can(ctx, req.DeleterId, "message:delete_own", msg.ID.String(), attrs)
+		if authErr != nil {
+			s.log.Error("failed to authorize message delete", zap.Error(authErr))
+			return nil, status.Error(codes.Internal, "authorization check failed")
+		}
+		if !allowed {
+			return nil, status.Error(codes.PermissionDenied, "unauthorized: "+reason)
+		}
+	}
+
+	if err := s.msgRepo.Delete(ctx, msgID, deleterID, bypass); err != nil {
 		return nil, status.Error(codes.Internal, "failed to delete message")
+	}
+
+	if isBot {
+		_ = s.group.LogAuditAction(ctx, msg.ConversationID.String(), deleterID.String(), "delete_message", msg.SenderID.String(), "moderation bot action")
 	}
 
 	s.publishEvent(ctx, "message_deleted", msgID.String(), msg.ConversationID.String(), deleterID.String())

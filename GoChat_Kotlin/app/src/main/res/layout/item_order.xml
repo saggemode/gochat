@@ -4,10 +4,10 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginHorizontal="8dp"
-    android:layout_marginVertical="4dp"
+    android:layout_marginHorizontal="10dp"
+    android:layout_marginVertical="6dp"
     app:cardBackgroundColor="@color/gochat_surface_dark"
-    app:cardCornerRadius="12dp"
+    app:cardCornerRadius="14dp"
     app:cardElevation="0dp"
     app:strokeColor="@color/gochat_border_dark"
     app:strokeWidth="1dp">
@@ -16,11 +16,12 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="14dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <TextView
@@ -31,19 +32,39 @@
                 android:textColor="@color/gochat_text_primary"
                 android:textSize="14sp"
                 android:textStyle="bold"
-                tools:text="Order #12345" />
+                tools:text="Order #ORD-849201" />
 
             <TextView
                 android:id="@+id/tvOrderStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="2dp"
-                android:textColor="@color/gochat_accent"
-                android:textSize="12sp"
+                android:background="@drawable/bg_chip_selected"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="3dp"
+                android:textColor="@color/black"
+                android:textSize="11sp"
                 android:textStyle="bold"
                 tools:text="DELIVERED" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvStoreOrBuyer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/whatsapp_teal_light"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            tools:text="iStore Official" />
+
+        <TextView
+            android:id="@+id/tvItemsSummary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="@color/gochat_text_muted"
+            android:textSize="12sp"
+            tools:text="1 item • Shipped to Lagos, Nigeria" />
 
         <TextView
             android:id="@+id/tvOrderDate"
@@ -51,18 +72,19 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:textColor="@color/gochat_text_muted"
-            android:textSize="12sp"
-            tools:text="Oct 24, 2023" />
+            android:textSize="11sp"
+            tools:text="Sep 06, 2026 03:15" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="0.5dp"
-            android:layout_marginVertical="12dp"
+            android:layout_marginVertical="10dp"
             android:background="@color/gochat_border_dark" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <TextView
@@ -71,7 +93,7 @@
                 android:layout_weight="1"
                 android:text="@string/total_amount"
                 android:textColor="@color/gochat_text_secondary"
-                android:textSize="14sp" />
+                android:textSize="13sp" />
 
             <TextView
                 android:id="@+id/tvTotalAmount"
@@ -80,7 +102,23 @@
                 android:textColor="@color/gochat_text_primary"
                 android:textSize="16sp"
                 android:textStyle="bold"
-                tools:text="$199.98" />
+                tools:text="$1,199.00" />
         </LinearLayout>
+
+        <!-- Status update button for sellers -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnUpdateStatus"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_marginTop="10dp"
+            android:text="Advance Status (Mark as Shipped)"
+            android:textAllCaps="false"
+            android:textColor="@color/whatsapp_teal_light"
+            android:textSize="12sp"
+            android:visibility="gone"
+            app:cornerRadius="8dp"
+            app:strokeColor="@color/whatsapp_teal_light"
+            tools:visibility="visible" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

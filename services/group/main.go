@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	grouppb "gochat/gen/group"
+	"gochat/pkg/chat"
 	"gochat/pkg/config"
 	"gochat/pkg/database"
 	"gochat/pkg/health"
@@ -52,6 +53,13 @@ func main() {
 	// ── Repository ────────────────────────────────────────────────────────────
 	repo := repository.New(db)
 
+	// ── Chat Client ───────────────────────────────────────────────────────────
+	chatClient, err := chat.NewClient(cfg.ChatGRPCAddr)
+	if err != nil {
+		log.Fatal("failed to connect to chat service", zap.Error(err))
+	}
+	defer chatClient.Close()
+
 	// ── gRPC Server ───────────────────────────────────────────────────────────
 	grpcServer := grpc.NewServer(
 		grpc.KeepaliveParams(keepalive.ServerParameters{
@@ -65,7 +73,7 @@ func main() {
 		),
 	)
 
-	grouppb.RegisterGroupServiceServer(grpcServer, server.New(repo, log))
+	grouppb.RegisterGroupServiceServer(grpcServer, server.New(repo, chatClient, log))
 	reflection.Register(grpcServer)
 
 	// ── Listen ────────────────────────────────────────────────────────────────

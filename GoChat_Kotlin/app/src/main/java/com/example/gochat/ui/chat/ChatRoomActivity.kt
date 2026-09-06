@@ -65,6 +65,7 @@ class ChatRoomActivity : AppCompatActivity() {
         const val EXTRA_CONVERSATION_ID = "extra_conversation_id"
         const val EXTRA_CONVERSATION_TITLE = "extra_conversation_title"
         const val EXTRA_CONVERSATION_AVATAR = "extra_conversation_avatar"
+        const val EXTRA_INITIAL_MESSAGE = "extra_initial_message"
     }
 
     private lateinit var binding: ActivityChatRoomBinding
@@ -151,6 +152,12 @@ class ChatRoomActivity : AppCompatActivity() {
         setupVoiceRecordingControls()
         setupWindowInsets()
         observeState()
+
+        val initialMessage = intent.getStringExtra(EXTRA_INITIAL_MESSAGE)
+        if (!initialMessage.isNullOrBlank()) {
+            binding.etMessageInput.setText(initialMessage)
+            binding.etMessageInput.setSelection(initialMessage.length)
+        }
 
         if (convId.isNotEmpty()) {
             viewModel.initConversation(convId)
@@ -609,6 +616,12 @@ class ChatRoomActivity : AppCompatActivity() {
     private fun observeState() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.botConfig.collect { config ->
+                        binding.tvBotBanner.visibility = if (config?.isActive == true) View.VISIBLE else View.GONE
+                    }
+                }
+
                 launch {
                     viewModel.messages.collect { messagesList ->
                         val wasAtBottom = isLastItemVisible()

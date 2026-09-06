@@ -111,6 +111,16 @@
                 android:textSize="16sp" />
 
             <TextView
+                android:id="@+id/btnManageBot"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:text="@string/manage_bot"
+                android:textColor="@color/gochat_emerald_light"
+                android:textSize="16sp" />
+
+            <TextView
                 android:id="@+id/btnExitGroup"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"

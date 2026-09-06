@@ -1,5 +1,6 @@
 package com.example.gochat.ui.marketplace
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.View
@@ -78,14 +79,14 @@ class CheckoutActivity : AppCompatActivity() {
         lifecycleScope.launch {
             binding.progressBar.visibility = View.VISIBLE
             val total = cartItems.sumOf { (it.productPrice ?: 0.0) * it.quantity }
-            // For simplicity, we use the storeId from the first item
-            val storeId = "default_store" // Should be from items
+            val storeId = cartItems.firstOrNull()?.storeId?.ifBlank { "store_istore" } ?: "store_istore"
             
             val result = repository.placeOrder(storeId, cartItems, total, address)
             binding.progressBar.visibility = View.GONE
 
             if (result.isSuccess) {
                 Toast.makeText(this@CheckoutActivity, getString(R.string.toast_order_placed_success), Toast.LENGTH_LONG).show()
+                startActivity(Intent(this@CheckoutActivity, OrdersActivity::class.java))
                 finish()
             } else {
                 Toast.makeText(this@CheckoutActivity, getString(R.string.error_place_order), Toast.LENGTH_SHORT).show()

@@ -52,6 +52,27 @@ type BroadcastList struct {
 	RecipientIDs []uuid.UUID
 }
 
+type BotConfig struct {
+	BotID               uuid.UUID
+	GroupID             uuid.UUID
+	Permissions         []int32
+	IsActive            bool
+	CommandsPrefix      string
+	Rules               string
+	WelcomeMessage      string
+	SpamProtectionLevel int32
+}
+
+type AuditLog struct {
+	ID             uuid.UUID
+	ConversationID uuid.UUID
+	ActorID        uuid.UUID
+	ActionType     string
+	TargetID       uuid.NullUUID
+	Reason         string
+	CreatedAt      time.Time
+}
+
 type GroupRepository struct {
 	db *pgxpool.Pool
 }
@@ -111,7 +132,7 @@ func (r *GroupRepository) UpdateMetadata(ctx context.Context, m *GroupMetadata) 
 func (r *GroupRepository) GetUserRole(ctx context.Context, convID, userID uuid.UUID) (string, error) {
 	var role string
 	err := r.db.QueryRow(ctx, `
-		SELECT role FROM conversation_members WHERE conversation_id = $1 AND user_id = $2
+		SELECT role FROM chat.conversation_members WHERE conversation_id = $1 AND user_id = $2
 	`, convID, userID).Scan(&role)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -124,7 +145,7 @@ func (r *GroupRepository) GetUserRole(ctx context.Context, convID, userID uuid.U
 
 func (r *GroupRepository) SetUserRole(ctx context.Context, convID, userID uuid.UUID, role string) error {
 	res, err := r.db.Exec(ctx, `
-		UPDATE conversation_members SET role = $1 WHERE conversation_id = $2 AND user_id = $3
+		UPDATE chat.conversation_members SET role = $1 WHERE conversation_id = $2 AND user_id = $3
 	`, role, convID, userID)
 	if err != nil {
 		return err
@@ -161,12 +182,12 @@ func (r *GroupRepository) GetGroupIDByInviteCode(ctx context.Context, code strin
 	return convID, approvalRequired, nil
 }
 
-func (r *GroupRepository) JoinGroupDirect(ctx context.Context, convID, userID uuid.UUID) error {
+func (r *GroupRepository) JoinGroupDirect(ctx context.Context, convID, userID uuid.UUID, isBot bool) error {
 	_, err := r.db.Exec(ctx, `
-		INSERT INTO conversation_members (conversation_id, user_id, role)
-		VALUES ($1, $2, 'member')
-		ON CONFLICT (conversation_id, user_id) DO NOTHING
-	`, convID, userID)
+		INSERT INTO chat.conversation_members (conversation_id, user_id, role, is_bot)
+		VALUES ($1, $2, 'member', $3)
+		ON CONFLICT (conversation_id, user_id) DO UPDATE SET is_bot = EXCLUDED.is_bot
+	`, convID, userID, isBot)
 	return err
 }
 
@@ -446,6 +467,67 @@ func (r *GroupRepository) CreateBroadcastList(ctx context.Context, name string, 
 	return b, nil
 }
 
+func (r *GroupRepository) GetBotConfig(ctx context.Context, groupID uuid.UUID) (*BotConfig, error) {
+	c := &BotConfig{}
+	err := r.db.QueryRow(ctx, `
+		SELECT bot_id, group_id, permissions, is_active, commands_prefix, rules, welcome_message, spam_protection_level
+		FROM grp.bot_configs WHERE group_id = $1
+	`, groupID).Scan(&c.BotID, &c.GroupID, &c.Permissions, &c.IsActive, &c.CommandsPrefix, &c.Rules, &c.WelcomeMessage, &c.SpamProtectionLevel)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil // Not found
+		}
+		return nil, err
+	}
+	return c, nil
+}
+
+func (r *GroupRepository) UpdateBotConfig(ctx context.Context, c *BotConfig) error {
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO grp.bot_configs (bot_id, group_id, permissions, is_active, commands_prefix, rules, welcome_message, spam_protection_level)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		ON CONFLICT (group_id) DO UPDATE SET
+			bot_id = EXCLUDED.bot_id,
+			permissions = EXCLUDED.permissions,
+			is_active = EXCLUDED.is_active,
+			commands_prefix = EXCLUDED.commands_prefix,
+			rules = EXCLUDED.rules,
+			welcome_message = EXCLUDED.welcome_message,
+			spam_protection_level = EXCLUDED.spam_protection_level
+	`, c.BotID, c.GroupID, c.Permissions, c.IsActive, c.CommandsPrefix, c.Rules, c.WelcomeMessage, c.SpamProtectionLevel)
+	return err
+}
+
+func (r *GroupRepository) LogAction(ctx context.Context, l *AuditLog) error {
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO grp.audit_logs (conversation_id, actor_id, action_type, target_id, reason)
+		VALUES ($1, $2, $3, $4, $5)
+	`, l.ConversationID, l.ActorID, l.ActionType, l.TargetID, l.Reason)
+	return err
+}
+
+func (r *GroupRepository) GetAuditLogs(ctx context.Context, convID uuid.UUID, limit int) ([]*AuditLog, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT id, conversation_id, actor_id, action_type, target_id, reason, created_at
+		FROM grp.audit_logs WHERE conversation_id = $1
+		ORDER BY created_at DESC LIMIT $2
+	`, convID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var logs []*AuditLog
+	for rows.Next() {
+		l := &AuditLog{}
+		if err := rows.Scan(&l.ID, &l.ConversationID, &l.ActorID, &l.ActionType, &l.TargetID, &l.Reason, &l.CreatedAt); err != nil {
+			return nil, err
+		}
+		logs = append(logs, l)
+	}
+	return logs, nil
+}
+
 func (r *GroupRepository) DeleteBroadcastList(ctx context.Context, listID, ownerID uuid.UUID) error {
 	res, err := r.db.Exec(ctx, `
 		DELETE FROM broadcast_lists WHERE id = $1 AND owner_id = $2
@@ -539,4 +621,65 @@ func (r *GroupRepository) GetBroadcastList(ctx context.Context, listID, ownerID 
 	}
 
 	return b, nil
+}
+
+func (r *GroupRepository) GetBotConfig(ctx context.Context, groupID uuid.UUID) (*BotConfig, error) {
+	c := &BotConfig{}
+	err := r.db.QueryRow(ctx, `
+		SELECT bot_id, group_id, permissions, is_active, commands_prefix, rules, welcome_message, spam_protection_level
+		FROM grp.bot_configs WHERE group_id = $1
+	`, groupID).Scan(&c.BotID, &c.GroupID, &c.Permissions, &c.IsActive, &c.CommandsPrefix, &c.Rules, &c.WelcomeMessage, &c.SpamProtectionLevel)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil // Not found
+		}
+		return nil, err
+	}
+	return c, nil
+}
+
+func (r *GroupRepository) UpdateBotConfig(ctx context.Context, c *BotConfig) error {
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO grp.bot_configs (bot_id, group_id, permissions, is_active, commands_prefix, rules, welcome_message, spam_protection_level)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		ON CONFLICT (group_id) DO UPDATE SET
+			bot_id = EXCLUDED.bot_id,
+			permissions = EXCLUDED.permissions,
+			is_active = EXCLUDED.is_active,
+			commands_prefix = EXCLUDED.commands_prefix,
+			rules = EXCLUDED.rules,
+			welcome_message = EXCLUDED.welcome_message,
+			spam_protection_level = EXCLUDED.spam_protection_level
+	`, c.BotID, c.GroupID, c.Permissions, c.IsActive, c.CommandsPrefix, c.Rules, c.WelcomeMessage, c.SpamProtectionLevel)
+	return err
+}
+
+func (r *GroupRepository) LogAction(ctx context.Context, l *AuditLog) error {
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO grp.audit_logs (conversation_id, actor_id, action_type, target_id, reason)
+		VALUES ($1, $2, $3, $4, $5)
+	`, l.ConversationID, l.ActorID, l.ActionType, l.TargetID, l.Reason)
+	return err
+}
+
+func (r *GroupRepository) GetAuditLogs(ctx context.Context, convID uuid.UUID, limit int) ([]*AuditLog, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT id, conversation_id, actor_id, action_type, target_id, reason, created_at
+		FROM grp.audit_logs WHERE conversation_id = $1
+		ORDER BY created_at DESC LIMIT $2
+	`, convID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var logs []*AuditLog
+	for rows.Next() {
+		l := &AuditLog{}
+		if err := rows.Scan(&l.ID, &l.ConversationID, &l.ActorID, &l.ActionType, &l.TargetID, &l.Reason, &l.CreatedAt); err != nil {
+			return nil, err
+		}
+		logs = append(logs, l)
+	}
+	return logs, nil
 }

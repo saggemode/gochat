@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"strings"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -11,18 +12,21 @@ import (
 	"google.golang.org/grpc/status"
 
 	grouppb "gochat/gen/group"
+	"gochat/pkg/chat"
 	"gochat/services/group/repository"
 )
 
 type GroupServer struct {
 	grouppb.UnimplementedGroupServiceServer
 	repo *repository.GroupRepository
+	chat *chat.Client
 	log  *zap.Logger
 }
 
-func New(repo *repository.GroupRepository, log *zap.Logger) *GroupServer {
+func New(repo *repository.GroupRepository, chatClient *chat.Client, log *zap.Logger) *GroupServer {
 	return &GroupServer{
 		repo: repo,
+		chat: chatClient,
 		log:  log,
 	}
 }
@@ -179,10 +183,13 @@ func (s *GroupServer) JoinByInviteCode(ctx context.Context, req *grouppb.JoinByI
 		}, nil
 	}
 
-	err = s.repo.JoinGroupDirect(ctx, convID, userID)
+	err = s.repo.JoinGroupDirect(ctx, convID, userID, false)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "join group directly: %v", err)
 	}
+
+	// ── Bot Automation (Welcome Message) ──────────────────────────────────────
+	s.handleBotWelcome(ctx, convID, userID)
 
 	return &grouppb.JoinByInviteCodeResponse{
 		ConversationId: convID.String(),
@@ -594,4 +601,232 @@ func (s *GroupServer) GetBroadcastList(ctx context.Context, req *grouppb.GetBroa
 			RecipientIds: recipientIDsStr,
 		},
 	}, nil
+}
+
+func (s *GroupServer) UpdateBotConfig(ctx context.Context, req *grouppb.UpdateBotConfigRequest) (*grouppb.UpdateBotConfigResponse, error) {
+	botID, err := uuid.Parse(req.Config.BotId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid bot_id")
+	}
+	groupID, err := uuid.Parse(req.Config.GroupId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid group_id")
+	}
+	requesterID, err := uuid.Parse(req.RequesterId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid requester_id")
+	}
+
+	role, err := s.repo.GetUserRole(ctx, groupID, requesterID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "check user role: %v", err)
+	}
+	if role != "owner" && role != "admin" {
+		return nil, status.Error(codes.PermissionDenied, "only group admins or owners can update bot config")
+	}
+
+	permissions := make([]int32, len(req.Config.Permissions))
+	for i, p := range req.Config.Permissions {
+		permissions[i] = int32(p)
+	}
+
+	config := &repository.BotConfig{
+		BotID:               botID,
+		GroupID:             groupID,
+		Permissions:         permissions,
+		IsActive:            req.Config.IsActive,
+		CommandsPrefix:      req.Config.CommandsPrefix,
+		Rules:               req.Config.Rules,
+		WelcomeMessage:      req.Config.WelcomeMessage,
+		SpamProtectionLevel: req.Config.SpamProtectionLevel,
+	}
+
+	err = s.repo.UpdateBotConfig(ctx, config)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "update bot config: %v", err)
+	}
+
+	return &grouppb.UpdateBotConfigResponse{Success: true}, nil
+}
+
+func (s *GroupServer) GetBotConfig(ctx context.Context, req *grouppb.GetBotConfigRequest) (*grouppb.GetBotConfigResponse, error) {
+	groupID, err := uuid.Parse(req.GroupId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid group_id")
+	}
+	requesterID, err := uuid.Parse(req.RequesterId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid requester_id")
+	}
+
+	role, err := s.repo.GetUserRole(ctx, groupID, requesterID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "check user role: %v", err)
+	}
+	if role == "" {
+		return nil, status.Error(codes.PermissionDenied, "user is not a member of this group")
+	}
+
+	c, err := s.repo.GetBotConfig(ctx, groupID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "get bot config: %v", err)
+	}
+	if c == nil {
+		return nil, status.Error(codes.NotFound, "bot config not found for this group")
+	}
+
+	permissions := make([]grouppb.BotPermission, len(c.Permissions))
+	for i, p := range c.Permissions {
+		permissions[i] = grouppb.BotPermission(p)
+	}
+
+	return &grouppb.GetBotConfigResponse{
+		Config: &grouppb.BotConfig{
+			BotId:               c.BotID.String(),
+			GroupId:             c.GroupID.String(),
+			Permissions:         permissions,
+			IsActive:            c.IsActive,
+			CommandsPrefix:      c.CommandsPrefix,
+			Rules:               c.Rules,
+			WelcomeMessage:      c.WelcomeMessage,
+			SpamProtectionLevel: c.SpamProtectionLevel,
+		},
+	}, nil
+}
+
+func (s *GroupServer) AddBotToGroup(ctx context.Context, req *grouppb.AddBotToGroupRequest) (*grouppb.AddBotToGroupResponse, error) {
+	convID, err := uuid.Parse(req.ConversationId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid conversation_id")
+	}
+	reqID, err := uuid.Parse(req.RequesterId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid requester_id")
+	}
+	botID, err := uuid.Parse(req.BotUserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid bot_user_id")
+	}
+
+	role, err := s.repo.GetUserRole(ctx, convID, reqID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "check user role: %v", err)
+	}
+	if role != "owner" && role != "admin" {
+		return nil, status.Error(codes.PermissionDenied, "only group admins or owners can add bots")
+	}
+
+	err = s.repo.JoinGroupDirect(ctx, convID, botID, true)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "add bot member: %v", err)
+	}
+
+	return &grouppb.AddBotToGroupResponse{Success: true}, nil
+}
+
+func (s *GroupServer) GetAuditLogs(ctx context.Context, req *grouppb.GetAuditLogsRequest) (*grouppb.GetAuditLogsResponse, error) {
+	convID, err := uuid.Parse(req.ConversationId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid conversation_id")
+	}
+	reqID, err := uuid.Parse(req.RequesterId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid requester_id")
+	}
+
+	role, err := s.repo.GetUserRole(ctx, convID, reqID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "check user role: %v", err)
+	}
+	if role != "owner" && role != "admin" {
+		return nil, status.Error(codes.PermissionDenied, "only group admins or owners can view audit logs")
+	}
+
+	limit := int(req.Limit)
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+
+	logs, err := s.repo.GetAuditLogs(ctx, convID, limit)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "fetch audit logs: %v", err)
+	}
+
+	pbLogs := make([]*grouppb.AuditLogEntry, len(logs))
+	for i, l := range logs {
+		targetID := ""
+		if l.TargetID.Valid {
+			targetID = l.TargetID.UUID.String()
+		}
+		pbLogs[i] = &grouppb.AuditLogEntry{
+			Id:             l.ID.String(),
+			ConversationId: l.ConversationID.String(),
+			ActorId:        l.ActorID.String(),
+			ActionType:     l.ActionType,
+			TargetId:       targetID,
+			Reason:         l.Reason,
+			CreatedAt:      l.CreatedAt.Unix(),
+		}
+	}
+
+	return &grouppb.GetAuditLogsResponse{Logs: pbLogs}, nil
+}
+
+func (s *GroupServer) LogAuditAction(ctx context.Context, req *grouppb.LogAuditActionRequest) (*grouppb.LogAuditActionResponse, error) {
+	convID, err := uuid.Parse(req.ConversationId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid conversation_id")
+	}
+	actorID, err := uuid.Parse(req.ActorId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid actor_id")
+	}
+
+	var targetID uuid.NullUUID
+	if req.TargetId != "" {
+		tid, err := uuid.Parse(req.TargetId)
+		if err == nil {
+			targetID = uuid.NullUUID{UUID: tid, Valid: true}
+		}
+	}
+
+	err = s.repo.LogAction(ctx, &repository.AuditLog{
+		ConversationID: convID,
+		ActorID:        actorID,
+		ActionType:     req.ActionType,
+		TargetID:       targetID,
+		Reason:         req.Reason,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "log action: %v", err)
+	}
+
+	return &grouppb.LogAuditActionResponse{Success: true}, nil
+}
+
+func (s *GroupServer) handleBotWelcome(ctx context.Context, convID, userID uuid.UUID) {
+	config, err := s.repo.GetBotConfig(ctx, convID)
+	if err != nil || config == nil || !config.IsActive {
+		return
+	}
+
+	hasWelcomePerm := false
+	for _, p := range config.Permissions {
+		if p == int32(grouppb.BotPermission_WELCOME_MEMBERS) {
+			hasWelcomePerm = true
+			break
+		}
+	}
+
+	if !hasWelcomePerm || config.WelcomeMessage == "" {
+		return
+	}
+
+	if s.chat != nil {
+		welcome := strings.ReplaceAll(config.WelcomeMessage, "{user_id}", userID.String())
+		_, err = s.chat.SendMessage(ctx, config.BotID.String(), convID.String(), welcome)
+		if err != nil {
+			s.log.Error("failed to send bot welcome message", zap.Error(err))
+		}
+	}
 }

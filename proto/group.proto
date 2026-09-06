@@ -27,6 +27,13 @@ service GroupService {
   rpc AddBroadcastRecipient(AddBroadcastRecipientRequest) returns (AddBroadcastRecipientResponse);
   rpc RemoveBroadcastRecipient(RemoveBroadcastRecipientRequest) returns (RemoveBroadcastRecipientResponse);
   rpc GetBroadcastList(GetBroadcastListRequest) returns (GetBroadcastListResponse);
+
+  // Bot Management
+  rpc UpdateBotConfig(UpdateBotConfigRequest) returns (UpdateBotConfigResponse);
+  rpc GetBotConfig(GetBotConfigRequest) returns (GetBotConfigResponse);
+  rpc AddBotToGroup(AddBotToGroupRequest) returns (AddBotToGroupResponse);
+  rpc GetAuditLogs(GetAuditLogsRequest) returns (GetAuditLogsResponse);
+  rpc LogAuditAction(LogAuditActionRequest) returns (LogAuditActionResponse);
 }
 
 message GroupMetadata {
@@ -246,4 +253,102 @@ message GetBroadcastListRequest {
 
 message GetBroadcastListResponse {
   BroadcastList broadcast_list = 1;
+}
+
+enum BotPermission {
+  MANAGE_MESSAGES = 0;
+  WARN_MEMBERS = 1;
+  MUTE_MEMBERS = 2;
+  REMOVE_MEMBERS = 3;
+  BAN_MEMBERS = 4;
+  APPROVE_MEMBERS = 5;
+  MANAGE_INVITES = 6;
+  MANAGE_GROUP_INFO = 7;
+  PIN_MESSAGES = 8;
+  SEND_ANNOUNCEMENTS = 9;
+  MANAGE_RULES = 10;
+  MANAGE_ROLES = 11;
+  MANAGE_LINKS = 12;
+  ANTI_SPAM = 13;
+  ANTI_FLOOD = 14;
+  ANTI_SCAM = 15;
+  KEYWORD_FILTER = 16;
+  WELCOME_MEMBERS = 17;
+  GOODBYE_MESSAGES = 18;
+  AUTO_REPLY = 19;
+  POLL_MANAGEMENT = 20;
+  EVENT_MANAGEMENT = 21;
+  MEMBER_STATISTICS = 22;
+  AUDIT_LOGS = 23;
+}
+
+message BotConfig {
+  string bot_id = 1;
+  string group_id = 2;
+  repeated BotPermission permissions = 3;
+  bool is_active = 4;
+  string commands_prefix = 5;
+  string rules = 6;
+  string welcome_message = 7;
+  int32 spam_protection_level = 8;
+}
+
+message UpdateBotConfigRequest {
+  string requester_id = 1;
+  BotConfig config = 2;
+}
+
+message UpdateBotConfigResponse {
+  bool success = 1;
+}
+
+message GetBotConfigRequest {
+  string group_id = 1;
+  string requester_id = 2;
+}
+
+message GetBotConfigResponse {
+  BotConfig config = 1;
+}
+
+message AddBotToGroupRequest {
+  string conversation_id = 1;
+  string requester_id = 2;
+  string bot_user_id = 3;
+}
+
+message AddBotToGroupResponse {
+  bool success = 1;
+}
+
+message AuditLogEntry {
+  string id = 1;
+  string conversation_id = 2;
+  string actor_id = 3;
+  string action_type = 4;
+  string target_id = 5;
+  string reason = 6;
+  int64 created_at = 7;
+}
+
+message GetAuditLogsRequest {
+  string conversation_id = 1;
+  string requester_id = 2;
+  int32 limit = 3;
+}
+
+message GetAuditLogsResponse {
+  repeated AuditLogEntry logs = 1;
+}
+
+message LogAuditActionRequest {
+  string conversation_id = 1;
+  string actor_id = 2;
+  string action_type = 3;
+  string target_id = 4;
+  string reason = 5;
+}
+
+message LogAuditActionResponse {
+  bool success = 1;
 }

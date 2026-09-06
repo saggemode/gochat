@@ -240,7 +240,11 @@ interface GoChatApiService {
     // ═══════════════════════════════════════════════════════════════
 
     @GET(ApiConstants.PRODUCTS)
-    suspend fun getProducts(): Response<JsonElement>
+    suspend fun getProducts(
+        @Query("category_id") categoryId: String? = null,
+        @Query("search") search: String? = null,
+        @Query("sort_by") sortBy: String? = null
+    ): Response<JsonElement>
 
     @GET(ApiConstants.CATEGORIES)
     suspend fun getCategories(): Response<JsonElement>
@@ -271,6 +275,18 @@ interface GoChatApiService {
     @GET(ApiConstants.ORDERS)
     suspend fun getOrders(): Response<JsonElement>
 
+    @GET("api/v1/marketplace/orders/buyer")
+    suspend fun getBuyerOrders(): Response<JsonElement>
+
+    @GET(ApiConstants.BUSINESS_ORDERS)
+    suspend fun getSellerOrders(): Response<JsonElement>
+
+    @PUT("api/v1/business/orders/{id}/status")
+    suspend fun updateOrderStatus(
+        @Path("id") orderId: String,
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
     @POST(ApiConstants.ORDERS)
     suspend fun placeOrder(
         @Body body: JsonObject
@@ -284,9 +300,17 @@ interface GoChatApiService {
         @Body body: JsonObject
     ): Response<JsonObject>
 
+    @GET(ApiConstants.BUSINESS_PRODUCTS)
+    suspend fun getMyProducts(): Response<JsonElement>
+
     @POST(ApiConstants.BUSINESS_PRODUCTS)
     suspend fun createProduct(
         @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @DELETE("api/v1/business/products/{id}")
+    suspend fun deleteProduct(
+        @Path("id") productId: String
     ): Response<JsonObject>
 
     // ═══════════════════════════════════════════════════════════════

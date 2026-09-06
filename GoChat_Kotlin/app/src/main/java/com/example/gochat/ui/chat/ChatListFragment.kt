@@ -162,7 +162,7 @@ class ChatListFragment : Fragment() {
         }
 
         binding.fabNewChat.setOnClickListener {
-            showChatByPinDialog()
+            com.example.gochat.ui.contacts.SelectContactActivity.start(requireContext())
         }
 
         binding.btnEmptyAction.setOnClickListener {
@@ -170,7 +170,7 @@ class ChatListFragment : Fragment() {
                 binding.etSearchQuery.setText("")
                 viewModel.setSearchQuery("")
             } else {
-                showChatByPinDialog()
+                com.example.gochat.ui.contacts.SelectContactActivity.start(requireContext())
             }
         }
     }

@@ -53,27 +53,19 @@ object MediaImageHelper {
         // 1. Base64 Data URI (e.g. data:image/jpeg;base64,...)
         if (clean.startsWith("data:") && clean.contains(";base64,")) {
             try {
-                val b64 = clean.substringAfter(";base64,")
-                val bytes = Base64.decode(b64, Base64.DEFAULT)
-
-                // Decode bounds first to prevent OOM on large Base64 images
-                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-
-                var sampleSize = 1
-                val maxDim = maxOf(bounds.outWidth, bounds.outHeight)
-                while (maxDim / (sampleSize * 2) >= 1280) {
-                    sampleSize *= 2
+                val b64 = clean.substringAfter(";base64,").trim()
+                val bytes = try {
+                    Base64.decode(b64, Base64.DEFAULT)
+                } catch (_: Exception) {
+                    try {
+                        Base64.decode(b64, Base64.NO_WRAP)
+                    } catch (_: Exception) {
+                        Base64.decode(b64, Base64.URL_SAFE)
+                    }
                 }
 
-                val decodeOptions = BitmapFactory.Options().apply {
-                    inSampleSize = sampleSize
-                    inPreferredConfig = Bitmap.Config.RGB_565
-                }
-
-                val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOptions)
-                if (bitmap != null) {
-                    imageView.load(bitmap) {
+                if (bytes != null && bytes.isNotEmpty()) {
+                    imageView.load(bytes) {
                         crossfade(true)
                         placeholder(placeholderRes)
                         error(errorRes)
@@ -87,8 +79,7 @@ object MediaImageHelper {
                     imageView.setImageResource(errorRes)
                     return
                 }
-            } catch (t: Throwable) {
-                // Catches OutOfMemoryError and any parsing exception
+            } catch (_: Throwable) {
                 imageView.setImageResource(errorRes)
                 return
             }

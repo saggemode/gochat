@@ -142,7 +142,15 @@ class MessageAdapter(
                     tvMessageContent.setTypeface(null, Typeface.NORMAL)
                     tvMessageContent.setOnClickListener(null)
                 }
-                tvMessageContent.visibility = if (message.content.isNotEmpty() || message.isPing || message.isDeleted) View.VISIBLE else View.GONE
+                val hasImage = (message.type == MessageType.IMAGE || !message.mediaUrl.isNullOrBlank()) &&
+                        !message.isDeleted &&
+                        !message.mediaUrl.isNullOrBlank()
+
+                if (hasImage && (message.content.isBlank() || message.content == "📷 Photo")) {
+                    tvMessageContent.visibility = View.GONE
+                } else {
+                    tvMessageContent.visibility = if (message.content.isNotEmpty() || message.isPing || message.isDeleted) View.VISIBLE else View.GONE
+                }
 
                 // Edited status
                 tvEdited.visibility = if (message.isEdited && !message.isDeleted) View.VISIBLE else View.GONE
@@ -184,7 +192,7 @@ class MessageAdapter(
                 }
 
                 // Media Image Preview
-                if (message.type == MessageType.IMAGE && !message.mediaUrl.isNullOrBlank() && !message.isDeleted) {
+                if (hasImage) {
                     ivMessageImage.visibility = View.VISIBLE
                     com.example.gochat.core.media.MediaImageHelper.loadSafeImage(
                         imageView = ivMessageImage,
@@ -282,7 +290,15 @@ class MessageAdapter(
                     tvMessageContent.setTypeface(null, Typeface.NORMAL)
                     tvMessageContent.setOnClickListener(null)
                 }
-                tvMessageContent.visibility = if (message.content.isNotEmpty() || message.isPing || message.isDeleted) View.VISIBLE else View.GONE
+                val hasImage = (message.type == MessageType.IMAGE || !message.mediaUrl.isNullOrBlank()) &&
+                        !message.isDeleted &&
+                        !message.mediaUrl.isNullOrBlank()
+
+                if (hasImage && (message.content.isBlank() || message.content == "📷 Photo")) {
+                    tvMessageContent.visibility = View.GONE
+                } else {
+                    tvMessageContent.visibility = if (message.content.isNotEmpty() || message.isPing || message.isDeleted) View.VISIBLE else View.GONE
+                }
 
                 // Edited status
                 tvEdited.visibility = if (message.isEdited && !message.isDeleted) View.VISIBLE else View.GONE
@@ -314,7 +330,7 @@ class MessageAdapter(
                 }
 
                 // Media Image Preview
-                if (message.type == MessageType.IMAGE && !message.mediaUrl.isNullOrBlank() && !message.isDeleted) {
+                if (hasImage) {
                     ivMessageImage.visibility = View.VISIBLE
                     com.example.gochat.core.media.MediaImageHelper.loadSafeImage(
                         imageView = ivMessageImage,

@@ -47,6 +47,8 @@ class ChatRepository(private val context: Context) {
 
     fun observeConversations(): Flow<List<Conversation>> = dao.getAllConversations()
 
+    suspend fun getAllConversationsList(): List<Conversation> = dao.getAllConversationsList()
+
     suspend fun refreshConversations(): Result<List<Conversation>> {
         return try {
             val response = api.getConversations()

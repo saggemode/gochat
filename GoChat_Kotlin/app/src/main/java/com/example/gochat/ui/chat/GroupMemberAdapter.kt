@@ -42,9 +42,14 @@ class GroupMemberAdapter(
                 )
 
                 // Show role badge
-                if (member.role == "admin" || member.role == "owner") {
+                if (member.isBot) {
+                    tvRole.visibility = View.VISIBLE
+                    tvRole.text = "BOT"
+                    tvRole.setBackgroundResource(R.drawable.bg_role_bot)
+                } else if (member.role == "admin" || member.role == "owner") {
                     tvRole.visibility = View.VISIBLE
                     tvRole.text = member.role.replaceFirstChar { it.uppercase() }
+                    tvRole.setBackgroundResource(R.drawable.bg_role_admin)
                 } else {
                     tvRole.visibility = View.GONE
                 }

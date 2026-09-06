@@ -1,15 +1,12 @@
 package com.example.gochat.ui.chat
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.gochat.data.api.NetworkModule
 import com.example.gochat.data.api.TokenManager
-import com.example.gochat.data.model.GroupMember
-import com.example.gochat.data.model.Message
-import com.example.gochat.data.model.MessageStatus
-import com.example.gochat.data.model.MessageType
-import com.example.gochat.data.model.User
+import com.example.gochat.data.model.*
 import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.core.sound.ChatSoundManager
 import kotlinx.coroutines.Dispatchers
@@ -45,6 +42,9 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
     private val _mentionSuggestions = MutableStateFlow<List<GroupMember>>(emptyList())
     val mentionSuggestions: StateFlow<List<GroupMember>> = _mentionSuggestions.asStateFlow()
 
+    private val _botConfig = MutableStateFlow<BotConfig?>(null)
+    val botConfig: StateFlow<BotConfig?> = _botConfig.asStateFlow()
+
     private val _screenShakeEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val screenShakeEvent: SharedFlow<Unit> = _screenShakeEvent.asSharedFlow()
 
@@ -79,7 +79,20 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
             
             // Populate members for mentions
             loadMembersFromLocal(convId)
+
+            // Mock Bot Config loading
+            loadBotConfig(convId)
         }
+    }
+
+    private fun loadBotConfig(convId: String) {
+        // In a real app, this would fetch from a database or API
+        _botConfig.value = BotConfig(
+            botId = "bot_123",
+            groupId = convId,
+            permissions = listOf(BotPermission.ANTI_SPAM, BotPermission.WELCOME_MEMBERS),
+            rules = "No spamming allowed!"
+        )
     }
 
     private suspend fun loadMembersFromLocal(convId: String) {
@@ -349,6 +362,10 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
                     val msgObj = if (rawMsg is JsonObject) rawMsg else event
                     val currentUserId = tokenManager.userId ?: ""
                     val msg = Message.fromJson(msgObj, currentUserId)
+                    
+                    // Simple Bot Moderation Logic (Client-side Simulation)
+                    handleBotModeration(msg)
+
                     if (msg.type == MessageType.PING) {
                         _screenShakeEvent.tryEmit(Unit)
                     }
@@ -366,6 +383,20 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
                         }
                     }
                 } catch (_: Exception) {}
+            }
+        }
+    }
+
+    private fun handleBotModeration(message: Message) {
+        val config = _botConfig.value ?: return
+        if (!config.isActive) return
+
+        // Anti-spam simulation
+        if (config.permissions.contains(BotPermission.ANTI_SPAM)) {
+            if (message.content.lowercase().contains("spam")) {
+                // In a real bot, this would trigger a warning/deletion on the server
+                // Client-side, we just show a mock indication or log it
+                Log.d("BotModerator", "Detected spam in message: ${message.id}")
             }
         }
     }

@@ -19,10 +19,26 @@ data class User(
 
 @Serializable
 data class SyncedContact(
-    val phone: String,
-    val name: String,
-    @SerialName("is_registered") val isRegistered: Boolean = false,
-    val pin: String = "",
+    val id: String = "",
+    @SerialName("phonebook_name") val phonebookName: String = "",
+    @SerialName("gochat_name") val gochatName: String? = null,
+    val phone: String = "",
+    val email: String? = null,
     @SerialName("avatar_url") val avatarUrl: String = "",
+    @SerialName("status_text") val statusText: String = "",
+    @SerialName("is_registered") val isRegistered: Boolean = false,
+    @SerialName("is_online") val isOnline: Boolean = false,
+    @SerialName("last_seen") val lastSeen: Long? = null,
+    val pin: String = "",
+    // Backwards compatibility fields
+    val name: String = "",
     @SerialName("user_id") val userId: String = ""
-)
+) {
+    val displayName: String
+        get() = phonebookName.ifBlank {
+            gochatName?.ifBlank { null } ?: name.ifBlank { phone }
+        }
+
+    val finalUserId: String
+        get() = id.ifBlank { userId }
+}

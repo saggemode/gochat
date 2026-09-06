@@ -163,6 +163,21 @@
             android:paddingVertical="8dp"
             tools:listitem="@layout/item_message_me" />
 
+        <!-- Bot Moderation Banner -->
+        <TextView
+            android:id="@+id/tvBotBanner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#1A34D399"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="4dp"
+            android:text="@string/bot_moderation_active"
+            android:textColor="@color/gochat_emerald_light"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
         <!-- Quoted Reply Preview Bar (above input bar) -->
         <LinearLayout
             android:id="@+id/layoutReplyPreview"

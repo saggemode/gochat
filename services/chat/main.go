@@ -18,6 +18,7 @@ import (
 	"gochat/pkg/authz"
 	"gochat/pkg/config"
 	"gochat/pkg/database"
+	"gochat/pkg/group"
 	"gochat/pkg/health"
 	"gochat/pkg/logger"
 	"gochat/services/chat/repository"
@@ -68,6 +69,13 @@ func main() {
 	}
 	defer authzClient.Close()
 
+	// ── Group Client ──────────────────────────────────────────────────────────
+	groupClient, err := group.NewClient(cfg.GroupGRPCAddr)
+	if err != nil {
+		log.Fatal("failed to connect to group service", zap.Error(err))
+	}
+	defer groupClient.Close()
+
 	// ── Repositories ──────────────────────────────────────────────────────────
 	convRepo := repository.NewConversationRepository(db)
 	msgRepo := repository.NewMessageRepository(db)
@@ -98,7 +106,19 @@ func main() {
 		),
 	)
 
-	chatpb.RegisterChatServiceServer(grpcServer, server.New(convRepo, msgRepo, folderRepo, labelRepo, analyticsRepo, notifRepo, pollRepo, redisClient, authzClient, log))
+	chatpb.RegisterChatServiceServer(grpcServer, server.New(
+		convRepo,
+		msgRepo,
+		folderRepo,
+		labelRepo,
+		analyticsRepo,
+		notifRepo,
+		pollRepo,
+		redisClient,
+		authzClient,
+		groupClient,
+		log,
+	))
 
 	reflection.Register(grpcServer)
 

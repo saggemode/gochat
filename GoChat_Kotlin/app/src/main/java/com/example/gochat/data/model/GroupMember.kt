@@ -9,6 +9,7 @@ data class GroupMember(
     @SerialName("display_name") val displayName: String = "",
     @SerialName("avatar_url") val avatarUrl: String = "",
     val role: String = "member", // "owner", "admin", "member"
+    @SerialName("is_bot") val isBot: Boolean = false,
     @SerialName("is_online") val isOnline: Boolean = false,
     @SerialName("last_seen") val lastSeen: String? = null
 )

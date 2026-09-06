@@ -9,7 +9,7 @@
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBar"
         android:layout_width="match_parent"
-        android:layout_height="300dp"
+        android:layout_height="280dp"
         android:background="@color/whatsapp_toolbar_dark">
 
         <com.google.android.material.appbar.CollapsingToolbarLayout
@@ -39,6 +39,7 @@
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:fillViewport="true"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <LinearLayout
@@ -47,138 +48,292 @@
             android:orientation="vertical"
             android:padding="16dp">
 
+            <!-- Title -->
             <TextView
                 android:id="@+id/tvProductName"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textColor="@color/gochat_text_primary"
-                android:textSize="24sp"
+                android:textSize="22sp"
                 android:textStyle="bold"
-                tools:text="Awesome Product Name" />
+                tools:text="Apple iPhone 15 Pro Max Titanium" />
 
-            <TextView
-                android:id="@+id/tvProductPrice"
+            <!-- Price & Discount Row -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:textColor="@color/gochat_accent"
-                android:textSize="22sp"
-                android:textStyle="bold"
-                tools:text="$99.99" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tvProductPrice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/whatsapp_teal_light"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    tools:text="$1,199.00" />
+
+                <TextView
+                    android:id="@+id/tvOriginalPrice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:textColor="@color/gochat_text_muted"
+                    android:textSize="16sp"
+                    android:visibility="gone"
+                    tools:text="$1,399.00"
+                    tools:visibility="visible" />
+
+                <TextView
+                    android:id="@+id/tvDiscountBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_discount_badge"
+                    android:textColor="@color/white"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:visibility="gone"
+                    tools:text="-20%"
+                    tools:visibility="visible" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:id="@+id/tvRating"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#FBBF24"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    tools:text="4.9 ★ (342)" />
+            </LinearLayout>
 
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:layout_marginVertical="16dp"
+                android:layout_marginVertical="14dp"
                 android:background="@color/gochat_border_dark" />
 
+            <!-- Store Info Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/layoutStore"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardBackgroundColor="@color/gochat_surface_dark"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/gochat_border_dark"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="12dp">
+
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/ivStoreLogo"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:scaleType="centerCrop"
+                        app:shapeAppearanceOverlay="@style/CircleImage"
+                        tools:src="@drawable/ic_account" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/tvStoreName"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/gochat_text_primary"
+                                android:textSize="15sp"
+                                android:textStyle="bold"
+                                tools:text="iStore Official" />
+
+                            <ImageView
+                                android:id="@+id/ivStoreVerified"
+                                android:layout_width="14dp"
+                                android:layout_height="14dp"
+                                android:layout_marginStart="4dp"
+                                android:src="@drawable/ic_verified_badge" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/tvStoreRating"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:textColor="@color/gochat_text_muted"
+                            android:textSize="12sp"
+                            tools:text="Lagos, Nigeria • PIN: 1P0YE4WZ" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Visit Store"
+                        android:textColor="@color/whatsapp_teal_light"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginVertical="14dp"
+                android:background="@color/gochat_border_dark" />
+
+            <!-- Description Header -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/product_description_header"
-                android:textColor="@color/gochat_text_primary"
-                android:textSize="16sp"
+                android:letterSpacing="0.06"
+                android:text="ABOUT THIS ITEM"
+                android:textColor="@color/gochat_text_muted"
+                android:textSize="12sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tvProductDescription"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="6dp"
                 android:lineSpacingExtra="4dp"
                 android:textColor="@color/gochat_text_secondary"
                 android:textSize="14sp"
-                tools:text="This is a very cool product description that explains all the features and benefits of using this item." />
+                tools:text="Brand new in box, factory unlocked with 1-year official Apple warranty." />
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginVertical="16dp"
-                android:background="@color/gochat_border_dark" />
-
+            <!-- Trust / Feature badges -->
             <LinearLayout
-                android:id="@+id/layoutStore"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingVertical="8dp">
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal">
 
-                <com.google.android.material.imageview.ShapeableImageView
-                    android:id="@+id/ivStoreLogo"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:scaleType="centerCrop"
-                    app:shapeAppearanceOverlay="@style/CircleImage"
-                    tools:src="@drawable/ic_account" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
+                <TextView
+                    android:id="@+id/tvTag1"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:layout_marginEnd="8dp"
+                    android:background="@drawable/bg_chip_unselected"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="6dp"
+                    android:text="Verified Merchant"
+                    android:textColor="@color/whatsapp_teal_light"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
 
-                    <TextView
-                        android:id="@+id/tvStoreName"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:textColor="@color/gochat_text_primary"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        tools:text="Best Store Ever" />
-
-                    <TextView
-                        android:id="@+id/tvStoreRating"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:textColor="@color/gochat_text_muted"
-                        android:textSize="12sp"
-                        tools:text="4.8 ★ | 120 Reviews" />
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/ic_forward"
-                    app:tint="@color/gochat_text_muted" />
+                <TextView
+                    android:id="@+id/tvTag2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_chip_unselected"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="6dp"
+                    android:text="Escrow Protected"
+                    android:textColor="@color/whatsapp_teal_light"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
             </LinearLayout>
 
             <Space
                 android:layout_width="match_parent"
-                android:layout_height="80dp" />
+                android:layout_height="100dp" />
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
+    <!-- Bottom Action Bar (Chat with Seller, Add to Cart, Buy Now) -->
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         app:cardBackgroundColor="@color/gochat_surface_dark"
         app:cardCornerRadius="0dp"
-        app:cardElevation="16dp">
+        app:cardElevation="16dp"
+        app:strokeColor="@color/gochat_border_dark"
+        app:strokeWidth="1dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:padding="16dp">
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="10dp">
 
+            <!-- Chat with Seller Button (WhatsApp-style inquiry) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnChatSeller"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:paddingHorizontal="8dp"
+                android:text="@string/chat_with_seller"
+                android:textAllCaps="false"
+                android:textColor="@color/whatsapp_teal_light"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                app:cornerRadius="12dp"
+                app:icon="@drawable/ic_chat_bubble_rounded"
+                app:iconTint="@color/whatsapp_teal_light"
+                app:strokeColor="@color/whatsapp_teal_light" />
+
+            <!-- Add to Cart -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnAddToCart"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:backgroundTint="@color/gochat_accent"
-                android:text="@string/btn_add_to_cart"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:paddingHorizontal="8dp"
+                android:text="Add to Cart"
+                android:textAllCaps="false"
+                android:textColor="@color/gochat_text_primary"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                app:cornerRadius="12dp"
+                app:strokeColor="@color/gochat_border_dark" />
+
+            <!-- Buy Now -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnBuyNow"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:backgroundTint="@color/whatsapp_teal_light"
+                android:paddingHorizontal="8dp"
+                android:text="@string/buy_now"
                 android:textAllCaps="false"
                 android:textColor="@color/black"
-                android:textSize="16sp"
+                android:textSize="14sp"
                 android:textStyle="bold"
                 app:cornerRadius="12dp" />
+
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 

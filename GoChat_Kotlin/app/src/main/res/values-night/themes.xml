@@ -18,8 +18,7 @@
         <item name="android:windowBackground">@color/gochat_bg_dark</item>
         <item name="android:statusBarColor">@color/gochat_bg_dark</item>
         <item name="android:navigationBarColor">@color/gochat_bg_dark</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
     </style>
 
     <style name="Theme.GoChat" parent="Base.Theme.GoChat" />

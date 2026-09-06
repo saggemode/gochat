@@ -69,6 +69,11 @@
             android:exported="false"
             android:theme="@style/Theme.GoChat" />
 
+        <activity
+            android:name=".ui.chat.BotManagementActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+
         <!-- Privacy Settings Activity -->
         <activity
             android:name=".ui.settings.PrivacySettingsActivity"
@@ -85,6 +90,13 @@
         <!-- Location Picker Activity -->
         <activity
             android:name=".ui.chat.LocationPickerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Select Contact Activity (WhatsApp-style contact picker) -->
+        <activity
+            android:name=".ui.contacts.SelectContactActivity"
             android:exported="false"
             android:theme="@style/Theme.GoChat"
             android:windowSoftInputMode="adjustResize" />
