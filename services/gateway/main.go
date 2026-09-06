@@ -313,6 +313,8 @@ func main() {
 			marketplace.GET("/products/:id", businessHandler.GetMarketplaceProduct)
 			marketplace.GET("/categories", businessHandler.ListCategories)
 			marketplace.GET("/store", businessHandler.GetStore)
+			marketplace.GET("/stores/:id", businessHandler.GetStore)
+			marketplace.GET("/stores/:id/products", businessHandler.GetStoreProducts)
 			marketplace.GET("/products/:id/reviews", businessHandler.ListReviews)
 		}
 	}
@@ -530,6 +532,7 @@ func main() {
 
 		// ── Phase 9: Business Suite & Marketplace ──────────────────────────
 		authRequired.POST("/business/profile", businessHandler.CreateBusinessProfile)
+		authRequired.PUT("/business/profile", businessHandler.UpdateBusinessProfile)
 		authRequired.GET("/business/profile", businessHandler.GetBusinessProfile)
 		authRequired.POST("/business/products", businessHandler.CreateMarketplaceProduct)
 		authRequired.PUT("/business/products/:id", businessHandler.UpdateMarketplaceProduct)

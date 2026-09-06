@@ -293,6 +293,9 @@ func (h *BusinessHandler) ListCategories(c *gin.Context) {
 func (h *BusinessHandler) GetStore(c *gin.Context) {
 	slug := c.Query("slug")
 	userID := c.Query("user_id")
+	if userID == "" {
+		userID = c.Param("id")
+	}
 
 	resp, err := h.client.GetStore(c.Request.Context(), &pb.GetStoreRequest{
 		Slug:   slug,
@@ -304,6 +307,27 @@ func (h *BusinessHandler) GetStore(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, resp.Store)
+}
+
+func (h *BusinessHandler) GetStoreProducts(c *gin.Context) {
+	storeID := c.Param("id")
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+
+	resp, err := h.client.ListBusinessProducts(c.Request.Context(), &pb.ListBusinessProductsRequest{
+		BusinessId: storeID,
+		Limit:      int32(limit),
+		Offset:     int32(offset),
+	}, jsonOpt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"products": resp.Products,
+		"total":    resp.Total,
+	})
 }
 
 func (h *BusinessHandler) TrackProductView(c *gin.Context) {

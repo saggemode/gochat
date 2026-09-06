@@ -14,64 +14,128 @@
         <com.google.android.material.appbar.CollapsingToolbarLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             app:layout_scrollFlags="scroll|exitUntilCollapsed">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:clipChildren="false"
+                android:clipToPadding="false"
                 android:orientation="vertical">
 
-                <ImageView
-                    android:id="@+id/ivStoreBanner"
+                <!-- Store Banner & Overlapping Logo Container -->
+                <RelativeLayout
                     android:layout_width="match_parent"
-                    android:layout_height="180dp"
-                    android:scaleType="centerCrop"
-                    tools:src="@drawable/ic_gallery" />
+                    android:layout_height="wrap_content"
+                    android:clipChildren="false"
+                    android:clipToPadding="false">
 
+                    <ImageView
+                        android:id="@+id/ivStoreBanner"
+                        android:layout_width="match_parent"
+                        android:layout_height="140dp"
+                        android:background="@color/gochat_surface_dark"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/bg_chat_wallpaper_dark" />
+
+                    <!-- Gradient scrim on banner -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="140dp"
+                        android:background="#44000000" />
+
+                    <!-- Store Logo with White/Dark Ring Border -->
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/ivStoreLogo"
+                        android:layout_width="72dp"
+                        android:layout_height="72dp"
+                        android:layout_marginStart="16dp"
+                        android:layout_marginTop="104dp"
+                        android:background="@color/whatsapp_toolbar_dark"
+                        android:padding="2dp"
+                        android:scaleType="centerCrop"
+                        app:shapeAppearanceOverlay="@style/CircleImage"
+                        app:strokeColor="@color/whatsapp_teal_light"
+                        app:strokeWidth="2dp"
+                        tools:src="@drawable/ic_storefront" />
+
+                    <!-- Action Button: Edit Store (visible if owner) or Contact -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnStorefrontAction"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:layout_alignParentEnd="true"
+                        android:layout_marginTop="148dp"
+                        android:layout_marginEnd="16dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingHorizontal="14dp"
+                        android:paddingVertical="0dp"
+                        android:text="Edit Store"
+                        android:textAllCaps="false"
+                        android:textColor="@color/whatsapp_teal_light"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:visibility="gone"
+                        app:cornerRadius="18dp"
+                        app:strokeColor="@color/whatsapp_teal_light"
+                        app:strokeWidth="1dp" />
+                </RelativeLayout>
+
+                <!-- Store Info Area -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="16dp">
-
-                    <com.google.android.material.imageview.ShapeableImageView
-                        android:id="@+id/ivStoreLogo"
-                        android:layout_width="64dp"
-                        android:layout_height="64dp"
-                        android:layout_marginTop="-48dp"
-                        android:padding="2dp"
-                        android:background="@color/gochat_surface_dark"
-                        android:scaleType="centerCrop"
-                        app:shapeAppearanceOverlay="@style/CircleImage"
-                        tools:src="@drawable/ic_account" />
+                    android:orientation="vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="14dp">
 
                     <LinearLayout
-                        android:layout_width="0dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="16dp"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
                         <TextView
                             android:id="@+id/tvStoreName"
-                            android:layout_width="match_parent"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_weight="1"
                             android:textColor="@color/gochat_text_primary"
                             android:textSize="20sp"
                             android:textStyle="bold"
-                            tools:text="Best Store Ever" />
+                            tools:text="Apple Premium Store" />
 
-                        <TextView
-                            android:id="@+id/tvStoreDescription"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:ellipsize="end"
-                            android:maxLines="2"
-                            android:textColor="@color/gochat_text_secondary"
-                            android:textSize="13sp"
-                            tools:text="We sell the best products in the world." />
+                        <ImageView
+                            android:id="@+id/ivStoreVerified"
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:layout_marginStart="6dp"
+                            android:src="@drawable/ic_verified_badge" />
                     </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tvStoreMeta"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:textColor="@color/whatsapp_teal_light"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        tools:text="Electronics • Lagos, Nigeria • PIN: 1P0YE4WZ" />
+
+                    <TextView
+                        android:id="@+id/tvStoreDescription"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:textColor="@color/gochat_text_secondary"
+                        android:textSize="13sp"
+                        tools:text="Authorized Apple Retailer in West Africa. 100% genuine products with full 1-year warranty and fast delivery." />
                 </LinearLayout>
 
                 <View

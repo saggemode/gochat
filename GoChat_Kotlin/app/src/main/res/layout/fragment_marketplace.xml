@@ -542,6 +542,7 @@
 
                     <!-- Store Header Banner -->
                     <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardHubStore"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="14dp"
@@ -607,6 +608,17 @@
                                     android:textStyle="bold"
                                     tools:text="Electronics • PIN: 1P0YE4WZ" />
                             </LinearLayout>
+
+                            <ImageButton
+                                android:id="@+id/btnEditStore"
+                                android:layout_width="38dp"
+                                android:layout_height="38dp"
+                                android:layout_marginEnd="2dp"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:contentDescription="Edit Store Profile"
+                                android:padding="8dp"
+                                android:src="@drawable/ic_edit_status"
+                                app:tint="@color/whatsapp_teal_light" />
 
                             <ImageButton
                                 android:id="@+id/btnShareStore"

@@ -145,6 +145,35 @@ func (r *BusinessRepository) CreateMarketplaceProduct(ctx context.Context, p *Ma
 	p.IsPublished = true
 	p.CreatedAt = time.Now()
 
+	// Safely resolve category ID if user supplied a category name instead of UUID
+	if p.CategoryID != "" {
+		if _, err := uuid.Parse(p.CategoryID); err != nil {
+			var catID string
+			err := r.db.QueryRow(ctx, `SELECT id::text FROM business.categories WHERE name ILIKE $1 LIMIT 1`, p.CategoryID).Scan(&catID)
+			if err == nil && catID != "" {
+				p.CategoryID = catID
+			} else {
+				p.CategoryID = ""
+			}
+		}
+	}
+	if p.SubCategoryID != "" {
+		if _, err := uuid.Parse(p.SubCategoryID); err != nil {
+			var subCatID string
+			err := r.db.QueryRow(ctx, `SELECT id::text FROM business.sub_categories WHERE name ILIKE $1 LIMIT 1`, p.SubCategoryID).Scan(&subCatID)
+			if err == nil && subCatID != "" {
+				p.SubCategoryID = subCatID
+			} else {
+				p.SubCategoryID = ""
+			}
+		}
+	}
+	if p.BrandID != "" {
+		if _, err := uuid.Parse(p.BrandID); err != nil {
+			p.BrandID = ""
+		}
+	}
+
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)
@@ -189,6 +218,35 @@ func (r *BusinessRepository) CreateMarketplaceProduct(ctx context.Context, p *Ma
 }
 
 func (r *BusinessRepository) UpdateMarketplaceProduct(ctx context.Context, p *MarketplaceProduct) (*MarketplaceProduct, error) {
+	// Safely resolve category ID if user supplied a category name instead of UUID
+	if p.CategoryID != "" {
+		if _, err := uuid.Parse(p.CategoryID); err != nil {
+			var catID string
+			err := r.db.QueryRow(ctx, `SELECT id::text FROM business.categories WHERE name ILIKE $1 LIMIT 1`, p.CategoryID).Scan(&catID)
+			if err == nil && catID != "" {
+				p.CategoryID = catID
+			} else {
+				p.CategoryID = ""
+			}
+		}
+	}
+	if p.SubCategoryID != "" {
+		if _, err := uuid.Parse(p.SubCategoryID); err != nil {
+			var subCatID string
+			err := r.db.QueryRow(ctx, `SELECT id::text FROM business.sub_categories WHERE name ILIKE $1 LIMIT 1`, p.SubCategoryID).Scan(&subCatID)
+			if err == nil && subCatID != "" {
+				p.SubCategoryID = subCatID
+			} else {
+				p.SubCategoryID = ""
+			}
+		}
+	}
+	if p.BrandID != "" {
+		if _, err := uuid.Parse(p.BrandID); err != nil {
+			p.BrandID = ""
+		}
+	}
+
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)
@@ -363,10 +421,16 @@ func (r *BusinessRepository) ListMarketplaceProducts(ctx context.Context, catego
 	args := []interface{}{}
 	argIdx := 1
 
-	if categoryID != "" {
-		whereClause += fmt.Sprintf(" AND p.category_id = $%d", argIdx)
-		args = append(args, categoryID)
-		argIdx++
+	if categoryID != "" && categoryID != "all" {
+		if _, err := uuid.Parse(categoryID); err == nil {
+			whereClause += fmt.Sprintf(" AND p.category_id = $%d", argIdx)
+			args = append(args, categoryID)
+			argIdx++
+		} else {
+			whereClause += fmt.Sprintf(" AND (c.name ILIKE $%d OR p.category_id::text = $%d)", argIdx, argIdx)
+			args = append(args, "%"+categoryID+"%")
+			argIdx++
+		}
 	}
 
 	if search != "" {

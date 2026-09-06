@@ -31,7 +31,7 @@ func (s *BusinessServer) CreateBusinessProfile(ctx context.Context, req *pb.Crea
 		UserID: req.UserId, BusinessName: req.BusinessName, Category: req.Category,
 		Description: req.Description, Address: req.Address, Website: req.Website,
 		Email: req.Email, Phone: req.Phone, HoursJSON: req.HoursJson,
-		// LogoURL: req.LogoUrl, BannerURL: req.BannerUrl, State: req.State, CountryCode: req.CountryCode,
+		LogoURL: req.LogoUrl, BannerURL: req.BannerUrl, State: req.State, CountryCode: req.CountryCode,
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "create profile: %v", err)
@@ -44,7 +44,7 @@ func (s *BusinessServer) UpdateBusinessProfile(ctx context.Context, req *pb.Upda
 		UserID: req.UserId, BusinessName: req.BusinessName, Category: req.Category,
 		Description: req.Description, Address: req.Address, Website: req.Website,
 		Email: req.Email, Phone: req.Phone, HoursJSON: req.HoursJson,
-		// LogoURL: req.LogoUrl, BannerURL: req.BannerUrl, State: req.State, CountryCode: req.CountryCode,
+		LogoURL: req.LogoUrl, BannerURL: req.BannerUrl, State: req.State, CountryCode: req.CountryCode,
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "update profile: %v", err)
@@ -177,11 +177,14 @@ func (s *BusinessServer) GetQueuePosition(ctx context.Context, req *pb.GetQueueP
 }
 
 func profileToPB(p *repository.BusinessProfile) *pb.BusinessProfile {
+	if p == nil {
+		return nil
+	}
 	return &pb.BusinessProfile{
 		UserId: p.UserID, BusinessName: p.BusinessName, Category: p.Category,
 		Description: p.Description, Address: p.Address, Website: p.Website,
 		Email: p.Email, Phone: p.Phone, HoursJson: p.HoursJSON, IsVerified: p.IsVerified,
-		// LogoUrl: p.LogoURL, BannerUrl: p.BannerURL, State: p.State, CountryCode: p.CountryCode, Slug: p.Slug,
+		LogoUrl: p.LogoURL, BannerUrl: p.BannerURL, State: p.State, CountryCode: p.CountryCode, Slug: p.Slug,
 	}
 }
 

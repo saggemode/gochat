@@ -28,6 +28,7 @@ import com.example.gochat.data.model.Category
 import com.example.gochat.data.model.Product
 import com.example.gochat.data.model.Store
 import com.example.gochat.databinding.DialogAddProductBinding
+import com.example.gochat.databinding.DialogEditStoreBinding
 import com.example.gochat.databinding.FragmentMarketplaceBinding
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.tabs.TabLayout
@@ -48,6 +49,13 @@ class MarketplaceFragment : Fragment() {
 
     private var selectedStoreLogoUri: Uri? = null
     private var onProductImagesPicked: ((List<Uri>) -> Unit)? = null
+    private var onSingleImagePicked: ((Uri?) -> Unit)? = null
+
+    private val pickSingleImageLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        onSingleImagePicked?.invoke(uri)
+    }
 
     private val pickStoreLogoLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
@@ -132,6 +140,9 @@ class MarketplaceFragment : Fragment() {
                 }
                 startActivity(intent)
             },
+            onEdit = { product ->
+                showEditProductBottomSheet(product)
+            },
             onDelete = { product ->
                 showDeleteProductDialog(product)
             }
@@ -191,6 +202,14 @@ class MarketplaceFragment : Fragment() {
         }
 
         // Seller Hub actions
+        binding.cardHubStore.setOnClickListener {
+            openMyStorefront()
+        }
+
+        binding.btnEditStore.setOnClickListener {
+            showEditStoreBottomSheet()
+        }
+
         binding.layoutSelectStoreLogo.setOnClickListener {
             pickStoreLogoLauncher.launch("image/*")
         }
@@ -428,6 +447,301 @@ class MarketplaceFragment : Fragment() {
         }
 
         updatePreviews()
+        dialog.show()
+    }
+
+    private fun openMyStorefront() {
+        val store = viewModel.myStore.value ?: return
+        val intent = Intent(requireContext(), StorefrontActivity::class.java).apply {
+            putExtra("store_id", store.id)
+            putExtra("store_name", store.name)
+            putExtra("store_logo", store.logoUrl)
+            putExtra("store_banner", store.bannerUrl)
+            putExtra("store_description", store.description)
+            putExtra("store_category", store.category)
+            putExtra("store_address", store.address)
+            putExtra("store_pin", store.ownerPin)
+        }
+        startActivity(intent)
+    }
+
+    private fun showEditStoreBottomSheet() {
+        val store = viewModel.myStore.value ?: return
+        val dialog = BottomSheetDialog(requireContext())
+        val dialogBinding = DialogEditStoreBinding.inflate(layoutInflater)
+        dialog.setContentView(dialogBinding.root)
+
+        dialogBinding.etEditStoreName.setText(store.name)
+        dialogBinding.etEditStoreCategory.setText(store.category)
+        dialogBinding.etEditStorePhone.setText(store.phone)
+        dialogBinding.etEditStoreLocation.setText(store.address)
+        dialogBinding.etEditStoreDescription.setText(store.description)
+
+        var newLogoUri: Uri? = null
+        var currentLogoUrl = store.logoUrl
+
+        if (!currentLogoUrl.isNullOrBlank()) {
+            MediaImageHelper.loadSafeImage(dialogBinding.ivEditStoreLogoPreview, currentLogoUrl, cornerRadiusDp = 12f)
+            dialogBinding.btnRemoveEditStoreLogo.visibility = View.VISIBLE
+            dialogBinding.tvEditStoreLogoSubtitle.text = "Tap to change logo from phone"
+        }
+
+        dialogBinding.layoutSelectEditStoreLogo.setOnClickListener {
+            onSingleImagePicked = { uri ->
+                if (uri != null) {
+                    newLogoUri = uri
+                    MediaImageHelper.loadSafeImage(dialogBinding.ivEditStoreLogoPreview, uri.toString(), cornerRadiusDp = 12f)
+                    dialogBinding.btnRemoveEditStoreLogo.visibility = View.VISIBLE
+                    dialogBinding.tvEditStoreLogoSubtitle.text = "New logo selected from phone"
+                }
+            }
+            pickSingleImageLauncher.launch("image/*")
+        }
+
+        dialogBinding.btnRemoveEditStoreLogo.setOnClickListener {
+            newLogoUri = null
+            currentLogoUrl = null
+            dialogBinding.ivEditStoreLogoPreview.setImageResource(R.drawable.ic_camera_status)
+            dialogBinding.btnRemoveEditStoreLogo.visibility = View.GONE
+            dialogBinding.tvEditStoreLogoSubtitle.text = "Tap to select logo from phone"
+        }
+
+        dialogBinding.btnSaveStoreChanges.setOnClickListener {
+            val name = dialogBinding.etEditStoreName.text.toString().trim()
+            val category = dialogBinding.etEditStoreCategory.text.toString().trim()
+            val location = dialogBinding.etEditStoreLocation.text.toString().trim()
+            val phone = dialogBinding.etEditStorePhone.text.toString().trim()
+            val desc = dialogBinding.etEditStoreDescription.text.toString().trim()
+
+            if (name.isBlank()) {
+                dialogBinding.etEditStoreName.error = "Store name is required"
+                return@setOnClickListener
+            }
+
+            dialogBinding.btnSaveStoreChanges.isEnabled = false
+            dialogBinding.btnSaveStoreChanges.text = "Saving..."
+
+            lifecycleScope.launch {
+                var finalLogoUrl = currentLogoUrl
+                if (newLogoUri != null) {
+                    withContext(Dispatchers.IO) {
+                        val compressed = ImageCompressor.compressImageUri(
+                            requireContext(),
+                            newLogoUri!!,
+                            maxDimension = 512,
+                            quality = 80
+                        )
+                        if (compressed != null) {
+                            val uploaded = viewModel.uploadMedia(compressed.bytes, compressed.mimeType, "store_logo_${System.currentTimeMillis()}.jpg")
+                            finalLogoUrl = if (!uploaded.isNullOrBlank()) uploaded else compressed.dataUri
+                        }
+                    }
+                }
+
+                viewModel.updateStore(
+                    name = name,
+                    category = category,
+                    location = location,
+                    phone = phone,
+                    description = desc,
+                    logoUrl = finalLogoUrl,
+                    onSuccess = {
+                        dialog.dismiss()
+                        Toast.makeText(requireContext(), "Store profile updated!", Toast.LENGTH_SHORT).show()
+                    },
+                    onError = { err ->
+                        dialogBinding.btnSaveStoreChanges.isEnabled = true
+                        dialogBinding.btnSaveStoreChanges.text = "Save Store Changes"
+                        Toast.makeText(requireContext(), err, Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+        }
+
+        dialog.show()
+    }
+
+    private fun showEditProductBottomSheet(product: Product) {
+        val dialog = BottomSheetDialog(requireContext())
+        val dialogBinding = DialogAddProductBinding.inflate(layoutInflater)
+        dialog.setContentView(dialogBinding.root)
+
+        dialogBinding.tvDialogTitle.text = "Edit Product"
+        dialogBinding.tvDialogSubtitle.text = "Update item details, photos and pricing"
+        dialogBinding.btnSubmitProduct.text = "Save Product Changes"
+
+        dialogBinding.etProductName.setText(product.name)
+        dialogBinding.etProductPrice.setText(String.format(Locale.US, "%.2f", product.price))
+        if (product.originalPrice > 0.0) {
+            dialogBinding.etProductOriginalPrice.setText(String.format(Locale.US, "%.2f", product.originalPrice))
+        }
+        dialogBinding.etProductCategory.setText(product.category)
+        dialogBinding.etProductStock.setText(product.stock.toString())
+        dialogBinding.etProductDescription.setText(product.description)
+
+        // Photo slots management
+        val existingPhotoUrls = product.imageUrls.toMutableList()
+        if (existingPhotoUrls.isEmpty() && product.primaryImage.isNotBlank()) {
+            existingPhotoUrls.add(product.primaryImage)
+        }
+        val newlyPickedUris = mutableListOf<Uri>()
+
+        fun totalCount() = existingPhotoUrls.size + newlyPickedUris.size
+
+        fun updateEditPreviews() {
+            val count = totalCount()
+            dialogBinding.tvPhotosCount.text = "$count/3 photos"
+
+            val allSlots = mutableListOf<Any>()
+            allSlots.addAll(existingPhotoUrls)
+            allSlots.addAll(newlyPickedUris)
+
+            // Slot 1
+            if (allSlots.size >= 1) {
+                dialogBinding.framePreview1.visibility = View.VISIBLE
+                val item = allSlots[0]
+                MediaImageHelper.loadSafeImage(dialogBinding.ivPreview1, item.toString(), cornerRadiusDp = 8f)
+                dialogBinding.btnRemovePhoto1.setOnClickListener {
+                    if (0 < existingPhotoUrls.size) {
+                        existingPhotoUrls.removeAt(0)
+                    } else {
+                        newlyPickedUris.removeAt(0 - existingPhotoUrls.size)
+                    }
+                    updateEditPreviews()
+                }
+            } else {
+                dialogBinding.framePreview1.visibility = View.GONE
+            }
+
+            // Slot 2
+            if (allSlots.size >= 2) {
+                dialogBinding.framePreview2.visibility = View.VISIBLE
+                val item = allSlots[1]
+                MediaImageHelper.loadSafeImage(dialogBinding.ivPreview2, item.toString(), cornerRadiusDp = 8f)
+                dialogBinding.btnRemovePhoto2.setOnClickListener {
+                    if (1 < existingPhotoUrls.size) {
+                        existingPhotoUrls.removeAt(1)
+                    } else {
+                        newlyPickedUris.removeAt(1 - existingPhotoUrls.size)
+                    }
+                    updateEditPreviews()
+                }
+            } else {
+                dialogBinding.framePreview2.visibility = View.GONE
+            }
+
+            // Slot 3
+            if (allSlots.size >= 3) {
+                dialogBinding.framePreview3.visibility = View.VISIBLE
+                val item = allSlots[2]
+                MediaImageHelper.loadSafeImage(dialogBinding.ivPreview3, item.toString(), cornerRadiusDp = 8f)
+                dialogBinding.btnRemovePhoto3.setOnClickListener {
+                    if (2 < existingPhotoUrls.size) {
+                        existingPhotoUrls.removeAt(2)
+                    } else {
+                        newlyPickedUris.removeAt(2 - existingPhotoUrls.size)
+                    }
+                    updateEditPreviews()
+                }
+            } else {
+                dialogBinding.framePreview3.visibility = View.GONE
+            }
+
+            dialogBinding.layoutAddPhoto.visibility = if (count >= 3) View.GONE else View.VISIBLE
+        }
+
+        dialogBinding.layoutAddPhoto.setOnClickListener {
+            val remaining = 3 - totalCount()
+            if (remaining <= 0) {
+                Toast.makeText(requireContext(), "Maximum 3 photos allowed", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            onProductImagesPicked = { uris ->
+                if (uris.isNotEmpty()) {
+                    val available = 3 - totalCount()
+                    val toAdd = uris.take(available)
+                    newlyPickedUris.addAll(toAdd)
+                    updateEditPreviews()
+                }
+            }
+            pickProductImagesLauncher.launch("image/*")
+        }
+
+        dialogBinding.btnSubmitProduct.setOnClickListener {
+            val title = dialogBinding.etProductName.text.toString().trim()
+            val priceStr = dialogBinding.etProductPrice.text.toString().trim()
+            val originalPriceStr = dialogBinding.etProductOriginalPrice.text.toString().trim()
+            val category = dialogBinding.etProductCategory.text.toString().trim()
+            val stockStr = dialogBinding.etProductStock.text.toString().trim()
+            val description = dialogBinding.etProductDescription.text.toString().trim()
+
+            if (title.isBlank()) {
+                dialogBinding.etProductName.error = "Title is required"
+                return@setOnClickListener
+            }
+            val price = priceStr.toDoubleOrNull() ?: run {
+                dialogBinding.etProductPrice.error = "Valid price required"
+                return@setOnClickListener
+            }
+            val originalPrice = originalPriceStr.toDoubleOrNull() ?: 0.0
+            val stock = stockStr.toIntOrNull() ?: 10
+
+            dialogBinding.btnSubmitProduct.isEnabled = false
+            dialogBinding.layoutUploadProgress.visibility = View.VISIBLE
+            dialogBinding.tvUploadStatus.text = "Saving product changes..."
+
+            lifecycleScope.launch {
+                val finalUrls = mutableListOf<String>()
+                finalUrls.addAll(existingPhotoUrls)
+
+                if (newlyPickedUris.isNotEmpty()) {
+                    withContext(Dispatchers.IO) {
+                        newlyPickedUris.forEachIndexed { idx, uri ->
+                            val compressed = ImageCompressor.compressImageUri(
+                                requireContext(),
+                                uri,
+                                maxDimension = 1024,
+                                quality = 80
+                            )
+                            if (compressed != null) {
+                                val uploaded = viewModel.uploadMedia(
+                                    bytes = compressed.bytes,
+                                    mimeType = compressed.mimeType,
+                                    fileName = "product_${System.currentTimeMillis()}_$idx.jpg"
+                                )
+                                if (!uploaded.isNullOrBlank()) {
+                                    finalUrls.add(uploaded)
+                                } else {
+                                    finalUrls.add(compressed.dataUri)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                viewModel.updateProduct(
+                    product = product,
+                    name = title,
+                    price = price,
+                    originalPrice = originalPrice,
+                    category = category,
+                    stock = stock,
+                    imageUrls = finalUrls,
+                    description = description,
+                    onSuccess = {
+                        dialog.dismiss()
+                        Toast.makeText(requireContext(), "Product updated!", Toast.LENGTH_SHORT).show()
+                    },
+                    onError = { err ->
+                        dialogBinding.btnSubmitProduct.isEnabled = true
+                        dialogBinding.layoutUploadProgress.visibility = View.GONE
+                        Toast.makeText(requireContext(), err, Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+        }
+
+        updateEditPreviews()
         dialog.show()
     }
 

@@ -53,10 +53,17 @@ class ProductDetailsActivity : AppCompatActivity() {
         }
 
         binding.layoutStore.setOnClickListener {
-            val s = store ?: product?.let { Store(id = it.storeId, name = it.storeName) }
+            val s = store ?: product?.let { Store(id = it.storeId, name = it.storeName, address = it.sellerLocation, ownerPin = it.sellerPin) }
             s?.let {
                 val intent = Intent(this, StorefrontActivity::class.java).apply {
                     putExtra("store_id", it.id)
+                    putExtra("store_name", it.name)
+                    putExtra("store_logo", it.logoUrl)
+                    putExtra("store_banner", it.bannerUrl)
+                    putExtra("store_description", it.description)
+                    putExtra("store_category", it.category)
+                    putExtra("store_address", it.address)
+                    putExtra("store_pin", it.ownerPin)
                 }
                 startActivity(intent)
             }

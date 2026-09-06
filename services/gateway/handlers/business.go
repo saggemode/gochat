@@ -47,13 +47,49 @@ func (h *BusinessHandler) CreateBusinessProfile(c *gin.Context) {
 		UserId: userID, BusinessName: req.BusinessName, Category: req.Category,
 		Description: req.Description, Address: req.Address, Website: req.Website,
 		Email: req.Email, Phone: req.Phone, HoursJson: req.HoursJSON,
-		// LogoUrl: req.LogoURL, BannerUrl: req.BannerURL, State: req.State, CountryCode: req.CountryCode,
+		LogoUrl: req.LogoURL, BannerUrl: req.BannerURL, State: req.State, CountryCode: req.CountryCode,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusCreated, resp)
+}
+
+func (h *BusinessHandler) UpdateBusinessProfile(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	var req struct {
+		BusinessName string `json:"business_name"`
+		Category     string `json:"category"`
+		Description  string `json:"description"`
+		Address      string `json:"address"`
+		Website      string `json:"website"`
+		Email        string `json:"email"`
+		Phone        string `json:"phone"`
+		HoursJSON    string `json:"hours_json"`
+		LogoURL      string `json:"logo_url"`
+		BannerURL    string `json:"banner_url"`
+		State        string `json:"state"`
+		CountryCode  string `json:"country_code"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	resp, err := h.client.UpdateBusinessProfile(c.Request.Context(), &pb.UpdateBusinessProfileRequest{
+		UserId: userID, BusinessName: req.BusinessName, Category: req.Category,
+		Description: req.Description, Address: req.Address, Website: req.Website,
+		Email: req.Email, Phone: req.Phone, HoursJson: req.HoursJSON,
+		LogoUrl: req.LogoURL, BannerUrl: req.BannerURL, State: req.State, CountryCode: req.CountryCode,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func (h *BusinessHandler) GetBusinessProfile(c *gin.Context) {

@@ -128,13 +128,49 @@ class MarketplaceRepository(private val context: Context) {
         }
     }
 
+    private fun parseStoreJson(data: JsonObject?, fallbackId: String): Store {
+        if (data == null) {
+            val found = if (memoryMyStore?.id == fallbackId) memoryMyStore else null
+            return found ?: Store(id = fallbackId, name = "Verified Merchant Store", isVerified = true)
+        }
+        val target = data["profile"]?.jsonObject ?: data["store"]?.jsonObject ?: data
+        val id = (target["id"] ?: target["user_id"] ?: target["business_id"])?.jsonPrimitive?.contentOrNull ?: fallbackId
+        val name = (target["name"] ?: target["business_name"] ?: target["store_name"])?.jsonPrimitive?.contentOrNull ?: "Merchant Store"
+        val desc = (target["description"] ?: target["desc"])?.jsonPrimitive?.contentOrNull.orEmpty()
+        val cat = (target["category"] ?: target["category_name"])?.jsonPrimitive?.contentOrNull ?: "General Retail"
+        val addr = (target["address"] ?: target["location"])?.jsonPrimitive?.contentOrNull ?: "Lagos, Nigeria"
+        val phone = target["phone"]?.jsonPrimitive?.contentOrNull.orEmpty()
+        val email = target["email"]?.jsonPrimitive?.contentOrNull.orEmpty()
+        val ownerPin = target["owner_pin"]?.jsonPrimitive?.contentOrNull.orEmpty()
+        val logoUrl = (target["logo_url"] ?: target["logoUrl"])?.jsonPrimitive?.contentOrNull?.ifBlank { null }
+            ?: if (memoryMyStore?.id == id || memoryMyStore?.id == fallbackId) memoryMyStore?.logoUrl else null
+        val bannerUrl = (target["banner_url"] ?: target["bannerUrl"])?.jsonPrimitive?.contentOrNull?.ifBlank { null }
+            ?: if (memoryMyStore?.id == id || memoryMyStore?.id == fallbackId) memoryMyStore?.bannerUrl else null
+        val verified = target["is_verified"]?.jsonPrimitive?.booleanOrNull ?: true
+        val rating = target["avg_rating"]?.jsonPrimitive?.doubleOrNull ?: target["rating"]?.jsonPrimitive?.doubleOrNull ?: 4.9
+
+        return Store(
+            id = id,
+            name = name,
+            description = desc,
+            category = cat,
+            address = addr,
+            phone = phone,
+            email = email,
+            ownerPin = ownerPin,
+            logoUrl = logoUrl,
+            bannerUrl = bannerUrl,
+            rating = rating,
+            isVerified = verified
+        )
+    }
+
     suspend fun getStore(storeId: String): Result<Store> {
         return try {
             val response = api.getStore(storeId)
             if (response.isSuccessful) {
                 val data = response.body() ?: buildJsonObject {}
-                val storeObj = data["store"]?.jsonObject ?: data
-                Result.success(json.decodeFromJsonElement<Store>(storeObj))
+                Result.success(parseStoreJson(data, storeId))
             } else {
                 // Fallback store
                 val found = if (memoryMyStore?.id == storeId) memoryMyStore else null
@@ -198,9 +234,9 @@ class MarketplaceRepository(private val context: Context) {
             val response = api.getBusinessProfile()
             if (response.isSuccessful) {
                 val data = response.body() ?: buildJsonObject {}
-                val storeObj = data["profile"]?.jsonObject ?: (if (data.containsKey("store_name") || data.containsKey("business_name")) data else null)
-                if (storeObj != null) {
-                    val store = json.decodeFromJsonElement<Store>(storeObj)
+                val targetObj = data["profile"]?.jsonObject ?: (if (data.containsKey("store_name") || data.containsKey("business_name")) data else null)
+                if (targetObj != null) {
+                    val store = parseStoreJson(targetObj, memoryMyStore?.id ?: "my_store")
                     memoryMyStore = store
                     Result.success(store)
                 } else {
@@ -217,8 +253,8 @@ class MarketplaceRepository(private val context: Context) {
     suspend fun createBusinessProfile(store: Store): Result<Store> {
         return try {
             val body = buildJsonObject {
-                put("store_name", store.name)
                 put("business_name", store.name)
+                put("store_name", store.name)
                 put("category", store.category)
                 put("description", store.description)
                 put("address", store.address)
@@ -230,16 +266,39 @@ class MarketplaceRepository(private val context: Context) {
             val response = api.createBusinessProfile(body)
             if (response.isSuccessful) {
                 val data = response.body() ?: buildJsonObject {}
-                val storeObj = data["profile"]?.jsonObject ?: data
-                val created = try {
-                    json.decodeFromJsonElement<Store>(storeObj)
-                } catch (_: Exception) {
-                    store
-                }
+                val created = parseStoreJson(data, store.id)
                 memoryMyStore = created
                 Result.success(created)
             } else {
-                // Keep locally if backend is unavailable
+                memoryMyStore = store
+                Result.success(store)
+            }
+        } catch (e: Exception) {
+            memoryMyStore = store
+            Result.success(store)
+        }
+    }
+
+    suspend fun updateBusinessProfile(store: Store): Result<Store> {
+        return try {
+            val body = buildJsonObject {
+                put("business_name", store.name)
+                put("store_name", store.name)
+                put("category", store.category)
+                put("description", store.description)
+                put("address", store.address)
+                put("phone", store.phone)
+                put("email", store.email)
+                put("logo_url", store.logoUrl ?: "")
+                put("banner_url", store.bannerUrl ?: "")
+            }
+            val response = api.updateBusinessProfile(body)
+            if (response.isSuccessful) {
+                val data = response.body() ?: buildJsonObject {}
+                val updated = parseStoreJson(data, store.id)
+                memoryMyStore = updated
+                Result.success(updated)
+            } else {
                 memoryMyStore = store
                 Result.success(store)
             }
@@ -298,6 +357,52 @@ class MarketplaceRepository(private val context: Context) {
             }
         } catch (e: Exception) {
             memoryMyProducts.add(0, product)
+            Result.success(product)
+        }
+    }
+
+    suspend fun updateProduct(product: Product): Result<Product> {
+        return try {
+            val body = buildJsonObject {
+                put("name", product.name)
+                put("title", product.name)
+                put("description", product.description)
+                put("price", product.price)
+                put("original_price", product.originalPrice)
+                put("currency", product.currency)
+                put("category", product.category)
+                put("category_id", product.categoryId ?: product.category)
+                put("stock", product.stock)
+                put("quantity", product.stock)
+                put("image_url", product.primaryImage)
+                put("image_urls", JsonArray(product.imageUrls.map { JsonPrimitive(it) }))
+            }
+            val response = api.updateProduct(product.id, body)
+            val updated = if (response.isSuccessful) {
+                val data = response.body() ?: buildJsonObject {}
+                val prodObj = data["product"]?.jsonObject ?: data
+                try {
+                    json.decodeFromJsonElement<Product>(prodObj)
+                } catch (_: Exception) {
+                    product
+                }
+            } else {
+                product
+            }
+            val idx = memoryMyProducts.indexOfFirst { it.id == product.id }
+            if (idx >= 0) {
+                memoryMyProducts[idx] = updated
+            } else {
+                memoryMyProducts.add(0, updated)
+            }
+            Result.success(updated)
+        } catch (e: Exception) {
+            val idx = memoryMyProducts.indexOfFirst { it.id == product.id }
+            if (idx >= 0) {
+                memoryMyProducts[idx] = product
+            } else {
+                memoryMyProducts.add(0, product)
+            }
             Result.success(product)
         }
     }

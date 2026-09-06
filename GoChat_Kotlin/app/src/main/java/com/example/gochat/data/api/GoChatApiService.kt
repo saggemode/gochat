@@ -300,11 +300,22 @@ interface GoChatApiService {
         @Body body: JsonObject
     ): Response<JsonObject>
 
+    @PUT(ApiConstants.BUSINESS_PROFILE)
+    suspend fun updateBusinessProfile(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
     @GET(ApiConstants.BUSINESS_PRODUCTS)
     suspend fun getMyProducts(): Response<JsonElement>
 
     @POST(ApiConstants.BUSINESS_PRODUCTS)
     suspend fun createProduct(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @PUT("api/v1/business/products/{id}")
+    suspend fun updateProduct(
+        @Path("id") productId: String,
         @Body body: JsonObject
     ): Response<JsonObject>
 

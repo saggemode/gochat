@@ -246,6 +246,83 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun updateStore(
+        name: String,
+        category: String,
+        location: String,
+        phone: String,
+        description: String,
+        logoUrl: String?,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            val existing = _myStore.value
+            val updatedStore = (existing ?: Store(id = "store_${System.currentTimeMillis()}", name = name)).copy(
+                name = name,
+                category = category.ifBlank { "General Retail" },
+                address = location,
+                phone = phone,
+                description = description,
+                logoUrl = logoUrl?.ifBlank { existing?.logoUrl },
+                isVerified = true
+            )
+            val result = repository.updateBusinessProfile(updatedStore)
+            _isLoading.value = false
+            if (result.isSuccess) {
+                _myStore.value = result.getOrThrow()
+                loadMyStore()
+                onSuccess()
+            } else {
+                onError(result.exceptionOrNull()?.message ?: "Failed to update store")
+            }
+        }
+    }
+
+    fun updateProduct(
+        product: Product,
+        name: String,
+        price: Double,
+        originalPrice: Double,
+        category: String,
+        stock: Int,
+        imageUrls: List<String>,
+        description: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            val primaryImage = imageUrls.firstOrNull() ?: product.primaryImage
+            val updated = product.copy(
+                name = name,
+                description = description,
+                price = price,
+                originalPrice = if (originalPrice > price) originalPrice else 0.0,
+                category = category.ifBlank { product.category },
+                categoryId = category.lowercase(),
+                stock = stock,
+                imageUrls = if (imageUrls.isNotEmpty()) imageUrls else product.imageUrls,
+                imageUrl = primaryImage
+            )
+
+            _products.value = _products.value.map { if (it.id == product.id) updated else it }
+            _myProducts.value = _myProducts.value.map { if (it.id == product.id) updated else it }
+
+            val result = repository.updateProduct(updated)
+            _isLoading.value = false
+            if (result.isSuccess) {
+                val finalProd = result.getOrNull() ?: updated
+                _products.value = _products.value.map { if (it.id == product.id) finalProd else it }
+                _myProducts.value = _myProducts.value.map { if (it.id == product.id) finalProd else it }
+                onSuccess()
+            } else {
+                onError(result.exceptionOrNull()?.message ?: "Failed to update product")
+            }
+        }
+    }
+
     fun deleteProduct(productId: String) {
         viewModelScope.launch {
             repository.deleteProduct(productId)

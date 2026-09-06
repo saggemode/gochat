@@ -12,6 +12,7 @@ import java.util.Locale
 
 class StoreProductAdapter(
     private val onClick: (Product) -> Unit,
+    private val onEdit: (Product) -> Unit,
     private val onDelete: (Product) -> Unit
 ) : ListAdapter<Product, StoreProductAdapter.StoreProductViewHolder>(ProductDiffCallback()) {
 
@@ -40,6 +41,7 @@ class StoreProductAdapter(
             MediaImageHelper.loadSafeImage(binding.ivProductImage, product.primaryImage, isCircle = true)
 
             binding.root.setOnClickListener { onClick(product) }
+            binding.btnEditProduct.setOnClickListener { onEdit(product) }
             binding.btnDeleteProduct.setOnClickListener { onDelete(product) }
         }
     }
