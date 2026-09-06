@@ -1,5 +1,7 @@
 package com.example.gochat.data.model
 
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -12,8 +14,9 @@ data class Category(
 )
 
 @Serializable
+@Entity(tableName = "products")
 data class Product(
-    val id: String,
+    @PrimaryKey val id: String,
     val name: String,
     val description: String = "",
     val price: Double = 0.0,
@@ -51,8 +54,9 @@ data class Product(
 }
 
 @Serializable
+@Entity(tableName = "stores")
 data class Store(
-    val id: String,
+    @PrimaryKey val id: String,
     val name: String,
     val description: String = "",
     val category: String = "General Retail",
@@ -71,8 +75,9 @@ data class Store(
 )
 
 @Serializable
+@Entity(tableName = "cart_items")
 data class CartItem(
-    val id: String,
+    @PrimaryKey val id: String,
     @SerialName("product_id") val productId: String,
     var quantity: Int = 1,
     @SerialName("product_name") val productName: String? = null,
@@ -83,8 +88,9 @@ data class CartItem(
 )
 
 @Serializable
+@Entity(tableName = "marketplace_orders")
 data class Order(
-    val id: String,
+    @PrimaryKey val id: String,
     @SerialName("order_number") val orderNumber: String = "ORD-${System.currentTimeMillis()}",
     @SerialName("user_id") val userId: String = "",
     @SerialName("buyer_id") val buyerId: String = "",

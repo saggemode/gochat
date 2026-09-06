@@ -7,6 +7,7 @@
     <color name="gochat_emerald_primary">#00A884</color>
     <color name="gochat_emerald_dark">#008069</color>
     <color name="gochat_emerald_light">#34D399</color>
+    <color name="gochat_emerald">#00A884</color>
     <color name="gochat_accent">#10B981</color>
     <color name="gochat_accent_hover">#059669</color>
 

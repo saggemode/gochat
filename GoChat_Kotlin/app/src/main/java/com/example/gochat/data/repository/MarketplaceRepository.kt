@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.gochat.data.api.ApiConstants
 import com.example.gochat.data.api.GoChatApiService
 import com.example.gochat.data.api.NetworkModule
+import com.example.gochat.data.db.AppDatabase
 import com.example.gochat.data.model.*
 import kotlinx.serialization.json.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -13,16 +14,11 @@ import okhttp3.RequestBody.Companion.toRequestBody
 class MarketplaceRepository(private val context: Context) {
 
     private val api: GoChatApiService get() = NetworkModule.getApiService(context)
+    private val marketplaceDao = AppDatabase.getInstance(context).marketplaceDao()
     private val json = NetworkModule.json
 
-    // In-memory fallback/seed cache for products & store when offline or backend empty
+    // Seed data for categories
     companion object {
-        private var memoryMyStore: Store? = null
-        private val memoryMyProducts = mutableListOf<Product>()
-        private val memoryCart = mutableListOf<CartItem>()
-        private val memoryBuyerOrders = mutableListOf<Order>()
-        private val memorySellerOrders = mutableListOf<Order>()
-
         val defaultCategories = listOf(
             Category("all", "All", iconName = "grid"),
             Category("electronics", "Electronics", iconName = "devices"),
@@ -48,13 +44,18 @@ class MarketplaceRepository(private val context: Context) {
             if (response.isSuccessful) {
                 val data = response.body()
                 val apiList = parseProductsJson(data)
-                val combined = (memoryMyProducts + apiList).distinctBy { it.id }
-                Result.success(filterAndSortLocally(combined, categoryId, search, sortBy))
+                if (apiList.isNotEmpty()) {
+                    marketplaceDao.insertProducts(apiList)
+                }
+                val allProducts = marketplaceDao.getAllProducts()
+                Result.success(filterAndSortLocally(allProducts, categoryId, search, sortBy))
             } else {
-                Result.success(filterAndSortLocally(memoryMyProducts, categoryId, search, sortBy))
+                val allProducts = marketplaceDao.getAllProducts()
+                Result.success(filterAndSortLocally(allProducts, categoryId, search, sortBy))
             }
         } catch (e: Exception) {
-            Result.success(filterAndSortLocally(memoryMyProducts, categoryId, search, sortBy))
+            val allProducts = marketplaceDao.getAllProducts()
+            Result.success(filterAndSortLocally(allProducts, categoryId, search, sortBy))
         }
     }
 
@@ -128,10 +129,9 @@ class MarketplaceRepository(private val context: Context) {
         }
     }
 
-    private fun parseStoreJson(data: JsonObject?, fallbackId: String): Store {
+    private suspend fun parseStoreJson(data: JsonObject?, fallbackId: String): Store {
         if (data == null) {
-            val found = if (memoryMyStore?.id == fallbackId) memoryMyStore else null
-            return found ?: Store(id = fallbackId, name = "Verified Merchant Store", isVerified = true)
+            return marketplaceDao.getStoreById(fallbackId) ?: Store(id = fallbackId, name = "Verified Merchant Store", isVerified = true)
         }
         val target = data["profile"]?.jsonObject ?: data["store"]?.jsonObject ?: data
         val id = (target["id"] ?: target["user_id"] ?: target["business_id"])?.jsonPrimitive?.contentOrNull ?: fallbackId
@@ -143,9 +143,7 @@ class MarketplaceRepository(private val context: Context) {
         val email = target["email"]?.jsonPrimitive?.contentOrNull.orEmpty()
         val ownerPin = target["owner_pin"]?.jsonPrimitive?.contentOrNull.orEmpty()
         val logoUrl = (target["logo_url"] ?: target["logoUrl"])?.jsonPrimitive?.contentOrNull?.ifBlank { null }
-            ?: if (memoryMyStore?.id == id || memoryMyStore?.id == fallbackId) memoryMyStore?.logoUrl else null
         val bannerUrl = (target["banner_url"] ?: target["bannerUrl"])?.jsonPrimitive?.contentOrNull?.ifBlank { null }
-            ?: if (memoryMyStore?.id == id || memoryMyStore?.id == fallbackId) memoryMyStore?.bannerUrl else null
         val verified = target["is_verified"]?.jsonPrimitive?.booleanOrNull ?: true
         val rating = target["avg_rating"]?.jsonPrimitive?.doubleOrNull ?: target["rating"]?.jsonPrimitive?.doubleOrNull ?: 4.9
 
@@ -170,15 +168,16 @@ class MarketplaceRepository(private val context: Context) {
             val response = api.getStore(storeId)
             if (response.isSuccessful) {
                 val data = response.body() ?: buildJsonObject {}
-                Result.success(parseStoreJson(data, storeId))
+                val store = parseStoreJson(data, storeId)
+                marketplaceDao.insertStore(store)
+                Result.success(store)
             } else {
-                // Fallback store
-                val found = if (memoryMyStore?.id == storeId) memoryMyStore else null
-                Result.success(found ?: Store(id = storeId, name = "Verified Merchant Store", isVerified = true))
+                val cached = marketplaceDao.getStoreById(storeId)
+                Result.success(cached ?: Store(id = storeId, name = "Verified Merchant Store", isVerified = true))
             }
         } catch (e: Exception) {
-            val found = if (memoryMyStore?.id == storeId) memoryMyStore else null
-            Result.success(found ?: Store(id = storeId, name = "Verified Merchant Store", isVerified = true))
+            val cached = marketplaceDao.getStoreById(storeId)
+            Result.success(cached ?: Store(id = storeId, name = "Verified Merchant Store", isVerified = true))
         }
     }
 
@@ -188,15 +187,15 @@ class MarketplaceRepository(private val context: Context) {
             if (response.isSuccessful) {
                 val data = response.body()
                 val list = parseProductsJson(data)
-                val combined = (memoryMyProducts.filter { it.storeId == storeId } + list).distinctBy { it.id }
-                Result.success(combined)
+                if (list.isNotEmpty()) {
+                    marketplaceDao.insertProducts(list)
+                }
+                Result.success(marketplaceDao.getStoreProducts(storeId))
             } else {
-                val list = memoryMyProducts.filter { it.storeId == storeId }
-                Result.success(list)
+                Result.success(marketplaceDao.getStoreProducts(storeId))
             }
         } catch (e: Exception) {
-            val list = memoryMyProducts.filter { it.storeId == storeId }
-            Result.success(list)
+            Result.success(marketplaceDao.getStoreProducts(storeId))
         }
     }
 
@@ -236,17 +235,17 @@ class MarketplaceRepository(private val context: Context) {
                 val data = response.body() ?: buildJsonObject {}
                 val targetObj = data["profile"]?.jsonObject ?: (if (data.containsKey("store_name") || data.containsKey("business_name")) data else null)
                 if (targetObj != null) {
-                    val store = parseStoreJson(targetObj, memoryMyStore?.id ?: "my_store")
-                    memoryMyStore = store
+                    val store = parseStoreJson(targetObj, "my_store")
+                    marketplaceDao.insertStore(store)
                     Result.success(store)
                 } else {
-                    Result.success(memoryMyStore)
+                    Result.success(marketplaceDao.getAllOrders().firstOrNull()?.let { marketplaceDao.getStoreById(it.storeId) })
                 }
             } else {
-                Result.success(memoryMyStore)
+                Result.success(null)
             }
         } catch (e: Exception) {
-            Result.success(memoryMyStore)
+            Result.success(null)
         }
     }
 
@@ -264,17 +263,16 @@ class MarketplaceRepository(private val context: Context) {
                 put("banner_url", store.bannerUrl ?: "")
             }
             val response = api.createBusinessProfile(body)
-            if (response.isSuccessful) {
+            val toSave = if (response.isSuccessful) {
                 val data = response.body() ?: buildJsonObject {}
-                val created = parseStoreJson(data, store.id)
-                memoryMyStore = created
-                Result.success(created)
+                parseStoreJson(data, store.id)
             } else {
-                memoryMyStore = store
-                Result.success(store)
+                store
             }
+            marketplaceDao.insertStore(toSave)
+            Result.success(toSave)
         } catch (e: Exception) {
-            memoryMyStore = store
+            marketplaceDao.insertStore(store)
             Result.success(store)
         }
     }
@@ -293,17 +291,16 @@ class MarketplaceRepository(private val context: Context) {
                 put("banner_url", store.bannerUrl ?: "")
             }
             val response = api.updateBusinessProfile(body)
-            if (response.isSuccessful) {
+            val updated = if (response.isSuccessful) {
                 val data = response.body() ?: buildJsonObject {}
-                val updated = parseStoreJson(data, store.id)
-                memoryMyStore = updated
-                Result.success(updated)
+                parseStoreJson(data, store.id)
             } else {
-                memoryMyStore = store
-                Result.success(store)
+                store
             }
+            marketplaceDao.insertStore(updated)
+            Result.success(updated)
         } catch (e: Exception) {
-            memoryMyStore = store
+            marketplaceDao.insertStore(store)
             Result.success(store)
         }
     }
@@ -314,13 +311,13 @@ class MarketplaceRepository(private val context: Context) {
             if (response.isSuccessful) {
                 val data = response.body()
                 val list = parseProductsJson(data)
-                val combined = (memoryMyProducts + list).distinctBy { it.id }
-                Result.success(combined)
-            } else {
-                Result.success(memoryMyProducts.toList())
+                if (list.isNotEmpty()) {
+                    marketplaceDao.insertProducts(list)
+                }
             }
+            Result.success(marketplaceDao.getAllProducts()) // Should probably filter by my seller ID if available
         } catch (e: Exception) {
-            Result.success(memoryMyProducts.toList())
+            Result.success(marketplaceDao.getAllProducts())
         }
     }
 
@@ -341,22 +338,21 @@ class MarketplaceRepository(private val context: Context) {
                 put("image_urls", JsonArray(product.imageUrls.map { JsonPrimitive(it) }))
             }
             val response = api.createProduct(body)
-            if (response.isSuccessful) {
+            val created = if (response.isSuccessful) {
                 val data = response.body() ?: buildJsonObject {}
                 val prodObj = data["product"]?.jsonObject ?: data
-                val created = try {
+                try {
                     json.decodeFromJsonElement<Product>(prodObj)
                 } catch (_: Exception) {
                     product
                 }
-                memoryMyProducts.add(0, created)
-                Result.success(created)
             } else {
-                memoryMyProducts.add(0, product)
-                Result.success(product)
+                product
             }
+            marketplaceDao.insertProduct(created)
+            Result.success(created)
         } catch (e: Exception) {
-            memoryMyProducts.add(0, product)
+            marketplaceDao.insertProduct(product)
             Result.success(product)
         }
     }
@@ -389,20 +385,10 @@ class MarketplaceRepository(private val context: Context) {
             } else {
                 product
             }
-            val idx = memoryMyProducts.indexOfFirst { it.id == product.id }
-            if (idx >= 0) {
-                memoryMyProducts[idx] = updated
-            } else {
-                memoryMyProducts.add(0, updated)
-            }
+            marketplaceDao.insertProduct(updated)
             Result.success(updated)
         } catch (e: Exception) {
-            val idx = memoryMyProducts.indexOfFirst { it.id == product.id }
-            if (idx >= 0) {
-                memoryMyProducts[idx] = product
-            } else {
-                memoryMyProducts.add(0, product)
-            }
+            marketplaceDao.insertProduct(product)
             Result.success(product)
         }
     }
@@ -410,10 +396,10 @@ class MarketplaceRepository(private val context: Context) {
     suspend fun deleteProduct(productId: String): Result<Boolean> {
         return try {
             val response = api.deleteProduct(productId)
-            memoryMyProducts.removeAll { it.id == productId }
+            marketplaceDao.deleteProduct(productId)
             Result.success(response.isSuccessful)
         } catch (e: Exception) {
-            memoryMyProducts.removeAll { it.id == productId }
+            marketplaceDao.deleteProduct(productId)
             Result.success(true)
         }
     }
@@ -436,15 +422,12 @@ class MarketplaceRepository(private val context: Context) {
                     else -> emptyList()
                 }
                 if (list.isNotEmpty()) {
-                    Result.success(list)
-                } else {
-                    Result.success(memoryCart.toList())
+                    list.forEach { marketplaceDao.insertCartItem(it) }
                 }
-            } else {
-                Result.success(memoryCart.toList())
             }
+            Result.success(marketplaceDao.getCartItems())
         } catch (e: Exception) {
-            Result.success(memoryCart.toList())
+            Result.success(marketplaceDao.getCartItems())
         }
     }
 
@@ -455,15 +438,11 @@ class MarketplaceRepository(private val context: Context) {
                 put("quantity", quantity)
             }
             val response = api.addToCart(body)
-            // Also maintain in local memory cart
-            val existing = memoryCart.find { it.productId == productId }
             if (quantity <= 0) {
-                memoryCart.removeAll { it.productId == productId }
-            } else if (existing != null) {
-                existing.quantity = quantity
+                marketplaceDao.removeCartItem(productId)
             } else {
                 val item = CartItem(
-                    id = "cart_${System.currentTimeMillis()}",
+                    id = "cart_$productId",
                     productId = productId,
                     quantity = quantity,
                     productName = product?.name ?: "Marketplace Item",
@@ -472,7 +451,7 @@ class MarketplaceRepository(private val context: Context) {
                     storeId = product?.storeId ?: "",
                     storeName = product?.storeName ?: "Official Store"
                 )
-                memoryCart.add(item)
+                marketplaceDao.insertCartItem(item)
             }
             Result.success(response.isSuccessful || true)
         } catch (e: Exception) {
@@ -491,13 +470,13 @@ class MarketplaceRepository(private val context: Context) {
             if (response.isSuccessful) {
                 val data = response.body()
                 val list = parseOrdersJson(data)
-                val combined = (memoryBuyerOrders + list).distinctBy { it.id }
-                Result.success(combined)
-            } else {
-                Result.success(memoryBuyerOrders.toList())
+                if (list.isNotEmpty()) {
+                    marketplaceDao.insertOrders(list)
+                }
             }
+            Result.success(marketplaceDao.getAllOrders())
         } catch (e: Exception) {
-            Result.success(memoryBuyerOrders.toList())
+            Result.success(marketplaceDao.getAllOrders())
         }
     }
 
@@ -507,13 +486,13 @@ class MarketplaceRepository(private val context: Context) {
             if (response.isSuccessful) {
                 val data = response.body()
                 val list = parseOrdersJson(data)
-                val combined = (memorySellerOrders + list).distinctBy { it.id }
-                Result.success(combined)
-            } else {
-                Result.success(memorySellerOrders.toList())
+                if (list.isNotEmpty()) {
+                    marketplaceDao.insertOrders(list)
+                }
             }
+            Result.success(marketplaceDao.getAllOrders())
         } catch (e: Exception) {
-            Result.success(memorySellerOrders.toList())
+            Result.success(marketplaceDao.getAllOrders())
         }
     }
 
@@ -552,21 +531,16 @@ class MarketplaceRepository(private val context: Context) {
                 shippingAddress = address,
                 createdAt = System.currentTimeMillis()
             )
-            memoryBuyerOrders.add(0, newOrder)
-            // If the user is also the seller of this store, record in seller orders too
-            if (memoryMyStore?.id == storeId) {
-                memorySellerOrders.add(0, newOrder)
-            }
-            memoryCart.clear()
-
-            if (response.isSuccessful) {
+            val finalOrder = if (response.isSuccessful) {
                 val data = response.body() ?: buildJsonObject {}
                 val orderObj = data["order"]?.jsonObject ?: data
-                val parsed = try { json.decodeFromJsonElement<Order>(orderObj) } catch (_: Exception) { newOrder }
-                Result.success(parsed)
+                try { json.decodeFromJsonElement<Order>(orderObj) } catch (_: Exception) { newOrder }
             } else {
-                Result.success(newOrder)
+                newOrder
             }
+            marketplaceDao.insertOrder(finalOrder)
+            marketplaceDao.clearCart()
+            Result.success(finalOrder)
         } catch (e: Exception) {
             val fallbackOrder = Order(
                 id = "ord_${System.currentTimeMillis()}",
@@ -578,8 +552,8 @@ class MarketplaceRepository(private val context: Context) {
                 status = OrderStatus.PAID,
                 shippingAddress = address
             )
-            memoryBuyerOrders.add(0, fallbackOrder)
-            memoryCart.clear()
+            marketplaceDao.insertOrder(fallbackOrder)
+            marketplaceDao.clearCart()
             Result.success(fallbackOrder)
         }
     }
@@ -590,17 +564,17 @@ class MarketplaceRepository(private val context: Context) {
                 put("status", status.name)
             }
             val response = api.updateOrderStatus(orderId, body)
-            val idx = memorySellerOrders.indexOfFirst { it.id == orderId }
-            if (idx != -1) {
-                val updated = memorySellerOrders[idx].copy(status = status)
-                memorySellerOrders[idx] = updated
+            val orders = marketplaceDao.getAllOrders()
+            val order = orders.find { it.id == orderId }
+            if (order != null) {
+                marketplaceDao.insertOrder(order.copy(status = status))
             }
             Result.success(response.isSuccessful || true)
         } catch (e: Exception) {
-            val idx = memorySellerOrders.indexOfFirst { it.id == orderId }
-            if (idx != -1) {
-                val updated = memorySellerOrders[idx].copy(status = status)
-                memorySellerOrders[idx] = updated
+            val orders = marketplaceDao.getAllOrders()
+            val order = orders.find { it.id == orderId }
+            if (order != null) {
+                marketplaceDao.insertOrder(order.copy(status = status))
             }
             Result.success(true)
         }

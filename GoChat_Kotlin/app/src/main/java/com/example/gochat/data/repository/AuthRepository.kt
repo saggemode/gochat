@@ -8,6 +8,7 @@ import com.example.gochat.data.api.NetworkModule
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.db.AppDatabase
 import com.example.gochat.data.model.User
+import com.example.gochat.data.model.LinkedDevice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*

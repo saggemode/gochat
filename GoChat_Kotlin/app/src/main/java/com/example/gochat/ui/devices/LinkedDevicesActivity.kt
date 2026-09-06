@@ -12,7 +12,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.gochat.R
 import com.example.gochat.data.repository.AuthRepository
-import com.example.gochat.data.repository.LinkedDevice
+import com.example.gochat.data.model.LinkedDevice
 import com.example.gochat.databinding.ActivityLinkedDevicesBinding
 import com.example.gochat.databinding.ItemLinkedDeviceBinding
 import kotlinx.coroutines.launch

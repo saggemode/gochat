@@ -109,4 +109,31 @@ class Converters {
             CallStatus.OUTGOING
         }
     }
+
+    @TypeConverter
+    fun fromCartItemList(value: List<CartItem>?): String {
+        return value?.let { json.encodeToString(it) } ?: "[]"
+    }
+
+    @TypeConverter
+    fun toCartItemList(value: String?): List<CartItem> {
+        if (value.isNullOrEmpty()) return emptyList()
+        return try {
+            json.decodeFromString(value)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    @TypeConverter
+    fun fromOrderStatus(value: OrderStatus?): String = (value ?: OrderStatus.PENDING).name
+
+    @TypeConverter
+    fun toOrderStatus(value: String?): OrderStatus {
+        return try {
+            OrderStatus.valueOf(value ?: "PENDING")
+        } catch (e: Exception) {
+            OrderStatus.PENDING
+        }
+    }
 }

@@ -5,18 +5,25 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
-import com.example.gochat.data.model.CallRecord
-import com.example.gochat.data.model.Conversation
-import com.example.gochat.data.model.Message
+import com.example.gochat.data.model.*
 
 @Database(
-    entities = [Conversation::class, Message::class, CallRecord::class],
-    version = 3,
+    entities = [
+        Conversation::class,
+        Message::class,
+        CallRecord::class,
+        Store::class,
+        Product::class,
+        CartItem::class,
+        Order::class
+    ],
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun chatDao(): ChatDao
+    abstract fun marketplaceDao(): MarketplaceDao
 
     companion object {
         @Volatile

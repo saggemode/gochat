@@ -1,0 +1,69 @@
+package com.example.gochat.data.db
+
+import androidx.room.*
+import com.example.gochat.data.model.*
+
+@Dao
+interface MarketplaceDao {
+
+    // ── Store ────────────────────────────────────────────────────
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertStore(store: Store)
+
+    @Query("SELECT * FROM stores WHERE id = :storeId LIMIT 1")
+    suspend fun getStoreById(storeId: String): Store?
+
+    @Query("SELECT * FROM stores WHERE ownerId = :ownerId LIMIT 1")
+    suspend fun getStoreByOwner(ownerId: String): Store?
+
+    // ── Products ─────────────────────────────────────────────────
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProducts(products: List<Product>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProduct(product: Product)
+
+    @Query("SELECT * FROM products")
+    suspend fun getAllProducts(): List<Product>
+
+    @Query("SELECT * FROM products WHERE categoryId = :categoryId OR category = :categoryId")
+    suspend fun getProductsByCategory(categoryId: String): List<Product>
+
+    @Query("SELECT * FROM products WHERE storeId = :storeId")
+    suspend fun getStoreProducts(storeId: String): List<Product>
+
+    @Query("SELECT * FROM products WHERE sellerId = :sellerId")
+    suspend fun getMyProducts(sellerId: String): List<Product>
+
+    @Query("DELETE FROM products WHERE id = :productId")
+    suspend fun deleteProduct(productId: String)
+
+    // ── Cart ─────────────────────────────────────────────────────
+    @Query("SELECT * FROM cart_items")
+    suspend fun getCartItems(): List<CartItem>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCartItem(item: CartItem)
+
+    @Query("DELETE FROM cart_items WHERE productId = :productId")
+    suspend fun removeCartItem(productId: String)
+
+    @Query("DELETE FROM cart_items")
+    suspend fun clearCart()
+
+    // ── Orders ───────────────────────────────────────────────────
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOrders(orders: List<Order>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOrder(order: Order)
+
+    @Query("SELECT * FROM marketplace_orders ORDER BY createdAt DESC")
+    suspend fun getAllOrders(): List<Order>
+
+    @Query("SELECT * FROM marketplace_orders WHERE buyerId = :buyerId ORDER BY createdAt DESC")
+    suspend fun getBuyerOrders(buyerId: String): List<Order>
+
+    @Query("SELECT * FROM marketplace_orders WHERE storeId = :storeId ORDER BY createdAt DESC")
+    suspend fun getSellerOrders(storeId: String): List<Order>
+}
