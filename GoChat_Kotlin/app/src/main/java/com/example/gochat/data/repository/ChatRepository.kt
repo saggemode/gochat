@@ -145,7 +145,16 @@ class ChatRepository(private val context: Context) {
                 val messages = rawList.mapNotNull { element ->
                     if (element is JsonObject) {
                         val msg = Message.fromJson(element, currentUserId)
-                        tryDecryptMessage(msg)
+                        if (msg.isMe) {
+                            val localExisting = dao.getMessageById(msg.id)
+                            if (localExisting != null && localExisting.content.isNotBlank() && !isBase64Ciphertext(localExisting.content)) {
+                                msg.copy(content = localExisting.content)
+                            } else {
+                                msg
+                            }
+                        } else {
+                            tryDecryptMessage(msg)
+                        }
                     } else null
                 }
                 dao.insertMessages(messages)
@@ -285,14 +294,18 @@ class ChatRepository(private val context: Context) {
             return message
         }
         val trimmed = message.content.trim()
-        // Only attempt Signal decryption if it matches a long base64 payload
-        if (trimmed.length > 40 && trimmed.matches(Regex("^[A-Za-z0-9+/=]+$"))) {
+        if (isBase64Ciphertext(trimmed)) {
             val decrypted = encryptionManager.decryptMessage(message.senderId, trimmed)
             if (decrypted.isNotBlank() && decrypted != "[Encrypted Message]" && decrypted != trimmed) {
                 return message.copy(content = decrypted)
             }
         }
         return message
+    }
+
+    private fun isBase64Ciphertext(text: String): Boolean {
+        val trimmed = text.trim()
+        return trimmed.length > 40 && trimmed.matches(Regex("^[A-Za-z0-9+/=]+$"))
     }
 
     suspend fun updateMessageStatus(messageId: String, status: MessageStatus) {

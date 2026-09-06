@@ -60,6 +60,9 @@ interface ChatDao {
     @Query("SELECT * FROM messages WHERE conversationId = :convId ORDER BY createdAt DESC LIMIT :limit")
     suspend fun getLatestMessages(convId: String, limit: Int = 50): List<Message>
 
+    @Query("SELECT * FROM messages WHERE id = :id LIMIT 1")
+    suspend fun getMessageById(id: String): Message?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMessage(message: Message)
 

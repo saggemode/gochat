@@ -89,6 +89,13 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
                 val currentUserId = tokenManager.userId ?: ""
                 if (conv.isDirect) {
                     currentPartnerId = conv.memberIds.find { it != currentUserId }
+                    currentPartnerId?.let { partnerId ->
+                        launch(Dispatchers.IO) {
+                            try {
+                                com.example.gochat.core.crypto.EncryptionManager(getApplication()).establishSession(partnerId)
+                            } catch (_: Exception) {}
+                        }
+                    }
                 }
 
                 _isPartnerOnline.value = conv.isOnline
