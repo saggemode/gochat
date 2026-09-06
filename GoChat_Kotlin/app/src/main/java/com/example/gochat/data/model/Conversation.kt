@@ -33,6 +33,7 @@ data class Conversation(
     @SerialName("is_pinned") val isPinned: Boolean = false,
     @SerialName("is_muted") val isMuted: Boolean = false,
     @SerialName("is_online") val isOnline: Boolean = false,
+    @SerialName("last_seen") val lastSeen: Long? = null,
     @SerialName("partner_pin") val partnerPin: String? = null,
     @SerialName("invitation_status") val invitationStatus: InvitationStatus = InvitationStatus.NONE,
     @SerialName("invitation_sender_id") val invitationSenderId: String? = null,
@@ -95,6 +96,8 @@ data class Conversation(
             val isOnline = (json["is_online"] ?: json["isOnline"] ?: json["IsOnline"])
                 ?.jsonPrimitive?.booleanOrNull ?: false
 
+            val lastSeen = parseOptionalTimestamp(json["last_seen"] ?: json["lastSeen"] ?: json["LastSeen"])
+
             val partnerPin = (json["partner_pin"] ?: json["partnerPin"] ?: json["PartnerPin"])
                 ?.jsonPrimitive?.contentOrNull
 
@@ -126,6 +129,7 @@ data class Conversation(
                 isPinned = isPinned,
                 isMuted = isMuted,
                 isOnline = isOnline,
+                lastSeen = lastSeen,
                 partnerPin = partnerPin,
                 invitationStatus = invStatus,
                 invitationSenderId = invitationSenderId,
@@ -136,17 +140,21 @@ data class Conversation(
             )
         }
 
-        private fun parseTimestamp(element: JsonElement?): Long {
-            if (element == null || element is JsonNull) return System.currentTimeMillis()
+        private fun parseOptionalTimestamp(element: JsonElement?): Long? {
+            if (element == null || element is JsonNull) return null
             val prim = element.jsonPrimitive
             prim.longOrNull?.let { return if (it < 100_000_000_000L) it * 1000L else it }
-            val str = prim.contentOrNull ?: return System.currentTimeMillis()
+            val str = prim.contentOrNull ?: return null
             str.toLongOrNull()?.let { return if (it < 100_000_000_000L) it * 1000L else it }
             return try {
                 java.time.Instant.parse(str).toEpochMilli()
             } catch (_: Exception) {
-                System.currentTimeMillis()
+                null
             }
+        }
+
+        private fun parseTimestamp(element: JsonElement?): Long {
+            return parseOptionalTimestamp(element) ?: System.currentTimeMillis()
         }
     }
 }

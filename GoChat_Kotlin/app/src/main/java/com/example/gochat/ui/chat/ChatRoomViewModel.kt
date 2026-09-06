@@ -36,6 +36,17 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
     private val _isOtherUserTyping = MutableStateFlow(false)
     val isOtherUserTyping: StateFlow<Boolean> = _isOtherUserTyping.asStateFlow()
 
+    private val _isPartnerOnline = MutableStateFlow(false)
+    val isPartnerOnline: StateFlow<Boolean> = _isPartnerOnline.asStateFlow()
+
+    private val _partnerLastSeen = MutableStateFlow<Long?>(null)
+    val partnerLastSeen: StateFlow<Long?> = _partnerLastSeen.asStateFlow()
+
+    fun setInitialPresence(isOnline: Boolean, lastSeen: Long?) {
+        _isPartnerOnline.value = isOnline
+        _partnerLastSeen.value = if (lastSeen != null && lastSeen > 0L) lastSeen else null
+    }
+
     private val _members = MutableStateFlow<List<User>>(emptyList())
     val members: StateFlow<List<User>> = _members.asStateFlow()
 
@@ -71,6 +82,14 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
         chatRepository.activeConversationId = convId
 
         viewModelScope.launch {
+            val conv = chatRepository.getConversationById(convId)
+            if (conv != null) {
+                _isPartnerOnline.value = conv.isOnline
+                if (conv.lastSeen != null && conv.lastSeen > 0L) {
+                    _partnerLastSeen.value = conv.lastSeen
+                }
+            }
+
             chatRepository.markConversationAsRead(convId)
             chatRepository.refreshMessages(convId)
             
@@ -310,6 +329,28 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
 
     private fun handleWebSocketEvent(event: JsonObject) {
         val type = (event["type"] ?: event["event_type"])?.jsonPrimitive?.contentOrNull.orEmpty().lowercase()
+
+        if (type == "presence") {
+            val userId = (event["user_id"] ?: event["userId"])?.jsonPrimitive?.contentOrNull.orEmpty()
+            val isOnline = (event["is_online"] ?: event["isOnline"])?.jsonPrimitive?.booleanOrNull ?: false
+            val lastSeenSec = (event["last_seen"] ?: event["lastSeen"])?.jsonPrimitive?.longOrNull
+            val lastSeenMs = if (lastSeenSec != null) {
+                if (lastSeenSec < 100_000_000_000L) lastSeenSec * 1000L else lastSeenSec
+            } else System.currentTimeMillis()
+
+            val currentUserId = tokenManager.userId ?: ""
+            if (userId.isNotEmpty() && userId != currentUserId) {
+                val matchesPartner = _members.value.any { it.id == userId }
+                if (matchesPartner || _members.value.isEmpty()) {
+                    _isPartnerOnline.value = isOnline
+                    if (!isOnline) {
+                        _partnerLastSeen.value = lastSeenMs
+                    }
+                }
+            }
+            return
+        }
+
         val rawMsg = event["message"] ?: event["Message"]
         val convId = (event["conversation_id"] ?: event["conversationId"]
             ?: (if (rawMsg is JsonObject) rawMsg["conversation_id"] ?: rawMsg["conversationId"] else null))

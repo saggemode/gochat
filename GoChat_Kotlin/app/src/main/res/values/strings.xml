@@ -349,6 +349,12 @@
     <string name="replying_to_format">Replying to %1$s</string>
     <string name="status_typing">typing&#8230;</string>
     <string name="status_online">online</string>
+    <string name="status_offline">offline</string>
+    <string name="status_last_seen_just_now">last seen just now</string>
+    <string name="status_last_seen_today">last seen today at %1$s</string>
+    <string name="status_last_seen_yesterday">last seen yesterday at %1$s</string>
+    <string name="status_last_seen_date">last seen %1$s at %2$s</string>
+    <string name="status_last_seen_recently">last seen recently</string>
     <string name="ping_message">💥 PING!!!</string>
     <string name="prompt_forward_chat">Select a chat to forward to</string>
     <string name="toast_message_status">Message %1$s</string>

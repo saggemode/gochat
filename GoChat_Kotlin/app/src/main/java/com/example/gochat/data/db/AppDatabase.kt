@@ -11,7 +11,7 @@ import com.example.gochat.data.model.Message
 
 @Database(
     entities = [Conversation::class, Message::class, CallRecord::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

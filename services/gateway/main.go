@@ -599,7 +599,7 @@ func main() {
 	}
 
 	// Real-time WebSocket connection endpoint (secured via AuthMiddleware)
-	r.GET("/ws", middleware.AuthMiddleware(authClient), ws.ServeWs(hub, chatClient, cfg.CORSOrigins, log))
+	r.GET("/ws", middleware.AuthMiddleware(authClient), ws.ServeWs(hub, chatClient, authClient, cfg.CORSOrigins, log))
 
 	// ── Server Start ──────────────────────────────────────────────────────────
 	srv := &http.Server{

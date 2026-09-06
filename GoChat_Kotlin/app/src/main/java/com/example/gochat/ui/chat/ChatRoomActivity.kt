@@ -52,11 +52,14 @@ import com.example.gochat.databinding.ActivityChatRoomBinding
 import com.example.gochat.databinding.BottomSheetAttachmentPickerBinding
 import com.example.gochat.databinding.DialogImagePreviewBinding
 import com.example.gochat.ui.calls.CallActivity
-import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 
 class ChatRoomActivity : AppCompatActivity() {
@@ -66,6 +69,9 @@ class ChatRoomActivity : AppCompatActivity() {
         const val EXTRA_CONVERSATION_TITLE = "extra_conversation_title"
         const val EXTRA_CONVERSATION_AVATAR = "extra_conversation_avatar"
         const val EXTRA_INITIAL_MESSAGE = "extra_initial_message"
+        const val EXTRA_IS_ONLINE = "extra_is_online"
+        const val EXTRA_LAST_SEEN = "extra_last_seen"
+        const val EXTRA_IS_GROUP = "extra_is_group"
     }
 
     private lateinit var binding: ActivityChatRoomBinding
@@ -143,6 +149,9 @@ class ChatRoomActivity : AppCompatActivity() {
         val convId = intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty()
         val title = intent.getStringExtra(EXTRA_CONVERSATION_TITLE) ?: "Chat"
         val avatarUrl = intent.getStringExtra(EXTRA_CONVERSATION_AVATAR).orEmpty()
+        val isOnline = intent.getBooleanExtra(EXTRA_IS_ONLINE, false)
+        val lastSeen = intent.getLongExtra(EXTRA_LAST_SEEN, 0L)
+        viewModel.setInitialPresence(isOnline, if (lastSeen > 0L) lastSeen else null)
 
         setupToolbar(title, avatarUrl)
         setupTheme(convId)
@@ -668,9 +677,14 @@ class ChatRoomActivity : AppCompatActivity() {
                 }
 
                 launch {
-                    viewModel.isOtherUserTyping.collect { isTyping ->
-                        binding.tvChatSubtitle.text = if (isTyping) getString(R.string.status_typing) else getString(R.string.status_online)
-                        binding.viewHeaderOnlineDot.visibility = View.VISIBLE
+                    combine(
+                        viewModel.isOtherUserTyping,
+                        viewModel.isPartnerOnline,
+                        viewModel.partnerLastSeen
+                    ) { isTyping, isOnline, lastSeen ->
+                        Triple(isTyping, isOnline, lastSeen)
+                    }.collect { (isTyping, isOnline, lastSeen) ->
+                        renderPresence(isTyping, isOnline, lastSeen)
                     }
                 }
 
@@ -829,6 +843,74 @@ class ChatRoomActivity : AppCompatActivity() {
         if (::messageAdapter.isInitialized) {
             messageAdapter.setBubbleTheme(theme.bubbleShape, accentColor)
         }
+    }
+
+    private fun renderPresence(isTyping: Boolean, isOnline: Boolean, lastSeen: Long?) {
+        val isGroup = intent.getBooleanExtra(EXTRA_IS_GROUP, false)
+        if (isTyping) {
+            binding.tvChatSubtitle.text = getString(R.string.status_typing)
+            binding.tvChatSubtitle.visibility = View.VISIBLE
+            binding.viewHeaderOnlineDot.visibility = View.VISIBLE
+        } else if (isGroup) {
+            val memberCount = viewModel.members.value.size
+            if (memberCount > 0) {
+                binding.tvChatSubtitle.text = "$memberCount members"
+                binding.tvChatSubtitle.visibility = View.VISIBLE
+            } else {
+                binding.tvChatSubtitle.visibility = View.GONE
+            }
+            binding.viewHeaderOnlineDot.visibility = View.GONE
+        } else if (isOnline) {
+            binding.tvChatSubtitle.text = getString(R.string.status_online)
+            binding.tvChatSubtitle.visibility = View.VISIBLE
+            binding.viewHeaderOnlineDot.visibility = View.VISIBLE
+        } else {
+            binding.viewHeaderOnlineDot.visibility = View.GONE
+            if (lastSeen != null && lastSeen > 0L) {
+                binding.tvChatSubtitle.text = formatLastSeen(lastSeen)
+                binding.tvChatSubtitle.visibility = View.VISIBLE
+            } else {
+                binding.tvChatSubtitle.text = getString(R.string.status_offline)
+                binding.tvChatSubtitle.visibility = View.VISIBLE
+            }
+        }
+    }
+
+    private fun formatLastSeen(lastSeenMs: Long): String {
+        val now = System.currentTimeMillis()
+        val diff = now - lastSeenMs
+        if (diff < 60_000L) {
+            return getString(R.string.status_last_seen_just_now)
+        }
+
+        val calNow = Calendar.getInstance()
+        val calSeen = Calendar.getInstance().apply { timeInMillis = lastSeenMs }
+
+        val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+        val timeStr = timeFormat.format(Date(lastSeenMs))
+
+        val isToday = calNow.get(Calendar.YEAR) == calSeen.get(Calendar.YEAR) &&
+                calNow.get(Calendar.DAY_OF_YEAR) == calSeen.get(Calendar.DAY_OF_YEAR)
+
+        if (isToday) {
+            return getString(R.string.status_last_seen_today, timeStr)
+        }
+
+        calNow.add(Calendar.DAY_OF_YEAR, -1)
+        val isYesterday = calNow.get(Calendar.YEAR) == calSeen.get(Calendar.YEAR) &&
+                calNow.get(Calendar.DAY_OF_YEAR) == calSeen.get(Calendar.DAY_OF_YEAR)
+
+        if (isYesterday) {
+            return getString(R.string.status_last_seen_yesterday, timeStr)
+        }
+
+        if (diff < 6 * 24 * 60 * 60 * 1000L) {
+            val dayFormat = SimpleDateFormat("EEEE", Locale.getDefault())
+            return getString(R.string.status_last_seen_date, dayFormat.format(Date(lastSeenMs)), timeStr)
+        }
+
+        val dateFormat = SimpleDateFormat("MMM d", Locale.getDefault())
+        return getString(R.string.status_last_seen_date, dateFormat.format(Date(lastSeenMs)), timeStr)
     }
 
     override fun onPause() {

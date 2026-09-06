@@ -148,7 +148,15 @@ func (h *ChatHandler) GetConversations(c *gin.Context) {
 		return
 	}
 
-	// Populate partner names and avatars for 1:1 direct conversations
+	type userInfo struct {
+		name     string
+		avatar   string
+		isOnline bool
+		lastSeen int64
+	}
+	infoMap := make(map[string]userInfo)
+
+	// Populate partner names, avatars, and presence for 1:1 direct conversations
 	if resp != nil && len(resp.Conversations) > 0 && h.authClient != nil {
 		partnerIDs := make([]string, 0)
 		for _, conv := range resp.Conversations {
@@ -162,8 +170,6 @@ func (h *ChatHandler) GetConversations(c *gin.Context) {
 		if len(partnerIDs) > 0 {
 			usersResp, err := h.authClient.GetUsers(c.Request.Context(), &authpb.GetUsersRequest{UserIds: partnerIDs})
 			if err == nil && usersResp != nil {
-				userMap := make(map[string]string)
-				avatarMap := make(map[string]string)
 				for _, u := range usersResp.Users {
 					name := u.DisplayName
 					if name == "" {
@@ -172,19 +178,29 @@ func (h *ChatHandler) GetConversations(c *gin.Context) {
 					if name == "" {
 						name = u.Phone
 					}
-					userMap[u.Id] = name
-					avatarMap[u.Id] = u.AvatarUrl
+					isOnline := u.IsOnline
+					if h.hub != nil && h.hub.IsUserOnline(u.Id) {
+						isOnline = true
+					}
+					infoMap[u.Id] = userInfo{
+						name:     name,
+						avatar:   u.AvatarUrl,
+						isOnline: isOnline,
+						lastSeen: u.LastSeen,
+					}
 				}
 
 				for _, conv := range resp.Conversations {
 					if conv.Type == chatpb.ConversationType_DIRECT || conv.Name == "" {
 						for _, mID := range conv.MemberIds {
 							if mID != userID {
-								if partnerName, ok := userMap[mID]; ok && partnerName != "" {
-									conv.Name = partnerName
-								}
-								if partnerAvatar, ok := avatarMap[mID]; ok && partnerAvatar != "" {
-									conv.AvatarUrl = partnerAvatar
+								if info, ok := infoMap[mID]; ok {
+									if info.name != "" {
+										conv.Name = info.name
+									}
+									if info.avatar != "" {
+										conv.AvatarUrl = info.avatar
+									}
 								}
 								break
 							}
@@ -195,7 +211,38 @@ func (h *ChatHandler) GetConversations(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, resp)
+	type EnrichedConversation struct {
+		*chatpb.Conversation
+		IsOnline bool  `json:"is_online"`
+		LastSeen int64 `json:"last_seen"`
+	}
+
+	enriched := make([]EnrichedConversation, 0, len(resp.Conversations))
+	for _, conv := range resp.Conversations {
+		isOnline := false
+		var lastSeen int64 = 0
+		if conv.Type == chatpb.ConversationType_DIRECT {
+			for _, mID := range conv.MemberIds {
+				if mID != userID {
+					if info, ok := infoMap[mID]; ok {
+						isOnline = info.isOnline
+						lastSeen = info.lastSeen
+					}
+					break
+				}
+			}
+		}
+		enriched = append(enriched, EnrichedConversation{
+			Conversation: conv,
+			IsOnline:     isOnline,
+			LastSeen:     lastSeen,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"conversations": enriched,
+		"total":         resp.Total,
+	})
 }
 
 // GetConversation gets a conversation by its ID.
@@ -216,6 +263,9 @@ func (h *ChatHandler) GetConversation(c *gin.Context) {
 	}
 
 	conv := resp.Conversation
+	isOnline := false
+	var lastSeen int64 = 0
+
 	if conv != nil && (conv.Type == chatpb.ConversationType_DIRECT || conv.Name == "" || conv.AvatarUrl == "") && h.authClient != nil {
 		for _, mID := range conv.MemberIds {
 			if mID != userID {
@@ -233,13 +283,28 @@ func (h *ChatHandler) GetConversation(c *gin.Context) {
 					if conv.AvatarUrl == "" && uResp.User.AvatarUrl != "" {
 						conv.AvatarUrl = uResp.User.AvatarUrl
 					}
+					isOnline = uResp.User.IsOnline
+					if h.hub != nil && h.hub.IsUserOnline(mID) {
+						isOnline = true
+					}
+					lastSeen = uResp.User.LastSeen
 				}
 				break
 			}
 		}
 	}
 
-	c.JSON(http.StatusOK, conv)
+	type EnrichedSingleConversation struct {
+		*chatpb.Conversation
+		IsOnline bool  `json:"is_online"`
+		LastSeen int64 `json:"last_seen"`
+	}
+
+	c.JSON(http.StatusOK, EnrichedSingleConversation{
+		Conversation: conv,
+		IsOnline:     isOnline,
+		LastSeen:     lastSeen,
+	})
 }
 
 // AddMember adds a user to a group conversation.

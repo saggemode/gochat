@@ -308,6 +308,9 @@ class ChatListFragment : Fragment() {
             putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, conversation.id)
             putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, conversation.title)
             putExtra(ChatRoomActivity.EXTRA_CONVERSATION_AVATAR, conversation.avatarUrl)
+            putExtra(ChatRoomActivity.EXTRA_IS_ONLINE, conversation.isOnline)
+            putExtra(ChatRoomActivity.EXTRA_LAST_SEEN, conversation.lastSeen ?: 0L)
+            putExtra(ChatRoomActivity.EXTRA_IS_GROUP, conversation.isGroup)
         }
         startActivity(intent)
     }

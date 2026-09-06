@@ -12,6 +12,7 @@ import (
 
 	"strings"
 
+	authpb "gochat/gen/auth"
 	chatpb "gochat/gen/chat"
 )
 
@@ -31,21 +32,57 @@ const (
 
 // Client represents a single connected WebSocket client.
 type Client struct {
-	hub    *Hub
-	conn   *websocket.Conn
-	send   chan []byte
-	userID string
-	log    *zap.Logger
-	cancel context.CancelFunc
+	hub        *Hub
+	conn       *websocket.Conn
+	send       chan []byte
+	userID     string
+	authClient authpb.AuthServiceClient
+	log        *zap.Logger
+	cancel     context.CancelFunc
 }
 
 // readPump pumps messages from the websocket connection to the hub/discard.
 // It ensures pong deadliness is met.
 func (c *Client) readPump() {
+	// Set online in DB and broadcast presence event
+	if c.authClient != nil {
+		go func(uid string) {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_, _ = c.authClient.SetPresence(ctx, &authpb.SetPresenceRequest{UserId: uid, IsOnline: true})
+		}(c.userID)
+	}
+	onlineEvt, _ := json.Marshal(map[string]interface{}{
+		"type":      "presence",
+		"user_id":   c.userID,
+		"is_online": true,
+	})
+	c.hub.Broadcast(onlineEvt, c.userID)
+
 	defer func() {
 		c.cancel()
 		c.hub.unregister <- c
 		c.conn.Close()
+
+		// If user has no remaining open connections, mark offline in DB and broadcast
+		go func(uid string) {
+			time.Sleep(150 * time.Millisecond)
+			if !c.hub.IsUserOnline(uid) {
+				now := time.Now().Unix()
+				if c.authClient != nil {
+					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+					defer cancel()
+					_, _ = c.authClient.SetPresence(ctx, &authpb.SetPresenceRequest{UserId: uid, IsOnline: false})
+				}
+				offlineEvt, _ := json.Marshal(map[string]interface{}{
+					"type":      "presence",
+					"user_id":   uid,
+					"is_online": false,
+					"last_seen": now,
+				})
+				c.hub.Broadcast(offlineEvt, "")
+			}
+		}(c.userID)
 	}()
 	c.conn.SetReadLimit(maxMessageSize)
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
@@ -178,7 +215,7 @@ func (c *Client) listenGrpcStream(ctx context.Context, chatClient chatpb.ChatSer
 }
 
 // ServeWs upgrades HTTP connections to WebSockets and registers the client.
-func ServeWs(hub *Hub, chatClient chatpb.ChatServiceClient, allowedOrigins string, log *zap.Logger) gin.HandlerFunc {
+func ServeWs(hub *Hub, chatClient chatpb.ChatServiceClient, authClient authpb.AuthServiceClient, allowedOrigins string, log *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.GetString("user_id")
 		if userID == "" {
@@ -217,12 +254,13 @@ func ServeWs(hub *Hub, chatClient chatpb.ChatServiceClient, allowedOrigins strin
 
 		ctx, cancel := context.WithCancel(context.Background())
 		client := &Client{
-			hub:    hub,
-			conn:   conn,
-			send:   make(chan []byte, 256),
-			userID: userID,
-			log:    log,
-			cancel: cancel,
+			hub:        hub,
+			conn:       conn,
+			send:       make(chan []byte, 256),
+			userID:     userID,
+			authClient: authClient,
+			log:        log,
+			cancel:     cancel,
 		}
 
 		client.hub.register <- client

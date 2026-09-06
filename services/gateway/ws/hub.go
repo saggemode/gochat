@@ -63,6 +63,19 @@ func (h *Hub) GetOnlineUsers() []string {
 	return users
 }
 
+// IsUserOnline returns whether the user has at least one active WebSocket connection.
+func (h *Hub) IsUserOnline(userID string) bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	for client := range h.clients {
+		if client.userID == userID {
+			return true
+		}
+	}
+	return false
+}
+
 // Broadcast sends a JSON payload to all active clients, optionally excluding a specific sender.
 func (h *Hub) Broadcast(message []byte, excludeUserID string) {
 	h.mu.RLock()
