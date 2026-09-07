@@ -32,17 +32,31 @@ class MarketplaceViewModel @Inject constructor(
     private val _products = MutableStateFlow<List<Product>>(emptyList())
     val products: StateFlow<List<Product>> = _products.asStateFlow()
 
-    private val filterTrigger = MutableStateFlow(Triple<String?, String?, String?>(null, null, null))
+    private val filterTrigger = MutableStateFlow(FilterParams())
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val pagedProducts: Flow<PagingData<Product>> = filterTrigger
-        .flatMapLatest { (cat, search, sort) ->
-            repository.getProductsPaged(cat, search, sort)
+        .flatMapLatest { params ->
+            repository.getProductsPaged(params.cat, params.search, params.sort, params.isNearby, params.lat, params.lng)
         }
         .cachedIn(viewModelScope)
 
+    data class FilterParams(
+        val cat: String? = null,
+        val search: String? = null,
+        val sort: String? = null,
+        val isNearby: Boolean = false,
+        val lat: Double = 6.46,
+        val lng: Double = 3.40
+    )
+
+
     private val _categories = MutableStateFlow<List<Category>>(emptyList())
     val categories: StateFlow<List<Category>> = _categories.asStateFlow()
+
+    private val _searchSuggestions = MutableStateFlow<List<String>>(emptyList())
+    val searchSuggestions: StateFlow<List<String>> = _searchSuggestions.asStateFlow()
+
 
     private val _cartCount = MutableStateFlow(0)
     val cartCount: StateFlow<Int> = _cartCount.asStateFlow()
@@ -68,7 +82,13 @@ class MarketplaceViewModel @Inject constructor(
     private var currentCategory: String? = null
     private var currentSearch: String? = null
     private var isVerifiedOnly: Boolean = false
+    private var isNearbyOnly: Boolean = false
     private var currentSortBy: String? = null
+
+    // Mock user location for Demo (Lagos)
+    private var userLat: Double = 6.46
+    private var userLng: Double = 3.40
+
 
     init {
         observeWebSocketEvents()
@@ -113,8 +133,13 @@ class MarketplaceViewModel @Inject constructor(
         val result = repository.getProducts(
             categoryId = currentCategory,
             search = currentSearch,
-            sortBy = currentSortBy
+            sortBy = currentSortBy,
+            isNearbyOnly = isNearbyOnly,
+            userLat = userLat,
+            userLng = userLng
         )
+
+
         if (result.isSuccess) {
             var list = result.getOrDefault(emptyList())
             if (isVerifiedOnly) {
@@ -151,20 +176,71 @@ class MarketplaceViewModel @Inject constructor(
 
     fun filterByCategory(categoryId: String?) {
         currentCategory = if (categoryId == "all" || categoryId.isNullOrBlank()) null else categoryId
-        filterTrigger.value = Triple(currentCategory, currentSearch, currentSortBy)
+        updateFilterTrigger()
     }
 
     fun setSearchQuery(query: String?) {
         currentSearch = query?.ifBlank { null }
-        filterTrigger.value = Triple(currentCategory, currentSearch, currentSortBy)
+        updateFilterTrigger()
+        generateSearchSuggestions(currentSearch)
     }
+
+    private fun generateSearchSuggestions(query: String?) {
+        if (query.isNullOrBlank() || query.length < 2) {
+            _searchSuggestions.value = emptyList()
+            return
+        }
+
+        val q = query.lowercase()
+        val suggestions = mutableListOf<String>()
+
+        // Suggest from categories
+        _categories.value.forEach {
+            if (it.name.lowercase().contains(q)) {
+                suggestions.add(it.name)
+            }
+        }
+
+        // Suggest from product names (using what's already in memory)
+        _products.value.forEach {
+            if (it.name.lowercase().contains(q)) {
+                suggestions.add(it.name)
+            }
+        }
+
+        _searchSuggestions.value = suggestions.distinct().take(8)
+    }
+
+
+    private fun updateFilterTrigger() {
+        filterTrigger.value = FilterParams(
+            cat = currentCategory,
+            search = currentSearch,
+            sort = currentSortBy,
+            isNearby = isNearbyOnly,
+            lat = userLat,
+            lng = userLng
+        )
+    }
+
 
     fun setVerifiedOnly(verified: Boolean) {
         isVerifiedOnly = verified
+        updateFilterTrigger()
         viewModelScope.launch {
             loadExploreProducts()
         }
     }
+
+    fun setNearbyOnly(nearby: Boolean) {
+        isNearbyOnly = nearby
+        updateFilterTrigger()
+        viewModelScope.launch {
+            loadExploreProducts()
+        }
+    }
+
+
 
     fun refreshCartCount() {
         viewModelScope.launch {

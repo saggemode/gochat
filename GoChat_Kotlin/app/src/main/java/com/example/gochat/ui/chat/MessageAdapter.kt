@@ -30,12 +30,16 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.regex.Pattern
 
+import kotlinx.serialization.json.*
+
+
 import android.util.LruCache
 import android.widget.ImageView
 import android.widget.TextView
 import com.example.gochat.core.media.MediaImageHelper
 import com.example.gochat.core.utils.LinkPreview
 import com.example.gochat.core.utils.LinkPreviewManager
+import com.example.gochat.ui.marketplace.ProductDetailsActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -175,6 +179,7 @@ class MessageAdapter(
                               !message.isDeleted && !message.mediaUrl.isNullOrBlank()
                 val isVoice = (message.type == MessageType.VOICE || message.type == MessageType.AUDIO || message.content.contains("Voice Note", ignoreCase = true)) && 
                               !message.isDeleted
+                val isProduct = message.type == MessageType.PRODUCT && !message.isDeleted
 
                 // Content text
                 if (message.isDeleted) {
@@ -200,11 +205,51 @@ class MessageAdapter(
                     tvMessageContent.setOnClickListener(null)
                     
                     // Link Preview logic (disabled for media)
-                    if (!isVoice && !isImage) {
+                    if (!isVoice && !isImage && !isProduct) {
                         handleLinkPreview(message.content, binding)
                     } else {
                         updateLinkPreviewVisibility(binding, null)
                     }
+                }
+
+                // Product Card Row
+                if (isProduct) {
+                    layoutProductCard.visibility = View.VISIBLE
+                    try {
+                        val productObj = Json.decodeFromString<JsonObject>(message.content)
+                        val prodData = productObj["product"]?.jsonObject
+                        val inquiry = productObj["inquiry"]?.jsonPrimitive?.contentOrNull ?: ""
+                        
+                        val prodName = prodData?.get("name")?.jsonPrimitive?.contentOrNull ?: "Product"
+                        val prodPrice = prodData?.get("price")?.jsonPrimitive?.doubleOrNull ?: 0.0
+                        val prodImage = prodData?.get("image")?.jsonPrimitive?.contentOrNull
+                        val prodId = prodData?.get("id")?.jsonPrimitive?.contentOrNull
+
+                        tvProductCardTitle.text = prodName
+                        tvProductCardPrice.text = String.format(Locale.US, "$%.2f", prodPrice)
+                        
+                        MediaImageHelper.loadSafeImage(
+                            imageView = ivProductCardImage,
+                            url = prodImage,
+                            cornerRadiusDp = 8f
+                        )
+
+                        tvMessageContent.text = inquiry
+                        tvMessageContent.visibility = if (inquiry.isNotEmpty()) View.VISIBLE else View.GONE
+                        
+                        btnViewProductCard.setOnClickListener {
+                            prodId?.let { id ->
+                                val intent = Intent(root.context, ProductDetailsActivity::class.java).apply {
+                                    putExtra("product_id", id)
+                                }
+                                root.context.startActivity(intent)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        layoutProductCard.visibility = View.GONE
+                    }
+                } else {
+                    layoutProductCard.visibility = View.GONE
                 }
 
                 // Hide the text label if it's purely a media label
@@ -363,6 +408,7 @@ class MessageAdapter(
                               !message.isDeleted && !message.mediaUrl.isNullOrBlank()
                 val isVoice = (message.type == MessageType.VOICE || message.type == MessageType.AUDIO || message.content.contains("Voice Note", ignoreCase = true)) && 
                               !message.isDeleted
+                val isProduct = message.type == MessageType.PRODUCT && !message.isDeleted
 
                 // Sender name
                 if (message.senderName.isNotBlank()) {
@@ -396,11 +442,51 @@ class MessageAdapter(
                     tvMessageContent.setOnClickListener(null)
                     
                     // Link Preview logic
-                    if (!isVoice && !isImage) {
+                    if (!isVoice && !isImage && !isProduct) {
                         handleLinkPreview(message.content, binding)
                     } else {
                         updateLinkPreviewVisibility(binding, null)
                     }
+                }
+
+                // Product Card Row
+                if (isProduct) {
+                    layoutProductCard.visibility = View.VISIBLE
+                    try {
+                        val productObj = Json.decodeFromString<JsonObject>(message.content)
+                        val prodData = productObj["product"]?.jsonObject
+                        val inquiry = productObj["inquiry"]?.jsonPrimitive?.contentOrNull ?: ""
+                        
+                        val prodName = prodData?.get("name")?.jsonPrimitive?.contentOrNull ?: "Product"
+                        val prodPrice = prodData?.get("price")?.jsonPrimitive?.doubleOrNull ?: 0.0
+                        val prodImage = prodData?.get("image")?.jsonPrimitive?.contentOrNull
+                        val prodId = prodData?.get("id")?.jsonPrimitive?.contentOrNull
+
+                        tvProductCardTitle.text = prodName
+                        tvProductCardPrice.text = String.format(Locale.US, "$%.2f", prodPrice)
+                        
+                        MediaImageHelper.loadSafeImage(
+                            imageView = ivProductCardImage,
+                            url = prodImage,
+                            cornerRadiusDp = 8f
+                        )
+
+                        tvMessageContent.text = inquiry
+                        tvMessageContent.visibility = if (inquiry.isNotEmpty()) View.VISIBLE else View.GONE
+                        
+                        btnViewProductCard.setOnClickListener {
+                            prodId?.let { id ->
+                                val intent = Intent(root.context, ProductDetailsActivity::class.java).apply {
+                                    putExtra("product_id", id)
+                                }
+                                root.context.startActivity(intent)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        layoutProductCard.visibility = View.GONE
+                    }
+                } else {
+                    layoutProductCard.visibility = View.GONE
                 }
 
                 val isOnlyMediaLabel = message.content.isBlank() || 

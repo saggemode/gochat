@@ -179,6 +179,21 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- Search Suggestions -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvSearchSuggestions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="12dp"
+                android:layout_marginBottom="4dp"
+                android:clipToPadding="false"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                tools:listitem="@layout/item_category"
+                tools:visibility="visible" />
+
+
             <!-- Filters & Category Chips Horizontal Row -->
             <LinearLayout
                 android:layout_width="match_parent"
@@ -201,7 +216,21 @@
                     app:chipStrokeColor="@color/gochat_border_dark"
                     app:chipStrokeWidth="1dp" />
 
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipNearby"
+                    style="@style/Widget.MaterialComponents.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:text="Nearby"
+                    android:textColor="@color/gochat_text_primary"
+                    android:textSize="12sp"
+                    app:chipBackgroundColor="@color/gochat_surface_dark"
+                    app:chipStrokeColor="@color/gochat_border_dark"
+                    app:chipStrokeWidth="1dp" />
+
                 <androidx.recyclerview.widget.RecyclerView
+
                     android:id="@+id/rvCategories"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

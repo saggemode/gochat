@@ -18,6 +18,7 @@ import com.example.gochat.databinding.ActivityProductDetailsBinding
 import com.example.gochat.ui.chat.ChatRoomActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.*
 import java.util.Locale
 import javax.inject.Inject
 
@@ -32,7 +33,13 @@ class ProductDetailsActivity : AppCompatActivity() {
     private var product: Product? = null
     private var store: Store? = null
     private var selectedVariant: ProductVariant? = null
-    private lateinit var variantAdapter: VariantChipAdapter
+    private lateinit var variantAdapterPrimary: VariantChipAdapter
+    private lateinit var variantAdapterSecondary: VariantChipAdapter
+
+    private var primaryAttributeName: String? = null
+    private var secondaryAttributeName: String? = null
+    private var selectedPrimaryValue: String? = null
+    private var selectedSecondaryValue: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,16 +54,22 @@ class ProductDetailsActivity : AppCompatActivity() {
     }
 
     private fun setupAdapters() {
-        variantAdapter = VariantChipAdapter { variant ->
-            selectedVariant = variant
-            // Update price UI based on variant if priceOverride > 0
-            product?.let { p ->
-                val displayPrice = if (variant.priceOverride > 0) variant.priceOverride else p.price
-                binding.tvProductPrice.text = String.format(Locale.US, "$%.2f", displayPrice)
-            }
+        variantAdapterPrimary = VariantChipAdapter { variant ->
+            selectedPrimaryValue = variant.title
+            updateSecondaryVariants()
+            findAndSetSelectedVariant()
         }
-        binding.rvVariants.apply {
-            adapter = variantAdapter
+        binding.rvVariantsPrimary.apply {
+            adapter = variantAdapterPrimary
+            layoutManager = LinearLayoutManager(this@ProductDetailsActivity, LinearLayoutManager.HORIZONTAL, false)
+        }
+
+        variantAdapterSecondary = VariantChipAdapter { variant ->
+            selectedSecondaryValue = variant.title
+            findAndSetSelectedVariant()
+        }
+        binding.rvVariantsSecondary.apply {
+            adapter = variantAdapterSecondary
             layoutManager = LinearLayoutManager(this@ProductDetailsActivity, LinearLayoutManager.HORIZONTAL, false)
         }
     }
@@ -123,12 +136,7 @@ class ProductDetailsActivity : AppCompatActivity() {
         binding.tvProductName.text = product.displayTitle
         binding.tvProductPrice.text = String.format(Locale.US, "$%.2f", product.price)
 
-        if (product.variants.isNotEmpty()) {
-            binding.layoutVariants.visibility = View.VISIBLE
-            variantAdapter.submitList(product.variants)
-        } else {
-            binding.layoutVariants.visibility = View.GONE
-        }
+        setupVariantsUI(product)
 
         if (product.hasDiscount) {
             binding.tvOriginalPrice.visibility = View.VISIBLE
@@ -167,6 +175,90 @@ class ProductDetailsActivity : AppCompatActivity() {
         binding.tvStoreRating.text = String.format(Locale.US, "%s • PIN: %s", product.sellerLocation, product.sellerPin.ifBlank { "1P0YE4WZ" })
     }
 
+    private fun setupVariantsUI(product: Product) {
+        if (product.variants.isEmpty()) {
+            binding.layoutVariantsPrimary.visibility = View.GONE
+            binding.layoutVariantsSecondary.visibility = View.GONE
+            return
+        }
+
+        // 1. Identify attributes
+        val firstVariant = product.variants.first()
+        val attrs = try {
+            Json.decodeFromString<JsonObject>(firstVariant.attributesJson)
+        } catch (_: Exception) {
+            null
+        }
+
+        if (attrs == null || attrs.isEmpty()) {
+            // Simple flat list of variants
+            binding.layoutVariantsPrimary.visibility = View.VISIBLE
+            binding.tvVariantPrimaryTitle.text = "SELECT OPTION"
+            variantAdapterPrimary.submitList(product.variants)
+            binding.layoutVariantsSecondary.visibility = View.GONE
+            return
+        }
+
+        val keys = attrs.keys.toList()
+        primaryAttributeName = keys[0]
+        secondaryAttributeName = if (keys.size > 1) keys[1] else null
+
+        binding.tvVariantPrimaryTitle.text = "SELECT ${primaryAttributeName?.uppercase()}"
+        binding.layoutVariantsPrimary.visibility = View.VISIBLE
+        
+        val primaryValues = product.variants.mapNotNull { 
+            getAttributeValue(it, primaryAttributeName)
+        }.distinct().map { ProductVariant(title = it) }
+        
+        variantAdapterPrimary.submitList(primaryValues)
+
+        if (secondaryAttributeName != null) {
+            binding.tvVariantSecondaryTitle.text = "SELECT ${secondaryAttributeName?.uppercase()}"
+            binding.layoutVariantsSecondary.visibility = View.VISIBLE
+        } else {
+            binding.layoutVariantsSecondary.visibility = View.GONE
+        }
+    }
+
+    private fun getAttributeValue(v: ProductVariant, attr: String?): String? {
+        if (attr == null) return null
+        return try {
+            Json.decodeFromString<JsonObject>(v.attributesJson)[attr]?.jsonPrimitive?.contentOrNull
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun updateSecondaryVariants() {
+        val p = product ?: return
+        val attr = secondaryAttributeName ?: return
+        
+        val secondaryValues = p.variants.filter { 
+            getAttributeValue(it, primaryAttributeName) == selectedPrimaryValue
+        }.mapNotNull { 
+            getAttributeValue(it, attr)
+        }.distinct().map { ProductVariant(title = it) }
+
+        variantAdapterSecondary.submitList(secondaryValues)
+    }
+
+    private fun findAndSetSelectedVariant() {
+        val p = product ?: return
+        
+        val found = p.variants.find { v ->
+            val pVal = getAttributeValue(v, primaryAttributeName)
+            val sVal = getAttributeValue(v, secondaryAttributeName)
+            
+            pVal == selectedPrimaryValue && (secondaryAttributeName == null || sVal == selectedSecondaryValue)
+        }
+
+        selectedVariant = found
+        found?.let {
+            val displayPrice = if (it.priceOverride > 0) it.priceOverride else p.price
+            binding.tvProductPrice.text = String.format(Locale.US, "$%.2f", displayPrice)
+        }
+    }
+
     private fun displayStore(store: Store) {
         binding.tvStoreName.text = store.name
         binding.tvStoreRating.text = String.format(
@@ -196,7 +288,12 @@ class ProductDetailsActivity : AppCompatActivity() {
             putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, product.storeName)
             putExtra(ChatRoomActivity.EXTRA_CONVERSATION_AVATAR, store?.logoUrl ?: product.primaryImage)
             putExtra(ChatRoomActivity.EXTRA_INITIAL_MESSAGE, inquiry)
+            putExtra(ChatRoomActivity.EXTRA_PRODUCT_ID, product.id)
+            putExtra(ChatRoomActivity.EXTRA_PRODUCT_NAME, product.displayTitle)
+            putExtra(ChatRoomActivity.EXTRA_PRODUCT_PRICE, product.price)
+            putExtra(ChatRoomActivity.EXTRA_PRODUCT_IMAGE, product.primaryImage)
         }
+
         startActivity(intent)
     }
 

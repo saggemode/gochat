@@ -21,6 +21,11 @@ const (
 
 // CompressImage decodes, downscales if necessary, and re-compresses an image stream.
 func CompressImage(r io.Reader, mimeType string, log *zap.Logger) (io.Reader, string, int64, error) {
+	return CompressImageWithLimit(r, mimeType, MaxImageDimension, log)
+}
+
+// CompressImageWithLimit allows specifying a custom max dimension limit.
+func CompressImageWithLimit(r io.Reader, mimeType string, maxDim int, log *zap.Logger) (io.Reader, string, int64, error) {
 	// Decode image config first or full image
 	img, format, err := image.Decode(r)
 	if err != nil {
@@ -31,7 +36,8 @@ func CompressImage(r io.Reader, mimeType string, log *zap.Logger) (io.Reader, st
 	width := bounds.Dx()
 	height := bounds.Dy()
 
-	targetWidth, targetHeight := calculateDimensions(width, height, MaxImageDimension)
+	targetWidth, targetHeight := calculateDimensions(width, height, maxDim)
+
 
 	// If resizing is needed
 	var finalImg image.Image = img

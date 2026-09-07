@@ -1,13 +1,16 @@
 package com.example.gochat.data.repository
 
 import android.content.Context
+import androidx.paging.*
 import com.example.gochat.data.api.ApiConstants
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import com.example.gochat.data.api.GoChatApiService
 import com.example.gochat.data.api.TokenManager
+import com.example.gochat.data.db.AppDatabase
 import com.example.gochat.data.db.MarketplaceDao
+
 import com.example.gochat.data.model.*
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -23,17 +26,23 @@ import javax.inject.Singleton
 class MarketplaceRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val api: GoChatApiService,
+    private val db: AppDatabase,
     private val marketplaceDao: MarketplaceDao,
     private val tokenManager: TokenManager,
     private val json: Json
 ) {
+
     val userId: String? get() = tokenManager.userId
 
 
+    @OptIn(ExperimentalPagingApi::class)
     fun getProductsPaged(
         categoryId: String? = null,
         search: String? = null,
-        sortBy: String? = null
+        sortBy: String? = null,
+        isNearbyOnly: Boolean = false,
+        userLat: Double = 6.46,
+        userLng: Double = 3.40
     ): Flow<PagingData<Product>> {
         return Pager(
             config = PagingConfig(
@@ -41,11 +50,14 @@ class MarketplaceRepository @Inject constructor(
                 enablePlaceholders = false,
                 initialLoadSize = 20
             ),
+            remoteMediator = ProductRemoteMediator(api, db, this, categoryId, search, sortBy, isNearbyOnly, userLat, userLng),
             pagingSourceFactory = {
-                ProductPagingSource(api, this, categoryId, search, sortBy)
+                marketplaceDao.getProductsPaged()
             }
         ).flow
     }
+
+
 
     // Seed data for categories
     companion object {
@@ -63,8 +75,12 @@ class MarketplaceRepository @Inject constructor(
     suspend fun getProducts(
         categoryId: String? = null,
         search: String? = null,
-        sortBy: String? = null
+        sortBy: String? = null,
+        isNearbyOnly: Boolean = false,
+        userLat: Double = 6.46,
+        userLng: Double = 3.40
     ): Result<List<Product>> {
+
         return try {
             val response = api.getProducts(
                 categoryId = if (categoryId == "all" || categoryId.isNullOrBlank()) null else categoryId,
@@ -80,23 +96,27 @@ class MarketplaceRepository @Inject constructor(
                 val allProducts = marketplaceDao.getAllProducts()
                 // Merge and deduplicate, keeping API results at the front if they matched the query
                 val mergedList = (apiList + allProducts).distinctBy { it.id }
-                Result.success(filterAndSortLocally(mergedList, categoryId, search, sortBy))
+                Result.success(filterAndSortLocally(mergedList, categoryId, search, sortBy, isNearbyOnly, userLat, userLng))
             } else {
                 val allProducts = marketplaceDao.getAllProducts()
-                Result.success(filterAndSortLocally(allProducts, categoryId, search, sortBy))
+                Result.success(filterAndSortLocally(allProducts, categoryId, search, sortBy, isNearbyOnly, userLat, userLng))
             }
 
         } catch (e: Exception) {
             val allProducts = marketplaceDao.getAllProducts()
-            Result.success(filterAndSortLocally(allProducts, categoryId, search, sortBy))
+            Result.success(filterAndSortLocally(allProducts, categoryId, search, sortBy, isNearbyOnly, userLat, userLng))
         }
+
     }
 
     fun filterAndSortLocally(
         list: List<Product>,
         categoryId: String?,
         search: String?,
-        sortBy: String?
+        sortBy: String?,
+        isNearbyOnly: Boolean = false,
+        userLat: Double = 6.46,
+        userLng: Double = 3.40
     ): List<Product> {
         var result = list
         if (!categoryId.isNullOrBlank() && categoryId != "all") {
@@ -114,6 +134,14 @@ class MarketplaceRepository @Inject constructor(
                 it.category.lowercase().contains(q)
             }
         }
+
+        if (isNearbyOnly) {
+            result = result.filter { 
+                val dist = calculateDistance(userLat, userLng, it.latitude ?: (userLat + 0.1), it.longitude ?: (userLng + 0.1))
+                dist <= 10.0
+            }
+        }
+
         return when (sortBy) {
             "price_low" -> result.sortedBy { it.price }
             "price_high" -> result.sortedByDescending { it.price }
@@ -121,6 +149,18 @@ class MarketplaceRepository @Inject constructor(
             else -> result
         }
     }
+
+    private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val r = 6371.0 // Radius of the earth in km
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        return r * c
+    }
+
 
     suspend fun getLocalProducts(): List<Product> = marketplaceDao.getAllProducts()
 
@@ -295,23 +335,23 @@ class MarketplaceRepository @Inject constructor(
         }
     }
 
-    private suspend fun parseStoreJson(data: JsonObject?, fallbackId: String): Store {
+    private suspend fun parseStoreJson(data: JsonObject?, fallbackId: String, existing: Store? = null): Store {
         if (data == null) {
-            return marketplaceDao.getStoreById(fallbackId) ?: Store(id = fallbackId, name = "Verified Merchant Store", isVerified = true)
+            return existing ?: marketplaceDao.getStoreById(fallbackId) ?: Store(id = fallbackId, name = "Verified Merchant Store", isVerified = true)
         }
         val target = data["profile"]?.jsonObject ?: data["store"]?.jsonObject ?: data
-        val id = (target["id"] ?: target["user_id"] ?: target["business_id"])?.jsonPrimitive?.contentOrNull ?: fallbackId
-        val name = (target["name"] ?: target["business_name"] ?: target["store_name"])?.jsonPrimitive?.contentOrNull ?: "Merchant Store"
-        val desc = (target["description"] ?: target["desc"])?.jsonPrimitive?.contentOrNull.orEmpty()
-        val cat = (target["category"] ?: target["category_name"])?.jsonPrimitive?.contentOrNull ?: "General Retail"
-        val addr = (target["address"] ?: target["location"])?.jsonPrimitive?.contentOrNull ?: "Lagos, Nigeria"
-        val phone = target["phone"]?.jsonPrimitive?.contentOrNull.orEmpty()
-        val email = target["email"]?.jsonPrimitive?.contentOrNull.orEmpty()
-        val ownerPin = target["owner_pin"]?.jsonPrimitive?.contentOrNull.orEmpty()
-        val logoUrl = (target["logo_url"] ?: target["logoUrl"])?.jsonPrimitive?.contentOrNull?.ifBlank { null }
-        val bannerUrl = (target["banner_url"] ?: target["bannerUrl"])?.jsonPrimitive?.contentOrNull?.ifBlank { null }
-        val verified = target["is_verified"]?.jsonPrimitive?.booleanOrNull ?: true
-        val rating = target["avg_rating"]?.jsonPrimitive?.doubleOrNull ?: target["rating"]?.jsonPrimitive?.doubleOrNull ?: 4.9
+        val id = (target["id"] ?: target["user_id"] ?: target["business_id"])?.jsonPrimitive?.contentOrNull ?: existing?.id ?: fallbackId
+        val name = (target["name"] ?: target["business_name"] ?: target["store_name"])?.jsonPrimitive?.contentOrNull ?: existing?.name ?: "Merchant Store"
+        val desc = (target["description"] ?: target["desc"])?.jsonPrimitive?.contentOrNull ?: existing?.description.orEmpty()
+        val cat = (target["category"] ?: target["category_name"])?.jsonPrimitive?.contentOrNull ?: existing?.category ?: "General Retail"
+        val addr = (target["address"] ?: target["location"])?.jsonPrimitive?.contentOrNull ?: existing?.address ?: "Lagos, Nigeria"
+        val phone = (target["phone"])?.jsonPrimitive?.contentOrNull ?: existing?.phone.orEmpty()
+        val email = (target["email"])?.jsonPrimitive?.contentOrNull ?: existing?.email.orEmpty()
+        val ownerPin = (target["owner_pin"])?.jsonPrimitive?.contentOrNull ?: existing?.ownerPin.orEmpty()
+        val logoUrl = (target["logo_url"] ?: target["logoUrl"] ?: target["logo"] ?: target["avatar_url"] ?: target["avatarUrl"])?.jsonPrimitive?.contentOrNull?.ifBlank { null } ?: existing?.logoUrl
+        val bannerUrl = (target["banner_url"] ?: target["bannerUrl"] ?: target["banner"])?.jsonPrimitive?.contentOrNull?.ifBlank { null } ?: existing?.bannerUrl
+        val verified = (target["is_verified"] ?: target["isVerified"])?.jsonPrimitive?.booleanOrNull ?: existing?.isVerified ?: true
+        val rating = (target["avg_rating"] ?: target["rating"])?.jsonPrimitive?.doubleOrNull ?: existing?.rating ?: 4.9
 
         return Store(
             id = id,
@@ -321,7 +361,7 @@ class MarketplaceRepository @Inject constructor(
             address = addr,
             phone = phone,
             email = email,
-            ownerId = (target["owner_id"] ?: target["user_id"])?.jsonPrimitive?.contentOrNull ?: tokenManager.userId ?: "",
+            ownerId = (target["owner_id"] ?: target["user_id"])?.jsonPrimitive?.contentOrNull ?: existing?.ownerId ?: tokenManager.userId ?: "",
             ownerPin = ownerPin,
             logoUrl = logoUrl,
             bannerUrl = bannerUrl,
@@ -329,6 +369,7 @@ class MarketplaceRepository @Inject constructor(
             isVerified = verified
         )
     }
+
 
     suspend fun getStore(storeId: String): Result<Store> {
         return try {
@@ -403,10 +444,12 @@ class MarketplaceRepository @Inject constructor(
                 val data = response.body() ?: buildJsonObject {}
                 val targetObj = data["profile"]?.jsonObject ?: (if (data.containsKey("store_name") || data.containsKey("business_name")) data else null)
                 if (targetObj != null) {
-                    val store = parseStoreJson(targetObj, "my_store")
+                    val cached = marketplaceDao.getStoreByOwner(currentUserId)
+                    val store = parseStoreJson(targetObj, "my_store", cached)
                     marketplaceDao.insertStore(store)
                     Result.success(store)
                 } else {
+
                     val cached = marketplaceDao.getStoreByOwner(currentUserId)
                     Result.success(cached)
                 }
@@ -436,7 +479,7 @@ class MarketplaceRepository @Inject constructor(
             val response = api.createBusinessProfile(body)
             val toSave = if (response.isSuccessful) {
                 val data = response.body() ?: buildJsonObject {}
-                parseStoreJson(data, store.id)
+                parseStoreJson(data, store.id, store)
             } else {
                 store
             }
@@ -464,7 +507,7 @@ class MarketplaceRepository @Inject constructor(
             val response = api.updateBusinessProfile(body)
             val updated = if (response.isSuccessful) {
                 val data = response.body() ?: buildJsonObject {}
-                parseStoreJson(data, store.id)
+                parseStoreJson(data, store.id, store)
             } else {
                 store
             }
@@ -805,6 +848,19 @@ class MarketplaceRepository @Inject constructor(
             }.map { (date, dailyOrders) ->
                 date to dailyOrders.sumOf { it.grandTotal.ifZero(it.totalAmount) }
             }.sortedBy { it.first }
+
+            // Mock views trend (last 7 days)
+            val viewsTrend = mutableListOf<Pair<Long, Int>>()
+            val cal = Calendar.getInstance()
+            cal.set(Calendar.HOUR_OF_DAY, 0)
+            cal.set(Calendar.MINUTE, 0)
+            cal.set(Calendar.SECOND, 0)
+            cal.set(Calendar.MILLISECOND, 0)
+            for (i in 6 downTo 0) {
+                val dayCal = cal.clone() as Calendar
+                dayCal.add(Calendar.DAY_OF_YEAR, -i)
+                viewsTrend.add(dayCal.timeInMillis to (10..50).random())
+            }
             
             val mostViewed = products.sortedByDescending { it.viewCount }.take(5)
             
@@ -814,8 +870,10 @@ class MarketplaceRepository @Inject constructor(
                 listedProducts = listedProducts,
                 totalViews = totalViews,
                 salesTrend = salesTrend,
+                viewsTrend = viewsTrend,
                 mostViewedProducts = mostViewed
             ))
+
         } catch (e: Exception) {
             Result.failure(e)
         }

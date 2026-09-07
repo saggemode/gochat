@@ -317,7 +317,11 @@ func main() {
 			marketplace.GET("/stores/:id/products", businessHandler.GetStoreProducts)
 			marketplace.GET("/products/:id/reviews", businessHandler.ListReviews)
 		}
+
+		// Media proxy with resizing
+		api.GET("/media/thumbnail/:fileId", mediaHandler.DownloadResized)
 	}
+
 
 	// Authenticated Routes
 	authRequired := api.Group("")

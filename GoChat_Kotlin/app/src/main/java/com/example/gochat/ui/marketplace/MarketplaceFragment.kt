@@ -1,9 +1,11 @@
 package com.example.gochat.ui.marketplace
 
+import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
@@ -13,6 +15,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -50,8 +53,10 @@ class MarketplaceFragment : Fragment() {
     private lateinit var productAdapter: ProductAdapter
     private lateinit var categoryAdapter: CategoryAdapter
     private lateinit var storeProductAdapter: StoreProductAdapter
+    private lateinit var searchSuggestionAdapter: SearchSuggestionAdapter
 
     private var selectedStoreLogoUri: Uri? = null
+
     private var onProductImagesPicked: ((List<Uri>) -> Unit)? = null
     private var onSingleImagePicked: ((Uri?) -> Unit)? = null
 
@@ -155,7 +160,19 @@ class MarketplaceFragment : Fragment() {
             adapter = storeProductAdapter
             layoutManager = LinearLayoutManager(requireContext())
         }
+
+        // 4. Search Suggestions
+        searchSuggestionAdapter = SearchSuggestionAdapter { suggestion ->
+            binding.etSearch.setText(suggestion)
+            binding.etSearch.setSelection(suggestion.length)
+            viewModel.setSearchQuery(suggestion)
+        }
+        binding.rvSearchSuggestions.apply {
+            adapter = searchSuggestionAdapter
+            layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
+        }
     }
+
 
     private fun setupListeners() {
         // Tab switching: Marketplace (0) vs Seller Hub (1)
@@ -189,6 +206,14 @@ class MarketplaceFragment : Fragment() {
         // Verified-only filter chip
         binding.chipVerifiedOnly.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setVerifiedOnly(isChecked)
+        }
+
+        binding.chipNearby.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                checkLocationPermissionAndToggleNearby()
+            } else {
+                viewModel.setNearbyOnly(false)
+            }
         }
 
         // SwipeRefresh
@@ -795,6 +820,15 @@ class MarketplaceFragment : Fragment() {
                     }
                 }
 
+                // Search Suggestions
+                launch {
+                    viewModel.searchSuggestions.collect { suggestions ->
+                        searchSuggestionAdapter.submitList(suggestions)
+                        binding.rvSearchSuggestions.visibility = if (suggestions.isNotEmpty()) View.VISIBLE else View.GONE
+                    }
+                }
+
+
                 // Real-time refresh trigger
                 launch {
                     viewModel.refreshEvent.collect {
@@ -877,7 +911,28 @@ class MarketplaceFragment : Fragment() {
         }
     }
 
+    private fun checkLocationPermissionAndToggleNearby() {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            viewModel.setNearbyOnly(true)
+        } else {
+            requestLocationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+        }
+    }
+
+    private val requestLocationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            viewModel.setNearbyOnly(true)
+        } else {
+            binding.chipNearby.isChecked = false
+            Toast.makeText(requireContext(), "Location permission denied. Nearby feature unavailable.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun bindStoreState(store: Store?) {
+
+
         if (store != null) {
             binding.layoutNoStore.visibility = View.GONE
             binding.layoutHasStore.visibility = View.VISIBLE

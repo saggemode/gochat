@@ -515,6 +515,12 @@ func (r *BusinessRepository) CreateOrders(ctx context.Context, input *CreateOrde
 				return nil, fmt.Errorf("update stock for product %s: %w", itemInput.ProductID, err)
 			}
 
+			// Trigger low stock alert if needed
+			if stock-itemInput.Quantity < 5 {
+				_ = r.notificationService.SendLowStockNotification(ctx, actualBizID, itemInput.ProductID, pName, stock-itemInput.Quantity)
+			}
+
+
 			itemRecord := &OrderItem{
 				ID:                    uuid.New().String(),
 				OrderID:               orderID,
@@ -885,8 +891,16 @@ func (r *BusinessRepository) UpdateOrderStatus(ctx context.Context, orderID, bus
 		}
 	}
 
+	// Send notification to buyer
+	var buyerID, orderNum string
+	err = r.db.QueryRow(ctx, `SELECT buyer_id, order_number FROM business.orders WHERE id = $1`, orderID).Scan(&buyerID, &orderNum)
+	if err == nil {
+		_ = r.notificationService.SendOrderUpdateNotification(ctx, buyerID, orderID, orderNum, newStatus)
+	}
+
 	return r.GetOrder(ctx, orderID, businessID)
 }
+
 
 // getCurrentOrderStatus retrieves the current status of an order
 func (r *BusinessRepository) getCurrentOrderStatus(ctx context.Context, orderID string) (string, error) {
@@ -934,9 +948,17 @@ func (r *BusinessRepository) TransitionOrderStatusWithReason(ctx context.Context
 		}
 	}
 
+	// Send notification to buyer
+	var buyerID, orderNum string
+	err = r.db.QueryRow(ctx, `SELECT buyer_id, order_number FROM business.orders WHERE id = $1`, orderID).Scan(&buyerID, &orderNum)
+	if err == nil {
+		_ = r.notificationService.SendOrderUpdateNotification(ctx, buyerID, orderID, orderNum, newStatus)
+	}
+
 	// Get updated order
 	return r.GetOrder(ctx, orderID, userID)
 }
+
 
 // GetOrderStatusHistory retrieves the status change history for an order
 func (r *BusinessRepository) GetOrderStatusHistory(ctx context.Context, orderID string) ([]OrderStatusChange, error) {

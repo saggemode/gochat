@@ -1,5 +1,6 @@
 package com.example.gochat.ui.marketplace
 
+import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.view.LayoutInflater
@@ -11,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.gochat.data.model.Order
 import com.example.gochat.data.model.OrderStatus
 import com.example.gochat.databinding.ItemOrderBinding
+import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -102,7 +104,17 @@ class OrderAdapter(
             } else {
                 binding.btnUpdateStatus.visibility = View.GONE
             }
+
+            binding.root.setOnClickListener {
+                val context = binding.root.context
+                val intent = Intent(context, OrderDetailsActivity::class.java).apply {
+                    val orderJson = Json.encodeToString(Order.serializer(), order)
+                    putExtra("order_json", orderJson)
+                }
+                context.startActivity(intent)
+            }
         }
+
 
         private fun updateStatusTracker(status: OrderStatus) {
             val mutedColor = Color.parseColor("#374151")

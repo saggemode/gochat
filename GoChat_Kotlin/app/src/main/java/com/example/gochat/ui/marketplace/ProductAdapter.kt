@@ -47,9 +47,10 @@ class ProductAdapter(private val onClick: (Product) -> Unit) :
             binding.tvStoreName.text = product.storeName
             binding.ivVerifiedBadge.visibility = if (product.isVerifiedSeller) View.VISIBLE else View.GONE
 
-            MediaImageHelper.loadSafeImage(binding.ivProductImage, product.primaryImage)
+            MediaImageHelper.loadSafeImage(binding.ivProductImage, product.primaryImage, thumbnailWidth = 400)
 
             binding.root.setOnClickListener { onClick(product) }
+
         }
     }
 

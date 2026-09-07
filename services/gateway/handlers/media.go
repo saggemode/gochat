@@ -12,8 +12,17 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
+	"strconv"
+
+	"gochat/services/media/optimizer"
 	mediapb "gochat/gen/media"
 )
+
+
 
 // MediaHandler wraps the Media Service gRPC client and Telegram CDN proxy.
 type MediaHandler struct {
@@ -227,3 +236,68 @@ func (h *MediaHandler) DownloadTelegram(c *gin.Context) {
 		nil,
 	)
 }
+
+// DownloadResized handles on-demand resizing for media downloads.
+func (h *MediaHandler) DownloadResized(c *gin.Context) {
+	fileID := c.Param("fileId")
+	widthStr := c.Query("w")
+
+	width, _ := strconv.Atoi(widthStr)
+	if width <= 0 {
+		h.DownloadTelegram(c)
+		return
+	}
+
+	if h.botToken == "" {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "telegram bot token not configured"})
+		return
+	}
+
+	// 1. Fetch from Telegram (same as DownloadTelegram but we need the bytes)
+	client := &http.Client{Timeout: 120 * time.Second}
+	getFileURL := "https://api.telegram.org/bot" + h.botToken + "/getFile?file_id=" + fileID
+	req, _ := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, getFileURL, nil)
+	resp, err := client.Do(req)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "telegram api error"})
+		return
+	}
+	defer resp.Body.Close()
+
+	var getFileResp struct {
+		OK     bool `json:"ok"`
+		Result struct {
+			FilePath string `json:"file_path"`
+		} `json:"result"`
+	}
+	json.NewDecoder(resp.Body).Decode(&getFileResp)
+	if !getFileResp.OK {
+		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+		return
+	}
+
+	fileDownloadURL := "https://api.telegram.org/file/bot" + h.botToken + "/" + getFileResp.Result.FilePath
+	dlResp, err := client.Get(fileDownloadURL)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "telegram download error"})
+		return
+	}
+	defer dlResp.Body.Close()
+
+	contentType := dlResp.Header.Get("Content-Type")
+
+	// 2. Resize if it's an image
+	if strings.HasPrefix(contentType, "image/") && !strings.Contains(contentType, "gif") {
+		optReader, optMime, _, err := optimizer.CompressImageWithLimit(dlResp.Body, contentType, width, h.log)
+		if err == nil {
+			c.Header("Cache-Control", "public, max-age=31536000, immutable")
+			c.DataFromReader(http.StatusOK, -1, optMime, optReader, nil)
+			return
+		}
+	}
+
+	// Fallback to original if not an image or resizing failed
+	c.Header("Cache-Control", "public, max-age=31536000, immutable")
+	c.DataFromReader(http.StatusOK, dlResp.ContentLength, contentType, dlResp.Body, nil)
+}
+

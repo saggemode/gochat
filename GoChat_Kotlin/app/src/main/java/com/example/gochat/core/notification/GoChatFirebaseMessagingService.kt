@@ -88,11 +88,13 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
             ?: false
 
         val eventType = data["type"] ?: data["event_type"] ?: ""
-        if (eventType == "order_status" || eventType == "order_update") {
+        if (eventType.startsWith("order_") || eventType == "low_stock") {
             val orderId = data["order_id"] ?: ""
+            val productId = data["product_id"] ?: ""
+            
             NotificationHelper.showChatNotification(
                 context = applicationContext,
-                conversationId = "order_$orderId",
+                conversationId = if (orderId.isNotEmpty()) "order_$orderId" else "product_$productId",
                 title = title,
                 body = body,
                 senderAvatar = "",
@@ -100,6 +102,7 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
             )
             return
         }
+
 
         // Suppression check: using a static/shared state is better, but for now we fix the instance issue
         val activeConv = ChatRepository.activeConversationIdStatic

@@ -211,11 +211,23 @@ class ChatRepository @Inject constructor(
         mentionedUserIds: List<String> = emptyList(),
         disappearingDurationSeconds: Int? = null
     ): Result<Message> {
+        val conv = dao.getConversationById(conversationId)
+        val currentUserId = tokenManager.userId ?: ""
+        
+        var encryptedContent = content
+        if (conv != null && conv.isDirect && type == 0) {
+            val targetUserId = conv.memberIds.find { it != currentUserId }
+            if (targetUserId != null) {
+                encryptedContent = encryptionManager.encryptMessage(targetUserId, content)
+            }
+        }
+
         // 1. Insert optimistic message into local Room DB immediately (status = SENDING)
         var localMsg = createOptimisticMessage(
             conversationId, content, type, mediaUrl,
             replyToId, replyToText, replyToSenderName
         ).copy(status = MessageStatus.SENDING)
+
         
         if (disappearingDurationSeconds != null && disappearingDurationSeconds > 0) {
             localMsg = localMsg.copy(
@@ -247,8 +259,9 @@ class ChatRepository @Inject constructor(
 
             // 3. Directly deliver via HTTP API for instant sub-second delivery
             val body = buildJsonObject {
-                put("content", content)
+                put("content", encryptedContent)
                 put("type", type)
+
                 finalMediaUrl?.let { put("media_url", it) }
                 telegramFileId?.let { put("telegram_file_id", it) }
                 mediaThumbnail?.let { put("media_thumbnail", it) }

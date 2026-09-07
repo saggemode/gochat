@@ -122,6 +122,63 @@ func (ns *NotificationService) SendPriceChangeNotification(ctx context.Context, 
 	return ns.sendNotification(ctx, notification)
 }
 
+// SendOrderUpdateNotification sends a notification when an order status changes
+func (ns *NotificationService) SendOrderUpdateNotification(ctx context.Context, userID string, orderID string, orderNumber string, status string) error {
+	prefs, _ := ns.getUserPreferences(ctx, userID)
+	if !prefs.EnableOrderUpdates {
+		return nil
+	}
+
+	title := "Order Update"
+	body := fmt.Sprintf("Your order %s is now %s.", orderNumber, status)
+
+	notification := &Notification{
+		ID:        uuid.New().String(),
+		UserID:    userID,
+		Type:      NotificationType("order_" + status),
+		Priority:  PriorityHigh,
+		Title:     title,
+		Body:      body,
+		Data: map[string]interface{}{
+			"order_id":     orderID,
+			"order_number": orderNumber,
+			"status":       status,
+			"click_action": "open_order_details",
+		},
+		Channels:  ns.getPreferredChannels(prefs),
+		Read:      false,
+		CreatedAt: time.Now(),
+	}
+
+	return ns.sendNotification(ctx, notification)
+}
+
+// SendLowStockNotification sends a notification to the seller when product stock is low
+func (ns *NotificationService) SendLowStockNotification(ctx context.Context, sellerID string, productID string, productName string, remainingStock int32) error {
+	prefs, _ := ns.getUserPreferences(ctx, sellerID)
+
+	notification := &Notification{
+		ID:        uuid.New().String(),
+		UserID:    sellerID,
+		Type:      NotificationLowStock,
+		Priority:  PriorityMedium,
+		Title:     "Low Stock Alert",
+		Body:      fmt.Sprintf("Only %d units left of %s. Restock soon!", remainingStock, productName),
+		Data: map[string]interface{}{
+			"product_id":   productID,
+			"product_name": productName,
+			"stock":        remainingStock,
+			"click_action": "open_inventory",
+		},
+		Channels:  ns.getPreferredChannels(prefs),
+		Read:      false,
+		CreatedAt: time.Now(),
+	}
+
+	return ns.sendNotification(ctx, notification)
+}
+
+
 // PriceChangeInfo contains information about a single price change
 type PriceChangeInfo struct {
 	ProductID        string

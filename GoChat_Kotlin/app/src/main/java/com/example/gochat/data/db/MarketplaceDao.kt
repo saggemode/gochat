@@ -1,5 +1,6 @@
 package com.example.gochat.data.db
 
+import androidx.paging.PagingSource
 import androidx.room.*
 import com.example.gochat.data.model.*
 
@@ -23,8 +24,12 @@ interface MarketplaceDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProduct(product: Product)
 
+    @Query("SELECT * FROM products ORDER BY createdAt DESC")
+    fun getProductsPaged(): PagingSource<Int, Product>
+
     @Query("SELECT * FROM products")
     suspend fun getAllProducts(): List<Product>
+
 
     @Query("SELECT * FROM products WHERE categoryId = :categoryId OR category = :categoryId")
     suspend fun getProductsByCategory(categoryId: String): List<Product>
@@ -37,6 +42,20 @@ interface MarketplaceDao {
 
     @Query("DELETE FROM products WHERE id = :productId")
     suspend fun deleteProduct(productId: String)
+
+    @Query("DELETE FROM products")
+    suspend fun clearProducts()
+
+    // ── Remote Keys ─────────────────────────────────────────────
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllRemoteKeys(remoteKey: List<ProductRemoteKeys>)
+
+    @Query("SELECT * FROM product_remote_keys WHERE productId = :productId")
+    suspend fun getRemoteKeysForProduct(productId: String): ProductRemoteKeys?
+
+    @Query("DELETE FROM product_remote_keys")
+    suspend fun clearRemoteKeys()
+
 
     // ── Cart ─────────────────────────────────────────────────────
     @Query("SELECT * FROM cart_items")

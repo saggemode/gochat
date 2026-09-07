@@ -78,6 +78,10 @@ class ChatRoomActivity : AppCompatActivity() {
         const val EXTRA_IS_ONLINE = "extra_is_online"
         const val EXTRA_LAST_SEEN = "extra_last_seen"
         const val EXTRA_IS_GROUP = "extra_is_group"
+        const val EXTRA_PRODUCT_ID = "extra_product_id"
+        const val EXTRA_PRODUCT_NAME = "extra_product_name"
+        const val EXTRA_PRODUCT_PRICE = "extra_product_price"
+        const val EXTRA_PRODUCT_IMAGE = "extra_product_image"
     }
 
     private lateinit var binding: ActivityChatRoomBinding
@@ -180,10 +184,22 @@ class ChatRoomActivity : AppCompatActivity() {
         setupWindowInsets()
         observeState()
 
-        val initialMessage = intent.getStringExtra(EXTRA_INITIAL_MESSAGE)
-        if (!initialMessage.isNullOrBlank()) {
-            binding.etMessageInput.setText(initialMessage)
-            binding.etMessageInput.setSelection(initialMessage.length)
+        if (savedInstanceState == null) {
+            val prodId = intent.getStringExtra(EXTRA_PRODUCT_ID)
+            if (!prodId.isNullOrBlank()) {
+                val prodName = intent.getStringExtra(EXTRA_PRODUCT_NAME).orEmpty()
+                val prodPrice = intent.getDoubleExtra(EXTRA_PRODUCT_PRICE, 0.0)
+                val prodImage = intent.getStringExtra(EXTRA_PRODUCT_IMAGE).orEmpty()
+                val inquiry = intent.getStringExtra(EXTRA_INITIAL_MESSAGE).orEmpty()
+                
+                viewModel.sendProductMessage(prodId, prodName, prodPrice, prodImage, inquiry)
+            } else {
+                val initialMessage = intent.getStringExtra(EXTRA_INITIAL_MESSAGE)
+                if (!initialMessage.isNullOrBlank()) {
+                    binding.etMessageInput.setText(initialMessage)
+                    binding.etMessageInput.setSelection(initialMessage.length)
+                }
+            }
         }
 
         if (convId.isNotEmpty()) {

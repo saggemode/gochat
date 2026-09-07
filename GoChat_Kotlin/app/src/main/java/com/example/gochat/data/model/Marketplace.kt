@@ -89,7 +89,10 @@ data class Product(
     @SerialName("seller_id") val sellerId: String = "",
     @SerialName("seller_pin") val sellerPin: String = "",
     @SerialName("seller_location") val sellerLocation: String = "Lagos, Nigeria",
+    val latitude: Double? = null,
+    val longitude: Double? = null,
     @SerialName("category_id") val categoryId: String? = null,
+
     val category: String = "General",
     val stock: Int = 10,
     @SerialName("in_stock") val inStock: Boolean = true,
@@ -199,5 +202,7 @@ data class SellerInsights(
     val listedProducts: Int = 0,
     val totalViews: Int = 0,
     val salesTrend: List<Pair<Long, Double>> = emptyList(), // Date to revenue
+    val viewsTrend: List<Pair<Long, Int>> = emptyList(), // Date to views
     val mostViewedProducts: List<Product> = emptyList()
 )
+

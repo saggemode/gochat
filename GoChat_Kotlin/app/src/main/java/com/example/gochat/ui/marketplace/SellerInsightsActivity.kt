@@ -10,10 +10,9 @@ import com.example.gochat.data.model.Product
 import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.databinding.ActivitySellerInsightsBinding
 import com.github.mikephil.charting.components.XAxis
-import com.github.mikephil.charting.data.Entry
-import com.github.mikephil.charting.data.LineData
-import com.github.mikephil.charting.data.LineDataSet
+import com.github.mikephil.charting.data.*
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
+
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -51,7 +50,8 @@ class SellerInsightsActivity : AppCompatActivity() {
                 binding.tvListedProducts.text = insights.listedProducts.toString()
                 binding.tvTotalViews.text = insights.totalViews.toString()
 
-                setupChart(insights.salesTrend)
+                setupRevenueChart(insights.salesTrend)
+                setupViewsChart(insights.viewsTrend)
                 setupMostViewed(insights.mostViewedProducts)
             }.onFailure {
                 // Handle error
@@ -59,7 +59,8 @@ class SellerInsightsActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupChart(trends: List<Pair<Long, Double>>) {
+    private fun setupRevenueChart(trends: List<Pair<Long, Double>>) {
+
         if (trends.isEmpty()) {
             binding.revenueChart.setNoDataText("No sales data available yet.")
             return
@@ -107,6 +108,50 @@ class SellerInsightsActivity : AppCompatActivity() {
         binding.revenueChart.legend.isEnabled = false
         binding.revenueChart.invalidate()
     }
+
+    private fun setupViewsChart(trends: List<Pair<Long, Int>>) {
+        if (trends.isEmpty()) {
+            binding.viewsChart.setNoDataText("No view data available.")
+            return
+        }
+
+        val entries = trends.mapIndexed { index, pair ->
+            BarEntry(index.toFloat(), pair.second.toFloat())
+        }
+
+        val dataSet = BarDataSet(entries, "Views").apply {
+            color = Color.parseColor("#A855F7") // Purple
+            valueTextColor = Color.WHITE
+            setDrawValues(true)
+        }
+
+        val barData = BarData(dataSet)
+        barData.barWidth = 0.6f
+        binding.viewsChart.data = barData
+
+        val dateFormat = SimpleDateFormat("EE", Locale.getDefault())
+        val labels = trends.map { dateFormat.format(Date(it.first)) }
+
+        binding.viewsChart.xAxis.apply {
+            valueFormatter = IndexAxisValueFormatter(labels)
+            position = XAxis.XAxisPosition.BOTTOM
+            textColor = Color.GRAY
+            setDrawGridLines(false)
+            granularity = 1f
+        }
+
+        binding.viewsChart.axisLeft.apply {
+            textColor = Color.GRAY
+            setDrawGridLines(true)
+            gridColor = Color.parseColor("#1F2C33")
+        }
+
+        binding.viewsChart.axisRight.isEnabled = false
+        binding.viewsChart.description.isEnabled = false
+        binding.viewsChart.legend.isEnabled = false
+        binding.viewsChart.invalidate()
+    }
+
 
     private fun setupMostViewed(products: List<Product>) {
         val adapter = StoreProductAdapter(

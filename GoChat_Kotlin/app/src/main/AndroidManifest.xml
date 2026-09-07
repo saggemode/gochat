@@ -159,6 +159,11 @@
             android:exported="false"
             android:theme="@style/Theme.GoChat" />
         <activity
+            android:name=".ui.marketplace.OrderDetailsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+
+        <activity
             android:name=".ui.marketplace.StorefrontActivity"
             android:exported="false"
             android:theme="@style/Theme.GoChat" />

@@ -260,7 +260,37 @@ class ChatRoomViewModel @Inject constructor(
         }
     }
 
+    fun sendProductMessage(
+        productId: String,
+        name: String,
+        price: Double,
+        image: String,
+        inquiry: String
+    ) {
+        val convId = _conversationId.value
+        if (convId.isEmpty()) return
+
+        val productJson = buildJsonObject {
+            put("inquiry", inquiry)
+            put("product", buildJsonObject {
+                put("id", productId)
+                put("name", name)
+                put("price", price)
+                put("image", image)
+            })
+        }.toString()
+
+        viewModelScope.launch {
+            chatRepository.sendMessage(
+                conversationId = convId,
+                content = productJson,
+                type = 7 // Product
+            )
+        }
+    }
+
     fun sendMediaMessage(mediaUrl: String, type: Int, caption: String = "") {
+
         val convId = _conversationId.value
         if (convId.isEmpty()) return
 

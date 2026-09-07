@@ -48,8 +48,10 @@ object MediaImageHelper {
         isCircle: Boolean = false,
         cornerRadiusDp: Float? = null,
         placeholderRes: Int = R.drawable.ic_gallery,
-        errorRes: Int = R.drawable.ic_gallery
+        errorRes: Int = R.drawable.ic_gallery,
+        thumbnailWidth: Int? = null
     ) {
+
         val clean = url?.trim().orEmpty()
         if (clean.isBlank()) {
             imageView.setImageResource(errorRes)
@@ -135,36 +137,41 @@ object MediaImageHelper {
         }
 
         // 4. Absolute local device storage paths (/data/..., /storage/..., /sdcard/...)
-        if (clean.startsWith("/") && !clean.startsWith("/api/") && !clean.startsWith("/media/")) {
-            val isLocal = clean.startsWith("/data/") || clean.startsWith("/storage/") || 
-                         clean.startsWith("/sdcard/") || clean.startsWith("/mnt/") ||
-                         clean.contains("/com.example.gochat/") // Broader check for app internal files
-
-            if (isLocal) {
-                try {
-                    val file = File(clean)
-                    if (file.exists()) {
-                        imageView.load(file) {
-                            crossfade(true)
-                            placeholder(placeholderRes)
-                            error(errorRes)
-                            when {
-                                isCircle -> transformations(CircleCropTransformation())
-                                radiusPx != null -> transformations(RoundedCornersTransformation(radiusPx))
-                            }
+        if (clean.startsWith("/") && isLocalDevicePath(clean)) {
+            try {
+                val file = File(clean)
+                if (file.exists()) {
+                    imageView.load(file) {
+                        crossfade(true)
+                        placeholder(placeholderRes)
+                        error(errorRes)
+                        when {
+                            isCircle -> transformations(CircleCropTransformation())
+                            radiusPx != null -> transformations(RoundedCornersTransformation(radiusPx))
                         }
-                        return
                     }
-                } catch (_: Throwable) {}
+                    return
+                }
+            } catch (_: Throwable) {
             }
         }
 
         // 5. Relative API / media path (e.g. /media/uploads/..., /api/...)
-        val finalUrl = if (clean.startsWith("/") && (clean.startsWith("/api/") || clean.startsWith("/media/"))) {
+        var finalUrl = if (clean.startsWith("/") && !isLocalDevicePath(clean)) {
             "${ApiConstants.BASE_URL.removeSuffix("/")}$clean"
         } else {
             clean
         }
+
+        // Apply thumbnail resizing if requested and it's a server URL
+        if (thumbnailWidth != null && (finalUrl.startsWith(ApiConstants.BASE_URL) || finalUrl.startsWith("http"))) {
+            if (finalUrl.contains("/media/download/")) {
+                finalUrl = finalUrl.replace("/media/download/", "/media/thumbnail/")
+                finalUrl += if (finalUrl.contains("?")) "&w=$thumbnailWidth" else "?w=$thumbnailWidth"
+            }
+        }
+
+
 
         try {
             imageView.load(finalUrl) {
