@@ -177,6 +177,9 @@ class MessageAdapter(
                 // Forwarded status
                 layoutForwarded.visibility = if (message.isForwarded) View.VISIBLE else View.GONE
 
+                val isImage = (message.type == MessageType.IMAGE) && !message.isDeleted && !message.mediaUrl.isNullOrBlank()
+                val isVoice = (message.type == MessageType.VOICE || message.type == MessageType.AUDIO) && !message.isDeleted
+
                 // Content text
                 if (message.isDeleted) {
                     tvMessageContent.text = binding.root.context.getString(R.string.message_deleted_notice)
@@ -201,13 +204,14 @@ class MessageAdapter(
                     tvMessageContent.setOnClickListener(null)
                     
                     // Link Preview logic
-                    handleLinkPreview(message.content, binding)
+                    if (!isVoice) {
+                        handleLinkPreview(message.content, binding)
+                    } else {
+                        updateLinkPreviewVisibility(binding, null)
+                    }
                 }
-                val hasImage = (message.type == MessageType.IMAGE || !message.mediaUrl.isNullOrBlank()) &&
-                        !message.isDeleted &&
-                        !message.mediaUrl.isNullOrBlank()
 
-                if (hasImage && (message.content.isBlank() || message.content == "📷 Photo")) {
+                if ((isImage || isVoice) && (message.content.isBlank() || message.content.startsWith("📷 Photo") || message.content.startsWith("🎙️ Voice Note"))) {
                     tvMessageContent.visibility = View.GONE
                 } else {
                     tvMessageContent.visibility = if (message.content.isNotEmpty() || message.isPing || message.isDeleted) View.VISIBLE else View.GONE
@@ -254,7 +258,7 @@ class MessageAdapter(
                 }
 
                 // Media Image Preview
-                if (hasImage) {
+                if (isImage) {
                     ivMessageImage.visibility = View.VISIBLE
                     com.example.gochat.core.media.MediaImageHelper.loadSafeImage(
                         imageView = ivMessageImage,
@@ -348,6 +352,9 @@ class MessageAdapter(
                 // Forwarded status
                 layoutForwarded.visibility = if (message.isForwarded) View.VISIBLE else View.GONE
 
+                val isImage = (message.type == MessageType.IMAGE) && !message.isDeleted && !message.mediaUrl.isNullOrBlank()
+                val isVoice = (message.type == MessageType.VOICE || message.type == MessageType.AUDIO) && !message.isDeleted
+
                 // Sender name
                 if (message.senderName.isNotBlank()) {
                     tvSenderName.visibility = View.VISIBLE
@@ -380,13 +387,14 @@ class MessageAdapter(
                     tvMessageContent.setOnClickListener(null)
                     
                     // Link Preview logic
-                    handleLinkPreview(message.content, binding)
+                    if (!isVoice) {
+                        handleLinkPreview(message.content, binding)
+                    } else {
+                        updateLinkPreviewVisibility(binding, null)
+                    }
                 }
-                val hasImage = (message.type == MessageType.IMAGE || !message.mediaUrl.isNullOrBlank()) &&
-                        !message.isDeleted &&
-                        !message.mediaUrl.isNullOrBlank()
 
-                if (hasImage && (message.content.isBlank() || message.content == "📷 Photo")) {
+                if ((isImage || isVoice) && (message.content.isBlank() || message.content.startsWith("📷 Photo") || message.content.startsWith("🎙️ Voice Note"))) {
                     tvMessageContent.visibility = View.GONE
                 } else {
                     tvMessageContent.visibility = if (message.content.isNotEmpty() || message.isPing || message.isDeleted) View.VISIBLE else View.GONE
@@ -423,7 +431,7 @@ class MessageAdapter(
                 }
 
                 // Media Image Preview
-                if (hasImage) {
+                if (isImage) {
                     ivMessageImage.visibility = View.VISIBLE
                     com.example.gochat.core.media.MediaImageHelper.loadSafeImage(
                         imageView = ivMessageImage,

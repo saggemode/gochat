@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -119,16 +120,12 @@ func (r *BusinessRepository) CreateMarketplaceProduct(ctx context.Context, p *Ma
 		if displayName == "" {
 			displayName = "Merchant Store"
 		}
-		slugID := p.OwnerID
-		if len(slugID) > 8 {
-			slugID = slugID[:8]
-		}
-		slug := strings.ToLower(strings.ReplaceAll(displayName, " ", "-")) + "-" + slugID
+		slug := fmt.Sprintf("%s-%s", strings.ToLower(strings.ReplaceAll(displayName, " ", "-")), p.OwnerID)
 		_, _ = r.db.Exec(ctx, `
 			INSERT INTO business.business_profiles (
 				user_id, business_name, slug, category, is_verified, created_at, updated_at
 			) VALUES ($1, $2, $3, 'Retail', FALSE, NOW(), NOW())
-			ON CONFLICT (user_id) DO NOTHING
+			ON CONFLICT (user_id) DO UPDATE SET updated_at = NOW()
 		`, p.OwnerID, displayName, slug)
 	}
 
@@ -310,11 +307,11 @@ func (r *BusinessRepository) GetMarketplaceProduct(ctx context.Context, id strin
 	err := r.db.QueryRow(ctx,
 		`SELECT 
 			p.id, p.business_id, p.owner_id, p.name, COALESCE(p.description, ''),
-			p.category_id::text, p.sub_category_id::text, p.brand_id::text,
-			p.price, p.discount_percent, p.currency, p.quantity, COALESCE(p.sku, ''),
+			COALESCE(p.category_id::text, ''), COALESCE(p.sub_category_id::text, ''), COALESCE(p.brand_id::text, ''),
+			p.price, COALESCE(p.discount_percent, 0), p.currency, p.quantity, COALESCE(p.sku, ''),
 			COALESCE(p.color, ''), COALESCE(p.size, ''), COALESCE(p.weight, 0), COALESCE(p.shipping_fee, 0),
-			p.is_published, p.view_count, p.order_count, p.rating_avg, p.review_count,
-			COALESCE(b.business_name, u.display_name), COALESCE(b.logo_url, u.avatar_url, ''), COALESCE(b.slug, ''),
+			p.is_published, p.view_count, p.order_count, COALESCE(p.rating_avg, 0), p.review_count,
+			COALESCE(b.business_name, u.display_name, 'Official Store'), COALESCE(b.logo_url, u.avatar_url, ''), COALESCE(b.slug, ''),
 			COALESCE(c.name, ''), COALESCE(br.name, ''), p.created_at
 		 FROM business.products p
 		 LEFT JOIN business.business_profiles b ON b.user_id = p.business_id
@@ -368,10 +365,10 @@ func (r *BusinessRepository) ListBusinessProducts(ctx context.Context, businessI
 		`SELECT 
 			p.id, p.business_id, p.owner_id, p.name, COALESCE(p.description, ''),
 			COALESCE(p.category_id::text, ''), COALESCE(p.sub_category_id::text, ''), COALESCE(p.brand_id::text, ''),
-			p.price, p.discount_percent, p.currency, p.quantity, COALESCE(p.sku, ''),
+			p.price, COALESCE(p.discount_percent, 0), p.currency, p.quantity, COALESCE(p.sku, ''),
 			COALESCE(p.color, ''), COALESCE(p.size, ''), COALESCE(p.weight, 0), COALESCE(p.shipping_fee, 0),
-			p.is_published, p.view_count, p.order_count, p.rating_avg, p.review_count,
-			COALESCE(b.business_name, u.display_name), COALESCE(b.logo_url, u.avatar_url, ''), COALESCE(b.slug, ''),
+			p.is_published, p.view_count, p.order_count, COALESCE(p.rating_avg, 0), p.review_count,
+			COALESCE(b.business_name, u.display_name, 'Official Store'), COALESCE(b.logo_url, u.avatar_url, ''), COALESCE(b.slug, ''),
 			COALESCE(c.name, ''), COALESCE(br.name, ''), p.created_at
 		 FROM business.products p
 		 LEFT JOIN business.business_profiles b ON b.user_id = p.business_id
@@ -397,9 +394,11 @@ func (r *BusinessRepository) ListBusinessProducts(ctx context.Context, businessI
 			&p.IsPublished, &p.ViewCount, &p.OrderCount, &p.RatingAvg, &p.ReviewCount,
 			&p.SellerName, &p.SellerAvatar, &p.SellerSlug,
 			&p.CategoryName, &p.BrandName, &p.CreatedAt,
-		); err == nil {
-			products = append(products, p)
+		); err != nil {
+			log.Printf("[Marketplace] Error scanning business product: %v", err)
+			continue
 		}
+		products = append(products, p)
 	}
 
 	// Fetch primary images
@@ -439,7 +438,7 @@ func (r *BusinessRepository) ListMarketplaceProducts(ctx context.Context, catego
 		argIdx++
 	}
 
-	var countQuery = fmt.Sprintf("SELECT COUNT(*) FROM business.products p %s", whereClause)
+	var countQuery = fmt.Sprintf("SELECT COUNT(*) FROM business.products p LEFT JOIN business.categories c ON c.id = p.category_id %s", whereClause)
 	var total int32
 	_ = r.db.QueryRow(ctx, countQuery, args...).Scan(&total)
 
@@ -461,16 +460,16 @@ func (r *BusinessRepository) ListMarketplaceProducts(ctx context.Context, catego
 		SELECT 
 			p.id, p.business_id, p.owner_id, p.name, COALESCE(p.description, ''),
 			COALESCE(p.category_id::text, ''), COALESCE(p.sub_category_id::text, ''), COALESCE(p.brand_id::text, ''),
-			p.price, p.discount_percent, p.currency, p.quantity, COALESCE(p.sku, ''),
+			p.price, COALESCE(p.discount_percent, 0), p.currency, p.quantity, COALESCE(p.sku, ''),
 			COALESCE(p.color, ''), COALESCE(p.size, ''), COALESCE(p.weight, 0), COALESCE(p.shipping_fee, 0),
-			p.is_published, p.view_count, p.order_count, p.rating_avg, p.review_count,
-			COALESCE(b.business_name, u.display_name), COALESCE(b.logo_url, u.avatar_url, ''), COALESCE(b.slug, ''),
+			p.is_published, p.view_count, p.order_count, COALESCE(p.rating_avg, 0), p.review_count,
+			COALESCE(b.business_name, u.display_name, 'Official Store'), COALESCE(b.logo_url, u.avatar_url, ''), COALESCE(b.slug, ''),
 			COALESCE(c.name, ''), COALESCE(br.name, ''), p.created_at,
 			(
 				p.order_count * 3 +
 				p.view_count * 0.1 +
 				p.review_count * 2 +
-				p.rating_avg * 10 +
+				COALESCE(p.rating_avg, 0) * 10 +
 				CASE WHEN p.created_at > NOW() - INTERVAL '7 days' THEN 20 ELSE 0 END
 			) AS score
 		FROM business.products p
@@ -503,9 +502,11 @@ func (r *BusinessRepository) ListMarketplaceProducts(ctx context.Context, catego
 			&p.IsPublished, &p.ViewCount, &p.OrderCount, &p.RatingAvg, &p.ReviewCount,
 			&p.SellerName, &p.SellerAvatar, &p.SellerSlug,
 			&p.CategoryName, &p.BrandName, &p.CreatedAt, &score,
-		); err == nil {
-			products = append(products, p)
+		); err != nil {
+			log.Printf("[Marketplace] Error scanning marketplace product: %v", err)
+			continue
 		}
+		products = append(products, p)
 	}
 
 	// Fetch primary images for each product

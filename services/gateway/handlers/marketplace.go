@@ -13,6 +13,66 @@ import (
 
 // ── Seller Marketplace Product Handlers ─────────────────────────────────────
 
+func formatProductItem(p *pb.MarketplaceProduct) map[string]interface{} {
+	if p == nil {
+		return nil
+	}
+	primaryImg := ""
+	if len(p.ImageUrls) > 0 {
+		primaryImg = p.ImageUrls[0]
+	}
+	storeName := p.SellerName
+	if storeName == "" {
+		storeName = "Official Store"
+	}
+	catName := p.CategoryName
+	if catName == "" {
+		catName = "General"
+	}
+	return map[string]interface{}{
+		"id":               p.Id,
+		"product_id":       p.Id,
+		"name":             p.Name,
+		"title":            p.Name,
+		"description":      p.Description,
+		"price":            p.Price,
+		"discount_percent": p.DiscountPercent,
+		"currency":         p.Currency,
+		"stock":            p.Quantity,
+		"quantity":         p.Quantity,
+		"sku":              p.Sku,
+		"color":            p.Color,
+		"size":             p.Size,
+		"weight":           p.Weight,
+		"shipping_fee":     p.ShippingFee,
+		"is_published":     p.IsPublished,
+		"is_available":     p.IsPublished,
+		"in_stock":         p.Quantity > 0,
+		"view_count":       p.ViewCount,
+		"order_count":      p.OrderCount,
+		"rating_avg":       p.RatingAvg,
+		"rating":           p.RatingAvg,
+		"review_count":     p.ReviewCount,
+		"reviews_count":    p.ReviewCount,
+		"image_urls":       p.ImageUrls,
+		"image_url":        primaryImg,
+		"store_id":         p.BusinessId,
+		"business_id":      p.BusinessId,
+		"store_name":       storeName,
+		"seller_name":      storeName,
+		"seller_id":        p.OwnerId,
+		"owner_id":         p.OwnerId,
+		"seller_avatar":    p.SellerAvatar,
+		"seller_slug":      p.SellerSlug,
+		"category_id":      p.CategoryId,
+		"category":         catName,
+		"category_name":    catName,
+		"brand_name":       p.BrandName,
+		"is_verified":      true,
+		"created_at":       p.CreatedAt,
+	}
+}
+
 func (h *BusinessHandler) CreateMarketplaceProduct(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == "" {
@@ -89,35 +149,10 @@ func (h *BusinessHandler) CreateMarketplaceProduct(c *gin.Context) {
 	}
 
 	if h.hub != nil && resp != nil && resp.Product != nil {
-		primaryImg := ""
-		if len(resp.Product.ImageUrls) > 0 {
-			primaryImg = resp.Product.ImageUrls[0]
-		}
-		storeName := resp.Product.SellerName
-		if storeName == "" {
-			storeName = "Official Store"
-		}
-		catName := resp.Product.CategoryName
-		if catName == "" {
-			catName = req.Category
-		}
-		productMap := map[string]interface{}{
-			"id":               resp.Product.Id,
-			"name":             resp.Product.Name,
-			"description":      resp.Product.Description,
-			"price":            resp.Product.Price,
-			"discount_percent": resp.Product.DiscountPercent,
-			"currency":         resp.Product.Currency,
-			"stock":            resp.Product.Quantity,
-			"image_urls":       resp.Product.ImageUrls,
-			"image_url":        primaryImg,
-			"store_id":         resp.Product.BusinessId,
-			"store_name":       storeName,
-			"seller_id":        resp.Product.OwnerId,
-			"category_id":      resp.Product.CategoryId,
-			"category":         catName,
-			"is_verified":      true,
-			"created_at":       resp.Product.CreatedAt,
+		productMap := formatProductItem(resp.Product)
+		if catName := strings.TrimSpace(req.Category); catName != "" && productMap["category"] == "General" {
+			productMap["category"] = catName
+			productMap["category_name"] = catName
 		}
 		evt := map[string]interface{}{
 			"type":    "new_product",
@@ -128,7 +163,7 @@ func (h *BusinessHandler) CreateMarketplaceProduct(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusCreated, resp.Product)
+	c.JSON(http.StatusCreated, formatProductItem(resp.Product))
 }
 
 func (h *BusinessHandler) UpdateMarketplaceProduct(c *gin.Context) {
@@ -192,7 +227,7 @@ func (h *BusinessHandler) UpdateMarketplaceProduct(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, resp.Product)
+	c.JSON(http.StatusOK, formatProductItem(resp.Product))
 }
 
 func (h *BusinessHandler) DeleteMarketplaceProduct(c *gin.Context) {
@@ -233,8 +268,12 @@ func (h *BusinessHandler) GetMyProducts(c *gin.Context) {
 		return
 	}
 
+	items := make([]map[string]interface{}, 0, len(resp.Products))
+	for _, p := range resp.Products {
+		items = append(items, formatProductItem(p))
+	}
 	c.JSON(http.StatusOK, gin.H{
-		"products": resp.Products,
+		"products": items,
 		"total":    resp.Total,
 	})
 }
@@ -260,8 +299,12 @@ func (h *BusinessHandler) ListMarketplaceProducts(c *gin.Context) {
 		return
 	}
 
+	items := make([]map[string]interface{}, 0, len(resp.Products))
+	for _, p := range resp.Products {
+		items = append(items, formatProductItem(p))
+	}
 	c.JSON(http.StatusOK, gin.H{
-		"products": resp.Products,
+		"products": items,
 		"total":    resp.Total,
 	})
 }
@@ -277,7 +320,7 @@ func (h *BusinessHandler) GetMarketplaceProduct(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, resp.Product)
+	c.JSON(http.StatusOK, formatProductItem(resp.Product))
 }
 
 func (h *BusinessHandler) ListCategories(c *gin.Context) {
@@ -324,8 +367,12 @@ func (h *BusinessHandler) GetStoreProducts(c *gin.Context) {
 		return
 	}
 
+	items := make([]map[string]interface{}, 0, len(resp.Products))
+	for _, p := range resp.Products {
+		items = append(items, formatProductItem(p))
+	}
 	c.JSON(http.StatusOK, gin.H{
-		"products": resp.Products,
+		"products": items,
 		"total":    resp.Total,
 	})
 }

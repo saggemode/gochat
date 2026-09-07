@@ -61,15 +61,13 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
                 val type = event["type"]?.jsonPrimitive?.contentOrNull
                 if (type == "new_product") {
                     val prodElement = event["product"]
-                    if (prodElement != null) {
-                        try {
-                            val newProd = json.decodeFromJsonElement<Product>(prodElement)
+                        val newProd = repository.parseSingleProductJson(prodElement)
+                        if (newProd != null) {
                             // Real-time instant delivery: prepend to feed like chat!
                             _products.value = listOf(newProd) + _products.value.filter { it.id != newProd.id }
-                        } catch (_: Exception) {
+                        } else {
                             loadExploreProducts()
                         }
-                    }
                 }
             }
         }

@@ -50,7 +50,8 @@ class MarketplaceRepository(private val context: Context) {
                     marketplaceDao.insertProducts(apiList)
                 }
                 val allProducts = marketplaceDao.getAllProducts()
-                Result.success(filterAndSortLocally(allProducts, categoryId, search, sortBy))
+                val listToReturn = if (apiList.isNotEmpty()) apiList else allProducts
+                Result.success(filterAndSortLocally(listToReturn, categoryId, search, sortBy))
             } else {
                 val allProducts = marketplaceDao.getAllProducts()
                 Result.success(filterAndSortLocally(allProducts, categoryId, search, sortBy))
@@ -91,16 +92,121 @@ class MarketplaceRepository(private val context: Context) {
         }
     }
 
-    private fun parseProductsJson(data: JsonElement?): List<Product> {
-        return when (data) {
-            is JsonArray -> data.mapNotNull {
-                try { json.decodeFromJsonElement<Product>(it) } catch (_: Exception) { null }
+    fun parseSingleProductJson(element: JsonElement?): Product? {
+        if (element == null) return null
+        return try {
+            if (element is JsonObject) {
+                val id = (element["id"] ?: element["product_id"])?.jsonPrimitive?.contentOrNull
+                if (id.isNullOrBlank()) return null
+
+                val name = (element["name"] ?: element["title"])?.jsonPrimitive?.contentOrNull ?: "Product"
+                val desc = (element["description"] ?: element["desc"])?.jsonPrimitive?.contentOrNull.orEmpty()
+                val price = element["price"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+
+                val origPrice = (element["original_price"] ?: element["originalPrice"])?.jsonPrimitive?.doubleOrNull ?: 0.0
+                val discountPct = (element["discount_percent"] ?: element["discountPercent"])?.jsonPrimitive?.doubleOrNull ?: 0.0
+                val calculatedOrigPrice = if (origPrice > price) {
+                    origPrice
+                } else if (discountPct > 0.0 && discountPct < 100.0 && price > 0.0) {
+                    price / (1.0 - (discountPct / 100.0))
+                } else {
+                    0.0
+                }
+
+                val currency = element["currency"]?.jsonPrimitive?.contentOrNull ?: "USD"
+
+                val imgUrls = mutableListOf<String>()
+                val imgUrlsElem = element["image_urls"] ?: element["imageUrls"]
+                if (imgUrlsElem is JsonArray) {
+                    imgUrls.addAll(imgUrlsElem.mapNotNull { it.jsonPrimitive.contentOrNull }.filter { it.isNotBlank() })
+                }
+                val singleImg = (element["image_url"] ?: element["imageUrl"] ?: element["primary_image"])?.jsonPrimitive?.contentOrNull
+                if (!singleImg.isNullOrBlank() && !imgUrls.contains(singleImg)) {
+                    imgUrls.add(0, singleImg)
+                }
+
+                val primaryImg = imgUrls.firstOrNull().orEmpty()
+
+                val storeId = (element["store_id"] ?: element["storeId"] ?: element["business_id"] ?: element["businessId"])?.jsonPrimitive?.contentOrNull.orEmpty()
+                val storeName = (element["store_name"] ?: element["storeName"] ?: element["seller_name"] ?: element["sellerName"])?.jsonPrimitive?.contentOrNull?.ifBlank { null } ?: "Official Store"
+                val sellerId = (element["seller_id"] ?: element["sellerId"] ?: element["owner_id"] ?: element["ownerId"])?.jsonPrimitive?.contentOrNull.orEmpty()
+                val sellerPin = (element["seller_pin"] ?: element["sellerPin"])?.jsonPrimitive?.contentOrNull.orEmpty()
+                val sellerLoc = (element["seller_location"] ?: element["sellerLocation"] ?: element["location"] ?: element["address"])?.jsonPrimitive?.contentOrNull ?: "Lagos, Nigeria"
+
+                val catId = (element["category_id"] ?: element["categoryId"])?.jsonPrimitive?.contentOrNull
+                val cat = (element["category"] ?: element["category_name"] ?: element["categoryName"])?.jsonPrimitive?.contentOrNull ?: "General"
+
+                val stock = (element["stock"] ?: element["quantity"])?.jsonPrimitive?.intOrNull ?: 10
+                val inStock = (element["in_stock"] ?: element["inStock"])?.jsonPrimitive?.booleanOrNull ?: (stock > 0)
+                val isVerified = (element["is_verified"] ?: element["isVerified"] ?: element["is_verified_seller"] ?: element["isVerifiedSeller"])?.jsonPrimitive?.booleanOrNull ?: true
+                val rating = (element["rating"] ?: element["rating_avg"] ?: element["ratingAvg"])?.jsonPrimitive?.doubleOrNull ?: 4.8
+                val reviewsCount = (element["reviews_count"] ?: element["reviewsCount"] ?: element["review_count"] ?: element["reviewCount"])?.jsonPrimitive?.intOrNull ?: 0
+                val isAvailable = (element["is_available"] ?: element["isAvailable"] ?: element["is_published"] ?: element["isPublished"])?.jsonPrimitive?.booleanOrNull ?: true
+
+                val createdRaw = element["created_at"] ?: element["createdAt"]
+                val createdAt = when {
+                    createdRaw == null -> System.currentTimeMillis()
+                    createdRaw.jsonPrimitive.longOrNull != null -> createdRaw.jsonPrimitive.long
+                    else -> parseIsoDate(createdRaw.jsonPrimitive.contentOrNull)
+                }
+
+                Product(
+                    id = id,
+                    name = name,
+                    description = desc,
+                    price = price,
+                    originalPrice = calculatedOrigPrice,
+                    currency = currency,
+                    imageUrls = imgUrls,
+                    imageUrl = primaryImg,
+                    storeId = storeId,
+                    storeName = storeName,
+                    sellerId = sellerId,
+                    sellerPin = sellerPin,
+                    sellerLocation = sellerLoc,
+                    categoryId = catId,
+                    category = cat,
+                    stock = stock,
+                    inStock = inStock,
+                    isVerifiedSeller = isVerified,
+                    rating = rating,
+                    reviewsCount = reviewsCount,
+                    isAvailable = isAvailable,
+                    createdAt = createdAt
+                )
+            } else {
+                json.decodeFromJsonElement<Product>(element)
             }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun parseIsoDate(str: String?): Long {
+        if (str.isNullOrBlank()) return System.currentTimeMillis()
+        return try {
+            java.time.Instant.parse(str).toEpochMilli()
+        } catch (_: Exception) {
+            try {
+                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
+                sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                sdf.parse(str)?.time ?: System.currentTimeMillis()
+            } catch (_: Exception) {
+                System.currentTimeMillis()
+            }
+        }
+    }
+
+    fun parseProductsJson(data: JsonElement?): List<Product> {
+        return when (data) {
+            is JsonArray -> data.mapNotNull { parseSingleProductJson(it) }
             is JsonObject -> {
                 val array = data["products"]?.jsonArray ?: data["data"]?.jsonArray
-                array?.mapNotNull {
-                    try { json.decodeFromJsonElement<Product>(it) } catch (_: Exception) { null }
-                } ?: emptyList()
+                if (array != null) {
+                    array.mapNotNull { parseSingleProductJson(it) }
+                } else {
+                    listOfNotNull(parseSingleProductJson(data))
+                }
             }
             else -> emptyList()
         }
@@ -336,6 +442,10 @@ class MarketplaceRepository(private val context: Context) {
                 put("description", product.description)
                 put("price", product.price)
                 put("original_price", product.originalPrice)
+                val disc = if (product.originalPrice > product.price && product.originalPrice > 0) {
+                    ((product.originalPrice - product.price) / product.originalPrice) * 100
+                } else 0.0
+                put("discount_percent", disc)
                 put("currency", product.currency)
                 put("category", product.category)
                 put("category_id", product.categoryId ?: product.category)
@@ -346,11 +456,18 @@ class MarketplaceRepository(private val context: Context) {
             }
             val response = api.createProduct(body)
             val created = if (response.isSuccessful) {
-                val data = response.body() ?: buildJsonObject {}
-                val prodObj = data["product"]?.jsonObject ?: data
-                try {
-                    json.decodeFromJsonElement<Product>(prodObj)
-                } catch (_: Exception) {
+                val data = response.body()
+                val targetObj = when (data) {
+                    is JsonObject -> data["product"]?.jsonObject ?: data
+                    else -> null
+                }
+                val parsed = parseSingleProductJson(targetObj)
+                if (parsed != null) {
+                    if (parsed.id != product.id) {
+                        marketplaceDao.deleteProduct(product.id)
+                    }
+                    parsed
+                } else {
                     product
                 }
             } else {
@@ -372,6 +489,10 @@ class MarketplaceRepository(private val context: Context) {
                 put("description", product.description)
                 put("price", product.price)
                 put("original_price", product.originalPrice)
+                val disc = if (product.originalPrice > product.price && product.originalPrice > 0) {
+                    ((product.originalPrice - product.price) / product.originalPrice) * 100
+                } else 0.0
+                put("discount_percent", disc)
                 put("currency", product.currency)
                 put("category", product.category)
                 put("category_id", product.categoryId ?: product.category)
@@ -382,13 +503,12 @@ class MarketplaceRepository(private val context: Context) {
             }
             val response = api.updateProduct(product.id, body)
             val updated = if (response.isSuccessful) {
-                val data = response.body() ?: buildJsonObject {}
-                val prodObj = data["product"]?.jsonObject ?: data
-                try {
-                    json.decodeFromJsonElement<Product>(prodObj)
-                } catch (_: Exception) {
-                    product
+                val data = response.body()
+                val targetObj = when (data) {
+                    is JsonObject -> data["product"]?.jsonObject ?: data
+                    else -> null
                 }
+                parseSingleProductJson(targetObj) ?: product
             } else {
                 product
             }

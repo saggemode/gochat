@@ -2,8 +2,55 @@ package com.example.gochat.data.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
+
+object TimestampSerializer : KSerializer<Long> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("TimestampSerializer", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: Long) {
+        encoder.encodeLong(value)
+    }
+
+    override fun deserialize(decoder: Decoder): Long {
+        return try {
+            if (decoder is JsonDecoder) {
+                val element = decoder.decodeJsonElement()
+                element.jsonPrimitive.longOrNull
+                    ?: parseIsoTimestamp(element.jsonPrimitive.content)
+            } else {
+                decoder.decodeLong()
+            }
+        } catch (_: Exception) {
+            System.currentTimeMillis()
+        }
+    }
+
+    private fun parseIsoTimestamp(isoString: String?): Long {
+        if (isoString.isNullOrBlank()) return System.currentTimeMillis()
+        return try {
+            java.time.Instant.parse(isoString).toEpochMilli()
+        } catch (_: Exception) {
+            try {
+                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
+                sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                sdf.parse(isoString)?.time ?: System.currentTimeMillis()
+            } catch (_: Exception) {
+                System.currentTimeMillis()
+            }
+        }
+    }
+}
 
 @Serializable
 data class Category(
@@ -38,7 +85,7 @@ data class Product(
     @SerialName("reviews_count") val reviewsCount: Int = 120,
     val tags: List<String> = listOf("Verified Merchant", "Fast Delivery"),
     @SerialName("is_available") val isAvailable: Boolean = true,
-    @SerialName("created_at") val createdAt: Long = System.currentTimeMillis()
+    @SerialName("created_at") @Serializable(with = TimestampSerializer::class) val createdAt: Long = System.currentTimeMillis()
 ) {
     val primaryImage: String
         get() = imageUrls.firstOrNull() ?: imageUrl
