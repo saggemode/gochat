@@ -10,7 +10,6 @@ import com.example.gochat.data.db.AppDatabase
 import com.example.gochat.data.model.MessageStatus
 import com.example.gochat.data.model.MessageType
 import com.example.gochat.data.repository.AuthRepository
-import com.example.gochat.core.crypto.EncryptionManager
 import kotlinx.serialization.json.*
 import java.io.InputStream
 
@@ -21,7 +20,6 @@ class MessageSyncWorker(
 
     private val dao = AppDatabase.getInstance(appContext).chatDao()
     private val authRepo = AuthRepository(appContext)
-    private val encryptionManager = EncryptionManager(appContext)
     private val api = NetworkModule.getApiService(appContext)
 
     override suspend fun doWork(): Result {
@@ -49,15 +47,8 @@ class MessageSyncWorker(
                     }
                 }
 
-                // 2. Encrypt if necessary
-                var finalContent = msg.content
-                val conv = dao.getConversationById(msg.conversationId)
-                if (conv != null && conv.isDirect && msg.type == MessageType.TEXT) {
-                    val partnerId = conv.memberIds.firstOrNull { it != authRepo.currentUserId }
-                    if (partnerId != null) {
-                        finalContent = encryptionManager.encryptMessage(partnerId, msg.content)
-                    }
-                }
+                // 2. Content to send (E2EE disabled — send plaintext until key exchange is reliable)
+                val finalContent = msg.content
 
                 // 3. Send to server
                 val body = buildJsonObject {

@@ -56,6 +56,10 @@ class EncryptionManager(private val context: Context) {
     }
 
     suspend fun encryptMessage(targetUserId: String, plainText: String): String = withContext(Dispatchers.IO) {
+        // E2EE disabled — return plaintext until key exchange is fully reliable.
+        // When re-enabling, uncomment the encryption logic below.
+        plainText
+        /*
         try {
             val address = SignalProtocolAddress(targetUserId, 1)
             if (!signalStore.containsSession(address)) {
@@ -70,6 +74,7 @@ class EncryptionManager(private val context: Context) {
         } catch (e: Exception) {
             plainText // Fallback to plain if no session exists or error occurs
         }
+        */
     }
 
     fun decryptMessage(senderUserId: String, base64Ciphertext: String): String {
