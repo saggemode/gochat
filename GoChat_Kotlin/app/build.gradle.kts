@@ -86,6 +86,9 @@ dependencies {
     // E2EE
     implementation(libs.signal.protocol)
 
+    // Link Preview
+    implementation("org.jsoup:jsoup:1.17.2")
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

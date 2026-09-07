@@ -58,6 +58,9 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
     private val _botConfig = MutableStateFlow<BotConfig?>(null)
     val botConfig: StateFlow<BotConfig?> = _botConfig.asStateFlow()
 
+    private val _disappearingDuration = MutableStateFlow(0) // Seconds, 0 means off
+    val disappearingDuration: StateFlow<Int> = _disappearingDuration.asStateFlow()
+
     private val _screenShakeEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val screenShakeEvent: SharedFlow<Unit> = _screenShakeEvent.asSharedFlow()
 
@@ -185,7 +188,8 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
                 replyToId = reply?.id,
                 replyToText = reply?.content,
                 replyToSenderName = reply?.senderName,
-                mentionedUserIds = mentions
+                mentionedUserIds = mentions,
+                disappearingDurationSeconds = _disappearingDuration.value
             )
             clearReply()
 
@@ -208,6 +212,15 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
     fun addReaction(messageId: String, emoji: String) {
         viewModelScope.launch {
             chatRepository.addReactionLocally(messageId, emoji)
+            
+            // Send to server
+            val payload = buildJsonObject {
+                put("type", "add_reaction")
+                put("message_id", messageId)
+                put("emoji", emoji)
+                put("conversation_id", _conversationId.value)
+            }
+            webSocket.send(payload)
         }
     }
 
@@ -242,7 +255,8 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
                 mediaUrl = mediaUrl,
                 replyToId = reply?.id,
                 replyToText = reply?.content,
-                replyToSenderName = reply?.senderName
+                replyToSenderName = reply?.senderName,
+                disappearingDurationSeconds = _disappearingDuration.value
             )
             clearReply()
         }
@@ -275,7 +289,8 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
                 mediaUrl = finalMediaUrl,
                 replyToId = reply?.id,
                 replyToText = reply?.content,
-                replyToSenderName = reply?.senderName
+                replyToSenderName = reply?.senderName,
+                disappearingDurationSeconds = _disappearingDuration.value
             )
             clearReply()
         }
@@ -339,6 +354,10 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
 
     fun setMembers(membersList: List<User>) {
         _members.value = membersList
+    }
+
+    fun setDisappearingMessages(durationSeconds: Int) {
+        _disappearingDuration.value = durationSeconds
     }
 
     private fun handleWebSocketEvent(event: JsonObject) {

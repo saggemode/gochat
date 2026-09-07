@@ -30,11 +30,25 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.regex.Pattern
 
+import android.util.LruCache
+import android.widget.ImageView
+import android.widget.TextView
+import com.example.gochat.core.utils.LinkPreview
+import com.example.gochat.core.utils.LinkPreviewManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
 class MessageAdapter(
     private val onReplyClicked: (Message) -> Unit,
     private val onMessageLongClicked: ((Message) -> Unit)? = null,
     private val onPlayVoiceClicked: ((Message) -> Unit)? = null
 ) : ListAdapter<Message, RecyclerView.ViewHolder>(DiffCallback) {
+
+    private val adapterScope = CoroutineScope(Dispatchers.Main)
+    private val linkCache = LruCache<String, LinkPreview>(50)
+    private val linkFetching = mutableSetOf<String>()
 
     var onImageClicked: ((String) -> Unit)? = null
     private var accentColor: Int = 0xFF00A884.toInt() // Default emerald
@@ -89,9 +103,23 @@ class MessageAdapter(
     override fun onAttachedToRecyclerView(rv: RecyclerView) {
         super.onAttachedToRecyclerView(rv)
         recyclerView = rv
+        
         AudioPlayerManager.onPlaybackStateChanged = { msgId, _ ->
             val pos = currentList.indexOfFirst { it.id == msgId }
             if (pos != -1) notifyItemChanged(pos)
+        }
+
+        AudioPlayerManager.onProgressUpdate = { msgId, currentPos, total ->
+            val pos = currentList.indexOfFirst { it.id == msgId }
+            if (pos != -1) {
+                val holder = recyclerView?.findViewHolderForAdapterPosition(pos)
+                val progress = currentPos.toFloat() / total.coerceAtLeast(1)
+                if (holder is MessageMeViewHolder) {
+                    holder.updateWaveform(progress)
+                } else if (holder is MessageOtherViewHolder) {
+                    holder.updateWaveform(progress)
+                }
+            }
         }
     }
 
@@ -171,6 +199,9 @@ class MessageAdapter(
                     tvMessageContent.setTextColor(textColor)
                     tvMessageContent.setTypeface(null, Typeface.NORMAL)
                     tvMessageContent.setOnClickListener(null)
+                    
+                    // Link Preview logic
+                    handleLinkPreview(message.content, binding)
                 }
                 val hasImage = (message.type == MessageType.IMAGE || !message.mediaUrl.isNullOrBlank()) &&
                         !message.isDeleted &&
@@ -248,6 +279,17 @@ class MessageAdapter(
                     btnPlayPauseVoice.setImageResource(if (isPlayingThis) R.drawable.ic_pause else R.drawable.ic_play)
                     tvVoiceDuration.text = message.mediaDuration?.let { formatDuration(it) } ?: "0:14"
 
+                    // Mock waveform if none provided
+                    val mockWaveform = List(30) { (0.2f + (0.8f * Math.random().toFloat())) }
+                    waveformVoice.setWaveform(mockWaveform)
+                    
+                    if (isPlayingThis) {
+                        // Current playing might have specific progress if we had a global progress state, 
+                        // but here we rely on onProgressUpdate from manager.
+                    } else {
+                        waveformVoice.setProgress(0f)
+                    }
+
                     btnPlayPauseVoice.setOnClickListener {
                         val audioUrl = message.mediaUrl.orEmpty()
                         if (audioUrl.isNotBlank()) {
@@ -257,16 +299,18 @@ class MessageAdapter(
                         }
                     }
 
-                    sbVoiceProgress.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                        override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
-                            if (fromUser && AudioPlayerManager.currentPlayingMessageId == message.id) {
-                                val total = message.mediaDuration ?: 10
-                                AudioPlayerManager.seekTo((progress / 100f * total * 1000).toInt())
+                    btnVoiceSpeed.text = if (isPlayingThis) "${AudioPlayerManager.playbackSpeed}x" else "1.0x"
+                    btnVoiceSpeed.setOnClickListener {
+                        if (isPlayingThis) {
+                            val nextSpeed = when (AudioPlayerManager.playbackSpeed) {
+                                1.0f -> 1.5f
+                                1.5f -> 2.0f
+                                else -> 1.0f
                             }
+                            AudioPlayerManager.setSpeed(nextSpeed)
+                            btnVoiceSpeed.text = "${nextSpeed}x"
                         }
-                        override fun onStartTrackingTouch(sb: SeekBar?) {}
-                        override fun onStopTrackingTouch(sb: SeekBar?) {}
-                    })
+                    }
                 } else {
                     layoutVoiceNote.visibility = View.GONE
                 }
@@ -279,6 +323,9 @@ class MessageAdapter(
                     true
                 }
             }
+        }
+        fun updateWaveform(progress: Float) {
+            binding.waveformVoice.setProgress(progress)
         }
     }
 
@@ -331,6 +378,9 @@ class MessageAdapter(
                     tvMessageContent.setTextColor(textColor)
                     tvMessageContent.setTypeface(null, Typeface.NORMAL)
                     tvMessageContent.setOnClickListener(null)
+                    
+                    // Link Preview logic
+                    handleLinkPreview(message.content, binding)
                 }
                 val hasImage = (message.type == MessageType.IMAGE || !message.mediaUrl.isNullOrBlank()) &&
                         !message.isDeleted &&
@@ -398,6 +448,17 @@ class MessageAdapter(
                     btnPlayPauseVoice.setImageResource(if (isPlayingThis) R.drawable.ic_pause else R.drawable.ic_play)
                     tvVoiceDuration.text = message.mediaDuration?.let { formatDuration(it) } ?: "0:14"
 
+                    // Mock waveform if none provided
+                    val mockWaveform = List(30) { (0.2f + (0.8f * Math.random().toFloat())) }
+                    waveformVoice.setWaveform(mockWaveform)
+                    
+                    if (isPlayingThis) {
+                        // Current playing might have specific progress if we had a global progress state, 
+                        // but here we rely on onProgressUpdate from manager.
+                    } else {
+                        waveformVoice.setProgress(0f)
+                    }
+
                     btnPlayPauseVoice.setOnClickListener {
                         val audioUrl = message.mediaUrl.orEmpty()
                         if (audioUrl.isNotBlank()) {
@@ -407,16 +468,18 @@ class MessageAdapter(
                         }
                     }
 
-                    sbVoiceProgress.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                        override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
-                            if (fromUser && AudioPlayerManager.currentPlayingMessageId == message.id) {
-                                val total = message.mediaDuration ?: 10
-                                AudioPlayerManager.seekTo((progress / 100f * total * 1000).toInt())
+                    btnVoiceSpeed.text = if (isPlayingThis) "${AudioPlayerManager.playbackSpeed}x" else "1.0x"
+                    btnVoiceSpeed.setOnClickListener {
+                        if (isPlayingThis) {
+                            val nextSpeed = when (AudioPlayerManager.playbackSpeed) {
+                                1.0f -> 1.5f
+                                1.5f -> 2.0f
+                                else -> 1.0f
                             }
+                            AudioPlayerManager.setSpeed(nextSpeed)
+                            btnVoiceSpeed.text = "${nextSpeed}x"
                         }
-                        override fun onStartTrackingTouch(sb: SeekBar?) {}
-                        override fun onStopTrackingTouch(sb: SeekBar?) {}
-                    })
+                    }
                 } else {
                     layoutVoiceNote.visibility = View.GONE
                 }
@@ -430,6 +493,10 @@ class MessageAdapter(
                 }
             }
         }
+
+        fun updateWaveform(progress: Float) {
+            binding.waveformVoice.setProgress(progress)
+        }
     }
 
     private fun formatTime(timeMillis: Long): String {
@@ -440,6 +507,67 @@ class MessageAdapter(
         val minutes = durationSeconds / 60
         val seconds = durationSeconds % 60
         return String.format(Locale.getDefault(), "%d:%02d", minutes, seconds)
+    }
+
+    private fun handleLinkPreview(content: String, binding: Any) {
+        val url = LinkPreviewManager.extractUrl(content) ?: run {
+            updateLinkPreviewVisibility(binding, null)
+            return
+        }
+
+        val cached = linkCache.get(url)
+        if (cached != null) {
+            updateLinkPreviewVisibility(binding, cached)
+        } else {
+            updateLinkPreviewVisibility(binding, null)
+            if (!linkFetching.contains(url)) {
+                linkFetching.add(url)
+                adapterScope.launch {
+                    val preview = LinkPreviewManager.getPreview(url)
+                    if (preview != null) {
+                        linkCache.put(url, preview)
+                        updateLinkPreviewVisibility(binding, preview)
+                    }
+                    linkFetching.remove(url)
+                }
+            }
+        }
+    }
+
+    private fun updateLinkPreviewVisibility(binding: Any, preview: LinkPreview?) {
+        val previewBinding = when (binding) {
+            is ItemMessageMeBinding -> binding.root.findViewById<View>(R.id.layoutLinkPreview)
+            is ItemMessageOtherBinding -> binding.root.findViewById<View>(R.id.layoutLinkPreview)
+            else -> null
+        } ?: return
+
+        if (preview == null) {
+            previewBinding.visibility = View.GONE
+        } else {
+            previewBinding.visibility = View.VISIBLE
+            val ivImage = previewBinding.findViewById<ImageView>(R.id.ivLinkImage)
+            val tvTitle = previewBinding.findViewById<TextView>(R.id.tvLinkTitle)
+            val tvDesc = previewBinding.findViewById<TextView>(R.id.tvLinkDescription)
+            val tvDomain = previewBinding.findViewById<TextView>(R.id.tvLinkDomain)
+
+            tvTitle.text = preview.title
+            tvDesc.text = preview.description
+            tvDomain.text = preview.domain
+
+            if (!preview.imageUrl.isNullOrBlank()) {
+                ivImage.visibility = View.VISIBLE
+                ivImage.load(preview.imageUrl) {
+                    crossfade(true)
+                }
+            } else {
+                ivImage.visibility = View.GONE
+            }
+
+            previewBinding.setOnClickListener {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(preview.url))
+                previewBinding.context.startActivity(intent)
+            }
+        }
     }
 
     object DiffCallback : DiffUtil.ItemCallback<Message>() {

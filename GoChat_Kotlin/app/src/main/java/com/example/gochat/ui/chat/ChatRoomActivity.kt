@@ -37,6 +37,7 @@ import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import coil.load
 import com.example.gochat.R
@@ -84,13 +85,25 @@ class ChatRoomActivity : AppCompatActivity() {
     private var recordingDurationSeconds = 0
     private val recordingHandler = Handler(Looper.getMainLooper())
     private val recordingTimerRunnable = object : Runnable {
+        private var tickCount = 0
         override fun run() {
             if (audioRecorderManager.isRecording) {
-                recordingDurationSeconds++
-                val minutes = recordingDurationSeconds / 60
-                val seconds = recordingDurationSeconds % 60
-                binding.tvRecordingTimer.text = String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
-                recordingHandler.postDelayed(this, 1000)
+                tickCount++
+                if (tickCount >= 10) {
+                    recordingDurationSeconds++
+                    val minutes = recordingDurationSeconds / 60
+                    val seconds = recordingDurationSeconds % 60
+                    binding.tvRecordingTimer.text = String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+                    tickCount = 0
+                }
+                
+                // Update Waveform
+                val amplitude = audioRecorderManager.getMaxAmplitude()
+                binding.waveformRecording.addBar(amplitude.toFloat())
+                
+                recordingHandler.postDelayed(this, 100)
+            } else {
+                tickCount = 0
             }
         }
     }
@@ -316,6 +329,14 @@ class ChatRoomActivity : AppCompatActivity() {
 
         binding.rvMessages.layoutManager = layoutManager
         binding.rvMessages.adapter = messageAdapter
+
+        // Swipe to reply
+        val swipeCallback = SwipeToReplyCallback(this) { position ->
+            val message = messageAdapter.currentList[position]
+            viewModel.setReplyingTo(message)
+            messageAdapter.notifyItemChanged(position)
+        }
+        ItemTouchHelper(swipeCallback).attachToRecyclerView(binding.rvMessages)
 
         // Mention suggestions
         mentionAdapter = GroupMemberAdapter(
@@ -791,6 +812,7 @@ class ChatRoomActivity : AppCompatActivity() {
     private fun showMoreMenu() {
         val items = arrayOf(
             getString(R.string.option_wallpaper_theme),
+            getString(R.string.option_disappearing_messages),
             getString(R.string.option_mute_notifications),
             getString(R.string.option_clear_chat),
             getString(R.string.option_export_chat)
@@ -810,8 +832,29 @@ class ChatRoomActivity : AppCompatActivity() {
                         )
                         sheet.show(supportFragmentManager, ChatWallpaperBottomSheet.TAG)
                     }
+                    1 -> {
+                        showDisappearingMessagesDialog()
+                    }
                     else -> Toast.makeText(this, getString(R.string.toast_option_selected), Toast.LENGTH_SHORT).show()
                 }
+            }
+            .show()
+    }
+
+    private fun showDisappearingMessagesDialog() {
+        val options = arrayOf("Off", "24 Hours", "7 Days", "90 Days")
+        val values = intArrayOf(0, 86400, 604800, 7776000)
+        var selectedIdx = 0
+        val currentDuration = viewModel.disappearingDuration.value
+        selectedIdx = values.indexOf(currentDuration).coerceAtLeast(0)
+
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.option_disappearing_messages))
+            .setSingleChoiceItems(options, selectedIdx) { dialog, which ->
+                viewModel.setDisappearingMessages(values[which])
+                dialog.dismiss()
+                val status = if (values[which] > 0) "enabled (${options[which]})" else "disabled"
+                Toast.makeText(this, "Disappearing messages $status", Toast.LENGTH_SHORT).show()
             }
             .show()
     }

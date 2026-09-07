@@ -50,6 +50,12 @@
         </LinearLayout>
 
         <!-- Quoted Reply Container -->
+        <include
+            layout="@layout/layout_link_preview"
+            android:layout_width="240dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="6dp" />
+
         <LinearLayout
             android:id="@+id/layoutQuotedReply"
             android:layout_width="wrap_content"
@@ -108,7 +114,7 @@
         <!-- Voice Note Playback Row -->
         <LinearLayout
             android:id="@+id/layoutVoiceNote"
-            android:layout_width="210dp"
+            android:layout_width="240dp"
             android:layout_height="wrap_content"
             android:layout_marginBottom="4dp"
             android:gravity="center_vertical"
@@ -125,23 +131,40 @@
                 android:padding="8dp"
                 android:src="@drawable/ic_play" />
 
-            <SeekBar
-                android:id="@+id/sbVoiceProgress"
+            <com.example.gochat.ui.custom.WaveformView
+                android:id="@+id/waveformVoice"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="32dp"
                 android:layout_marginStart="6dp"
-                android:layout_weight="1"
-                android:progressTint="@color/gochat_emerald_light"
-                android:thumbTint="@color/gochat_emerald_light" />
+                android:layout_weight="1" />
 
-            <TextView
-                android:id="@+id/tvVoiceDuration"
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
-                android:textColor="@color/gochat_text_secondary"
-                android:textSize="11sp"
-                tools:text="0:14" />
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvVoiceDuration"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/gochat_text_secondary"
+                    android:textSize="11sp"
+                    tools:text="0:14" />
+
+                <TextView
+                    android:id="@+id/btnVoiceSpeed"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_speed_pill"
+                    android:paddingHorizontal="4dp"
+                    android:paddingVertical="1dp"
+                    android:text="1.0x"
+                    android:textColor="@color/white"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
         </LinearLayout>
 
         <!-- Message Text -->

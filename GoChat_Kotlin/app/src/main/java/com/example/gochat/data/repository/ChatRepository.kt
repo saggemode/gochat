@@ -177,14 +177,22 @@ class ChatRepository(private val context: Context) {
         replyToId: String? = null,
         replyToText: String? = null,
         replyToSenderName: String? = null,
-        mentionedUserIds: List<String> = emptyList()
+        mentionedUserIds: List<String> = emptyList(),
+        disappearingDurationSeconds: Int? = null
     ): Result<Message> {
         return try {
             // Reliable Sync: Insert into local DB with SENDING status first
-            val localMsg = createOptimisticMessage(
+            var localMsg = createOptimisticMessage(
                 conversationId, content, type, mediaUrl,
                 replyToId, replyToText, replyToSenderName
             ).copy(status = MessageStatus.SENDING)
+            
+            if (disappearingDurationSeconds != null && disappearingDurationSeconds > 0) {
+                localMsg = localMsg.copy(
+                    disappearingDurationSeconds = disappearingDurationSeconds,
+                    expiresAt = System.currentTimeMillis() + (disappearingDurationSeconds * 1000L)
+                )
+            }
             
             dao.insertMessage(localMsg)
             
@@ -329,9 +337,17 @@ class ChatRepository(private val context: Context) {
     suspend fun addReactionLocally(messageId: String, emoji: String) {
         val currentUserId = tokenManager.userId ?: "u_me"
         val currentUserName = tokenManager.userDisplayName ?: "Me"
-        val reaction = Reaction(userId = currentUserId, userName = currentUserName, emoji = emoji)
-        val reactions = listOf(reaction)
-        dao.updateMessageReactions(messageId, reactions)
+        
+        val message = dao.getMessageById(messageId) ?: return
+        val currentReactions = message.reactions.toMutableList()
+        
+        // Remove existing reaction from this user if any
+        currentReactions.removeAll { it.userId == currentUserId }
+        
+        // Add new one
+        currentReactions.add(Reaction(userId = currentUserId, userName = currentUserName, emoji = emoji))
+        
+        dao.updateMessageReactions(messageId, currentReactions)
     }
 
     fun observeStarredMessages(): Flow<List<Message>> = dao.getStarredMessages()

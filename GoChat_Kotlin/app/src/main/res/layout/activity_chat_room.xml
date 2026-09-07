@@ -425,14 +425,12 @@
                 android:textStyle="bold"
                 tools:text="00:05" />
 
-            <TextView
+            <com.example.gochat.ui.custom.WaveformView
+                android:id="@+id/waveformRecording"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_weight="1"
-                android:text="@string/recording_voice_note"
-                android:textColor="@color/gochat_text_muted"
-                android:textSize="13sp" />
+                android:layout_height="36dp"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1" />
 
             <!-- Discard / Cancel Button -->
             <ImageView

@@ -96,6 +96,9 @@ interface ChatDao {
     @Query("DELETE FROM messages WHERE conversationId = :convId")
     suspend fun clearMessagesForConversation(convId: String): Int
 
+    @Query("DELETE FROM messages WHERE expiresAt IS NOT NULL AND expiresAt < :currentTime")
+    suspend fun deleteExpiredMessages(currentTime: Long): Int
+
     // ── Calls ──────────────────────────────────────────────────
     @Query("SELECT * FROM calls ORDER BY timestamp DESC")
     fun getAllCalls(): Flow<List<CallRecord>>

@@ -6,12 +6,17 @@ import com.example.gochat.core.notification.NotificationHelper
 import com.example.gochat.core.theme.ThemeManager
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.repository.AuthRepository
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.example.gochat.core.sync.DisappearingMessageWorker
 import com.google.firebase.installations.FirebaseInstallations
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 
 class GoChatApp : Application() {
 
@@ -30,6 +35,19 @@ class GoChatApp : Application() {
         appScope.launch {
             initFcm()
         }
+
+        // 4. Schedule Disappearing Messages Cleanup
+        scheduleCleanupWorker()
+    }
+
+    private fun scheduleCleanupWorker() {
+        val cleanupRequest = PeriodicWorkRequestBuilder<DisappearingMessageWorker>(1, TimeUnit.HOURS)
+            .build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "disappearing_messages_cleanup",
+            ExistingPeriodicWorkPolicy.KEEP,
+            cleanupRequest
+        )
     }
 
     private fun initFcm() {

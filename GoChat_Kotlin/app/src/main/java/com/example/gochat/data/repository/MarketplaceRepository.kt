@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.gochat.data.api.ApiConstants
 import com.example.gochat.data.api.GoChatApiService
 import com.example.gochat.data.api.NetworkModule
+import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.db.AppDatabase
 import com.example.gochat.data.model.*
 import kotlinx.serialization.json.*
@@ -15,6 +16,7 @@ class MarketplaceRepository(private val context: Context) {
 
     private val api: GoChatApiService get() = NetworkModule.getApiService(context)
     private val marketplaceDao = AppDatabase.getInstance(context).marketplaceDao()
+    private val tokenManager = TokenManager.getInstance(context)
     private val json = NetworkModule.json
 
     // Seed data for categories
@@ -229,6 +231,7 @@ class MarketplaceRepository(private val context: Context) {
 
     // ── Business Profile / My Store ──────────────────────────────────────────
     suspend fun getBusinessProfile(): Result<Store?> {
+        val currentUserId = tokenManager.userId ?: ""
         return try {
             val response = api.getBusinessProfile()
             if (response.isSuccessful) {
@@ -239,13 +242,16 @@ class MarketplaceRepository(private val context: Context) {
                     marketplaceDao.insertStore(store)
                     Result.success(store)
                 } else {
-                    Result.success(marketplaceDao.getAllOrders().firstOrNull()?.let { marketplaceDao.getStoreById(it.storeId) })
+                    val cached = marketplaceDao.getStoreByOwner(currentUserId)
+                    Result.success(cached)
                 }
             } else {
-                Result.success(null)
+                val cached = marketplaceDao.getStoreByOwner(currentUserId)
+                Result.success(cached)
             }
         } catch (e: Exception) {
-            Result.success(null)
+            val cached = marketplaceDao.getStoreByOwner(currentUserId)
+            Result.success(cached)
         }
     }
 
@@ -306,6 +312,7 @@ class MarketplaceRepository(private val context: Context) {
     }
 
     suspend fun getMyProducts(): Result<List<Product>> {
+        val currentUserId = tokenManager.userId ?: ""
         return try {
             val response = api.getMyProducts()
             if (response.isSuccessful) {
@@ -315,9 +322,9 @@ class MarketplaceRepository(private val context: Context) {
                     marketplaceDao.insertProducts(list)
                 }
             }
-            Result.success(marketplaceDao.getAllProducts()) // Should probably filter by my seller ID if available
+            Result.success(marketplaceDao.getMyProducts(currentUserId))
         } catch (e: Exception) {
-            Result.success(marketplaceDao.getAllProducts())
+            Result.success(marketplaceDao.getMyProducts(currentUserId))
         }
     }
 
@@ -465,6 +472,7 @@ class MarketplaceRepository(private val context: Context) {
     }
 
     suspend fun getBuyerOrders(): Result<List<Order>> {
+        val currentUserId = tokenManager.userId ?: ""
         return try {
             val response = api.getBuyerOrders()
             if (response.isSuccessful) {
@@ -474,13 +482,14 @@ class MarketplaceRepository(private val context: Context) {
                     marketplaceDao.insertOrders(list)
                 }
             }
-            Result.success(marketplaceDao.getAllOrders())
+            Result.success(marketplaceDao.getBuyerOrders(currentUserId))
         } catch (e: Exception) {
-            Result.success(marketplaceDao.getAllOrders())
+            Result.success(marketplaceDao.getBuyerOrders(currentUserId))
         }
     }
 
     suspend fun getSellerOrders(): Result<List<Order>> {
+        val currentUserId = tokenManager.userId ?: ""
         return try {
             val response = api.getSellerOrders()
             if (response.isSuccessful) {
@@ -490,9 +499,21 @@ class MarketplaceRepository(private val context: Context) {
                     marketplaceDao.insertOrders(list)
                 }
             }
-            Result.success(marketplaceDao.getAllOrders())
+            // Usually seller hub shows orders for the store(s) owned by user.
+            // For now, we fetch all orders where storeId matches user's store
+            val myStore = marketplaceDao.getStoreByOwner(currentUserId)
+            if (myStore != null) {
+                Result.success(marketplaceDao.getSellerOrders(myStore.id))
+            } else {
+                Result.success(emptyList())
+            }
         } catch (e: Exception) {
-            Result.success(marketplaceDao.getAllOrders())
+            val myStore = marketplaceDao.getStoreByOwner(currentUserId)
+            if (myStore != null) {
+                Result.success(marketplaceDao.getSellerOrders(myStore.id))
+            } else {
+                Result.success(emptyList())
+            }
         }
     }
 

@@ -361,6 +361,7 @@
     <string name="dialog_delete_message_title">Delete message?</string>
     <string name="dialog_delete_message_desc">This message will be deleted for everyone.</string>
     <string name="option_wallpaper_theme">Wallpaper / Theme</string>
+    <string name="option_disappearing_messages">Disappearing Messages</string>
     <string name="option_clear_chat">Clear chat</string>
     <string name="option_export_chat">Export chat</string>
     <string name="toast_option_selected">Option selected</string>

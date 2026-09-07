@@ -2,6 +2,7 @@ package com.example.gochat.core.media
 
 import android.content.Context
 import android.media.MediaPlayer
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Base64
@@ -12,6 +13,9 @@ object AudioPlayerManager {
 
     private var mediaPlayer: MediaPlayer? = null
     var currentPlayingMessageId: String? = null
+        private set
+
+    var playbackSpeed: Float = 1.0f
         private set
 
     val isPlaying: Boolean
@@ -37,6 +41,26 @@ object AudioPlayerManager {
         }
     }
 
+    fun setSpeed(speed: Float) {
+        playbackSpeed = speed
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                mediaPlayer?.let {
+                    if (it.isPlaying) {
+                        val params = it.playbackParams
+                        params.speed = speed
+                        it.playbackParams = params
+                    } else {
+                        // For paused player, we might need to set it so it takes effect when started
+                        val params = it.playbackParams
+                        params.speed = speed
+                        it.playbackParams = params
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+    }
+
     fun playOrPause(context: Context, messageId: String, audioSource: String) {
         if (currentPlayingMessageId == messageId && mediaPlayer != null) {
             if (mediaPlayer!!.isPlaying) {
@@ -44,6 +68,11 @@ object AudioPlayerManager {
                 handler.removeCallbacks(progressRunnable)
                 onPlaybackStateChanged?.invoke(messageId, false)
             } else {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    val params = mediaPlayer!!.playbackParams
+                    params.speed = playbackSpeed
+                    mediaPlayer!!.playbackParams = params
+                }
                 mediaPlayer!!.start()
                 handler.post(progressRunnable)
                 onPlaybackStateChanged?.invoke(messageId, true)
@@ -59,6 +88,11 @@ object AudioPlayerManager {
             val player = MediaPlayer().apply {
                 setDataSource(resolvedPath)
                 setOnPreparedListener { mp ->
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        val params = mp.playbackParams
+                        params.speed = playbackSpeed
+                        mp.playbackParams = params
+                    }
                     mp.start()
                     currentPlayingMessageId = messageId
                     handler.post(progressRunnable)
