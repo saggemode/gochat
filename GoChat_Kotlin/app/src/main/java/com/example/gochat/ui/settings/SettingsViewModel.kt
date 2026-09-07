@@ -7,18 +7,17 @@ import androidx.lifecycle.viewModelScope
 import com.example.gochat.core.media.ImageCompressor
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.repository.AuthRepository
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class SettingsViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val authRepository = AuthRepository(application)
-    private val tokenManager = TokenManager.getInstance(application)
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    application: Application,
+    private val authRepository: AuthRepository,
+    private val tokenManager: TokenManager
+) : AndroidViewModel(application) {
 
     private val _displayName = MutableStateFlow("")
     val displayName: StateFlow<String> = _displayName.asStateFlow()

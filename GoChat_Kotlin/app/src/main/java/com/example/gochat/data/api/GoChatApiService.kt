@@ -124,7 +124,10 @@ interface GoChatApiService {
 
     @GET("api/v1/chat/conversations/{id}/messages")
     suspend fun getMessages(
-        @Path("id") convId: String
+        @Path("id") convId: String,
+        @Query("page") page: Int? = null,
+        @Query("limit") limit: Int? = null,
+        @Query("before") before: String? = null
     ): Response<JsonElement>
 
     @POST("api/v1/chat/conversations/{id}/messages")
@@ -257,7 +260,9 @@ interface GoChatApiService {
     suspend fun getProducts(
         @Query("category_id") categoryId: String? = null,
         @Query("search") search: String? = null,
-        @Query("sort_by") sortBy: String? = null
+        @Query("sort_by") sortBy: String? = null,
+        @Query("page") page: Int? = null,
+        @Query("limit") limit: Int? = null
     ): Response<JsonElement>
 
     @GET(ApiConstants.CATEGORIES)

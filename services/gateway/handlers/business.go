@@ -7,18 +7,26 @@ import (
 	"gochat/services/gateway/ws"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
 type BusinessHandler struct {
 	client pb.BusinessServiceClient
 	hub    *ws.Hub
+	redis  *redis.Client
 	log    *zap.Logger
 }
 
 func NewBusinessHandler(client pb.BusinessServiceClient, hub *ws.Hub, log *zap.Logger) *BusinessHandler {
 	return &BusinessHandler{client: client, hub: hub, log: log}
 }
+
+func (h *BusinessHandler) WithRedis(r *redis.Client) *BusinessHandler {
+	h.redis = r
+	return h
+}
+
 
 func (h *BusinessHandler) CreateBusinessProfile(c *gin.Context) {
 	userID := getUserID(c)

@@ -6,9 +6,11 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -24,13 +26,21 @@ import com.example.gochat.ui.settings.SettingsFragment
 import com.example.gochat.ui.stories.StoriesFragment
 import com.example.gochat.ui.marketplace.MarketplaceFragment
 import com.example.gochat.core.crypto.EncryptionManager
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val chatViewModel: ChatListViewModel by viewModels()
-    private val encryptionManager by lazy { EncryptionManager(this) }
+    
+    @Inject
+    lateinit var encryptionManager: EncryptionManager
+    
+    @Inject
+    lateinit var tokenManager: TokenManager
 
     private val chatListFragment by lazy { ChatListFragment() }
     private val storiesFragment by lazy { StoriesFragment() }
@@ -49,7 +59,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val tokenManager = TokenManager.getInstance(this)
         if (!tokenManager.isLoggedIn) {
             startActivity(Intent(this, LoginActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -64,7 +73,11 @@ class MainActivity : AppCompatActivity() {
         checkNotificationPermission()
 
         if (savedInstanceState == null) {
-            switchFragment(chatListFragment)
+            if (tokenManager.isBiometricLockEnabled) {
+                showBiometricPrompt()
+            } else {
+                switchFragment(chatListFragment)
+            }
         }
 
         setupBottomNavigation()
@@ -123,6 +136,38 @@ class MainActivity : AppCompatActivity() {
         supportFragmentManager.beginTransaction()
             .replace(R.id.fragmentContainer, fragment)
             .commit()
+    }
+
+    private fun showBiometricPrompt() {
+        val executor = ContextCompat.getMainExecutor(this)
+        val biometricPrompt = BiometricPrompt(this, executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    super.onAuthenticationError(errorCode, errString)
+                    if (errorCode != BiometricPrompt.ERROR_USER_CANCELED && errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+                        Toast.makeText(this@MainActivity, "Authentication error: $errString", Toast.LENGTH_SHORT).show()
+                    }
+                    finish()
+                }
+
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    super.onAuthenticationSucceeded(result)
+                    switchFragment(chatListFragment)
+                }
+
+                override fun onAuthenticationFailed() {
+                    super.onAuthenticationFailed()
+                    // Prompt remains open on failed attempt
+                }
+            })
+
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle(getString(R.string.biometric_lock_title))
+            .setSubtitle(getString(R.string.biometric_lock_subtitle))
+            .setNegativeButtonText(getString(R.string.biometric_lock_cancel))
+            .build()
+
+        biometricPrompt.authenticate(promptInfo)
     }
 
     private fun observeUnreadBadge() {

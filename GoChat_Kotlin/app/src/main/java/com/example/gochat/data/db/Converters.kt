@@ -126,6 +126,21 @@ class Converters {
     }
 
     @TypeConverter
+    fun fromProductVariantList(value: List<ProductVariant>?): String {
+        return value?.let { json.encodeToString(it) } ?: "[]"
+    }
+
+    @TypeConverter
+    fun toProductVariantList(value: String?): List<ProductVariant> {
+        if (value.isNullOrEmpty()) return emptyList()
+        return try {
+            json.decodeFromString(value)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    @TypeConverter
     fun fromOrderStatus(value: OrderStatus?): String = (value ?: OrderStatus.PENDING).name
 
     @TypeConverter

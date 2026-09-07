@@ -2,22 +2,50 @@ package com.example.gochat.data.repository
 
 import android.content.Context
 import com.example.gochat.data.api.ApiConstants
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import com.example.gochat.data.api.GoChatApiService
-import com.example.gochat.data.api.NetworkModule
 import com.example.gochat.data.api.TokenManager
-import com.example.gochat.data.db.AppDatabase
+import com.example.gochat.data.db.MarketplaceDao
 import com.example.gochat.data.model.*
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.Calendar
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class MarketplaceRepository(private val context: Context) {
+@Singleton
+class MarketplaceRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val api: GoChatApiService,
+    private val marketplaceDao: MarketplaceDao,
+    private val tokenManager: TokenManager,
+    private val json: Json
+) {
+    val userId: String? get() = tokenManager.userId
 
-    private val api: GoChatApiService get() = NetworkModule.getApiService(context)
-    private val marketplaceDao = AppDatabase.getInstance(context).marketplaceDao()
-    private val tokenManager = TokenManager.getInstance(context)
-    private val json = NetworkModule.json
+
+    fun getProductsPaged(
+        categoryId: String? = null,
+        search: String? = null,
+        sortBy: String? = null
+    ): Flow<PagingData<Product>> {
+        return Pager(
+            config = PagingConfig(
+                pageSize = 20,
+                enablePlaceholders = false,
+                initialLoadSize = 20
+            ),
+            pagingSourceFactory = {
+                ProductPagingSource(api, this, categoryId, search, sortBy)
+            }
+        ).flow
+    }
 
     // Seed data for categories
     companion object {
@@ -50,19 +78,21 @@ class MarketplaceRepository(private val context: Context) {
                     marketplaceDao.insertProducts(apiList)
                 }
                 val allProducts = marketplaceDao.getAllProducts()
-                val listToReturn = if (apiList.isNotEmpty()) apiList else allProducts
-                Result.success(filterAndSortLocally(listToReturn, categoryId, search, sortBy))
+                // Merge and deduplicate, keeping API results at the front if they matched the query
+                val mergedList = (apiList + allProducts).distinctBy { it.id }
+                Result.success(filterAndSortLocally(mergedList, categoryId, search, sortBy))
             } else {
                 val allProducts = marketplaceDao.getAllProducts()
                 Result.success(filterAndSortLocally(allProducts, categoryId, search, sortBy))
             }
+
         } catch (e: Exception) {
             val allProducts = marketplaceDao.getAllProducts()
             Result.success(filterAndSortLocally(allProducts, categoryId, search, sortBy))
         }
     }
 
-    private fun filterAndSortLocally(
+    fun filterAndSortLocally(
         list: List<Product>,
         categoryId: String?,
         search: String?,
@@ -90,6 +120,21 @@ class MarketplaceRepository(private val context: Context) {
             "rating" -> result.sortedByDescending { it.rating }
             else -> result
         }
+    }
+
+    suspend fun getLocalProducts(): List<Product> = marketplaceDao.getAllProducts()
+
+    suspend fun handleIncomingWebSocketEvent(event: JsonObject): Product? {
+        val type = event["type"]?.jsonPrimitive?.contentOrNull
+        if (type == "new_product") {
+            val prodElement = event["product"]
+            val newProd = parseSingleProductJson(prodElement)
+            if (newProd != null) {
+                marketplaceDao.insertProduct(newProd)
+                return newProd
+            }
+        }
+        return null
     }
 
     fun parseSingleProductJson(element: JsonElement?): Product? {
@@ -141,6 +186,8 @@ class MarketplaceRepository(private val context: Context) {
                 val isVerified = (element["is_verified"] ?: element["isVerified"] ?: element["is_verified_seller"] ?: element["isVerifiedSeller"])?.jsonPrimitive?.booleanOrNull ?: true
                 val rating = (element["rating"] ?: element["rating_avg"] ?: element["ratingAvg"])?.jsonPrimitive?.doubleOrNull ?: 4.8
                 val reviewsCount = (element["reviews_count"] ?: element["reviewsCount"] ?: element["review_count"] ?: element["reviewCount"])?.jsonPrimitive?.intOrNull ?: 0
+                val viewCount = (element["view_count"] ?: element["viewCount"])?.jsonPrimitive?.intOrNull ?: 0
+                val orderCount = (element["order_count"] ?: element["orderCount"])?.jsonPrimitive?.intOrNull ?: 0
                 val isAvailable = (element["is_available"] ?: element["isAvailable"] ?: element["is_published"] ?: element["isPublished"])?.jsonPrimitive?.booleanOrNull ?: true
 
                 val createdRaw = element["created_at"] ?: element["createdAt"]
@@ -148,6 +195,14 @@ class MarketplaceRepository(private val context: Context) {
                     createdRaw == null -> System.currentTimeMillis()
                     createdRaw.jsonPrimitive.longOrNull != null -> createdRaw.jsonPrimitive.long
                     else -> parseIsoDate(createdRaw.jsonPrimitive.contentOrNull)
+                }
+
+                val variants = mutableListOf<ProductVariant>()
+                val variantsElem = element["variants"]
+                if (variantsElem is JsonArray) {
+                    variants.addAll(variantsElem.mapNotNull { 
+                        try { json.decodeFromJsonElement<ProductVariant>(it) } catch (_: Exception) { null }
+                    })
                 }
 
                 Product(
@@ -171,8 +226,11 @@ class MarketplaceRepository(private val context: Context) {
                     isVerifiedSeller = isVerified,
                     rating = rating,
                     reviewsCount = reviewsCount,
+                    viewCount = viewCount,
+                    orderCount = orderCount,
                     isAvailable = isAvailable,
-                    createdAt = createdAt
+                    createdAt = createdAt,
+                    variants = variants
                 )
             } else {
                 json.decodeFromJsonElement<Product>(element)
@@ -263,6 +321,7 @@ class MarketplaceRepository(private val context: Context) {
             address = addr,
             phone = phone,
             email = email,
+            ownerId = (target["owner_id"] ?: target["user_id"])?.jsonPrimitive?.contentOrNull ?: tokenManager.userId ?: "",
             ownerPin = ownerPin,
             logoUrl = logoUrl,
             bannerUrl = bannerUrl,
@@ -720,4 +779,47 @@ class MarketplaceRepository(private val context: Context) {
             Result.success(true)
         }
     }
+
+    suspend fun getSellerInsights(): Result<SellerInsights> {
+        return try {
+            val productsResult = getMyProducts()
+            val ordersResult = getSellerOrders()
+            
+            val products = productsResult.getOrDefault(emptyList())
+            val orders = ordersResult.getOrDefault(emptyList())
+            
+            val grossRevenue = orders.sumOf { it.grandTotal.ifZero(it.totalAmount) }
+            val totalOrders = orders.size
+            val listedProducts = products.size
+            val totalViews = products.sumOf { it.viewCount }
+            
+            // Group orders by day for trend
+            val salesTrend = orders.groupBy { 
+                val cal = Calendar.getInstance()
+                cal.timeInMillis = it.createdAt
+                cal.set(Calendar.HOUR_OF_DAY, 0)
+                cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0)
+                cal.set(Calendar.MILLISECOND, 0)
+                cal.timeInMillis
+            }.map { (date, dailyOrders) ->
+                date to dailyOrders.sumOf { it.grandTotal.ifZero(it.totalAmount) }
+            }.sortedBy { it.first }
+            
+            val mostViewed = products.sortedByDescending { it.viewCount }.take(5)
+            
+            Result.success(SellerInsights(
+                grossRevenue = grossRevenue,
+                totalOrders = totalOrders,
+                listedProducts = listedProducts,
+                totalViews = totalViews,
+                salesTrend = salesTrend,
+                mostViewedProducts = mostViewed
+            ))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private fun Double.ifZero(fallback: Double): Double = if (this == 0.0) fallback else this
 }

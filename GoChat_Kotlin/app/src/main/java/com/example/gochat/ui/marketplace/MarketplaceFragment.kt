@@ -29,14 +29,18 @@ import com.example.gochat.data.model.Product
 import com.example.gochat.data.model.Store
 import com.example.gochat.databinding.DialogAddProductBinding
 import com.example.gochat.databinding.DialogEditStoreBinding
+import androidx.paging.LoadState
 import com.example.gochat.databinding.FragmentMarketplaceBinding
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.tabs.TabLayout
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
+@AndroidEntryPoint
 class MarketplaceFragment : Fragment() {
 
     private var _binding: FragmentMarketplaceBinding? = null
@@ -210,6 +214,10 @@ class MarketplaceFragment : Fragment() {
             showEditStoreBottomSheet()
         }
 
+        binding.btnViewInsights.setOnClickListener {
+            startActivity(Intent(requireContext(), SellerInsightsActivity::class.java))
+        }
+
         binding.layoutSelectStoreLogo.setOnClickListener {
             pickStoreLogoLauncher.launch("image/*")
         }
@@ -308,6 +316,12 @@ class MarketplaceFragment : Fragment() {
 
         val selectedProductUris = mutableListOf<Uri>()
 
+        // Variants setup
+        val variantAdapter = VariantInputAdapter()
+        dialogBinding.rvVariants.layoutManager = LinearLayoutManager(requireContext())
+        dialogBinding.rvVariants.adapter = variantAdapter
+        dialogBinding.btnAddVariant.setOnClickListener { variantAdapter.addVariant() }
+
         fun updatePreviews() {
             val count = selectedProductUris.size
             dialogBinding.tvPhotosCount.text = "$count/3 selected"
@@ -390,6 +404,7 @@ class MarketplaceFragment : Fragment() {
             }
             val originalPrice = originalPriceStr.toDoubleOrNull() ?: 0.0
             val stock = stockStr.toIntOrNull() ?: 10
+            val variants = variantAdapter.getVariants()
 
             dialogBinding.btnSubmitProduct.isEnabled = false
             dialogBinding.layoutUploadProgress.visibility = View.VISIBLE
@@ -400,42 +415,46 @@ class MarketplaceFragment : Fragment() {
             }
 
             lifecycleScope.launch {
-                val uploadedUrls = mutableListOf<String>()
-
-                withContext(Dispatchers.IO) {
-                    selectedProductUris.forEachIndexed { idx, uri ->
-                        val compressed = ImageCompressor.compressImageUri(
+                val imageUrls = mutableListOf<String>()
+                for ((idx, uri) in selectedProductUris.withIndex()) {
+                    dialogBinding.tvUploadStatus.text = "Compressing & uploading image ${idx + 1}/${selectedProductUris.size}..."
+                    val compressed = withContext(Dispatchers.IO) {
+                        ImageCompressor.compressImageUri(
                             requireContext(),
                             uri,
                             maxDimension = 1024,
                             quality = 80
                         )
-                        if (compressed != null) {
-                            val uploaded = viewModel.uploadMedia(
-                                bytes = compressed.bytes,
-                                mimeType = compressed.mimeType,
-                                fileName = "product_${System.currentTimeMillis()}_$idx.jpg"
-                            )
-                            if (!uploaded.isNullOrBlank()) {
-                                uploadedUrls.add(uploaded)
-                            } else {
-                                uploadedUrls.add(compressed.dataUri)
-                            }
+                    }
+                    if (compressed != null) {
+                        val uploaded = viewModel.uploadMedia(
+                            compressed.bytes,
+                            compressed.mimeType,
+                            "product_${System.currentTimeMillis()}_$idx.jpg"
+                        )
+                        if (!uploaded.isNullOrBlank()) {
+                            imageUrls.add(uploaded)
+                        } else {
+                            imageUrls.add(compressed.dataUri)
                         }
+                    } else {
+                        imageUrls.add(uri.toString())
                     }
                 }
 
+                dialogBinding.tvUploadStatus.text = "Publishing product..."
                 viewModel.addProduct(
                     name = title,
                     price = price,
                     originalPrice = originalPrice,
                     category = category,
                     stock = stock,
-                    imageUrls = uploadedUrls,
+                    imageUrls = imageUrls,
                     description = description,
+                    variants = variants,
                     onSuccess = {
                         dialog.dismiss()
-                        Toast.makeText(requireContext(), "✅ Product published instantly to Marketplace!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(requireContext(), "✅ Product published successfully!", Toast.LENGTH_LONG).show()
                     },
                     onError = { err ->
                         dialogBinding.btnSubmitProduct.isEnabled = true
@@ -579,6 +598,13 @@ class MarketplaceFragment : Fragment() {
         dialogBinding.etProductStock.setText(product.stock.toString())
         dialogBinding.etProductDescription.setText(product.description)
 
+        // Variants setup
+        val variantAdapter = VariantInputAdapter()
+        dialogBinding.rvVariants.layoutManager = LinearLayoutManager(requireContext())
+        dialogBinding.rvVariants.adapter = variantAdapter
+        variantAdapter.setVariants(product.variants)
+        dialogBinding.btnAddVariant.setOnClickListener { variantAdapter.addVariant() }
+
         // Photo slots management
         val existingPhotoUrls = product.imageUrls.toMutableList()
         if (existingPhotoUrls.isEmpty() && product.primaryImage.isNotBlank()) {
@@ -685,6 +711,7 @@ class MarketplaceFragment : Fragment() {
             }
             val originalPrice = originalPriceStr.toDoubleOrNull() ?: 0.0
             val stock = stockStr.toIntOrNull() ?: 10
+            val variants = variantAdapter.getVariants()
 
             dialogBinding.btnSubmitProduct.isEnabled = false
             dialogBinding.layoutUploadProgress.visibility = View.VISIBLE
@@ -728,6 +755,7 @@ class MarketplaceFragment : Fragment() {
                     stock = stock,
                     imageUrls = finalUrls,
                     description = description,
+                    variants = variants,
                     onSuccess = {
                         dialog.dismiss()
                         Toast.makeText(requireContext(), "Product updated!", Toast.LENGTH_SHORT).show()
@@ -760,12 +788,26 @@ class MarketplaceFragment : Fragment() {
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                // 1. Explore Products
+                // 1. Explore Products (Paged)
                 launch {
-                    viewModel.products.collect { products ->
-                        productAdapter.submitList(products)
-                        binding.swipeRefresh.isRefreshing = false
-                        binding.layoutEmptyExplore.visibility = if (products.isEmpty()) View.VISIBLE else View.GONE
+                    viewModel.pagedProducts.collectLatest { pagingData ->
+                        productAdapter.submitData(pagingData)
+                    }
+                }
+
+                // Real-time refresh trigger
+                launch {
+                    viewModel.refreshEvent.collect {
+                        productAdapter.refresh()
+                    }
+                }
+
+                // Load State for Explore Products
+                launch {
+                    productAdapter.loadStateFlow.collectLatest { loadStates ->
+                        binding.swipeRefresh.isRefreshing = loadStates.refresh is LoadState.Loading
+                        val isListEmpty = loadStates.refresh is LoadState.NotLoading && productAdapter.itemCount == 0
+                        binding.layoutEmptyExplore.visibility = if (isListEmpty) View.VISIBLE else View.GONE
                     }
                 }
 

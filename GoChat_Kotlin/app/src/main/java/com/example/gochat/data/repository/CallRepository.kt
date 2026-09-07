@@ -2,23 +2,24 @@ package com.example.gochat.data.repository
 
 import android.content.Context
 import com.example.gochat.data.api.GoChatApiService
-import com.example.gochat.data.api.NetworkModule
 import com.example.gochat.data.api.TokenManager
-import com.example.gochat.data.db.AppDatabase
 import com.example.gochat.data.db.ChatDao
 import com.example.gochat.data.model.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.*
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Repository for voice/video calls — start, accept, reject, end, signaling, history.
  * Persists call history in Room for the Calls tab.
  */
-class CallRepository(private val context: Context) {
-
-    private val api: GoChatApiService get() = NetworkModule.getApiService(context)
-    private val dao: ChatDao get() = AppDatabase.getInstance(context).chatDao()
-    private val tokenManager: TokenManager get() = TokenManager.getInstance(context)
+@Singleton
+class CallRepository @Inject constructor(
+    private val api: GoChatApiService,
+    private val dao: ChatDao,
+    private val tokenManager: TokenManager
+) {
 
     /** Room Flow for the calls history list. */
     fun observeCalls(): Flow<List<CallRecord>> = dao.getAllCalls()

@@ -6,12 +6,18 @@ import com.example.gochat.data.repository.AuthRepository
 import com.example.gochat.data.repository.ChatRepository
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class GoChatFirebaseMessagingService : FirebaseMessagingService() {
+
+    @Inject lateinit var tokenManager: TokenManager
+    @Inject lateinit var authRepository: AuthRepository
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -34,11 +40,9 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
         Log.d(TAG, "FCM Token received ($source): $token")
 
         serviceScope.launch {
-            val tokenManager = TokenManager.getInstance(applicationContext)
             tokenManager.fcmToken = token
 
             if (tokenManager.isLoggedIn) {
-                val authRepository = AuthRepository(applicationContext)
                 try {
                     authRepository.subscribePush(token, "android")
                     Log.d(TAG, "Token from $source registered with backend successfully.")
@@ -82,6 +86,20 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
         val isGroup = data["is_group"]?.toBoolean() 
             ?: data["isGroup"]?.toBoolean() 
             ?: false
+
+        val eventType = data["type"] ?: data["event_type"] ?: ""
+        if (eventType == "order_status" || eventType == "order_update") {
+            val orderId = data["order_id"] ?: ""
+            NotificationHelper.showChatNotification(
+                context = applicationContext,
+                conversationId = "order_$orderId",
+                title = title,
+                body = body,
+                senderAvatar = "",
+                isGroup = false
+            )
+            return
+        }
 
         // Suppression check: using a static/shared state is better, but for now we fix the instance issue
         val activeConv = ChatRepository.activeConversationIdStatic

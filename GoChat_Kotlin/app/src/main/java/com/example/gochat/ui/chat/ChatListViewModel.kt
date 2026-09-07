@@ -3,7 +3,9 @@ package com.example.gochat.ui.chat
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.gochat.data.api.NetworkModule
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import androidx.paging.filter
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.model.Conversation
 import com.example.gochat.data.model.ConversationType
@@ -12,16 +14,21 @@ import com.example.gochat.data.model.UserStories
 import com.example.gochat.data.repository.AuthRepository
 import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.data.repository.StoryRepository
+import com.example.gochat.data.websocket.GoChatWebSocket
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class ChatListViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val chatRepository = ChatRepository(application)
-    private val storyRepository = StoryRepository(application)
-    private val authRepository = AuthRepository(application)
-    private val tokenManager = TokenManager.getInstance(application)
-    private val webSocket = NetworkModule.getWebSocket(application)
+@HiltViewModel
+class ChatListViewModel @Inject constructor(
+    application: Application,
+    private val chatRepository: ChatRepository,
+    private val storyRepository: StoryRepository,
+    private val authRepository: AuthRepository,
+    private val tokenManager: TokenManager,
+    private val webSocket: GoChatWebSocket
+) : AndroidViewModel(application) {
 
     val selectedFilter = MutableStateFlow("All")
     val searchQuery = MutableStateFlow("")
@@ -33,7 +40,26 @@ class ChatListViewModel(application: Application) : AndroidViewModel(application
     private val _newConversationEvent = MutableSharedFlow<Conversation>(extraBufferCapacity = 1)
     val newConversationEvent: SharedFlow<Conversation> = _newConversationEvent.asSharedFlow()
 
-    // Room DB Flow of all conversations
+    // Paged Conversations Flow
+    val pagedConversations: Flow<PagingData<Conversation>> = chatRepository.getConversationsPaged()
+        .cachedIn(viewModelScope)
+        .combine(combine(selectedFilter, searchQuery) { f, q -> f to q }) { pagingData, (filter, query) ->
+            pagingData.filter { conv ->
+                val matchesFilter = when (filter) {
+                    "Unread" -> conv.unreadCount > 0
+                    "Groups" -> conv.type == ConversationType.GROUP
+                    "Channels" -> conv.type == ConversationType.CHANNEL
+                    else -> true
+                }
+                val matchesQuery = if (query.isBlank()) true else {
+                    conv.title.contains(query, ignoreCase = true) || 
+                    conv.lastMessageText?.contains(query, ignoreCase = true) == true
+                }
+                matchesFilter && matchesQuery
+            }
+        }
+
+    // Room DB Flow of all conversations (keep for counts)
     val allConversations: StateFlow<List<Conversation>> = chatRepository.observeConversations()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 

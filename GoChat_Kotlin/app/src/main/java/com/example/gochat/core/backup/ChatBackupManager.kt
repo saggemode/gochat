@@ -6,6 +6,8 @@ import com.example.gochat.data.api.NetworkModule
 import com.example.gochat.data.db.AppDatabase
 import com.example.gochat.data.model.Conversation
 import com.example.gochat.data.model.Message
+import com.example.gochat.data.db.ChatDao
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -15,14 +17,18 @@ import java.io.File
 import java.security.MessageDigest
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
+import javax.inject.Inject
+import javax.inject.Singleton
 
 class InvalidPasswordException(message: String = "Incorrect password for encrypted backup") : Exception(message)
 
-class ChatBackupManager(private val context: Context) {
+@Singleton
+class ChatBackupManager @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val dao: ChatDao,
+    private val json: Json
+) {
 
-    private val db = AppDatabase.getInstance(context)
-    private val dao = db.chatDao()
-    private val json = NetworkModule.json
     private val prefs = context.getSharedPreferences("gochat_backup_prefs", Context.MODE_PRIVATE)
 
     companion object {

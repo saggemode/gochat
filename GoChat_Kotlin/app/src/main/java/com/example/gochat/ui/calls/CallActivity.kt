@@ -9,11 +9,14 @@ import com.example.gochat.core.webrtc.WebRTCClient
 import com.example.gochat.data.model.CallRecord
 import com.example.gochat.data.repository.CallRepository
 import com.example.gochat.databinding.ActivityCallBinding
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.webrtc.*
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class CallActivity : AppCompatActivity() {
 
     companion object {
@@ -25,7 +28,9 @@ class CallActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityCallBinding
     private lateinit var rtcClient: WebRTCClient
-    private lateinit var callRepo: CallRepository
+    
+    @Inject
+    lateinit var callRepo: CallRepository
     
     private val callId: String by lazy { intent.getStringExtra(EXTRA_CALL_ID).orEmpty() }
     private val targetUserId: String by lazy { intent.getStringExtra(EXTRA_TARGET_USER_ID).orEmpty() }
@@ -37,7 +42,6 @@ class CallActivity : AppCompatActivity() {
         binding = ActivityCallBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        callRepo = CallRepository(this)
         setupWebRTC()
         setupUI()
         

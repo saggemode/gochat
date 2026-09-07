@@ -8,29 +8,26 @@ import androidx.core.content.ContextCompat
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.model.SyncedContact
 import com.example.gochat.data.repository.AuthRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class ContactSyncManager(private val context: Context) {
+@Singleton
+class ContactSyncManager @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val authRepo: AuthRepository,
+    private val tokenManager: TokenManager
+) {
 
-    private val authRepo = AuthRepository(context)
-    private val tokenManager = TokenManager.getInstance(context)
     private val prefs = context.getSharedPreferences("gochat_contacts_pref", Context.MODE_PRIVATE)
 
     companion object {
         private const val CACHE_KEY = "gochat_cached_synced_contacts"
         private val json = Json { ignoreUnknownKeys = true }
-
-        @Volatile
-        private var instance: ContactSyncManager? = null
-
-        fun getInstance(context: Context): ContactSyncManager {
-            return instance ?: synchronized(this) {
-                instance ?: ContactSyncManager(context.applicationContext).also { instance = it }
-            }
-        }
     }
 
     fun hasPermission(): Boolean {

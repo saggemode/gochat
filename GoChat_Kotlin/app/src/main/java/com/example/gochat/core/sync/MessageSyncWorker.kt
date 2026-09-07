@@ -3,25 +3,27 @@ package com.example.gochat.core.sync
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.example.gochat.data.api.NetworkModule
-import com.example.gochat.data.db.AppDatabase
+import com.example.gochat.data.api.GoChatApiService
+import com.example.gochat.data.db.ChatDao
 import com.example.gochat.data.model.MessageStatus
 import com.example.gochat.data.model.MessageType
 import com.example.gochat.data.repository.AuthRepository
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
 import kotlinx.serialization.json.*
 import java.io.File
-import java.io.InputStream
 
-class MessageSyncWorker(
-    appContext: Context,
-    workerParams: WorkerParameters
+@HiltWorker
+class MessageSyncWorker @AssistedInject constructor(
+    @Assisted appContext: Context,
+    @Assisted workerParams: WorkerParameters,
+    private val dao: ChatDao,
+    private val authRepo: AuthRepository,
+    private val api: GoChatApiService
 ) : CoroutineWorker(appContext, workerParams) {
-
-    private val dao = AppDatabase.getInstance(appContext).chatDao()
-    private val authRepo = AuthRepository(appContext)
-    private val api = NetworkModule.getApiService(appContext)
 
     override suspend fun doWork(): Result {
         val pendingMessages = dao.getPendingMessages()
@@ -57,16 +59,22 @@ class MessageSyncWorker(
                     put("type", getMessageTypeInt(msg.type))
                     finalMediaUrl?.let { put("media_url", it) }
                     msg.replyToId?.let { put("parent_id", it) }
+                    if (msg.expiresAt != null && msg.expiresAt > 0) {
+                        put("expires_at", msg.expiresAt / 1000L) // Backend expects seconds
+                    }
                 }
 
                 val response = api.sendMessage(msg.conversationId, body)
                 if (response.isSuccessful) {
+                    Log.d("MessageSyncWorker", "Successfully synced message ${msg.id}")
                     dao.updateMessageStatus(msg.id, MessageStatus.SENT)
                     // If media was uploaded, update local URL to remote URL
                     if (finalMediaUrl != msg.mediaUrl) {
                         dao.insertMessage(msg.copy(status = MessageStatus.SENT, mediaUrl = finalMediaUrl))
                     }
                 } else {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("MessageSyncWorker", "Failed to sync message ${msg.id}: Code ${response.code()}, Error: $errorBody")
                     hasFailure = true
                 }
             } catch (e: Exception) {

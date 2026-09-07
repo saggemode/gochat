@@ -17,7 +17,7 @@ import com.example.gochat.data.model.*
         CartItem::class,
         Order::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

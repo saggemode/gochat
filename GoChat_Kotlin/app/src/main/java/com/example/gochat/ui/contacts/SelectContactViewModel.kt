@@ -8,15 +8,19 @@ import com.example.gochat.core.contacts.ContactSyncManager
 import com.example.gochat.data.model.Conversation
 import com.example.gochat.data.model.SyncedContact
 import com.example.gochat.data.repository.ChatRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
-class SelectContactViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val syncManager = ContactSyncManager.getInstance(application)
-    private val chatRepository = ChatRepository(application)
+@HiltViewModel
+class SelectContactViewModel @Inject constructor(
+    application: Application,
+    private val syncManager: ContactSyncManager,
+    private val chatRepository: ChatRepository
+) : AndroidViewModel(application) {
 
     private val _allContacts = MutableStateFlow<List<SyncedContact>>(emptyList())
     val allContacts: StateFlow<List<SyncedContact>> = _allContacts.asStateFlow()

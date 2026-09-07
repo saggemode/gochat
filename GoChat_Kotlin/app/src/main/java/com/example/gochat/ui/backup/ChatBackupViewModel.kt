@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.gochat.core.backup.BackupMetadata
 import com.example.gochat.core.backup.ChatBackupManager
 import com.example.gochat.core.backup.GoogleDriveBackupManager
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,11 +14,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import javax.inject.Inject
 
-class ChatBackupViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class ChatBackupViewModel @Inject constructor(
+    application: Application,
+    private val backupManager: ChatBackupManager,
+    private val driveManager: GoogleDriveBackupManager
+) : AndroidViewModel(application) {
 
-    private val backupManager = ChatBackupManager(application)
-    private val driveManager = GoogleDriveBackupManager(application)
     private val prefs = application.getSharedPreferences("gochat_backup_settings", Application.MODE_PRIVATE)
 
     private val _lastBackup = MutableStateFlow<BackupMetadata?>(null)

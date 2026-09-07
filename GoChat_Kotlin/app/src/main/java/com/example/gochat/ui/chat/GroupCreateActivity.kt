@@ -5,16 +5,18 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.gochat.R
-import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.databinding.ActivityGroupCreateBinding
 import com.example.gochat.databinding.ItemSelectedMemberBinding
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class GroupCreateActivity : AppCompatActivity() {
 
     companion object {
@@ -23,20 +25,19 @@ class GroupCreateActivity : AppCompatActivity() {
     }
 
     private lateinit var binding: ActivityGroupCreateBinding
-    private lateinit var chatRepository: ChatRepository
+    private val viewModel: GroupCreateViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityGroupCreateBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        chatRepository = ChatRepository(this)
-
         val memberIds = intent.getStringArrayExtra(EXTRA_MEMBER_IDS)?.toList() ?: emptyList()
         val memberNames = intent.getStringArrayExtra(EXTRA_MEMBER_NAMES)?.toList() ?: emptyList()
 
         setupToolbar()
         setupMembersList(memberNames)
+        observeViewModel()
         
         binding.fabCreate.setOnClickListener {
             val groupName = binding.etGroupName.text?.toString()?.trim().orEmpty()
@@ -45,7 +46,7 @@ class GroupCreateActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
             
-            createGroup(groupName, memberIds)
+            viewModel.createGroup(groupName, memberIds)
         }
     }
 
@@ -62,31 +63,30 @@ class GroupCreateActivity : AppCompatActivity() {
         binding.rvSelectedMembers.adapter = SelectedMembersAdapter(names)
     }
 
-    private fun createGroup(name: String, memberIds: List<String>) {
-        binding.fabCreate.isEnabled = false
+    private fun observeViewModel() {
         lifecycleScope.launch {
-            val result = chatRepository.createConversation(
-                name = name,
-                memberIds = memberIds,
-                isGroup = true
-            )
-            
-            result.fold(
-                onSuccess = { conversation ->
-                    val intent = Intent(this@GroupCreateActivity, ChatRoomActivity::class.java).apply {
-                        putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, conversation.id)
-                        putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, conversation.title)
-                        putExtra(ChatRoomActivity.EXTRA_IS_GROUP, true)
-                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    startActivity(intent)
-                    finish()
-                },
-                onFailure = { error ->
-                    binding.fabCreate.isEnabled = true
-                    Toast.makeText(this@GroupCreateActivity, "Error: ${error.message}", Toast.LENGTH_LONG).show()
+            viewModel.isLoading.collect { loading ->
+                binding.fabCreate.isEnabled = !loading
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.successEvent.collect { conversation ->
+                val intent = Intent(this@GroupCreateActivity, ChatRoomActivity::class.java).apply {
+                    putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, conversation.id)
+                    putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, conversation.title)
+                    putExtra(ChatRoomActivity.EXTRA_IS_GROUP, true)
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
                 }
-            )
+                startActivity(intent)
+                finish()
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.errorEvent.collect { error ->
+                Toast.makeText(this@GroupCreateActivity, "Error: $error", Toast.LENGTH_LONG).show()
+            }
         }
     }
 

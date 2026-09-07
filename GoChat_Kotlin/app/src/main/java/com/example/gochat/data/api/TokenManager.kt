@@ -22,6 +22,7 @@ class TokenManager private constructor(context: Context) {
         private const val KEY_USER_AVATAR = "user_avatar_url"
         private const val KEY_USER_STATUS = "user_status_text"
         private const val KEY_FCM_TOKEN = "fcm_token"
+        private const val KEY_BIOMETRIC_LOCK = "biometric_lock_enabled"
 
         @Volatile
         private var INSTANCE: TokenManager? = null
@@ -111,6 +112,10 @@ class TokenManager private constructor(context: Context) {
     var fcmToken: String?
         get() = prefs.getString(KEY_FCM_TOKEN, null)
         set(value) = prefs.edit().putString(KEY_FCM_TOKEN, value).apply()
+
+    var isBiometricLockEnabled: Boolean
+        get() = prefs.getBoolean(KEY_BIOMETRIC_LOCK, false)
+        set(value) = prefs.edit().putBoolean(KEY_BIOMETRIC_LOCK, value).apply()
 
     // ── Session Helpers ──────────────────────────────────────────
 

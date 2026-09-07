@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Base64
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.repository.AuthRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
@@ -14,12 +15,17 @@ import org.whispersystems.libsignal.state.PreKeyBundle
 import org.whispersystems.libsignal.util.KeyHelper
 import org.whispersystems.libsignal.ecc.Curve
 import org.whispersystems.libsignal.IdentityKey
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class EncryptionManager(private val context: Context) {
+@Singleton
+class EncryptionManager @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val authRepo: AuthRepository,
+    private val tokenManager: TokenManager
+) {
 
     private val signalStore = SignalStore(context)
-    private val authRepo = AuthRepository(context)
-    private val tokenManager = TokenManager.getInstance(context)
 
     suspend fun initializeAndRegisterKeys() {
         if (tokenManager.userId == null) return

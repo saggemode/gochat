@@ -1,16 +1,21 @@
 package com.example.gochat.data.repository
 
 import android.content.Context
-import com.example.gochat.data.api.NetworkModule
 import com.example.gochat.data.model.GifItem
 import com.example.gochat.data.model.StickerItem
 import com.example.gochat.data.model.StickerPack
 import kotlinx.serialization.json.*
+import okhttp3.OkHttpClient
 import okhttp3.Request
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class MediaRepository(private val context: Context) {
+@Singleton
+class MediaRepository @Inject constructor(
+    private val okHttpClient: OkHttpClient,
+    private val json: Json
+) {
 
-    private val json = Json { ignoreUnknownKeys = true }
     private val giphyKey = "dc6zaTOxFJmzC" // Public Beta Key
     private val tenorKey = "LIVDSRZULELA"
 
@@ -38,7 +43,7 @@ class MediaRepository(private val context: Context) {
                 "https://api.giphy.com/v1/gifs/search?api_key=$giphyKey&q=$query&limit=$limit"
             }
 
-            val response = NetworkModule.getOkHttpClient(context).newCall(
+            val response = okHttpClient.newCall(
                 Request.Builder().url(url).build()
             ).execute()
 
@@ -68,7 +73,7 @@ class MediaRepository(private val context: Context) {
                 "https://tenor.googleapis.com/v2/search?q=$query&key=$tenorKey&client_key=gochat_app&limit=$limit&media_filter=gif,tinygif"
             }
 
-            val response = NetworkModule.getOkHttpClient(context).newCall(
+            val response = okHttpClient.newCall(
                 Request.Builder().url(url).build()
             ).execute()
 

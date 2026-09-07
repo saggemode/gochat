@@ -8,6 +8,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.Scope
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
@@ -20,6 +21,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
+import javax.inject.Inject
+import javax.inject.Singleton
 
 data class GoogleDriveBackupInfo(
     val fileId: String,
@@ -28,14 +31,16 @@ data class GoogleDriveBackupInfo(
     val modifiedTime: Long
 )
 
-class GoogleDriveBackupManager(private val context: Context) {
+@Singleton
+class GoogleDriveBackupManager @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val json: Json
+) {
 
     companion object {
         const val DRIVE_APPDATA_SCOPE = "https://www.googleapis.com/auth/drive.appdata"
         const val DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file"
     }
-
-    private val json = NetworkModule.json
 
     private val okHttpClient = OkHttpClient.Builder()
         .connectTimeout(60, TimeUnit.SECONDS)

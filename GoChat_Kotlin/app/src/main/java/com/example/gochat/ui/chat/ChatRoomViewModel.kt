@@ -4,11 +4,15 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.gochat.data.api.NetworkModule
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import com.example.gochat.core.crypto.EncryptionManager
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.model.*
 import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.core.sound.ChatSoundManager
+import com.example.gochat.data.websocket.GoChatWebSocket
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -18,16 +22,28 @@ import kotlinx.serialization.json.*
 import java.io.File
 import java.io.FileOutputStream
 import java.util.regex.Pattern
+import javax.inject.Inject
 
-class ChatRoomViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val chatRepository = ChatRepository(application)
-    private val tokenManager = TokenManager.getInstance(application)
-    private val webSocket = NetworkModule.getWebSocket(application)
-    private val soundManager = ChatSoundManager(application)
+@HiltViewModel
+class ChatRoomViewModel @Inject constructor(
+    application: Application,
+    private val chatRepository: ChatRepository,
+    private val tokenManager: TokenManager,
+    private val webSocket: GoChatWebSocket,
+    private val soundManager: ChatSoundManager,
+    private val encryptionManager: EncryptionManager
+) : AndroidViewModel(application) {
 
     private val _conversationId = MutableStateFlow("")
     val conversationId: StateFlow<String> = _conversationId.asStateFlow()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val messagesPaged: Flow<PagingData<Message>> = _conversationId
+        .flatMapLatest { id ->
+            if (id.isEmpty()) flowOf(PagingData.empty())
+            else chatRepository.getMessagesPaged(id)
+        }
+        .cachedIn(viewModelScope)
 
     private val _replyingTo = MutableStateFlow<Message?>(null)
     val replyingTo: StateFlow<Message?> = _replyingTo.asStateFlow()
@@ -97,7 +113,7 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
                     currentPartnerId?.let { partnerId ->
                         launch(Dispatchers.IO) {
                             try {
-                                com.example.gochat.core.crypto.EncryptionManager(getApplication()).establishSession(partnerId)
+                                encryptionManager.establishSession(partnerId)
                             } catch (_: Exception) {}
                         }
                     }

@@ -93,6 +93,12 @@
             android:exported="false"
             android:theme="@style/Theme.GoChat" />
 
+        <!-- Security Verification Activity -->
+        <activity
+            android:name=".ui.security.SecurityVerificationActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+
         <!-- Call Activity -->
         <activity
             android:name=".ui.calls.CallActivity"
@@ -156,6 +162,10 @@
             android:name=".ui.marketplace.StorefrontActivity"
             android:exported="false"
             android:theme="@style/Theme.GoChat" />
+        <activity
+            android:name=".ui.marketplace.SellerInsightsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
@@ -196,6 +206,18 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
+
+        <!-- Disable default WorkManagerInitializer so HiltWorkerFactory in GoChatApp is used -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
 
     </application>
 

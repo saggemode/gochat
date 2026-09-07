@@ -15,8 +15,10 @@ import com.example.gochat.R
 import com.example.gochat.core.media.MediaImageHelper
 import com.example.gochat.data.model.GroupMember
 import com.example.gochat.databinding.ActivityGroupInfoBinding
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class GroupInfoActivity : AppCompatActivity() {
 
     companion object {

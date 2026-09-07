@@ -14,8 +14,10 @@ import com.example.gochat.data.model.BotConfig
 import com.example.gochat.data.model.BotPermission
 import com.example.gochat.databinding.ActivityBotManagementBinding
 import com.example.gochat.databinding.ItemBotPermissionBinding
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class BotManagementActivity : AppCompatActivity() {
 
     companion object {

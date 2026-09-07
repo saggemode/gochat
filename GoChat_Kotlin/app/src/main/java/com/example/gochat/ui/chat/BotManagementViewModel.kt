@@ -4,11 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.gochat.data.model.BotConfig
 import com.example.gochat.data.model.BotPermission
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class BotManagementViewModel : ViewModel() {
+@HiltViewModel
+class BotManagementViewModel @Inject constructor() : ViewModel() {
 
     private val _botConfig = MutableStateFlow<BotConfig?>(null)
     val botConfig: StateFlow<BotConfig?> = _botConfig

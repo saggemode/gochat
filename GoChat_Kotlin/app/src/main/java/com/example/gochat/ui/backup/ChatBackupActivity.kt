@@ -20,17 +20,22 @@ import com.example.gochat.databinding.ActivityChatBackupBinding
 import com.example.gochat.databinding.DialogBackupPasswordBinding
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class ChatBackupActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityChatBackupBinding
     private val viewModel: ChatBackupViewModel by viewModels()
-    private lateinit var driveManager: GoogleDriveBackupManager
+    
+    @Inject
+    lateinit var driveManager: GoogleDriveBackupManager
 
     private val googleSignInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -51,8 +56,6 @@ class ChatBackupActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityChatBackupBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        driveManager = GoogleDriveBackupManager(this)
 
         setupToolbar()
         setupActions()

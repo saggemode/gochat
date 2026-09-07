@@ -5,19 +5,15 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.repository.AuthRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import javax.inject.Inject
 
 data class AuthUiState(
     val isRegister: Boolean = true,
@@ -36,10 +32,12 @@ data class AuthUiState(
     val errorMessage: String? = null
 )
 
-class AuthViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val authRepository = AuthRepository(application)
-    private val tokenManager = TokenManager.getInstance(application)
+@HiltViewModel
+class AuthViewModel @Inject constructor(
+    application: Application,
+    private val authRepository: AuthRepository,
+    private val tokenManager: TokenManager
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()

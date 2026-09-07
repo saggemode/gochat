@@ -1,6 +1,7 @@
 package com.example.gochat.data.repository
 
 import android.content.Context
+import android.net.Uri
 import com.example.gochat.data.api.GoChatApiService
 import com.example.gochat.data.api.NetworkModule
 import com.example.gochat.data.api.TokenManager
@@ -11,25 +12,55 @@ import com.example.gochat.core.crypto.EncryptionManager
 import com.example.gochat.core.notification.NotificationHelper
 import com.example.gochat.data.api.ApiConstants
 import androidx.work.*
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import com.example.gochat.core.sync.MessageSyncWorker
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
 import java.util.concurrent.TimeUnit
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Central repository for conversations, messages, and real-time event processing.
  * Combines Retrofit API, Room DB (offline-first), and WebSocket event handling.
  */
-class ChatRepository(private val context: Context) {
+@Singleton
+class ChatRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val api: GoChatApiService,
+    private val dao: ChatDao,
+    private val tokenManager: TokenManager,
+    private val encryptionManager: EncryptionManager,
+    private val workManager: WorkManager
+) {
 
-    private val api: GoChatApiService get() = NetworkModule.getApiService(context)
-    private val dao: ChatDao get() = AppDatabase.getInstance(context).chatDao()
-    private val tokenManager: TokenManager get() = TokenManager.getInstance(context)
-    private val encryptionManager = EncryptionManager(context)
-    private val workManager = WorkManager.getInstance(context)
+    fun getMessagesPaged(convId: String): Flow<PagingData<Message>> {
+        return Pager(
+            config = PagingConfig(
+                pageSize = 50,
+                enablePlaceholders = false,
+                initialLoadSize = 50
+            ),
+            pagingSourceFactory = { dao.getMessagesForConversationPaged(convId) }
+        ).flow
+    }
+
+    fun getConversationsPaged(): Flow<PagingData<Conversation>> {
+        return Pager(
+            config = PagingConfig(
+                pageSize = 20,
+                enablePlaceholders = false
+            ),
+            pagingSourceFactory = { dao.getAllConversationsPaged() }
+        ).flow
+    }
 
     /** The ID of the conversation the user is currently viewing (null = chat list). */
     var activeConversationId: String?
@@ -180,33 +211,112 @@ class ChatRepository(private val context: Context) {
         mentionedUserIds: List<String> = emptyList(),
         disappearingDurationSeconds: Int? = null
     ): Result<Message> {
+        // 1. Insert optimistic message into local Room DB immediately (status = SENDING)
+        var localMsg = createOptimisticMessage(
+            conversationId, content, type, mediaUrl,
+            replyToId, replyToText, replyToSenderName
+        ).copy(status = MessageStatus.SENDING)
+        
+        if (disappearingDurationSeconds != null && disappearingDurationSeconds > 0) {
+            localMsg = localMsg.copy(
+                disappearingDurationSeconds = disappearingDurationSeconds,
+                expiresAt = System.currentTimeMillis() + (disappearingDurationSeconds * 1000L)
+            )
+        }
+        dao.insertMessage(localMsg)
+
         return try {
-            // Reliable Sync: Insert into local DB with SENDING status first
-            var localMsg = createOptimisticMessage(
-                conversationId, content, type, mediaUrl,
-                replyToId, replyToText, replyToSenderName
-            ).copy(status = MessageStatus.SENDING)
-            
-            if (disappearingDurationSeconds != null && disappearingDurationSeconds > 0) {
-                localMsg = localMsg.copy(
-                    disappearingDurationSeconds = disappearingDurationSeconds,
-                    expiresAt = System.currentTimeMillis() + (disappearingDurationSeconds * 1000L)
-                )
+            // 2. Upload media first if it is a local device path / URI
+            var finalMediaUrl = mediaUrl
+            if (!finalMediaUrl.isNullOrBlank() && !finalMediaUrl.startsWith("http://") && !finalMediaUrl.startsWith("https://")) {
+                val uri = Uri.parse(finalMediaUrl)
+                val bytes = readUriBytes(uri)
+                if (bytes != null) {
+                    val mimeType = when (localMsg.type) {
+                        MessageType.IMAGE -> "image/jpeg"
+                        MessageType.VIDEO -> "video/mp4"
+                        MessageType.VOICE, MessageType.AUDIO -> "audio/mp4"
+                        else -> "application/octet-stream"
+                    }
+                    val uploaded = uploadMedia(bytes, mimeType, uri.lastPathSegment ?: "media.jpg")
+                    if (!uploaded.isNullOrBlank()) {
+                        finalMediaUrl = uploaded
+                    }
+                }
             }
-            
-            dao.insertMessage(localMsg)
-            
-            // Trigger WorkManager for background delivery
+
+            // 3. Directly deliver via HTTP API for instant sub-second delivery
+            val body = buildJsonObject {
+                put("content", content)
+                put("type", type)
+                finalMediaUrl?.let { put("media_url", it) }
+                telegramFileId?.let { put("telegram_file_id", it) }
+                mediaThumbnail?.let { put("media_thumbnail", it) }
+                replyToId?.let { put("parent_id", it) }
+                if (mentionedUserIds.isNotEmpty()) {
+                    put("mentioned_user_ids", JsonArray(mentionedUserIds.map { JsonPrimitive(it) }))
+                }
+                if (localMsg.expiresAt != null && localMsg.expiresAt > 0) {
+                    put("expires_at", localMsg.expiresAt / 1000L)
+                }
+            }
+
+            val response = api.sendMessage(conversationId, body)
+            if (response.isSuccessful) {
+                val data = response.body() ?: buildJsonObject {}
+                val msgJson = data["message"]?.jsonObject ?: data
+                val parsed = Message.fromJson(msgJson, tokenManager.userId ?: "")
+                val finalMsg = parsed.copy(
+                    isMe = true,
+                    content = content, // Preserve local plaintext
+                    mediaUrl = if (!parsed.mediaUrl.isNullOrBlank()) parsed.mediaUrl else finalMediaUrl,
+                    status = MessageStatus.SENT
+                )
+
+                if (finalMsg.id != localMsg.id) {
+                    dao.deleteMessage(localMsg.id)
+                }
+                dao.insertMessage(finalMsg)
+                dao.updateLastMessage(
+                    convId = conversationId,
+                    lastText = if (finalMsg.content.length > 50) finalMsg.content.take(47) + "..." else finalMsg.content.ifBlank { "Media" },
+                    lastTime = finalMsg.createdAt,
+                    updatedAt = System.currentTimeMillis()
+                )
+                Result.success(finalMsg)
+            } else {
+                // Server returned non-200, enqueue WorkManager for background sync retry
+                enqueueSyncWorker(localMsg.id)
+                Result.success(localMsg)
+            }
+        } catch (_: Exception) {
+            // Offline / network failure: enqueue WorkManager for background retry
+            enqueueSyncWorker(localMsg.id)
+            Result.success(localMsg)
+        }
+    }
+
+    private fun enqueueSyncWorker(messageId: String) {
+        try {
             val syncRequest = OneTimeWorkRequestBuilder<MessageSyncWorker>()
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
                 .build()
-            
-            workManager.enqueueUniqueWork("msg_sync_${localMsg.id}", ExistingWorkPolicy.REPLACE, syncRequest)
+            workManager.enqueueUniqueWork("msg_sync_$messageId", ExistingWorkPolicy.REPLACE, syncRequest)
+        } catch (_: Exception) {}
+    }
 
-            Result.success(localMsg)
-        } catch (e: Exception) {
-            Result.failure(e)
+    private fun readUriBytes(uri: Uri): ByteArray? {
+        return try {
+            if (uri.scheme == null || uri.scheme == "file") {
+                val file = File(uri.path ?: uri.toString())
+                if (file.exists()) {
+                    return file.readBytes()
+                }
+            }
+            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        } catch (_: Exception) {
+            null
         }
     }
 

@@ -11,8 +11,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
+import androidx.paging.PagingDataAdapter
 import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import coil.transform.RoundedCornersTransformation
@@ -45,7 +45,7 @@ class MessageAdapter(
     private val onReplyClicked: (Message) -> Unit,
     private val onMessageLongClicked: ((Message) -> Unit)? = null,
     private val onPlayVoiceClicked: ((Message) -> Unit)? = null
-) : ListAdapter<Message, RecyclerView.ViewHolder>(DiffCallback) {
+) : PagingDataAdapter<Message, RecyclerView.ViewHolder>(DiffCallback) {
 
     private val adapterScope = CoroutineScope(Dispatchers.Main)
     private val linkCache = LruCache<String, LinkPreview>(50)
@@ -99,12 +99,12 @@ class MessageAdapter(
         recyclerView = rv
         
         AudioPlayerManager.onPlaybackStateChanged = { msgId, _ ->
-            val pos = currentList.indexOfFirst { it.id == msgId }
+            val pos = (0 until itemCount).indexOfFirst { getItem(it)?.id == msgId }
             if (pos != -1) notifyItemChanged(pos)
         }
 
         AudioPlayerManager.onProgressUpdate = { msgId, currentPos, total ->
-            val pos = currentList.indexOfFirst { it.id == msgId }
+            val pos = (0 until itemCount).indexOfFirst { getItem(it)?.id == msgId }
             if (pos != -1) {
                 val holder = recyclerView?.findViewHolderForAdapterPosition(pos)
                 val progress = currentPos.toFloat() / total.coerceAtLeast(1)
@@ -129,7 +129,7 @@ class MessageAdapter(
 
     override fun getItemViewType(position: Int): Int {
         val message = getItem(position)
-        return if (message.isMe) VIEW_TYPE_ME else VIEW_TYPE_OTHER
+        return if (message?.isMe == true) VIEW_TYPE_ME else VIEW_TYPE_OTHER
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -144,7 +144,7 @@ class MessageAdapter(
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        val message = getItem(position)
+        val message = getItem(position) ?: return
         if (holder is MessageMeViewHolder) {
             holder.bind(message)
         } else if (holder is MessageOtherViewHolder) {

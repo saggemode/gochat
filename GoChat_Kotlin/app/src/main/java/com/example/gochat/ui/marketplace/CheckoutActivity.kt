@@ -12,12 +12,18 @@ import com.example.gochat.R
 import com.example.gochat.data.model.CartItem
 import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.databinding.ActivityCheckoutBinding
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class CheckoutActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityCheckoutBinding
-    private val repository by lazy { MarketplaceRepository(this) }
+    
+    @Inject
+    lateinit var repository: MarketplaceRepository
+    
     private var cartItems: List<CartItem> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {

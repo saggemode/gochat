@@ -15,20 +15,24 @@ import com.example.gochat.data.repository.AuthRepository
 import com.example.gochat.data.model.LinkedDevice
 import com.example.gochat.databinding.ActivityLinkedDevicesBinding
 import com.example.gochat.databinding.ItemLinkedDeviceBinding
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class LinkedDevicesActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLinkedDevicesBinding
-    private lateinit var authRepo: AuthRepository
+    
+    @Inject
+    lateinit var authRepo: AuthRepository
+    
     private val devicesAdapter = DevicesAdapter()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityLinkedDevicesBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        authRepo = AuthRepository(this)
 
         setupToolbar()
         setupRecyclerView()

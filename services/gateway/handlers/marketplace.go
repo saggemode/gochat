@@ -148,7 +148,7 @@ func (h *BusinessHandler) CreateMarketplaceProduct(c *gin.Context) {
 		return
 	}
 
-	if h.hub != nil && resp != nil && resp.Product != nil {
+	if resp != nil && resp.Product != nil {
 		productMap := formatProductItem(resp.Product)
 		if catName := strings.TrimSpace(req.Category); catName != "" && productMap["category"] == "General" {
 			productMap["category"] = catName
@@ -158,10 +158,19 @@ func (h *BusinessHandler) CreateMarketplaceProduct(c *gin.Context) {
 			"type":    "new_product",
 			"product": productMap,
 		}
-		if b, err := json.Marshal(evt); err == nil {
-			h.hub.Broadcast(b, "")
+
+		evtJSON, _ := json.Marshal(evt)
+
+		// Publish to Redis for ALL gateway instances (including this one) to broadcast
+		if h.redis != nil {
+			h.redis.Publish(c.Request.Context(), "marketplace:global", evtJSON)
+		} else if h.hub != nil {
+			// Fallback to local broadcast if Redis is missing
+			h.hub.Broadcast(evtJSON, "")
 		}
 	}
+
+
 
 	c.JSON(http.StatusCreated, formatProductItem(resp.Product))
 }
@@ -282,8 +291,9 @@ func (h *BusinessHandler) GetMyProducts(c *gin.Context) {
 
 func (h *BusinessHandler) ListMarketplaceProducts(c *gin.Context) {
 	categoryID := c.Query("category_id")
-	sortBy := c.DefaultQuery("sort_by", "best_selling")
+	sortBy := c.DefaultQuery("sort_by", "newest")
 	search := c.Query("search")
+
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 

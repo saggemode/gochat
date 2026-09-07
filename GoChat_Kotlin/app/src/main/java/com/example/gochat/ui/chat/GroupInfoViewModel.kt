@@ -7,15 +7,19 @@ import com.example.gochat.data.model.GroupMember
 import com.example.gochat.data.model.GroupMetadata
 import com.example.gochat.data.repository.AuthRepository
 import com.example.gochat.data.repository.GroupRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class GroupInfoViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val groupRepo = GroupRepository(application)
-    private val authRepo = AuthRepository(application)
+@HiltViewModel
+class GroupInfoViewModel @Inject constructor(
+    application: Application,
+    private val groupRepo: GroupRepository,
+    private val authRepo: AuthRepository
+) : AndroidViewModel(application) {
 
     private val _metadata = MutableStateFlow<GroupMetadata?>(null)
     val metadata: StateFlow<GroupMetadata?> = _metadata.asStateFlow()

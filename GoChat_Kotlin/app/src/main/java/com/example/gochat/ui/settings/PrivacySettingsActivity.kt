@@ -6,24 +6,31 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.gochat.R
+import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.repository.AuthRepository
 import com.example.gochat.databinding.ActivityPrivacySettingsBinding
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class PrivacySettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityPrivacySettingsBinding
-    private lateinit var authRepo: AuthRepository
+    
+    @Inject
+    lateinit var authRepo: AuthRepository
+
+    @Inject
+    lateinit var tokenManager: TokenManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityPrivacySettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        authRepo = AuthRepository(this)
 
         setupToolbar()
         loadSettings()
@@ -46,6 +53,7 @@ class PrivacySettingsActivity : AppCompatActivity() {
                 binding.switchReadReceipts.isChecked = json["read_receipts_enabled"]?.jsonPrimitive?.booleanOrNull ?: true
             }
         }
+        binding.switchAppLock.isChecked = tokenManager.isBiometricLockEnabled
     }
 
     private fun setupListeners() {
@@ -57,6 +65,12 @@ class PrivacySettingsActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 authRepo.updatePrivacySettings(readReceipts = isChecked)
             }
+        }
+
+        binding.btnAppLock.setOnClickListener {
+            val newState = !binding.switchAppLock.isChecked
+            tokenManager.isBiometricLockEnabled = newState
+            binding.switchAppLock.isChecked = newState
         }
     }
 

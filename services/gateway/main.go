@@ -262,7 +262,7 @@ func main() {
 	channelHandler := handlers.NewChannelHandler(channelClient, log)
 	socialHandler := handlers.NewSocialHandler(socialClient, authClient, log)
 	miniappHandler := handlers.NewMiniAppHandler(miniappClient, log)
-	businessHandler := handlers.NewBusinessHandler(businessClient, hub, log)
+	businessHandler := handlers.NewBusinessHandler(businessClient, hub, log).WithRedis(redisClient)
 	docsHandler := handlers.NewDocsHandler()
 
 	// ── Root Status & Health Endpoints ──────────────────────────────────────
@@ -690,7 +690,7 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 		log.Info("Push Notification background worker skipped (no Redis client configured)")
 		return
 	}
-	pubsub := redisClient.PSubscribe(ctx, "chat:*")
+	pubsub := redisClient.PSubscribe(ctx, "chat:*", "marketplace:*")
 	go func() {
 		defer pubsub.Close()
 		log.Info("Push Notification background worker started")
@@ -700,6 +700,15 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 			case <-ctx.Done():
 				return
 			case msg := <-pubsub.Channel():
+				// Handle global marketplace events (e.g. from marketplace:global)
+				if strings.HasPrefix(msg.Channel, "marketplace:") {
+					hub.Broadcast([]byte(msg.Payload), "")
+					log.Debug("Broadcasted global marketplace event from Redis",
+						zap.String("channel", msg.Channel),
+					)
+					continue
+				}
+
 				var payload map[string]string
 				if err := json.Unmarshal([]byte(msg.Payload), &payload); err != nil {
 					continue

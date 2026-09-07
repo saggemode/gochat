@@ -17,13 +17,17 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.paging.LoadState
 import com.example.gochat.R
 import com.example.gochat.data.model.Conversation
 import com.example.gochat.databinding.DialogNewChatByPinBinding
 import com.example.gochat.databinding.FragmentChatListBinding
 import com.example.gochat.ui.stories.StoryViewerActivity
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class ChatListFragment : Fragment() {
 
     private var _binding: FragmentChatListBinding? = null
@@ -179,10 +183,15 @@ class ChatListFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.filteredConversations.collect { conversations ->
-                        conversationAdapter.submitList(conversations)
+                    viewModel.pagedConversations.collectLatest { pagingData ->
+                        conversationAdapter.submitData(pagingData)
+                    }
+                }
 
-                        if (conversations.isEmpty()) {
+                launch {
+                    conversationAdapter.loadStateFlow.collectLatest { loadStates ->
+                        val isListEmpty = loadStates.refresh is LoadState.NotLoading && conversationAdapter.itemCount == 0
+                        if (isListEmpty) {
                             binding.layoutEmptyState.visibility = View.VISIBLE
                             binding.rvConversations.visibility = View.GONE
                             val query = viewModel.searchQuery.value

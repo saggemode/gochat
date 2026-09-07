@@ -23,8 +23,10 @@ import com.example.gochat.databinding.ActivitySelectContactBinding
 import com.example.gochat.databinding.DialogNewChatByPinBinding
 import com.example.gochat.ui.chat.ChatRoomActivity
 import com.example.gochat.ui.chat.GroupCreateActivity
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class SelectContactActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySelectContactBinding

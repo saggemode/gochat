@@ -21,8 +21,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.gochat.MainActivity
 import com.example.gochat.R
 import com.example.gochat.databinding.ActivityLoginBinding
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class LoginActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLoginBinding

@@ -7,22 +7,32 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.gochat.R
 import com.example.gochat.core.media.MediaImageHelper
 import com.example.gochat.data.model.Product
+import com.example.gochat.data.model.ProductVariant
 import com.example.gochat.data.model.Store
 import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.databinding.ActivityProductDetailsBinding
 import com.example.gochat.ui.chat.ChatRoomActivity
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.util.Locale
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class ProductDetailsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityProductDetailsBinding
-    private val repository by lazy { MarketplaceRepository(this) }
+    
+    @Inject
+    lateinit var repository: MarketplaceRepository
+    
     private var product: Product? = null
     private var store: Store? = null
+    private var selectedVariant: ProductVariant? = null
+    private lateinit var variantAdapter: VariantChipAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,8 +41,24 @@ class ProductDetailsActivity : AppCompatActivity() {
 
         val productId = intent.getStringExtra("product_id") ?: return finish()
 
+        setupAdapters()
         setupListeners()
         loadProductDetails(productId)
+    }
+
+    private fun setupAdapters() {
+        variantAdapter = VariantChipAdapter { variant ->
+            selectedVariant = variant
+            // Update price UI based on variant if priceOverride > 0
+            product?.let { p ->
+                val displayPrice = if (variant.priceOverride > 0) variant.priceOverride else p.price
+                binding.tvProductPrice.text = String.format(Locale.US, "$%.2f", displayPrice)
+            }
+        }
+        binding.rvVariants.apply {
+            adapter = variantAdapter
+            layoutManager = LinearLayoutManager(this@ProductDetailsActivity, LinearLayoutManager.HORIZONTAL, false)
+        }
     }
 
     private fun setupListeners() {
@@ -96,6 +122,13 @@ class ProductDetailsActivity : AppCompatActivity() {
     private fun displayProduct(product: Product) {
         binding.tvProductName.text = product.displayTitle
         binding.tvProductPrice.text = String.format(Locale.US, "$%.2f", product.price)
+
+        if (product.variants.isNotEmpty()) {
+            binding.layoutVariants.visibility = View.VISIBLE
+            variantAdapter.submitList(product.variants)
+        } else {
+            binding.layoutVariants.visibility = View.GONE
+        }
 
         if (product.hasDiscount) {
             binding.tvOriginalPrice.visibility = View.VISIBLE
@@ -169,7 +202,9 @@ class ProductDetailsActivity : AppCompatActivity() {
 
     private fun addToCart(product: Product, andProceedToCheckout: Boolean) {
         lifecycleScope.launch {
-            val result = repository.addToCart(product.id, 1, product)
+            // Include variant info in cart if selected
+            val finalPrice = selectedVariant?.priceOverride?.let { if (it > 0) it else null } ?: product.price
+            val result = repository.addToCart(product.id, 1, product.copy(price = finalPrice))
             if (result.isSuccess) {
                 if (andProceedToCheckout) {
                     startActivity(Intent(this@ProductDetailsActivity, CheckoutActivity::class.java))

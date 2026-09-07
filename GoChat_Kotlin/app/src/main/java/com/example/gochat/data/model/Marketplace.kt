@@ -61,6 +61,19 @@ data class Category(
 )
 
 @Serializable
+data class ProductVariant(
+    val id: String = "",
+    @SerialName("product_id") val productId: String = "",
+    val sku: String = "",
+    val title: String = "",
+    @SerialName("attributes_json") val attributesJson: String = "{}", // e.g. {"size":"M", "color":"Blue"}
+    @SerialName("price_override") val priceOverride: Double = 0.0,
+    @SerialName("stock_quantity") val stockQuantity: Int = 0,
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("is_active") val isActive: Boolean = true
+)
+
+@Serializable
 @Entity(tableName = "products")
 data class Product(
     @PrimaryKey val id: String,
@@ -83,9 +96,12 @@ data class Product(
     @SerialName("is_verified") val isVerifiedSeller: Boolean = true,
     val rating: Double = 4.8,
     @SerialName("reviews_count") val reviewsCount: Int = 120,
+    @SerialName("view_count") val viewCount: Int = 0,
+    @SerialName("order_count") val orderCount: Int = 0,
     val tags: List<String> = listOf("Verified Merchant", "Fast Delivery"),
     @SerialName("is_available") val isAvailable: Boolean = true,
-    @SerialName("created_at") @Serializable(with = TimestampSerializer::class) val createdAt: Long = System.currentTimeMillis()
+    @SerialName("created_at") @Serializable(with = TimestampSerializer::class) val createdAt: Long = System.currentTimeMillis(),
+    val variants: List<ProductVariant> = emptyList()
 ) {
     val primaryImage: String
         get() = imageUrls.firstOrNull() ?: imageUrl
@@ -131,7 +147,9 @@ data class CartItem(
     @SerialName("product_price") val productPrice: Double? = null,
     @SerialName("product_image") val productImage: String? = null,
     @SerialName("store_id") val storeId: String = "",
-    @SerialName("store_name") val storeName: String = ""
+    @SerialName("store_name") val storeName: String = "",
+    @SerialName("variant_id") val variantId: String? = null,
+    @SerialName("variant_title") val variantTitle: String? = null
 )
 
 @Serializable
@@ -143,13 +161,23 @@ data class Order(
     @SerialName("buyer_id") val buyerId: String = "",
     @SerialName("buyer_name") val buyerName: String = "Customer",
     @SerialName("buyer_phone") val buyerPhone: String = "",
+    @SerialName("buyer_avatar") val buyerAvatar: String? = null,
     @SerialName("buyer_pin") val buyerPin: String = "",
     @SerialName("store_id") val storeId: String = "",
     @SerialName("store_name") val storeName: String = "Official Store",
     val items: List<CartItem> = emptyList(),
     @SerialName("total_amount") val totalAmount: Double = 0.0,
+    @SerialName("grand_total") val grandTotal: Double = 0.0,
+    @SerialName("discount_amount") val discountAmount: Double = 0.0,
+    @SerialName("shipping_fee") val shippingFee: Double = 0.0,
     val status: OrderStatus = OrderStatus.PAID,
     @SerialName("shipping_address") val shippingAddress: String? = "Lagos, Nigeria",
+    @SerialName("shipping_name") val shippingName: String? = null,
+    @SerialName("shipping_phone") val shippingPhone: String? = null,
+    @SerialName("tracking_number") val trackingNumber: String? = null,
+    @SerialName("tracking_carrier") val trackingCarrier: String? = null,
+    @SerialName("tracking_url") val trackingUrl: String? = null,
+    @SerialName("shipped_at") val shippedAt: String? = null,
     @SerialName("created_at") val createdAt: Long = System.currentTimeMillis()
 )
 
@@ -163,3 +191,13 @@ enum class OrderStatus {
     @SerialName("cancelled") CANCELLED,
     @SerialName("refunded") REFUNDED
 }
+
+@Serializable
+data class SellerInsights(
+    val grossRevenue: Double = 0.0,
+    val totalOrders: Int = 0,
+    val listedProducts: Int = 0,
+    val totalViews: Int = 0,
+    val salesTrend: List<Pair<Long, Double>> = emptyList(), // Date to revenue
+    val mostViewedProducts: List<Product> = emptyList()
+)

@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
     alias(libs.plugins.google.gms.google.services)
 }
 
@@ -64,6 +65,7 @@ dependencies {
     // Room Database
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.room.paging)
     ksp(libs.androidx.room.compiler)
 
     // Security
@@ -88,6 +90,25 @@ dependencies {
 
     // Link Preview
     implementation("org.jsoup:jsoup:1.17.2")
+
+    // Hilt
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.hilt.worker)
+    ksp(libs.hilt.worker.compiler)
+
+    // Paging 3
+    implementation(libs.androidx.paging.runtime)
+
+    // Biometric
+    implementation(libs.androidx.biometric)
+
+    // ZXing (QR Code)
+    implementation(libs.zxing.core)
+    implementation(libs.zxing.android.embedded)
+
+    // MPAndroidChart
+    implementation(libs.mpandroidchart)
 
     // Testing
     testImplementation(libs.junit)

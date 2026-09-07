@@ -17,14 +17,19 @@ import com.example.gochat.data.model.CallType
 import com.example.gochat.data.repository.CallRepository
 import com.example.gochat.data.api.ApiConstants
 import com.example.gochat.databinding.FragmentCallsBinding
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class CallsFragment : Fragment() {
 
     private var _binding: FragmentCallsBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var callRepository: CallRepository
+    @Inject
+    lateinit var callRepository: CallRepository
+    
     private lateinit var callAdapter: CallAdapter
 
     override fun onCreateView(
@@ -38,7 +43,6 @@ class CallsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        callRepository = CallRepository(requireContext())
 
         setupRecyclerView()
         setupListeners()

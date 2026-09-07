@@ -2,19 +2,21 @@ package com.example.gochat.data.repository
 
 import android.content.Context
 import com.example.gochat.data.api.GoChatApiService
-import com.example.gochat.data.api.NetworkModule
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.model.*
 import kotlinx.serialization.json.*
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Repository for Stories (Status updates) — fetch feed, post, view, get viewers.
  * Replaces the story portions of Flutter's `AppState`.
  */
-class StoryRepository(private val context: Context) {
-
-    private val api: GoChatApiService get() = NetworkModule.getApiService(context)
-    private val tokenManager: TokenManager get() = TokenManager.getInstance(context)
+@Singleton
+class StoryRepository @Inject constructor(
+    private val api: GoChatApiService,
+    private val tokenManager: TokenManager
+) {
 
     // ═══════════════════════════════════════════════════════════════
     // ── Get Stories Feed ──────────────────────────────────────────

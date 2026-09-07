@@ -477,4 +477,21 @@
     <string name="profile">Profile</string>
     <string name="gochat_pin">GoChat PIN</string>
     <string name="create_group_with_format">Create group with %1$s</string>
+    <string name="encryption_title">Encryption</string>
+    <string name="encryption_desc">Messages and calls are end-to-end encrypted. Tap to verify.</string>
+
+    <!-- Biometric Lock -->
+    <string name="biometric_lock_title">GoChat Locked</string>
+    <string name="biometric_lock_subtitle">Use biometric to unlock GoChat</string>
+    <string name="biometric_lock_cancel">Cancel</string>
+    <string name="settings_app_lock_title">App lock</string>
+    <string name="settings_app_lock_desc">Unlock with fingerprint or face ID</string>
+
+    <!-- Security Verification -->
+    <string name="security_verification_title">Security verification</string>
+    <string name="security_verification_desc">To verify that messages with %1$s are end-to-end encrypted, scan this code on their phone or ask them to scan yours. You can also compare the numbers above.</string>
+    <string name="security_verification_learn_more">Learn more</string>
+    <string name="security_verification_scan_code">Scan code</string>
+    <string name="security_verification_matching">Security code matched</string>
+    <string name="security_verification_not_matching">Security code does not match</string>
 </resources>

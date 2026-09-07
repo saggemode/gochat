@@ -39,6 +39,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.example.gochat.R
 import com.example.gochat.core.media.AudioPlayerManager
@@ -54,7 +55,9 @@ import com.example.gochat.databinding.BottomSheetAttachmentPickerBinding
 import com.example.gochat.databinding.DialogImagePreviewBinding
 import com.example.gochat.ui.calls.CallActivity
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -64,6 +67,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+@AndroidEntryPoint
 class ChatRoomActivity : AppCompatActivity() {
 
     companion object {
@@ -209,7 +213,7 @@ class ChatRoomActivity : AppCompatActivity() {
             // Auto-scroll messages to keep latest message visible when keyboard pops up
             if (imeInsets.bottom > 0 && messageAdapter.itemCount > 0) {
                 binding.rvMessages.post {
-                    binding.rvMessages.scrollToPosition(messageAdapter.itemCount - 1)
+                    binding.rvMessages.scrollToPosition(0)
                 }
             }
 
@@ -319,7 +323,7 @@ class ChatRoomActivity : AppCompatActivity() {
         }
 
         val layoutManager = LinearLayoutManager(this).apply {
-            stackFromEnd = true
+            reverseLayout = true
         }
 
         val themeManager = ChatThemeManager(this)
@@ -329,12 +333,23 @@ class ChatRoomActivity : AppCompatActivity() {
 
         binding.rvMessages.layoutManager = layoutManager
         binding.rvMessages.adapter = messageAdapter
+        
+        // Auto-scroll to bottom on new messages
+        messageAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
+            override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
+                if (positionStart == 0) {
+                    binding.rvMessages.scrollToPosition(0)
+                }
+            }
+        })
 
         // Swipe to reply
         val swipeCallback = SwipeToReplyCallback(this) { position ->
-            val message = messageAdapter.currentList[position]
-            viewModel.setReplyingTo(message)
-            messageAdapter.notifyItemChanged(position)
+            val message = messageAdapter.peek(position)
+            if (message != null) {
+                viewModel.setReplyingTo(message)
+                messageAdapter.notifyItemChanged(position)
+            }
         }
         ItemTouchHelper(swipeCallback).attachToRecyclerView(binding.rvMessages)
 
@@ -672,13 +687,8 @@ class ChatRoomActivity : AppCompatActivity() {
                 }
 
                 launch {
-                    viewModel.messages.collect { messagesList ->
-                        val wasAtBottom = isLastItemVisible()
-                        messageAdapter.submitList(messagesList) {
-                            if (wasAtBottom || messagesList.isNotEmpty()) {
-                                binding.rvMessages.scrollToPosition(messagesList.size - 1)
-                            }
-                        }
+                    viewModel.messagesPaged.collectLatest { pagingData ->
+                        messageAdapter.submitData(pagingData)
                     }
                 }
 

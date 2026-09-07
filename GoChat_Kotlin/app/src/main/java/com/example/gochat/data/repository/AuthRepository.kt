@@ -9,22 +9,31 @@ import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.db.AppDatabase
 import com.example.gochat.data.model.User
 import com.example.gochat.data.model.LinkedDevice
+import com.example.gochat.data.websocket.GoChatWebSocket
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Handles authentication flows — register, login, OTP, profile updates.
  * Persists tokens and user metadata through [TokenManager].
  */
-class AuthRepository(private val context: Context) {
-
-    private val api: GoChatApiService get() = NetworkModule.getApiService(context)
-    private val tokenManager: TokenManager get() = TokenManager.getInstance(context)
-    private val json = NetworkModule.json
+@Singleton
+class AuthRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val api: GoChatApiService,
+    private val tokenManager: TokenManager,
+    private val webSocket: GoChatWebSocket,
+    private val json: Json,
+    private val backupManager: ChatBackupManager,
+    private val database: AppDatabase
+) {
 
     // ── Register ─────────────────────────────────────────────────
 
@@ -184,7 +193,6 @@ class AuthRepository(private val context: Context) {
 
                 // Broadcast profile update via WebSocket mirroring Flutter
                 try {
-                    val ws = NetworkModule.getWebSocket(context)
                     val wsPayload = buildJsonObject {
                         put("type", "user_profile_updated")
                         put("event_type", "EVENT_USER_PROFILE_UPDATED")
@@ -196,7 +204,7 @@ class AuthRepository(private val context: Context) {
                             put("pin", user.pin.ifBlank { tokenManager.userPin.orEmpty() })
                         })
                     }
-                    ws.send(wsPayload)
+                    webSocket.send(wsPayload)
                 } catch (_: Exception) {}
 
                 Result.success(user)
@@ -471,17 +479,17 @@ class AuthRepository(private val context: Context) {
      */
     private suspend fun resetLocalDatabaseAndSession() {
         try {
-            NetworkModule.getWebSocket(context).disconnect()
+            webSocket.disconnect()
         } catch (_: Exception) {}
 
         withContext(Dispatchers.IO) {
             try {
-                AppDatabase.getInstance(context).clearAllTables()
+                database.clearAllTables()
             } catch (_: Exception) {}
         }
 
         try {
-            ChatBackupManager(context).clearBackupInfo()
+            backupManager.clearBackupInfo()
         } catch (_: Exception) {}
     }
 

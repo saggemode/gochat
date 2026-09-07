@@ -1,5 +1,6 @@
 package com.example.gochat.ui.marketplace
 
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
@@ -39,6 +40,8 @@ class OrderAdapter(
             binding.tvOrderStatus.text = order.status.name
             binding.tvOrderDate.text = dateFormat.format(Date(order.createdAt))
             binding.tvTotalAmount.text = String.format(Locale.US, "$%.2f", order.totalAmount)
+
+            updateStatusTracker(order.status)
 
             // Status Badge Styling
             when (order.status) {
@@ -99,6 +102,16 @@ class OrderAdapter(
             } else {
                 binding.btnUpdateStatus.visibility = View.GONE
             }
+        }
+
+        private fun updateStatusTracker(status: OrderStatus) {
+            val mutedColor = Color.parseColor("#374151")
+            val activeColor = Color.parseColor("#00A884")
+
+            binding.dotPending.backgroundTintList = ColorStateList.valueOf(activeColor)
+            binding.dotPaid.backgroundTintList = ColorStateList.valueOf(if (status.ordinal >= OrderStatus.PAID.ordinal) activeColor else mutedColor)
+            binding.dotShipped.backgroundTintList = ColorStateList.valueOf(if (status.ordinal >= OrderStatus.SHIPPED.ordinal) activeColor else mutedColor)
+            binding.dotDelivered.backgroundTintList = ColorStateList.valueOf(if (status.ordinal >= OrderStatus.DELIVERED.ordinal) activeColor else mutedColor)
         }
     }
 

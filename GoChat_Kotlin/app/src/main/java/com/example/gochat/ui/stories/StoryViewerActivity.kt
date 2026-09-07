@@ -28,15 +28,22 @@ import com.example.gochat.data.model.UserStories
 import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.data.repository.StoryRepository
 import com.example.gochat.databinding.ActivityStoryViewerBinding
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class StoryViewerActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityStoryViewerBinding
-    private lateinit var storyRepository: StoryRepository
-    private lateinit var chatRepository: ChatRepository
+    
+    @Inject
+    lateinit var storyRepository: StoryRepository
+    
+    @Inject
+    lateinit var chatRepository: ChatRepository
 
     private var userStories: UserStories? = null
     private val progressBars = mutableListOf<ProgressBar>()
@@ -64,9 +71,6 @@ class StoryViewerActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityStoryViewerBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        storyRepository = StoryRepository(this)
-        chatRepository = ChatRepository(this)
 
         userStories = activeUserStories
         if (userStories == null) {

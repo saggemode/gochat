@@ -21,12 +21,14 @@ import coil.transform.CircleCropTransformation
 import com.example.gochat.R
 import com.example.gochat.databinding.DialogCreateTextStatusBinding
 import com.example.gochat.databinding.FragmentStoriesBinding
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.InputStream
 
+@AndroidEntryPoint
 class StoriesFragment : Fragment() {
 
     private var _binding: FragmentStoriesBinding? = null

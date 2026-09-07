@@ -1,28 +1,45 @@
 package com.example.gochat.ui.marketplace
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.gochat.data.api.NetworkModule
-import com.example.gochat.data.model.Category
-import com.example.gochat.data.model.Order
-import com.example.gochat.data.model.Product
-import com.example.gochat.data.model.Store
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import androidx.work.*
+import com.example.gochat.core.sync.MarketplaceSyncWorker
+import com.example.gochat.data.model.*
 import com.example.gochat.data.repository.MarketplaceRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import com.example.gochat.data.websocket.GoChatWebSocket
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
+import java.io.File
+import javax.inject.Inject
 
-class MarketplaceViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val repository = MarketplaceRepository(application)
-    private val webSocket = NetworkModule.getWebSocket(application)
-    private val json = NetworkModule.json
+@HiltViewModel
+class MarketplaceViewModel @Inject constructor(
+    application: Application,
+    private val repository: MarketplaceRepository,
+    private val webSocket: GoChatWebSocket,
+    private val json: Json,
+    private val workManager: WorkManager
+) : AndroidViewModel(application) {
 
     private val _products = MutableStateFlow<List<Product>>(emptyList())
     val products: StateFlow<List<Product>> = _products.asStateFlow()
+
+    private val filterTrigger = MutableStateFlow(Triple<String?, String?, String?>(null, null, null))
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val pagedProducts: Flow<PagingData<Product>> = filterTrigger
+        .flatMapLatest { (cat, search, sort) ->
+            repository.getProductsPaged(cat, search, sort)
+        }
+        .cachedIn(viewModelScope)
 
     private val _categories = MutableStateFlow<List<Category>>(emptyList())
     val categories: StateFlow<List<Category>> = _categories.asStateFlow()
@@ -45,6 +62,9 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private val _refreshEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val refreshEvent = _refreshEvent.asSharedFlow()
+
     private var currentCategory: String? = null
     private var currentSearch: String? = null
     private var isVerifiedOnly: Boolean = false
@@ -58,16 +78,18 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
     private fun observeWebSocketEvents() {
         viewModelScope.launch {
             webSocket.events.collect { event ->
-                val type = event["type"]?.jsonPrimitive?.contentOrNull
-                if (type == "new_product") {
-                    val prodElement = event["product"]
-                        val newProd = repository.parseSingleProductJson(prodElement)
-                        if (newProd != null) {
-                            // Real-time instant delivery: prepend to feed like chat!
-                            _products.value = listOf(newProd) + _products.value.filter { it.id != newProd.id }
-                        } else {
-                            loadExploreProducts()
-                        }
+                val newProd = repository.handleIncomingWebSocketEvent(event)
+                if (newProd != null) {
+                    // Prepend to the local memory list for immediate non-paged UI if needed
+                    _products.value = listOf(newProd) + _products.value.filter { it.id != newProd.id }
+                    
+                    // Trigger refresh for the PagingAdapter
+                    _refreshEvent.tryEmit(Unit)
+                    
+                    // If it's my product, update my products list too
+                    if (newProd.sellerId == repository.userId) {
+                        _myProducts.value = listOf(newProd) + _myProducts.value.filter { it.id != newProd.id }
+                    }
                 }
             }
         }
@@ -129,18 +151,12 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
 
     fun filterByCategory(categoryId: String?) {
         currentCategory = if (categoryId == "all" || categoryId.isNullOrBlank()) null else categoryId
-        viewModelScope.launch {
-            _isLoading.value = true
-            loadExploreProducts()
-            _isLoading.value = false
-        }
+        filterTrigger.value = Triple(currentCategory, currentSearch, currentSortBy)
     }
 
     fun setSearchQuery(query: String?) {
         currentSearch = query?.ifBlank { null }
-        viewModelScope.launch {
-            loadExploreProducts()
-        }
+        filterTrigger.value = Triple(currentCategory, currentSearch, currentSortBy)
     }
 
     fun setVerifiedOnly(verified: Boolean) {
@@ -172,6 +188,7 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
             _isLoading.value = true
             val newStore = Store(
                 id = "store_${System.currentTimeMillis()}",
+                ownerId = repository.userId ?: "",
                 name = name,
                 category = category.ifBlank { "General Retail" },
                 address = location,
@@ -204,15 +221,38 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
         stock: Int,
         imageUrls: List<String>,
         description: String,
+        variants: List<ProductVariant> = emptyList(),
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
         viewModelScope.launch {
             _isLoading.value = true
             val currentStore = _myStore.value
-            val primaryImage = imageUrls.firstOrNull().orEmpty()
+
+            // 1. Upload any local device image URIs / file paths to get public remote URLs
+            val uploadedUrls = mutableListOf<String>()
+            for (url in imageUrls) {
+                if (url.startsWith("http://") || url.startsWith("https://")) {
+                    uploadedUrls.add(url)
+                } else {
+                    val bytes = readUriBytes(url)
+                    if (bytes != null) {
+                        val remote = repository.uploadMedia(bytes, "image/jpeg", "prod_${System.currentTimeMillis()}.jpg")
+                        if (!remote.isNullOrBlank()) {
+                            uploadedUrls.add(remote)
+                        } else {
+                            uploadedUrls.add(url)
+                        }
+                    } else {
+                        uploadedUrls.add(url)
+                    }
+                }
+            }
+
+            val primaryImage = uploadedUrls.firstOrNull().orEmpty()
             val newProduct = Product(
                 id = "prod_${System.currentTimeMillis()}",
+                sellerId = repository.userId ?: "",
                 name = name,
                 description = description,
                 price = price,
@@ -220,27 +260,70 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
                 category = category.ifBlank { "Electronics" },
                 categoryId = category.lowercase(),
                 stock = stock,
-                imageUrls = imageUrls,
+                imageUrls = uploadedUrls,
                 imageUrl = primaryImage,
                 storeId = currentStore?.id ?: "my_store",
                 storeName = currentStore?.name ?: "My Store",
-                isVerifiedSeller = true
+                isVerifiedSeller = true,
+                variants = variants
             )
 
-            // OPTIMISTIC UPDATE: appears immediately on device just like a sent chat message!
-            _products.value = listOf(newProduct) + _products.value.filter { it.id != newProduct.id }
-            _myProducts.value = listOf(newProduct) + _myProducts.value.filter { it.id != newProduct.id }
-
+            // 2. Direct online creation on the backend
             val result = repository.createProduct(newProduct)
-            _isLoading.value = false
             if (result.isSuccess) {
                 val created = result.getOrNull() ?: newProduct
                 _products.value = listOf(created) + _products.value.filter { it.id != created.id && it.id != newProduct.id }
                 _myProducts.value = listOf(created) + _myProducts.value.filter { it.id != created.id && it.id != newProduct.id }
+                
+                // 3. Broadcast to others via WebSocket so they see it "like chat"
+                webSocket.send(buildJsonObject {
+                    put("type", JsonPrimitive("new_product"))
+                    put("product", json.encodeToJsonElement(created))
+                })
+
+                _refreshEvent.tryEmit(Unit)
+                _isLoading.value = false
                 onSuccess()
             } else {
-                onError(result.exceptionOrNull()?.message ?: "Failed to add product")
+                // Offline fallback: optimistic insert and queue background sync
+                _products.value = listOf(newProduct) + _products.value.filter { it.id != newProduct.id }
+                _myProducts.value = listOf(newProduct) + _myProducts.value.filter { it.id != newProduct.id }
+
+                // Optimistic broadcast
+                webSocket.send(buildJsonObject {
+                    put("type", JsonPrimitive("new_product"))
+                    put("product", json.encodeToJsonElement(newProduct))
+                })
+
+                try {
+                    val workData = workDataOf(
+                        MarketplaceSyncWorker.KEY_PRODUCT_JSON to json.encodeToString(newProduct)
+                    )
+                    val workRequest = OneTimeWorkRequestBuilder<MarketplaceSyncWorker>()
+                        .setInputData(workData)
+                        .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                        .build()
+                    workManager.enqueueUniqueWork("product_sync_${newProduct.id}", ExistingWorkPolicy.REPLACE, workRequest)
+                } catch (_: Exception) {}
+
+                _refreshEvent.tryEmit(Unit)
+                _isLoading.value = false
+                onSuccess()
             }
+        }
+    }
+
+    private fun readUriBytes(uriStr: String): ByteArray? {
+        return try {
+            val clean = uriStr.trim()
+            if (clean.startsWith("file://") || !clean.startsWith("content://")) {
+                val file = File(clean.removePrefix("file://"))
+                if (file.exists()) return file.readBytes()
+            }
+            val uri = Uri.parse(clean)
+            getApplication<Application>().contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        } catch (_: Exception) {
+            null
         }
     }
 
@@ -257,7 +340,11 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             _isLoading.value = true
             val existing = _myStore.value
-            val updatedStore = (existing ?: Store(id = "store_${System.currentTimeMillis()}", name = name)).copy(
+            val updatedStore = (existing ?: Store(
+                id = "store_${System.currentTimeMillis()}",
+                ownerId = repository.userId ?: "",
+                name = name
+            )).copy(
                 name = name,
                 category = category.ifBlank { "General Retail" },
                 address = location,
@@ -287,6 +374,7 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
         stock: Int,
         imageUrls: List<String>,
         description: String,
+        variants: List<ProductVariant> = emptyList(),
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
@@ -302,7 +390,8 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
                 categoryId = category.lowercase(),
                 stock = stock,
                 imageUrls = if (imageUrls.isNotEmpty()) imageUrls else product.imageUrls,
-                imageUrl = primaryImage
+                imageUrl = primaryImage,
+                variants = if (variants.isNotEmpty()) variants else product.variants
             )
 
             _products.value = _products.value.map { if (it.id == product.id) updated else it }

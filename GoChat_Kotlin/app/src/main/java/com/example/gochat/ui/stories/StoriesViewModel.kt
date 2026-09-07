@@ -3,11 +3,12 @@ package com.example.gochat.ui.stories
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.gochat.data.api.NetworkModule
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.model.StoryItem
 import com.example.gochat.data.model.UserStories
 import com.example.gochat.data.repository.StoryRepository
+import com.example.gochat.data.websocket.GoChatWebSocket
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,12 +19,15 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import javax.inject.Inject
 
-class StoriesViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val repository = StoryRepository(application)
-    private val tokenManager = TokenManager.getInstance(application)
-    private val webSocket = NetworkModule.getWebSocket(application)
+@HiltViewModel
+class StoriesViewModel @Inject constructor(
+    application: Application,
+    private val repository: StoryRepository,
+    private val tokenManager: TokenManager,
+    private val webSocket: GoChatWebSocket
+) : AndroidViewModel(application) {
 
     private val _myStories = MutableStateFlow<UserStories?>(null)
     val myStories: StateFlow<UserStories?> = _myStories.asStateFlow()

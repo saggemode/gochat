@@ -1,10 +1,12 @@
 package com.example.gochat.core.media
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Base64
 import android.widget.ImageView
+import coil.imageLoader
 import coil.load
 import coil.transform.CircleCropTransformation
 import coil.transform.RoundedCornersTransformation
@@ -19,6 +21,14 @@ import java.io.File
  * and fallback errors with zero OutOfMemory crash risk.
  */
 object MediaImageHelper {
+
+    /**
+     * Clears both memory and disk cache for Coil.
+     */
+    fun clearImageCache(context: Context) {
+        context.imageLoader.memoryCache?.clear()
+        context.imageLoader.diskCache?.clear()
+    }
 
     fun isLocalDevicePath(path: String?): Boolean {
         if (path.isNullOrBlank()) return false

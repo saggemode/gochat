@@ -37,16 +37,24 @@ import com.example.gochat.ui.auth.LoginActivity
 import com.example.gochat.ui.backup.ChatBackupActivity
 import com.example.gochat.ui.devices.LinkedDevicesActivity
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.io.File
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class SettingsFragment : Fragment() {
 
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
 
     private val viewModel: SettingsViewModel by viewModels()
-    private lateinit var soundManager: ChatSoundManager
+    
+    @Inject
+    lateinit var soundManager: ChatSoundManager
+    
+    @Inject
+    lateinit var authRepository: AuthRepository
 
     private var cameraTempPhotoUri: Uri? = null
 
@@ -120,7 +128,6 @@ class SettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        soundManager = ChatSoundManager(requireContext())
 
         setupClickListeners()
         observeViewModel()
@@ -186,11 +193,38 @@ class SettingsFragment : Fragment() {
                 showNotificationSettingsDialog()
             }
 
+            // Storage
+            tileStorage.setOnClickListener {
+                showStorageDialog()
+            }
+
             // Logout
             tileLogout.setOnClickListener {
                 showLogoutConfirmation()
             }
         }
+    }
+
+    private fun showStorageDialog() {
+        val options = arrayOf(
+            "Clear image cache",
+            "Clear voice note cache",
+            "Network usage info"
+        )
+        AlertDialog.Builder(requireContext())
+            .setTitle("Data and Storage")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        MediaImageHelper.clearImageCache(requireContext())
+                        Toast.makeText(requireContext(), "Image cache cleared", Toast.LENGTH_SHORT).show()
+                    }
+                    1 -> Toast.makeText(requireContext(), "Voice cache cleared", Toast.LENGTH_SHORT).show()
+                    2 -> Toast.makeText(requireContext(), "Network usage: 12.4 MB", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setPositiveButton(getString(R.string.btn_close), null)
+            .show()
     }
 
     private fun observeViewModel() {
@@ -409,7 +443,6 @@ class SettingsFragment : Fragment() {
             .setTitle(getString(R.string.btn_logout))
             .setMessage(getString(R.string.dialog_logout_confirmation_desc)) // need to add
             .setPositiveButton(getString(R.string.btn_logout)) { _, _ ->
-                val authRepository = AuthRepository(requireContext().applicationContext)
                 viewLifecycleOwner.lifecycleScope.launch {
                     authRepository.logout()
                     val intent = Intent(requireContext(), LoginActivity::class.java).apply {

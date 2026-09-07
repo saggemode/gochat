@@ -24,6 +24,13 @@ playServicesAuth = "21.2.0"
 playServicesMaps = "19.0.0"
 playServicesLocation = "21.3.0"
 webrtc = "150.7871.01"
+hilt = "2.60.1"
+hiltWork = "1.2.0"
+paging = "3.5.1"
+biometric = "1.1.0"
+zxing = "3.5.4"
+zxing-embedded = "4.3.0"
+mpandroidchart = "3.1.0"
 
 ksp = "2.0.20-1.0.25"
 googleGmsGoogleServices = "4.5.0"
@@ -59,6 +66,7 @@ okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor",
 # Room Database
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+androidx-room-paging = { group = "androidx.room", name = "room-paging", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 
 # Security & Crypto
@@ -73,6 +81,22 @@ google-play-services-auth = { group = "com.google.android.gms", name = "play-ser
 google-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "playServicesMaps" }
 google-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 webrtc = { group = "io.github.webrtc-sdk", name = "android", version.ref = "webrtc" }
+
+# Hilt
+hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
+hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
+hilt-worker = { group = "androidx.hilt", name = "hilt-work", version.ref = "hiltWork" }
+hilt-worker-compiler = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "hiltWork" }
+
+# Paging 3
+androidx-paging-runtime = { group = "androidx.paging", name = "paging-runtime", version.ref = "paging" }
+androidx-paging-common = { group = "androidx.paging", name = "paging-common", version.ref = "paging" }
+
+androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
+zxing-android-embedded = { group = "com.journeyapps", name = "zxing-android-embedded", version.ref = "zxing-embedded" }
+mpandroidchart = { group = "com.github.PhilJay", name = "MPAndroidChart", version.ref = "mpandroidchart" }
+
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging", version.ref = "firebaseMessaging" }
 signal-protocol = { group = "org.whispersystems", name = "signal-protocol-android", version.ref = "signalProtocol" }
 
@@ -80,4 +104,5 @@ signal-protocol = { group = "org.whispersystems", name = "signal-protocol-androi
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version = "2.0.20" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "googleGmsGoogleServices" }

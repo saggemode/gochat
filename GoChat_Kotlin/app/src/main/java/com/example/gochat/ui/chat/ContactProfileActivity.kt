@@ -15,11 +15,14 @@ import com.example.gochat.core.media.MediaImageHelper
 import com.example.gochat.databinding.ActivityContactProfileBinding
 import com.example.gochat.ui.calls.CallActivity
 import com.example.gochat.ui.contacts.SelectContactActivity
+import com.example.gochat.ui.security.SecurityVerificationActivity
+import dagger.hilt.android.AndroidEntryPoint
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+@AndroidEntryPoint
 class ContactProfileActivity : AppCompatActivity() {
 
     companion object {
@@ -167,6 +170,18 @@ class ContactProfileActivity : AppCompatActivity() {
         // 4. Chat lock
         binding.layoutChatLock.setOnClickListener {
             toggleChatLock()
+        }
+
+        // Encryption verification
+        binding.layoutEncryption.setOnClickListener {
+            val intent = Intent(this, SecurityVerificationActivity::class.java).apply {
+                putExtra(SecurityVerificationActivity.EXTRA_CONVERSATION_ID, convId)
+                putExtra(SecurityVerificationActivity.EXTRA_PEER_USER_ID, intent.getStringExtra(EXTRA_TARGET_USER_ID) ?: convId)
+                putExtra(SecurityVerificationActivity.EXTRA_PEER_PIN, intent.getStringExtra(EXTRA_USER_PIN))
+                putExtra(SecurityVerificationActivity.EXTRA_PEER_NAME, userName)
+                putExtra(SecurityVerificationActivity.EXTRA_PEER_AVATAR, intent.getStringExtra(EXTRA_USER_AVATAR))
+            }
+            startActivity(intent)
         }
 
         // 5. Advanced chat privacy

@@ -20,10 +20,13 @@ import com.example.gochat.databinding.BottomSheetGifPickerBinding
 import com.example.gochat.databinding.ItemGifBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.android.material.tabs.TabLayout
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class GifPickerBottomSheet(
     private val onGifSelected: (String) -> Unit
 ) : BottomSheetDialogFragment() {
@@ -31,7 +34,9 @@ class GifPickerBottomSheet(
     private var _binding: BottomSheetGifPickerBinding? = null
     private val binding get() = _binding!!
     private lateinit var gifAdapter: GifAdapter
-    private lateinit var mediaRepository: MediaRepository
+    
+    @Inject
+    lateinit var mediaRepository: MediaRepository
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = BottomSheetGifPickerBinding.inflate(inflater, container, false)
@@ -41,7 +46,6 @@ class GifPickerBottomSheet(
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
-        mediaRepository = MediaRepository(requireContext())
         gifAdapter = GifAdapter { onGifSelected(it); dismiss() }
         binding.rvGifs.adapter = gifAdapter
         

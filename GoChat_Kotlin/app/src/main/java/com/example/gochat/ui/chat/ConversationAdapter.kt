@@ -4,8 +4,8 @@ import android.text.format.DateUtils
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.paging.PagingDataAdapter
 import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.gochat.R
 import com.example.gochat.core.media.MediaImageHelper
@@ -19,7 +19,7 @@ import java.util.*
 class ConversationAdapter(
     private val onConversationClicked: (Conversation) -> Unit,
     private val onConversationLongClicked: ((Conversation) -> Unit)? = null
-) : ListAdapter<Conversation, ConversationAdapter.ConversationViewHolder>(DiffCallback) {
+) : PagingDataAdapter<Conversation, ConversationAdapter.ConversationViewHolder>(DiffCallback) {
 
     class ConversationViewHolder(val binding: ItemConversationBinding) :
         RecyclerView.ViewHolder(binding.root)
@@ -32,7 +32,7 @@ class ConversationAdapter(
     }
 
     override fun onBindViewHolder(holder: ConversationViewHolder, position: Int) {
-        val conversation = getItem(position)
+        val conversation = getItem(position) ?: return
         with(holder.binding) {
             // Title / Name
             tvConversationTitle.text = conversation.title.ifBlank { "GoChat Contact" }

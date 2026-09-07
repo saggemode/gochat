@@ -2,13 +2,15 @@ package com.example.gochat.data.repository
 
 import android.content.Context
 import com.example.gochat.data.api.GoChatApiService
-import com.example.gochat.data.api.NetworkModule
 import com.example.gochat.data.model.GroupMetadata
 import kotlinx.serialization.json.*
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class GroupRepository(private val context: Context) {
-
-    private val api: GoChatApiService get() = NetworkModule.getApiService(context)
+@Singleton
+class GroupRepository @Inject constructor(
+    private val api: GoChatApiService
+) {
 
     suspend fun getGroupMetadata(convId: String): Result<GroupMetadata> {
         return try {

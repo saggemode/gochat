@@ -12,12 +12,18 @@ import com.example.gochat.data.model.OrderStatus
 import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.databinding.ActivityOrdersBinding
 import com.google.android.material.tabs.TabLayout
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class OrdersActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityOrdersBinding
-    private val repository by lazy { MarketplaceRepository(this) }
+    
+    @Inject
+    lateinit var repository: MarketplaceRepository
+    
     private var isSellerView: Boolean = false
     private var currentOrders: List<Order> = emptyList()
 

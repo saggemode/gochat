@@ -6,12 +6,18 @@ import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.util.Log
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Manages in-chat sounds for sent and received messages.
  * Allows users to pick custom tunes from their phone.
  */
-class ChatSoundManager(private val context: Context) {
+@Singleton
+class ChatSoundManager @Inject constructor(
+    @param:ApplicationContext private val context: Context
+) {
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 

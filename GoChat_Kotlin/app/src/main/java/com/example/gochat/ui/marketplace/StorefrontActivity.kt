@@ -12,19 +12,26 @@ import androidx.recyclerview.widget.GridLayoutManager
 import com.example.gochat.R
 import com.example.gochat.core.media.ImageCompressor
 import com.example.gochat.core.media.MediaImageHelper
+import androidx.paging.PagingData
 import com.example.gochat.data.model.Store
 import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.databinding.ActivityStorefrontBinding
 import com.example.gochat.databinding.DialogEditStoreBinding
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class StorefrontActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityStorefrontBinding
-    private val repository by lazy { MarketplaceRepository(this) }
+    
+    @Inject
+    lateinit var repository: MarketplaceRepository
+    
     private lateinit var productAdapter: ProductAdapter
     private var currentStore: Store? = null
     private var isOwner: Boolean = false
@@ -109,7 +116,7 @@ class StorefrontActivity : AppCompatActivity() {
             }
 
             if (productsResult.isSuccess) {
-                productAdapter.submitList(productsResult.getOrThrow())
+                productAdapter.submitData(lifecycle, PagingData.from(productsResult.getOrThrow()))
             }
         }
     }
