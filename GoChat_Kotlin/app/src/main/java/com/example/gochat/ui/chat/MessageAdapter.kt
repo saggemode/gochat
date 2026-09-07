@@ -177,8 +177,8 @@ class MessageAdapter(
                 // Forwarded status
                 layoutForwarded.visibility = if (message.isForwarded) View.VISIBLE else View.GONE
 
-                val isImage = (message.type == MessageType.IMAGE) && !message.isDeleted && !message.mediaUrl.isNullOrBlank()
-                val isVoice = (message.type == MessageType.VOICE || message.type == MessageType.AUDIO) && !message.isDeleted
+                val isImage = (message.type == MessageType.IMAGE || message.content.startsWith("📷 Photo")) && !message.isDeleted && !message.mediaUrl.isNullOrBlank()
+                val isVoice = (message.type == MessageType.VOICE || message.type == MessageType.AUDIO || message.content.startsWith("🎙️ Voice Note")) && !message.isDeleted
 
                 // Content text
                 if (message.isDeleted) {
@@ -204,7 +204,7 @@ class MessageAdapter(
                     tvMessageContent.setOnClickListener(null)
                     
                     // Link Preview logic
-                    if (!isVoice) {
+                    if (!isVoice && !isImage) {
                         handleLinkPreview(message.content, binding)
                     } else {
                         updateLinkPreviewVisibility(binding, null)
@@ -259,7 +259,10 @@ class MessageAdapter(
 
                 // Media Image Preview
                 if (isImage) {
-                    ivMessageImage.visibility = View.VISIBLE
+                    layoutImageContainer.visibility = View.VISIBLE
+                    pbImageLoading.visibility = if (message.status == MessageStatus.SENDING) View.VISIBLE else View.GONE
+                    ivMessageImage.alpha = if (message.status == MessageStatus.SENDING) 0.6f else 1.0f
+
                     com.example.gochat.core.media.MediaImageHelper.loadSafeImage(
                         imageView = ivMessageImage,
                         url = message.mediaUrl,
@@ -268,12 +271,18 @@ class MessageAdapter(
                         placeholderRes = R.drawable.ic_gallery,
                         errorRes = R.drawable.ic_gallery
                     )
+                    
+                    // Make the whole container clickable
+                    layoutImageContainer.setOnClickListener {
+                        message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
+                    }
                     ivMessageImage.setOnClickListener {
                         message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
                     }
                 } else {
-                    ivMessageImage.visibility = View.GONE
+                    layoutImageContainer.visibility = View.GONE
                     ivMessageImage.setOnClickListener(null)
+                    layoutImageContainer.setOnClickListener(null)
                 }
 
                 // Voice Note Row
@@ -352,8 +361,8 @@ class MessageAdapter(
                 // Forwarded status
                 layoutForwarded.visibility = if (message.isForwarded) View.VISIBLE else View.GONE
 
-                val isImage = (message.type == MessageType.IMAGE) && !message.isDeleted && !message.mediaUrl.isNullOrBlank()
-                val isVoice = (message.type == MessageType.VOICE || message.type == MessageType.AUDIO) && !message.isDeleted
+                val isImage = (message.type == MessageType.IMAGE || message.content.startsWith("📷 Photo")) && !message.isDeleted && !message.mediaUrl.isNullOrBlank()
+                val isVoice = (message.type == MessageType.VOICE || message.type == MessageType.AUDIO || message.content.startsWith("🎙️ Voice Note")) && !message.isDeleted
 
                 // Sender name
                 if (message.senderName.isNotBlank()) {
@@ -387,7 +396,7 @@ class MessageAdapter(
                     tvMessageContent.setOnClickListener(null)
                     
                     // Link Preview logic
-                    if (!isVoice) {
+                    if (!isVoice && !isImage) {
                         handleLinkPreview(message.content, binding)
                     } else {
                         updateLinkPreviewVisibility(binding, null)
@@ -432,7 +441,10 @@ class MessageAdapter(
 
                 // Media Image Preview
                 if (isImage) {
-                    ivMessageImage.visibility = View.VISIBLE
+                    layoutImageContainer.visibility = View.VISIBLE
+                    pbImageLoading.visibility = if (message.status == MessageStatus.SENDING) View.VISIBLE else View.GONE
+                    ivMessageImage.alpha = if (message.status == MessageStatus.SENDING) 0.6f else 1.0f
+
                     com.example.gochat.core.media.MediaImageHelper.loadSafeImage(
                         imageView = ivMessageImage,
                         url = message.mediaUrl,
@@ -441,12 +453,18 @@ class MessageAdapter(
                         placeholderRes = R.drawable.ic_gallery,
                         errorRes = R.drawable.ic_gallery
                     )
+                    
+                    // Make the whole container clickable
+                    layoutImageContainer.setOnClickListener {
+                        message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
+                    }
                     ivMessageImage.setOnClickListener {
                         message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
                     }
                 } else {
-                    ivMessageImage.visibility = View.GONE
+                    layoutImageContainer.visibility = View.GONE
                     ivMessageImage.setOnClickListener(null)
+                    layoutImageContainer.setOnClickListener(null)
                 }
 
                 // Voice Note Row

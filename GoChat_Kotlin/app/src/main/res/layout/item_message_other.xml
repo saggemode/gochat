@@ -114,16 +114,31 @@
         </LinearLayout>
 
         <!-- Media Image Preview -->
-        <com.google.android.material.imageview.ShapeableImageView
-            android:id="@+id/ivMessageImage"
+        <FrameLayout
+            android:id="@+id/layoutImageContainer"
             android:layout_width="220dp"
             android:layout_height="180dp"
             android:layout_marginBottom="4dp"
-            android:contentDescription="Attached Image"
-            android:scaleType="centerCrop"
             android:visibility="gone"
-            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Medium"
-            tools:visibility="visible" />
+            tools:visibility="visible">
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/ivMessageImage"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="Attached Image"
+                android:scaleType="centerCrop"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Medium" />
+
+            <ProgressBar
+                android:id="@+id/pbImageLoading"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:visibility="gone"
+                tools:visibility="visible" />
+        </FrameLayout>
 
         <!-- Voice Note Playback Row -->
         <LinearLayout

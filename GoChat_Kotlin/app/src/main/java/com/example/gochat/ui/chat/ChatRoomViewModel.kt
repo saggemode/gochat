@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
+import java.io.File
+import java.io.FileOutputStream
 import java.util.regex.Pattern
 
 class ChatRoomViewModel(application: Application) : AndroidViewModel(application) {
@@ -272,21 +274,24 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
 
         val reply = _replyingTo.value
         viewModelScope.launch {
-            val uploadedUrl = withContext(Dispatchers.IO) {
-                chatRepository.uploadMedia(
-                    bytes = bytes,
-                    mimeType = "image/jpeg",
-                    fileName = "chat_${System.currentTimeMillis()}.jpg"
-                )
+            // 1. Save to a temporary file for background upload
+            val filePath = withContext(Dispatchers.IO) {
+                try {
+                    val file = File(getApplication<Application>().cacheDir, "pending_upload_${System.currentTimeMillis()}.jpg")
+                    FileOutputStream(file).use { it.write(bytes) }
+                    file.absolutePath
+                } catch (e: Exception) {
+                    null
+                }
             }
 
-            val finalMediaUrl = if (!uploadedUrl.isNullOrBlank()) uploadedUrl else dataUriFallback
-
+            // 2. Send immediately with the local file path
+            // The MessageSyncWorker will handle the actual background upload
             chatRepository.sendMessage(
                 conversationId = convId,
                 content = caption.ifBlank { "📷 Photo" },
                 type = 1, // Image
-                mediaUrl = finalMediaUrl,
+                mediaUrl = filePath ?: dataUriFallback,
                 replyToId = reply?.id,
                 replyToText = reply?.content,
                 replyToSenderName = reply?.senderName,

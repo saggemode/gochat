@@ -11,6 +11,7 @@ import com.example.gochat.data.model.MessageStatus
 import com.example.gochat.data.model.MessageType
 import com.example.gochat.data.repository.AuthRepository
 import kotlinx.serialization.json.*
+import java.io.File
 import java.io.InputStream
 
 class MessageSyncWorker(
@@ -79,6 +80,12 @@ class MessageSyncWorker(
 
     private fun readUriBytes(uri: Uri): ByteArray? {
         return try {
+            if (uri.scheme == null || uri.scheme == "file") {
+                val file = File(uri.path ?: uri.toString())
+                if (file.exists()) {
+                    return file.readBytes()
+                }
+            }
             applicationContext.contentResolver.openInputStream(uri)?.use { it.readBytes() }
         } catch (_: Exception) {
             null
