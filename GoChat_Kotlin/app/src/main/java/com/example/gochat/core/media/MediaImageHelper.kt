@@ -125,26 +125,32 @@ object MediaImageHelper {
         }
 
         // 4. Absolute local device storage paths (/data/..., /storage/..., /sdcard/...)
-        if (clean.startsWith("/data/") || clean.startsWith("/storage/") || clean.startsWith("/sdcard/") || clean.startsWith("/mnt/")) {
-            try {
-                val file = File(clean)
-                if (file.exists()) {
-                    imageView.load(file) {
-                        crossfade(true)
-                        placeholder(placeholderRes)
-                        error(errorRes)
-                        when {
-                            isCircle -> transformations(CircleCropTransformation())
-                            radiusPx != null -> transformations(RoundedCornersTransformation(radiusPx))
+        if (clean.startsWith("/") && !clean.startsWith("/api/") && !clean.startsWith("/media/")) {
+            val isLocal = clean.startsWith("/data/") || clean.startsWith("/storage/") || 
+                         clean.startsWith("/sdcard/") || clean.startsWith("/mnt/") ||
+                         clean.contains("/com.example.gochat/") // Broader check for app internal files
+
+            if (isLocal) {
+                try {
+                    val file = File(clean)
+                    if (file.exists()) {
+                        imageView.load(file) {
+                            crossfade(true)
+                            placeholder(placeholderRes)
+                            error(errorRes)
+                            when {
+                                isCircle -> transformations(CircleCropTransformation())
+                                radiusPx != null -> transformations(RoundedCornersTransformation(radiusPx))
+                            }
                         }
+                        return
                     }
-                    return
-                }
-            } catch (_: Throwable) {}
+                } catch (_: Throwable) {}
+            }
         }
 
         // 5. Relative API / media path (e.g. /media/uploads/..., /api/...)
-        val finalUrl = if (clean.startsWith("/")) {
+        val finalUrl = if (clean.startsWith("/") && (clean.startsWith("/api/") || clean.startsWith("/media/"))) {
             "${ApiConstants.BASE_URL.removeSuffix("/")}$clean"
         } else {
             clean

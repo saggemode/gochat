@@ -33,6 +33,7 @@ import java.util.regex.Pattern
 import android.util.LruCache
 import android.widget.ImageView
 import android.widget.TextView
+import com.example.gochat.core.media.MediaImageHelper
 import com.example.gochat.core.utils.LinkPreview
 import com.example.gochat.core.utils.LinkPreviewManager
 import kotlinx.coroutines.CoroutineScope
@@ -65,13 +66,6 @@ class MessageAdapter(
             changed = true
         }
         if (changed) {
-            notifyDataSetChanged()
-        }
-    }
-
-    fun setAccentColor(color: Int) {
-        if (this.accentColor != color) {
-            this.accentColor = color
             notifyDataSetChanged()
         }
     }
@@ -177,8 +171,10 @@ class MessageAdapter(
                 // Forwarded status
                 layoutForwarded.visibility = if (message.isForwarded) View.VISIBLE else View.GONE
 
-                val isImage = (message.type == MessageType.IMAGE || message.content.startsWith("📷 Photo")) && !message.isDeleted && !message.mediaUrl.isNullOrBlank()
-                val isVoice = (message.type == MessageType.VOICE || message.type == MessageType.AUDIO || message.content.startsWith("🎙️ Voice Note")) && !message.isDeleted
+                val isImage = (message.type == MessageType.IMAGE || message.content.contains("Photo", ignoreCase = true)) && 
+                              !message.isDeleted && !message.mediaUrl.isNullOrBlank()
+                val isVoice = (message.type == MessageType.VOICE || message.type == MessageType.AUDIO || message.content.contains("Voice Note", ignoreCase = true)) && 
+                              !message.isDeleted
 
                 // Content text
                 if (message.isDeleted) {
@@ -203,7 +199,7 @@ class MessageAdapter(
                     tvMessageContent.setTypeface(null, Typeface.NORMAL)
                     tvMessageContent.setOnClickListener(null)
                     
-                    // Link Preview logic
+                    // Link Preview logic (disabled for media)
                     if (!isVoice && !isImage) {
                         handleLinkPreview(message.content, binding)
                     } else {
@@ -211,7 +207,12 @@ class MessageAdapter(
                     }
                 }
 
-                if ((isImage || isVoice) && (message.content.isBlank() || message.content.startsWith("📷 Photo") || message.content.startsWith("🎙️ Voice Note"))) {
+                // Hide the text label if it's purely a media label
+                val isOnlyMediaLabel = message.content.isBlank() || 
+                    message.content.contains("Photo", ignoreCase = true) || 
+                    message.content.contains("Voice Note", ignoreCase = true)
+
+                if ((isImage || isVoice) && isOnlyMediaLabel) {
                     tvMessageContent.visibility = View.GONE
                 } else {
                     tvMessageContent.visibility = if (message.content.isNotEmpty() || message.isPing || message.isDeleted) View.VISIBLE else View.GONE
@@ -263,7 +264,7 @@ class MessageAdapter(
                     pbImageLoading.visibility = if (message.status == MessageStatus.SENDING) View.VISIBLE else View.GONE
                     ivMessageImage.alpha = if (message.status == MessageStatus.SENDING) 0.6f else 1.0f
 
-                    com.example.gochat.core.media.MediaImageHelper.loadSafeImage(
+                    MediaImageHelper.loadSafeImage(
                         imageView = ivMessageImage,
                         url = message.mediaUrl,
                         isCircle = false,
@@ -272,7 +273,7 @@ class MessageAdapter(
                         errorRes = R.drawable.ic_gallery
                     )
                     
-                    // Make the whole container clickable
+                    // Interaction
                     layoutImageContainer.setOnClickListener {
                         message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
                     }
@@ -281,25 +282,22 @@ class MessageAdapter(
                     }
                 } else {
                     layoutImageContainer.visibility = View.GONE
-                    ivMessageImage.setOnClickListener(null)
                     layoutImageContainer.setOnClickListener(null)
+                    ivMessageImage.setOnClickListener(null)
                 }
 
                 // Voice Note Row
-                if ((message.type == MessageType.VOICE || message.type == MessageType.AUDIO) && !message.isDeleted) {
+                if (isVoice) {
                     layoutVoiceNote.visibility = View.VISIBLE
                     val isPlayingThis = AudioPlayerManager.currentPlayingMessageId == message.id && AudioPlayerManager.isPlaying
                     btnPlayPauseVoice.setImageResource(if (isPlayingThis) R.drawable.ic_pause else R.drawable.ic_play)
-                    tvVoiceDuration.text = message.mediaDuration?.let { formatDuration(it) } ?: "0:14"
+                    tvVoiceDuration.text = message.mediaDuration?.let { formatDuration(it) } ?: "0:00"
 
-                    // Mock waveform if none provided
+                    // Mock waveform
                     val mockWaveform = List(30) { (0.2f + (0.8f * Math.random().toFloat())) }
                     waveformVoice.setWaveform(mockWaveform)
                     
-                    if (isPlayingThis) {
-                        // Current playing might have specific progress if we had a global progress state, 
-                        // but here we rely on onProgressUpdate from manager.
-                    } else {
+                    if (!isPlayingThis) {
                         waveformVoice.setProgress(0f)
                     }
 
@@ -361,8 +359,10 @@ class MessageAdapter(
                 // Forwarded status
                 layoutForwarded.visibility = if (message.isForwarded) View.VISIBLE else View.GONE
 
-                val isImage = (message.type == MessageType.IMAGE || message.content.startsWith("📷 Photo")) && !message.isDeleted && !message.mediaUrl.isNullOrBlank()
-                val isVoice = (message.type == MessageType.VOICE || message.type == MessageType.AUDIO || message.content.startsWith("🎙️ Voice Note")) && !message.isDeleted
+                val isImage = (message.type == MessageType.IMAGE || message.content.contains("Photo", ignoreCase = true)) && 
+                              !message.isDeleted && !message.mediaUrl.isNullOrBlank()
+                val isVoice = (message.type == MessageType.VOICE || message.type == MessageType.AUDIO || message.content.contains("Voice Note", ignoreCase = true)) && 
+                              !message.isDeleted
 
                 // Sender name
                 if (message.senderName.isNotBlank()) {
@@ -403,7 +403,11 @@ class MessageAdapter(
                     }
                 }
 
-                if ((isImage || isVoice) && (message.content.isBlank() || message.content.startsWith("📷 Photo") || message.content.startsWith("🎙️ Voice Note"))) {
+                val isOnlyMediaLabel = message.content.isBlank() || 
+                    message.content.contains("Photo", ignoreCase = true) || 
+                    message.content.contains("Voice Note", ignoreCase = true)
+
+                if ((isImage || isVoice) && isOnlyMediaLabel) {
                     tvMessageContent.visibility = View.GONE
                 } else {
                     tvMessageContent.visibility = if (message.content.isNotEmpty() || message.isPing || message.isDeleted) View.VISIBLE else View.GONE
@@ -445,7 +449,7 @@ class MessageAdapter(
                     pbImageLoading.visibility = if (message.status == MessageStatus.SENDING) View.VISIBLE else View.GONE
                     ivMessageImage.alpha = if (message.status == MessageStatus.SENDING) 0.6f else 1.0f
 
-                    com.example.gochat.core.media.MediaImageHelper.loadSafeImage(
+                    MediaImageHelper.loadSafeImage(
                         imageView = ivMessageImage,
                         url = message.mediaUrl,
                         isCircle = false,
@@ -454,7 +458,7 @@ class MessageAdapter(
                         errorRes = R.drawable.ic_gallery
                     )
                     
-                    // Make the whole container clickable
+                    // Interaction
                     layoutImageContainer.setOnClickListener {
                         message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
                     }
@@ -463,25 +467,22 @@ class MessageAdapter(
                     }
                 } else {
                     layoutImageContainer.visibility = View.GONE
-                    ivMessageImage.setOnClickListener(null)
                     layoutImageContainer.setOnClickListener(null)
+                    ivMessageImage.setOnClickListener(null)
                 }
 
                 // Voice Note Row
-                if ((message.type == MessageType.VOICE || message.type == MessageType.AUDIO) && !message.isDeleted) {
+                if (isVoice) {
                     layoutVoiceNote.visibility = View.VISIBLE
                     val isPlayingThis = AudioPlayerManager.currentPlayingMessageId == message.id && AudioPlayerManager.isPlaying
                     btnPlayPauseVoice.setImageResource(if (isPlayingThis) R.drawable.ic_pause else R.drawable.ic_play)
-                    tvVoiceDuration.text = message.mediaDuration?.let { formatDuration(it) } ?: "0:14"
+                    tvVoiceDuration.text = message.mediaDuration?.let { formatDuration(it) } ?: "0:00"
 
-                    // Mock waveform if none provided
+                    // Mock waveform
                     val mockWaveform = List(30) { (0.2f + (0.8f * Math.random().toFloat())) }
                     waveformVoice.setWaveform(mockWaveform)
                     
-                    if (isPlayingThis) {
-                        // Current playing might have specific progress if we had a global progress state, 
-                        // but here we rely on onProgressUpdate from manager.
-                    } else {
+                    if (!isPlayingThis) {
                         waveformVoice.setProgress(0f)
                     }
 

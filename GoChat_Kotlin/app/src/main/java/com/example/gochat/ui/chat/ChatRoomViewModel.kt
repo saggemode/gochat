@@ -285,13 +285,14 @@ class ChatRoomViewModel(application: Application) : AndroidViewModel(application
                 }
             }
 
-            // 2. Send immediately with the local file path
-            // The MessageSyncWorker will handle the actual background upload
+            val finalMediaUrl = filePath ?: dataUriFallback
+
+            // 2. Send immediately with the local path
             chatRepository.sendMessage(
                 conversationId = convId,
-                content = caption.ifBlank { "📷 Photo" },
+                content = caption.ifBlank { "Photo" },
                 type = 1, // Image
-                mediaUrl = filePath ?: dataUriFallback,
+                mediaUrl = finalMediaUrl,
                 replyToId = reply?.id,
                 replyToText = reply?.content,
                 replyToSenderName = reply?.senderName,
