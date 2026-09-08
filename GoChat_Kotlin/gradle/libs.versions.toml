@@ -24,8 +24,10 @@ playServicesAuth = "21.2.0"
 playServicesMaps = "19.0.0"
 playServicesLocation = "21.3.0"
 webrtc = "150.7871.01"
+ktor = "2.3.12"
 
 ksp = "2.0.20-1.0.25"
+
 googleGmsGoogleServices = "4.5.0"
 firebaseMessaging = "25.1.2"
 signalProtocol = "2.8.1"
@@ -76,7 +78,17 @@ webrtc = { group = "io.github.webrtc-sdk", name = "android", version.ref = "webr
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging", version.ref = "firebaseMessaging" }
 signal-protocol = { group = "org.whispersystems", name = "signal-protocol-android", version.ref = "signalProtocol" }
 
+# Ktor
+ktor-client-core = { group = "io.ktor", name = "ktor-client-core", version.ref = "ktor" }
+ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-websockets = { group = "io.ktor", name = "ktor-client-websockets", version.ref = "ktor" }
+ktor-client-serialization = { group = "io.ktor", name = "ktor-client-serialization", version.ref = "ktor" }
+ktor-client-logging = { group = "io.ktor", name = "ktor-client-logging", version.ref = "ktor" }
+ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-serialization-kotlinx-json = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }
+
 [plugins]
+
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version = "2.0.20" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

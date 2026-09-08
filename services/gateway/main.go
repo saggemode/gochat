@@ -557,8 +557,10 @@ func main() {
 		authRequired.GET("/business/products", businessHandler.GetMyProducts)
 		authRequired.POST("/marketplace/products/:id/view", businessHandler.TrackProductView)
 		authRequired.POST("/marketplace/products/:id/reviews", businessHandler.CreateReview)
+		authRequired.POST("/marketplace/reviews/:id/helpful", businessHandler.ToggleReviewHelpful)
 
 		// Follow Store
+
 		authRequired.POST("/marketplace/stores/:id/follow", businessHandler.ToggleFollowStore)
 		authRequired.GET("/marketplace/stores/:id/following", businessHandler.IsFollowingStore)
 		authRequired.GET("/marketplace/followed-stores", businessHandler.GetFollowedStores)

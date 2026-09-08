@@ -11,7 +11,17 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import io.ktor.client.*
+import io.ktor.client.engine.okhttp.*
+import io.ktor.client.plugins.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.logging.*
+import io.ktor.client.plugins.websocket.*
+import io.ktor.client.request.*
+import io.ktor.serialization.kotlinx.json.*
+
 import kotlinx.serialization.json.Json
+
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -81,7 +91,31 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideGoChatWebSocket(okHttpClient: OkHttpClient, json: Json): GoChatWebSocket {
-        return GoChatWebSocket(okHttpClient, json)
+    fun provideKtorHttpClient(json: Json, tokenManager: TokenManager): HttpClient {
+        return HttpClient(OkHttp) {
+            install(WebSockets) {
+                pingInterval = 20_000
+            }
+            install(ContentNegotiation) {
+                json(json)
+            }
+            install(Logging) {
+                level = LogLevel.BODY
+            }
+            defaultRequest {
+                val token = tokenManager.getToken()
+                if (!token.isNullOrBlank()) {
+                    header("Authorization", "Bearer $token")
+                }
+            }
+        }
+    }
+
+
+    @Provides
+    @Singleton
+    fun provideGoChatWebSocket(ktorClient: HttpClient, json: Json): GoChatWebSocket {
+        return GoChatWebSocket(ktorClient, json)
     }
 }
+

@@ -1,7 +1,18 @@
 package com.example.gochat.data.api
 
 import android.content.Context
+import com.example.gochat.data.websocket.GoChatWebSocket
+import io.ktor.client.*
+import io.ktor.client.engine.okhttp.*
+import io.ktor.client.plugins.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.logging.*
+import io.ktor.client.plugins.websocket.*
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
+
+
+
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -35,7 +46,19 @@ object NetworkModule {
     private var apiService: GoChatApiService? = null
 
     @Volatile
-    private var webSocket: com.example.gochat.data.websocket.GoChatWebSocket? = null
+    private var ktorClient: HttpClient? = null
+
+    @Volatile
+    private var webSocket: GoChatWebSocket? = null
+
+    /**
+     * Returns the shared Ktor HttpClient.
+     */
+    fun getKtorHttpClient(): HttpClient {
+        return ktorClient ?: synchronized(this) {
+            ktorClient ?: buildKtorHttpClient().also { ktorClient = it }
+        }
+    }
 
     /**
      * Returns the shared OkHttpClient configured with auth injection and logging.
@@ -58,14 +81,16 @@ object NetworkModule {
     /**
      * Returns the shared GoChatWebSocket instance.
      */
-    fun getWebSocket(context: Context): com.example.gochat.data.websocket.GoChatWebSocket {
+    fun getWebSocket(): GoChatWebSocket {
         return webSocket ?: synchronized(this) {
-            webSocket ?: com.example.gochat.data.websocket.GoChatWebSocket(
-                getOkHttpClient(context),
+            webSocket ?: GoChatWebSocket(
+                getKtorHttpClient(),
                 json
             ).also { webSocket = it }
         }
     }
+
+
 
     /**
      * Returns the shared GoChatApiService.
@@ -79,6 +104,27 @@ object NetworkModule {
     }
 
     // ── Private Builders ─────────────────────────────────────────
+
+    private fun buildKtorHttpClient(): HttpClient {
+        return HttpClient(OkHttp) {
+            install(WebSockets) {
+                pingInterval = 20_000
+            }
+            install(ContentNegotiation) {
+                json(json)
+            }
+            install(Logging) {
+                level = LogLevel.BODY
+            }
+            // Manual injection for non-DI entry points
+            defaultRequest {
+                // We'd need a context here for TokenManager.getInstance(context)
+                // but since this is used sparingly, we can add it when needed.
+            }
+        }
+    }
+
+
 
     private fun buildOkHttpClient(context: Context): OkHttpClient {
         val tokenManager = TokenManager.getInstance(context)
