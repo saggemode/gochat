@@ -263,7 +263,9 @@ func main() {
 	socialHandler := handlers.NewSocialHandler(socialClient, authClient, log)
 	miniappHandler := handlers.NewMiniAppHandler(miniappClient, log)
 	businessHandler := handlers.NewBusinessHandler(businessClient, hub, log).WithRedis(redisClient)
+	searchHandler := handlers.NewSearchHandler("http://localhost:8095", log)
 	docsHandler := handlers.NewDocsHandler()
+
 
 	// ── Root Status & Health Endpoints ──────────────────────────────────────
 	r.GET("/", func(c *gin.Context) {
@@ -318,7 +320,12 @@ func main() {
 			marketplace.GET("/products/:id/reviews", businessHandler.ListReviews)
 		}
 
+		// Search Service Proxy
+		api.GET("/search", searchHandler.ProxySearch)
+		api.GET("/search/suggestions", searchHandler.ProxySearch)
+
 		// Media proxy with resizing
+
 		api.GET("/media/thumbnail/:fileId", mediaHandler.DownloadResized)
 	}
 
