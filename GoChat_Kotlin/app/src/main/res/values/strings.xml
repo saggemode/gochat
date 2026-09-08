@@ -457,8 +457,10 @@
     <string name="dialog_logout_confirmation_desc">Are you sure you want to log out of GoChat?</string>
     <string name="price_format">%1$s %2$s</string>
     <string name="tab_marketplace">Marketplace</string>
+    <string name="tab_following">Following</string>
     <string name="tab_seller_hub">Seller Hub</string>
     <string name="tab_open_store">Open Store</string>
+
     <string name="chat_with_seller">Chat Seller</string>
     <string name="buy_now">Buy Now</string>
     <string name="btn_add_product">+ Add Product</string>

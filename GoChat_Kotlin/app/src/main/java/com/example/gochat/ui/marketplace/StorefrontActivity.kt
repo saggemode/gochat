@@ -1,12 +1,15 @@
 package com.example.gochat.ui.marketplace
 
 import android.content.Intent
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.gochat.R
@@ -17,8 +20,13 @@ import com.example.gochat.data.model.Store
 import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.databinding.ActivityStorefrontBinding
 import com.example.gochat.databinding.DialogEditStoreBinding
+import com.example.gochat.databinding.DialogNewChatByPinBinding
+import com.example.gochat.databinding.DialogStoreQrBinding
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.zxing.BarcodeFormat
+import com.journeyapps.barcodescanner.BarcodeEncoder
 import dagger.hilt.android.AndroidEntryPoint
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -96,7 +104,64 @@ class StorefrontActivity : AppCompatActivity() {
                 currentStore?.let { showEditStoreDialog(it) }
             }
         }
+
+        binding.btnStoreQR.setOnClickListener {
+            val s = currentStore ?: return@setOnClickListener
+            showStoreQR(s)
+        }
+
+        binding.btnFollowStore.setOnClickListener {
+            val s = currentStore ?: return@setOnClickListener
+            toggleFollow(s.id)
+        }
     }
+
+    private fun toggleFollow(storeId: String) {
+        lifecycleScope.launch {
+            val res = repository.toggleFollowStore(storeId)
+            if (res.isSuccess) {
+                val following = res.getOrThrow()
+                updateFollowButton(following)
+                Toast.makeText(this@StorefrontActivity, if (following) "Following store!" else "Unfollowed store", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun updateFollowButton(isFollowing: Boolean) {
+        if (isFollowing) {
+            binding.btnFollowStore.text = "Following"
+            binding.btnFollowStore.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#374151")))
+            binding.btnFollowStore.setTextColor(Color.WHITE)
+        } else {
+            binding.btnFollowStore.text = "Follow"
+            binding.btnFollowStore.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.gochat_accent)))
+            binding.btnFollowStore.setTextColor(Color.BLACK)
+        }
+    }
+
+
+    private fun showStoreQR(store: Store) {
+        val dialog = BottomSheetDialog(this)
+        val qrContent = "gochat://store/${store.ownerPin.ifBlank { store.id }}"
+        
+        try {
+            val barcodeEncoder = BarcodeEncoder()
+            val bitmap = barcodeEncoder.encodeBitmap(qrContent, BarcodeFormat.QR_CODE, 600, 600)
+            
+            val dialogBinding = DialogStoreQrBinding.inflate(layoutInflater)
+            dialog.setContentView(dialogBinding.root)
+            
+            dialogBinding.tvQrTitle.text = "${store.name} QR Code"
+            dialogBinding.ivStoreQrCode.setImageBitmap(bitmap)
+            dialogBinding.btnCloseQr.setOnClickListener { dialog.dismiss() }
+            
+            dialog.show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Failed to generate QR code", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+
 
     private fun loadStoreData(storeId: String) {
         lifecycleScope.launch {
@@ -138,8 +203,23 @@ class StorefrontActivity : AppCompatActivity() {
         if (isOwner) {
             binding.btnStorefrontAction.visibility = View.VISIBLE
             binding.btnStorefrontAction.text = "Edit Store"
+            binding.btnFollowStore.visibility = View.GONE
+        } else {
+            binding.btnStorefrontAction.visibility = View.GONE
+            binding.btnFollowStore.visibility = View.VISIBLE
+            checkFollowStatus(store.id)
         }
     }
+
+    private fun checkFollowStatus(storeId: String) {
+        lifecycleScope.launch {
+            val res = repository.isFollowingStore(storeId)
+            if (res.isSuccess) {
+                updateFollowButton(res.getOrThrow())
+            }
+        }
+    }
+
 
     private fun showEditStoreDialog(store: Store) {
         val dialog = BottomSheetDialog(this)

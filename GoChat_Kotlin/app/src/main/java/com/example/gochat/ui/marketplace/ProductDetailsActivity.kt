@@ -2,10 +2,13 @@ package com.example.gochat.ui.marketplace
 
 import android.content.Intent
 import android.graphics.Paint
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.gochat.R
@@ -15,8 +18,11 @@ import com.example.gochat.data.model.ProductVariant
 import com.example.gochat.data.model.Store
 import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.databinding.ActivityProductDetailsBinding
+import com.example.gochat.databinding.DialogWriteReviewBinding
 import com.example.gochat.ui.chat.ChatRoomActivity
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import dagger.hilt.android.AndroidEntryPoint
+
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.*
 import java.util.Locale
@@ -35,13 +41,22 @@ class ProductDetailsActivity : AppCompatActivity() {
     private var selectedVariant: ProductVariant? = null
     private lateinit var variantAdapterPrimary: VariantChipAdapter
     private lateinit var variantAdapterSecondary: VariantChipAdapter
+    private lateinit var reviewAdapter: ReviewAdapter
 
     private var primaryAttributeName: String? = null
+
     private var secondaryAttributeName: String? = null
     private var selectedPrimaryValue: String? = null
     private var selectedSecondaryValue: String? = null
 
+    private val reviewPhotos = mutableListOf<Uri>()
+    private var onReviewPhotosPicked: ((List<Uri>) -> Unit)? = null
+    private val pickReviewPhotosLauncher = registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
+        onReviewPhotosPicked?.invoke(uris)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
         binding = ActivityProductDetailsBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -72,7 +87,14 @@ class ProductDetailsActivity : AppCompatActivity() {
             adapter = variantAdapterSecondary
             layoutManager = LinearLayoutManager(this@ProductDetailsActivity, LinearLayoutManager.HORIZONTAL, false)
         }
+
+        reviewAdapter = ReviewAdapter()
+        binding.rvReviews.apply {
+            adapter = reviewAdapter
+            layoutManager = LinearLayoutManager(this@ProductDetailsActivity)
+        }
     }
+
 
     private fun setupListeners() {
         binding.toolbar.setNavigationOnClickListener { finish() }
@@ -91,7 +113,12 @@ class ProductDetailsActivity : AppCompatActivity() {
             product?.let { addToCart(it, andProceedToCheckout = true) }
         }
 
+        binding.btnWriteReview.setOnClickListener {
+            product?.let { showWriteReviewDialog(it) }
+        }
+
         binding.layoutStore.setOnClickListener {
+
             val s = store ?: product?.let { Store(id = it.storeId, name = it.storeName, address = it.sellerLocation, ownerPin = it.sellerPin) }
             s?.let {
                 val intent = Intent(this, StorefrontActivity::class.java).apply {
@@ -117,7 +144,9 @@ class ProductDetailsActivity : AppCompatActivity() {
             product?.let { p ->
                 displayProduct(p)
                 loadStore(p.storeId)
+                loadReviews(p.id)
             } ?: run {
+
                 Toast.makeText(this@ProductDetailsActivity, getString(R.string.error_product_not_found), Toast.LENGTH_SHORT).show()
                 finish()
             }
@@ -131,6 +160,66 @@ class ProductDetailsActivity : AppCompatActivity() {
             store?.let { displayStore(it) }
         }
     }
+
+    private fun loadReviews(productId: String) {
+        lifecycleScope.launch {
+            val result = repository.getReviews(productId)
+            if (result.isSuccess) {
+                reviewAdapter.submitList(result.getOrThrow())
+            }
+        }
+    }
+
+    private fun showWriteReviewDialog(product: Product) {
+        val dialog = BottomSheetDialog(this)
+        val dialogBinding = DialogWriteReviewBinding.inflate(layoutInflater)
+        dialog.setContentView(dialogBinding.root)
+
+        reviewPhotos.clear()
+
+        dialogBinding.layoutPickPhotos.setOnClickListener {
+            onReviewPhotosPicked = { uris ->
+                reviewPhotos.clear()
+                reviewPhotos.addAll(uris)
+                dialogBinding.tvPhotosLabel.text = "${uris.size} photos selected"
+            }
+            pickReviewPhotosLauncher.launch("image/*")
+        }
+
+        dialogBinding.btnSubmitReview.setOnClickListener {
+            val rating = dialogBinding.ratingBar.rating.toInt()
+            val comment = dialogBinding.etComment.text.toString().trim()
+
+            dialogBinding.btnSubmitReview.isEnabled = false
+            dialogBinding.btnSubmitReview.text = "Submitting..."
+
+            lifecycleScope.launch {
+                val uploadedUrls = mutableListOf<String>()
+                for (uri in reviewPhotos) {
+                    val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    if (bytes != null) {
+                        val remote = repository.uploadMedia(bytes, "image/jpeg", "review_${System.currentTimeMillis()}.jpg")
+                        if (!remote.isNullOrBlank()) uploadedUrls.add(remote)
+                    }
+                }
+
+                val res = repository.createReview(product.id, rating, comment, uploadedUrls)
+                if (res.isSuccess) {
+                    Toast.makeText(this@ProductDetailsActivity, "Review submitted! Thank you.", Toast.LENGTH_SHORT).show()
+                    loadReviews(product.id)
+                    dialog.dismiss()
+                } else {
+                    dialogBinding.btnSubmitReview.isEnabled = true
+                    dialogBinding.btnSubmitReview.text = "Submit Review"
+                    Toast.makeText(this@ProductDetailsActivity, "Failed to submit review", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
+        dialog.show()
+    }
+
+
 
     private fun displayProduct(product: Product) {
         binding.tvProductName.text = product.displayTitle

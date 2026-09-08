@@ -101,7 +101,13 @@ service BusinessService {
   rpc CreateOrderModification(CreateOrderModificationRequest) returns (CreateOrderModificationResponse);
   rpc ProcessOrderModification(ProcessOrderModificationRequest) returns (ProcessOrderModificationResponse);
   rpc ListOrderModifications(ListOrderModificationsRequest) returns (ListOrderModificationsResponse);
+
+  // Follow Operations
+  rpc ToggleFollowStore(ToggleFollowStoreRequest) returns (ToggleFollowStoreResponse);
+  rpc IsFollowingStore(IsFollowingStoreRequest) returns (IsFollowingStoreResponse);
+  rpc GetFollowedStores(GetFollowedStoresRequest) returns (GetFollowedStoresResponse);
 }
+
 
 // ── Core Types ───────────────────────────────────────────────────────────────
 
@@ -171,15 +177,18 @@ message SubCategory {
 }
 
 message Review {
-  string id         = 1;
-  string product_id = 2;
-  string user_id    = 3;
-  string user_name  = 4;
-  string user_avatar = 5;
-  int32  rating     = 6;
-  string comment    = 7;
-  string created_at = 8;
+  string id            = 1;
+  string product_id    = 2;
+  string user_id       = 3;
+  string user_name     = 4;
+  string user_avatar   = 5;
+  int32  rating        = 6;
+  string comment       = 7;
+  repeated string image_urls = 8;
+  int32  helpful_count = 9;
+  string created_at    = 10;
 }
+
 
 message Store {
   BusinessProfile profile     = 1;
@@ -456,7 +465,9 @@ message CreateReviewRequest {
   string user_id    = 2;
   int32  rating     = 3;
   string comment    = 4;
+  repeated string image_urls = 5;
 }
+
 message CreateReviewResponse { Review review = 1; }
 
 message ListReviewsRequest {
@@ -979,3 +990,29 @@ message ModerateProductQuestionRequest {
 message ModerateProductQuestionResponse {
   bool success = 1;
 }
+
+// ── Follow Requests ─────────────────────────────────────────────────────────
+
+message ToggleFollowStoreRequest {
+  string store_id = 1;
+  string user_id  = 2;
+}
+message ToggleFollowStoreResponse {
+  bool is_following = 1;
+}
+
+message IsFollowingStoreRequest {
+  string store_id = 1;
+  string user_id  = 2;
+}
+message IsFollowingStoreResponse {
+  bool is_following = 1;
+}
+
+message GetFollowedStoresRequest {
+  string user_id = 1;
+}
+message GetFollowedStoresResponse {
+  repeated BusinessProfile followed_stores = 1;
+}
+

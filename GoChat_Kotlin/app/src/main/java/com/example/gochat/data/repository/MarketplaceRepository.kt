@@ -519,6 +519,101 @@ class MarketplaceRepository @Inject constructor(
         }
     }
 
+    // ── Follow Operations ───────────────────────────────────────────────────
+    suspend fun toggleFollowStore(storeId: String): Result<Boolean> {
+        return try {
+            val response = api.toggleFollowStore(storeId)
+            if (response.isSuccessful) {
+                val isFollowing = response.body()?.get("is_following")?.jsonPrimitive?.booleanOrNull ?: false
+                Result.success(isFollowing)
+            } else {
+                Result.failure(Exception("Failed to toggle follow"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun isFollowingStore(storeId: String): Result<Boolean> {
+        return try {
+            val response = api.isFollowingStore(storeId)
+            if (response.isSuccessful) {
+                val isFollowing = response.body()?.get("is_following")?.jsonPrimitive?.booleanOrNull ?: false
+                Result.success(isFollowing)
+            } else {
+                Result.success(false)
+            }
+        } catch (e: Exception) {
+            Result.success(false)
+        }
+    }
+
+    suspend fun getFollowedStores(): Result<List<Store>> {
+        return try {
+            val response = api.getFollowedStores()
+            if (response.isSuccessful) {
+                val list = when (val data = response.body()) {
+                    is JsonArray -> data.map { parseStoreJson(it.jsonObject, "") }
+                    is JsonObject -> data["followed_stores"]?.jsonArray?.map { parseStoreJson(it.jsonObject, "") } ?: emptyList()
+                    else -> emptyList()
+                }
+                Result.success(list)
+            } else {
+                Result.failure(Exception("Failed to fetch followed stores"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // ── Review Operations ───────────────────────────────────────────────────
+    suspend fun getReviews(productId: String): Result<List<Review>> {
+        return try {
+            val response = api.getReviews(productId)
+            if (response.isSuccessful) {
+                val list = when (val data = response.body()) {
+                    is JsonArray -> data.mapNotNull {
+                        try { json.decodeFromJsonElement<Review>(it) } catch (_: Exception) { null }
+                    }
+                    is JsonObject -> data["reviews"]?.jsonArray?.mapNotNull {
+                        try { json.decodeFromJsonElement<Review>(it) } catch (_: Exception) { null }
+                    } ?: emptyList()
+                    else -> emptyList()
+                }
+                Result.success(list)
+            } else {
+                Result.failure(Exception("Failed to fetch reviews"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun createReview(productId: String, rating: Int, comment: String, imageUrls: List<String>): Result<Review> {
+        val currentUserId = tokenManager.userId ?: ""
+        return try {
+            val body = buildJsonObject {
+                put("product_id", productId)
+                put("user_id", currentUserId)
+                put("rating", rating)
+                put("comment", comment)
+                put("image_urls", JsonArray(imageUrls.map { JsonPrimitive(it) }))
+            }
+            val response = api.createReview(productId, body)
+            if (response.isSuccessful) {
+                val res = response.body() ?: buildJsonObject {}
+                val reviewJson = res["review"]?.jsonObject ?: res
+                Result.success(json.decodeFromJsonElement<Review>(reviewJson))
+            } else {
+                Result.failure(Exception("Failed to create review"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+
+
     suspend fun getMyProducts(): Result<List<Product>> {
         val currentUserId = tokenManager.userId ?: ""
         return try {

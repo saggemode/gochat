@@ -159,12 +159,13 @@ func (s *BusinessServer) CreateReview(ctx context.Context, req *pb.CreateReviewR
 	if req.Rating < 1 || req.Rating > 5 {
 		return nil, status.Errorf(codes.InvalidArgument, "rating must be between 1 and 5")
 	}
-	r, err := s.repo.CreateReview(ctx, req.ProductId, req.UserId, req.Rating, req.Comment)
+	r, err := s.repo.CreateReview(ctx, req.ProductId, req.UserId, req.Rating, req.Comment, req.ImageUrls)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "create review: %v", err)
 	}
 	return &pb.CreateReviewResponse{Review: reviewToPB(r)}, nil
 }
+
 
 func (s *BusinessServer) ListReviews(ctx context.Context, req *pb.ListReviewsRequest) (*pb.ListReviewsResponse, error) {
 	limit := req.Limit
@@ -181,6 +182,38 @@ func (s *BusinessServer) ListReviews(ctx context.Context, req *pb.ListReviewsReq
 	}
 	return &pb.ListReviewsResponse{Reviews: pbReviews, Total: total}, nil
 }
+
+// ── Follow Handlers ─────────────────────────────────────────────────────────
+
+func (s *BusinessServer) ToggleFollowStore(ctx context.Context, req *pb.ToggleFollowStoreRequest) (*pb.ToggleFollowStoreResponse, error) {
+	following, err := s.repo.ToggleFollowStore(ctx, req.StoreId, req.UserId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "toggle follow store: %v", err)
+	}
+	return &pb.ToggleFollowStoreResponse{IsFollowing: following}, nil
+}
+
+func (s *BusinessServer) IsFollowingStore(ctx context.Context, req *pb.IsFollowingStoreRequest) (*pb.IsFollowingStoreResponse, error) {
+	following, err := s.repo.IsFollowingStore(ctx, req.StoreId, req.UserId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "check following status: %v", err)
+	}
+	return &pb.IsFollowingStoreResponse{IsFollowing: following}, nil
+}
+
+func (s *BusinessServer) GetFollowedStores(ctx context.Context, req *pb.GetFollowedStoresRequest) (*pb.GetFollowedStoresResponse, error) {
+	stores, err := s.repo.GetFollowedStores(ctx, req.UserId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "get followed stores: %v", err)
+	}
+
+	pbStores := make([]*pb.BusinessProfile, len(stores))
+	for i, st := range stores {
+		pbStores[i] = profileToPB(st)
+	}
+	return &pb.GetFollowedStoresResponse{FollowedStores: pbStores}, nil
+}
+
 
 func marketplaceProductToPB(p *repository.MarketplaceProduct) *pb.MarketplaceProduct {
 	if p == nil {
@@ -224,16 +257,19 @@ func reviewToPB(r *repository.Review) *pb.Review {
 		return nil
 	}
 	return &pb.Review{
-		Id:         r.ID,
-		ProductId:  r.ProductID,
-		UserId:     r.UserID,
-		UserName:   r.UserName,
-		UserAvatar: r.UserAvatar,
-		Rating:     r.Rating,
-		Comment:    r.Comment,
-		CreatedAt:  r.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		Id:           r.ID,
+		ProductId:    r.ProductID,
+		UserId:       r.UserID,
+		UserName:     r.UserName,
+		UserAvatar:   r.UserAvatar,
+		Rating:       r.Rating,
+		Comment:      r.Comment,
+		ImageUrls:    r.ImageURLs,
+		HelpfulCount: r.HelpfulCount,
+		CreatedAt:    r.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 }
+
 
 // ── Product Variant Handlers ─────────────────────────────────────────────────
 

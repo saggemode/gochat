@@ -141,7 +141,22 @@ data class Store(
 )
 
 @Serializable
+data class Review(
+    val id: String,
+    @SerialName("product_id") val productId: String,
+    @SerialName("user_id") val userId: String,
+    @SerialName("user_name") val userName: String = "User",
+    @SerialName("user_avatar") val userAvatar: String? = null,
+    val rating: Int,
+    val comment: String = "",
+    @SerialName("image_urls") val imageUrls: List<String> = emptyList(),
+    @SerialName("helpful_count") val helpfulCount: Int = 0,
+    @SerialName("created_at") val createdAt: String? = null
+)
+
+@Serializable
 @Entity(tableName = "cart_items")
+
 data class CartItem(
     @PrimaryKey val id: String,
     @SerialName("product_id") val productId: String,

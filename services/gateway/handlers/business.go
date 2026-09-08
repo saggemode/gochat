@@ -321,3 +321,51 @@ func (h *BusinessHandler) GetQueuePosition(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, resp)
 }
+
+func (h *BusinessHandler) ToggleFollowStore(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	storeID := c.Param("id")
+	resp, err := h.client.ToggleFollowStore(c.Request.Context(), &pb.ToggleFollowStoreRequest{
+		StoreId: storeID, UserId: userID,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func (h *BusinessHandler) GetFollowedStores(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	resp, err := h.client.GetFollowedStores(c.Request.Context(), &pb.GetFollowedStoresRequest{
+		UserId: userID,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func (h *BusinessHandler) IsFollowingStore(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	storeID := c.Param("id")
+	resp, err := h.client.IsFollowingStore(c.Request.Context(), &pb.IsFollowingStoreRequest{
+		StoreId: storeID, UserId: userID,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+

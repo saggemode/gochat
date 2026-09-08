@@ -80,10 +80,45 @@
                         android:textSize="12sp"
                         android:textStyle="bold"
                         android:visibility="gone"
-                        app:cornerRadius="18dp"
                         app:strokeColor="@color/whatsapp_teal_light"
                         app:strokeWidth="1dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnFollowStore"
+                        style="@style/GoChat.Button.Primary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:layout_alignParentEnd="true"
+                        android:layout_marginTop="148dp"
+                        android:layout_marginEnd="16dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingHorizontal="14dp"
+                        android:paddingVertical="0dp"
+                        android:text="Follow"
+                        android:textAllCaps="false"
+                        android:textColor="@color/black"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:visibility="gone"
+                        app:cornerRadius="18dp"
+                        tools:visibility="visible" />
+
+
+                    <ImageButton
+                        android:id="@+id/btnStoreQR"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_marginTop="148dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_toStartOf="@id/btnStorefrontAction"
+                        android:background="@drawable/bg_circle_pulse"
+                        android:contentDescription="Store QR Code"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_qr_code"
+                        app:tint="@color/whatsapp_teal_light" />
                 </RelativeLayout>
+
 
                 <!-- Store Info Area -->
                 <LinearLayout

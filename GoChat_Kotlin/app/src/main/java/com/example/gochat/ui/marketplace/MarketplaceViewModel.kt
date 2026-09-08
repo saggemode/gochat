@@ -115,19 +115,45 @@ class MarketplaceViewModel @Inject constructor(
         }
     }
 
-    fun loadData() {
+    fun loadData(tabIndex: Int = 0) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
 
-            loadExploreProducts()
+            when (tabIndex) {
+                0 -> loadExploreProducts()
+                1 -> loadFollowingProducts()
+                2 -> loadMyStore()
+            }
+            
             loadCategories()
-            loadMyStore()
             refreshCartCount()
 
             _isLoading.value = false
         }
     }
+
+    private suspend fun loadFollowingProducts() {
+        val followedRes = repository.getFollowedStores()
+        if (followedRes.isSuccess) {
+            val followedStores = followedRes.getOrThrow()
+            val allFollowedProducts = mutableListOf<Product>()
+            
+            followedStores.forEach { store ->
+                val prodRes = repository.getStoreProducts(store.id)
+                if (prodRes.isSuccess) {
+                    allFollowedProducts.addAll(prodRes.getOrThrow())
+                }
+            }
+            
+            // Sort by newest
+            _products.value = allFollowedProducts.sortedByDescending { it.createdAt }
+        } else {
+            _error.value = "Failed to load followed stores"
+            _products.value = emptyList()
+        }
+    }
+
 
     private suspend fun loadExploreProducts() {
         val result = repository.getProducts(

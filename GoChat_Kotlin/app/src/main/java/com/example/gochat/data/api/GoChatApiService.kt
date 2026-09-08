@@ -343,6 +343,33 @@ interface GoChatApiService {
         @Path("id") productId: String
     ): Response<JsonObject>
 
+    @POST("api/v1/marketplace/products/{id}/reviews")
+    suspend fun createReview(
+        @Path("id") productId: String,
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @GET("api/v1/marketplace/products/{id}/reviews")
+    suspend fun getReviews(
+        @Path("id") productId: String
+    ): Response<JsonElement>
+
+    // ── Follow Store ─────────────────────────────────────────────
+
+    @POST("api/v1/marketplace/stores/{id}/follow")
+    suspend fun toggleFollowStore(
+        @Path("id") storeId: String
+    ): Response<JsonObject>
+
+    @GET("api/v1/marketplace/stores/{id}/following")
+    suspend fun isFollowingStore(
+        @Path("id") storeId: String
+    ): Response<JsonObject>
+
+    @GET("api/v1/marketplace/followed-stores")
+    suspend fun getFollowedStores(): Response<JsonElement>
+
+
     // ═══════════════════════════════════════════════════════════════
     // ── Media Upload ─────────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════

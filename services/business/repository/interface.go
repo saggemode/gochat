@@ -91,7 +91,18 @@ type IBusinessRepository interface {
 	GetProductQuestions(ctx context.Context, productID string, limit, offset int) ([]*ProductQuestion, int64, error)
 	FlagProductQuestion(ctx context.Context, questionID, userID, reason string) (*ProductQuestion, error)
 	ModerateProductQuestion(ctx context.Context, questionID, status string) (*ProductQuestion, error)
+
+	// Review Operations
+	CreateReview(ctx context.Context, productID, userID string, rating int32, comment string, imageURLs []string) (*Review, error)
+	ToggleReviewHelpful(ctx context.Context, reviewID, userID string) (bool, error)
+
+	// Follow Operations
+	ToggleFollowStore(ctx context.Context, storeID, userID string) (bool, error)
+	GetFollowedStores(ctx context.Context, userID string) ([]*BusinessProfile, error)
+	IsFollowingStore(ctx context.Context, storeID, userID string) (bool, error)
 }
+
+
 
 // INotificationService interface defines the contract for notification operations
 type INotificationService interface {

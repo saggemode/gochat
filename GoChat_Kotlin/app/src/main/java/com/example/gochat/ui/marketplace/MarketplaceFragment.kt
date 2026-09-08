@@ -179,11 +179,16 @@ class MarketplaceFragment : Fragment() {
         binding.tabLayoutMain.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 val index = tab?.position ?: 0
-                binding.viewFlipper.displayedChild = index
-                if (index == 1) {
+                if (index == 2) {
+                    binding.viewFlipper.displayedChild = 1
                     viewModel.loadMyStore()
+                } else {
+                    binding.viewFlipper.displayedChild = 0
+                    viewModel.loadData(index)
                 }
             }
+
+
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
             override fun onTabReselected(tab: TabLayout.Tab?) {}
         })

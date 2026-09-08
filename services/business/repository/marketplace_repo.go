@@ -58,15 +58,18 @@ type SubCategory struct {
 }
 
 type Review struct {
-	ID         string
-	ProductID  string
-	UserID     string
-	UserName   string
-	UserAvatar string
-	Rating     int32
-	Comment    string
-	CreatedAt  time.Time
+	ID           string
+	ProductID    string
+	UserID       string
+	UserName     string
+	UserAvatar   string
+	Rating       int32
+	Comment      string
+	ImageURLs    []string
+	HelpfulCount int32
+	CreatedAt    time.Time
 }
+
 
 type Store struct {
 	Profile      *BusinessProfile
@@ -602,16 +605,17 @@ func (r *BusinessRepository) TrackProductView(ctx context.Context, productID, us
 	return nil
 }
 
-func (r *BusinessRepository) CreateReview(ctx context.Context, productID, userID string, rating int32, comment string) (*Review, error) {
+func (r *BusinessRepository) CreateReview(ctx context.Context, productID, userID string, rating int32, comment string, imageURLs []string) (*Review, error) {
 	id := uuid.New().String()
 	now := time.Now()
 
 	_, err := r.db.Exec(ctx,
-		`INSERT INTO business.reviews (id, product_id, user_id, rating, comment)
-		 VALUES ($1, $2, $3, $4, $5)
-		 ON CONFLICT (product_id, user_id) DO UPDATE SET rating = $4, comment = $5, created_at = NOW()`,
-		id, productID, userID, rating, comment,
+		`INSERT INTO business.reviews (id, product_id, user_id, rating, comment, image_urls)
+		 VALUES ($1, $2, $3, $4, $5, $6)
+		 ON CONFLICT (product_id, user_id) DO UPDATE SET rating = $4, comment = $5, image_urls = $6, created_at = NOW()`,
+		id, productID, userID, rating, comment, imageURLs,
 	)
+
 	if err != nil {
 		return nil, fmt.Errorf("create review: %w", err)
 	}
@@ -635,20 +639,45 @@ func (r *BusinessRepository) CreateReview(ctx context.Context, productID, userID
 		UserAvatar: userAvatar,
 		Rating:     rating,
 		Comment:    comment,
+		ImageURLs:  imageURLs,
 		CreatedAt:  now,
 	}, nil
 }
+
+func (r *BusinessRepository) ToggleReviewHelpful(ctx context.Context, reviewID, userID string) (bool, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback(ctx)
+
+	var exists bool
+	_ = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM business.review_helpful_votes WHERE review_id = $1 AND user_id = $2)`, reviewID, userID).Scan(&exists)
+
+	if exists {
+		_, _ = tx.Exec(ctx, `DELETE FROM business.review_helpful_votes WHERE review_id = $1 AND user_id = $2`, reviewID, userID)
+		_, _ = tx.Exec(ctx, `UPDATE business.reviews SET helpful_count = GREATEST(0, helpful_count - 1) WHERE id = $1`, reviewID)
+	} else {
+		_, _ = tx.Exec(ctx, `INSERT INTO business.review_helpful_votes (review_id, user_id) VALUES ($1, $2)`, reviewID, userID)
+		_, _ = tx.Exec(ctx, `UPDATE business.reviews SET helpful_count = helpful_count + 1 WHERE id = $1`, reviewID)
+	}
+
+	err = tx.Commit(ctx)
+	return !exists, err
+}
+
 
 func (r *BusinessRepository) ListReviews(ctx context.Context, productID string, limit, offset int32) ([]*Review, int32, error) {
 	var total int32
 	_ = r.db.QueryRow(ctx, `SELECT COUNT(*) FROM business.reviews WHERE product_id = $1`, productID).Scan(&total)
 
 	rows, err := r.db.Query(ctx,
-		`SELECT r.id, r.product_id, r.user_id, COALESCE(u.display_name, 'Anonymous'), COALESCE(u.avatar_url, ''), r.rating, COALESCE(r.comment, ''), r.created_at
+		`SELECT r.id, r.product_id, r.user_id, COALESCE(u.display_name, 'Anonymous'), COALESCE(u.avatar_url, ''),
+		        r.rating, COALESCE(r.comment, ''), r.image_urls, r.helpful_count, r.created_at
 		 FROM business.reviews r
 		 LEFT JOIN core.users u ON u.id = r.user_id
 		 WHERE r.product_id = $1
-		 ORDER BY r.created_at DESC
+		 ORDER BY r.helpful_count DESC, r.created_at DESC
 		 LIMIT $2 OFFSET $3`, productID, limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list reviews: %w", err)
@@ -658,9 +687,68 @@ func (r *BusinessRepository) ListReviews(ctx context.Context, productID string, 
 	var reviews []*Review
 	for rows.Next() {
 		rv := &Review{}
-		if err := rows.Scan(&rv.ID, &rv.ProductID, &rv.UserID, &rv.UserName, &rv.UserAvatar, &rv.Rating, &rv.Comment, &rv.CreatedAt); err == nil {
+		if err := rows.Scan(&rv.ID, &rv.ProductID, &rv.UserID, &rv.UserName, &rv.UserAvatar, &rv.Rating, &rv.Comment, &rv.ImageURLs, &rv.HelpfulCount, &rv.CreatedAt); err == nil {
 			reviews = append(reviews, rv)
 		}
 	}
 	return reviews, total, nil
 }
+
+// ── Follow Operations ────────────────────────────────────────────────────────
+
+func (r *BusinessRepository) ToggleFollowStore(ctx context.Context, storeID, userID string) (bool, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback(ctx)
+
+	var exists bool
+	_ = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM business.store_followers WHERE store_id = $1 AND user_id = $2)`, storeID, userID).Scan(&exists)
+
+	if exists {
+		_, _ = tx.Exec(ctx, `DELETE FROM business.store_followers WHERE store_id = $1 AND user_id = $2`, storeID, userID)
+	} else {
+		_, _ = tx.Exec(ctx, `INSERT INTO business.store_followers (store_id, user_id) VALUES ($1, $2)`, storeID, userID)
+	}
+
+	err = tx.Commit(ctx)
+	return !exists, err
+}
+
+func (r *BusinessRepository) IsFollowingStore(ctx context.Context, storeID, userID string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM business.store_followers WHERE store_id = $1 AND user_id = $2)`, storeID, userID).Scan(&exists)
+	return exists, err
+}
+
+func (r *BusinessRepository) GetFollowedStores(ctx context.Context, userID string) ([]*BusinessProfile, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT bp.user_id, bp.business_name, COALESCE(bp.category,''), COALESCE(bp.description,''),
+		       COALESCE(bp.address,''), COALESCE(bp.website,''), COALESCE(bp.email,''), COALESCE(bp.phone,''),
+		       COALESCE(bp.hours_json::text,'{}'), bp.is_verified, COALESCE(bp.logo_url,''), COALESCE(bp.banner_url,''),
+		       COALESCE(bp.state,''), COALESCE(bp.country_code,''), COALESCE(bp.slug,'')
+		FROM business.business_profiles bp
+		JOIN business.store_followers sf ON sf.store_id = bp.user_id
+		WHERE sf.user_id = $1
+	`, userID)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var profiles []*BusinessProfile
+	for rows.Next() {
+		p := &BusinessProfile{}
+		err := rows.Scan(&p.UserID, &p.BusinessName, &p.Category, &p.Description,
+			&p.Address, &p.Website, &p.Email, &p.Phone, &p.HoursJSON, &p.IsVerified,
+			&p.LogoURL, &p.BannerURL, &p.State, &p.CountryCode, &p.Slug)
+		if err == nil {
+			profiles = append(profiles, p)
+		}
+	}
+	return profiles, nil
+}
+
+

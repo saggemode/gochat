@@ -26,6 +26,8 @@ import com.example.gochat.ui.settings.SettingsFragment
 import com.example.gochat.ui.stories.StoriesFragment
 import com.example.gochat.ui.marketplace.MarketplaceFragment
 import com.example.gochat.core.crypto.EncryptionManager
+import com.example.gochat.ui.marketplace.ProductDetailsActivity
+import com.example.gochat.ui.marketplace.StorefrontActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -87,7 +89,43 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             encryptionManager.initializeAndRegisterKeys()
         }
+
+        handleIntent(intent)
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        val data = intent?.data ?: return
+        
+        // gochat://store/{pin}
+        if (data.scheme == "gochat" && data.host == "store") {
+            val pin = data.lastPathSegment
+            if (!pin.isNullOrBlank()) {
+                val storeIntent = Intent(this, StorefrontActivity::class.java).apply {
+                    putExtra("store_id", pin)
+                    putExtra("store_pin", pin)
+                }
+                startActivity(storeIntent)
+            }
+        }
+        
+        // gochat://product/{id}
+        if (data.scheme == "gochat" && data.host == "product") {
+            val productId = data.lastPathSegment
+            if (!productId.isNullOrBlank()) {
+                val productIntent = Intent(this, ProductDetailsActivity::class.java).apply {
+                    putExtra("product_id", productId)
+                }
+                startActivity(productIntent)
+            }
+        }
+    }
+
 
     private fun checkNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

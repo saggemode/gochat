@@ -47,6 +47,23 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- Deep Link: gochat://store/{pin} -->
+            <intent-filter android:label="GoChat Store">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="gochat" android:host="store" />
+            </intent-filter>
+
+            <!-- Deep Link: gochat://product/{id} -->
+            <intent-filter android:label="GoChat Product">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="gochat" android:host="product" />
+            </intent-filter>
+
         </activity>
 
         <!-- Main Navigation Activity -->
