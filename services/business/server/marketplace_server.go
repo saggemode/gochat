@@ -110,7 +110,24 @@ func (s *BusinessServer) ListMarketplaceProducts(ctx context.Context, req *pb.Li
 	return &pb.ListMarketplaceProductsResponse{Products: pbProducts, Total: total}, nil
 }
 
+func (s *BusinessServer) ListFollowedMarketplaceProducts(ctx context.Context, req *pb.ListFollowedMarketplaceProductsRequest) (*pb.ListMarketplaceProductsResponse, error) {
+	limit := req.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+	products, total, err := s.repo.ListFollowedMarketplaceProducts(ctx, req.UserId, limit, req.Offset)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list followed marketplace products: %v", err)
+	}
+	var pbProducts []*pb.MarketplaceProduct
+	for _, p := range products {
+		pbProducts = append(pbProducts, marketplaceProductToPB(p))
+	}
+	return &pb.ListMarketplaceProductsResponse{Products: pbProducts, Total: total}, nil
+}
+
 func (s *BusinessServer) ListCategories(ctx context.Context, req *pb.ListCategoriesRequest) (*pb.ListCategoriesResponse, error) {
+
 	categories, err := s.repo.ListCategories(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list categories: %v", err)
@@ -183,7 +200,16 @@ func (s *BusinessServer) ListReviews(ctx context.Context, req *pb.ListReviewsReq
 	return &pb.ListReviewsResponse{Reviews: pbReviews, Total: total}, nil
 }
 
+func (s *BusinessServer) ToggleReviewHelpful(ctx context.Context, req *pb.ToggleReviewHelpfulRequest) (*pb.ToggleReviewHelpfulResponse, error) {
+	helpful, err := s.repo.ToggleReviewHelpful(ctx, req.ReviewId, req.UserId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "toggle review helpful: %v", err)
+	}
+	return &pb.ToggleReviewHelpfulResponse{IsHelpful: helpful}, nil
+}
+
 // ── Follow Handlers ─────────────────────────────────────────────────────────
+
 
 func (s *BusinessServer) ToggleFollowStore(ctx context.Context, req *pb.ToggleFollowStoreRequest) (*pb.ToggleFollowStoreResponse, error) {
 	following, err := s.repo.ToggleFollowStore(ctx, req.StoreId, req.UserId)

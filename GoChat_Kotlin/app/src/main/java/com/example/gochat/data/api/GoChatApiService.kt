@@ -265,6 +265,13 @@ interface GoChatApiService {
         @Query("limit") limit: Int? = null
     ): Response<JsonElement>
 
+    @GET("api/v1/marketplace/products/followed")
+    suspend fun getFollowedProducts(
+        @Query("page") page: Int? = null,
+        @Query("limit") limit: Int? = null
+    ): Response<JsonElement>
+
+
     @GET(ApiConstants.CATEGORIES)
     suspend fun getCategories(): Response<JsonElement>
 
@@ -353,6 +360,12 @@ interface GoChatApiService {
     suspend fun getReviews(
         @Path("id") productId: String
     ): Response<JsonElement>
+
+    @POST("api/v1/marketplace/reviews/{id}/helpful")
+    suspend fun toggleReviewHelpful(
+        @Path("id") reviewId: String
+    ): Response<JsonObject>
+
 
     // ── Follow Store ─────────────────────────────────────────────
 

@@ -319,6 +319,36 @@ func (h *BusinessHandler) ListMarketplaceProducts(c *gin.Context) {
 	})
 }
 
+func (h *BusinessHandler) ListFollowedProducts(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+
+	resp, err := h.client.ListFollowedMarketplaceProducts(c.Request.Context(), &pb.ListFollowedMarketplaceProductsRequest{
+		UserId: userID,
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	}, jsonOpt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	items := make([]map[string]interface{}, 0, len(resp.Products))
+	for _, p := range resp.Products {
+		items = append(items, formatProductItem(p))
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"products": items,
+		"total":    resp.Total,
+	})
+}
+
+
 func (h *BusinessHandler) GetMarketplaceProduct(c *gin.Context) {
 	productID := c.Param("id")
 
@@ -570,3 +600,24 @@ func (h *BusinessHandler) DeleteProductVariant(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
+
+func (h *BusinessHandler) ToggleReviewHelpful(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	reviewID := c.Param("id")
+
+	// We need to add this to the proto and business service too
+	// For now, let's assume it's there
+	resp, err := h.client.ToggleReviewHelpful(c.Request.Context(), &pb.ToggleReviewHelpfulRequest{
+		ReviewId: reviewID, UserId: userID,
+	}, jsonOpt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+

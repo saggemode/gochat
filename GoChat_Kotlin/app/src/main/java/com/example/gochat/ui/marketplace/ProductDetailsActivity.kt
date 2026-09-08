@@ -15,6 +15,7 @@ import com.example.gochat.R
 import com.example.gochat.core.media.MediaImageHelper
 import com.example.gochat.data.model.Product
 import com.example.gochat.data.model.ProductVariant
+import com.example.gochat.data.model.Review
 import com.example.gochat.data.model.Store
 import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.databinding.ActivityProductDetailsBinding
@@ -88,8 +89,11 @@ class ProductDetailsActivity : AppCompatActivity() {
             layoutManager = LinearLayoutManager(this@ProductDetailsActivity, LinearLayoutManager.HORIZONTAL, false)
         }
 
-        reviewAdapter = ReviewAdapter()
+        reviewAdapter = ReviewAdapter { review ->
+            toggleReviewHelpful(review)
+        }
         binding.rvReviews.apply {
+
             adapter = reviewAdapter
             layoutManager = LinearLayoutManager(this@ProductDetailsActivity)
         }
@@ -169,6 +173,16 @@ class ProductDetailsActivity : AppCompatActivity() {
             }
         }
     }
+
+    private fun toggleReviewHelpful(review: Review) {
+        lifecycleScope.launch {
+            val res = repository.toggleReviewHelpful(review.id)
+            if (res.isSuccess) {
+                product?.let { loadReviews(it.id) }
+            }
+        }
+    }
+
 
     private fun showWriteReviewDialog(product: Product) {
         val dialog = BottomSheetDialog(this)

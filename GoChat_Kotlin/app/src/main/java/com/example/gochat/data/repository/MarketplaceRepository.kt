@@ -41,6 +41,7 @@ class MarketplaceRepository @Inject constructor(
         search: String? = null,
         sortBy: String? = null,
         isNearbyOnly: Boolean = false,
+        isFollowingOnly: Boolean = false,
         userLat: Double = 6.46,
         userLng: Double = 3.40
     ): Flow<PagingData<Product>> {
@@ -50,12 +51,13 @@ class MarketplaceRepository @Inject constructor(
                 enablePlaceholders = false,
                 initialLoadSize = 20
             ),
-            remoteMediator = ProductRemoteMediator(api, db, this, categoryId, search, sortBy, isNearbyOnly, userLat, userLng),
+            remoteMediator = ProductRemoteMediator(api, db, this, categoryId, search, sortBy, isNearbyOnly, isFollowingOnly, userLat, userLng),
             pagingSourceFactory = {
                 marketplaceDao.getProductsPaged()
             }
         ).flow
     }
+
 
 
 
@@ -974,5 +976,20 @@ class MarketplaceRepository @Inject constructor(
         }
     }
 
+    suspend fun toggleReviewHelpful(reviewId: String): Result<Boolean> {
+        return try {
+            val response = api.toggleReviewHelpful(reviewId)
+            if (response.isSuccessful) {
+                val isHelpful = response.body()?.get("is_helpful")?.jsonPrimitive?.booleanOrNull ?: true
+                Result.success(isHelpful)
+            } else {
+                Result.failure(Exception("Failed to upvote review"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     private fun Double.ifZero(fallback: Double): Double = if (this == 0.0) fallback else this
 }
+

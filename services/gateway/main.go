@@ -318,7 +318,9 @@ func main() {
 			marketplace.GET("/stores/:id", businessHandler.GetStore)
 			marketplace.GET("/stores/:id/products", businessHandler.GetStoreProducts)
 			marketplace.GET("/products/:id/reviews", businessHandler.ListReviews)
+			marketplace.GET("/products/followed", businessHandler.ListFollowedProducts)
 		}
+
 
 		// Search Service Proxy
 		api.GET("/search", searchHandler.ProxySearch)

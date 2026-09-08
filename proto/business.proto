@@ -25,6 +25,8 @@ service BusinessService {
   rpc GetMarketplaceProduct(GetMarketplaceProductRequest) returns (GetMarketplaceProductResponse);
   rpc ListBusinessProducts(ListBusinessProductsRequest) returns (ListBusinessProductsResponse);
   rpc ListMarketplaceProducts(ListMarketplaceProductsRequest) returns (ListMarketplaceProductsResponse);
+  rpc ListFollowedMarketplaceProducts(ListFollowedMarketplaceProductsRequest) returns (ListMarketplaceProductsResponse);
+
 
   // Product Variants
   rpc CreateProductVariant(CreateProductVariantRequest) returns (CreateProductVariantResponse);
@@ -106,7 +108,11 @@ service BusinessService {
   rpc ToggleFollowStore(ToggleFollowStoreRequest) returns (ToggleFollowStoreResponse);
   rpc IsFollowingStore(IsFollowingStoreRequest) returns (IsFollowingStoreResponse);
   rpc GetFollowedStores(GetFollowedStoresRequest) returns (GetFollowedStoresResponse);
+
+  // Review Operations
+  rpc ToggleReviewHelpful(ToggleReviewHelpfulRequest) returns (ToggleReviewHelpfulResponse);
 }
+
 
 
 // ── Core Types ───────────────────────────────────────────────────────────────
@@ -399,7 +405,14 @@ message ListMarketplaceProductsResponse {
   int32 total = 2;
 }
 
+message ListFollowedMarketplaceProductsRequest {
+  string user_id = 1;
+  int32  limit   = 2;
+  int32  offset  = 3;
+}
+
 // ── Product Variant Requests ────────────────────────────────────────────────
+
 
 message CreateProductVariantRequest {
   string product_id      = 1;
@@ -1015,4 +1028,13 @@ message GetFollowedStoresRequest {
 message GetFollowedStoresResponse {
   repeated BusinessProfile followed_stores = 1;
 }
+
+message ToggleReviewHelpfulRequest {
+  string review_id = 1;
+  string user_id   = 2;
+}
+message ToggleReviewHelpfulResponse {
+  bool is_helpful = 1;
+}
+
 

@@ -11,7 +11,10 @@ import com.example.gochat.data.model.Review
 import com.example.gochat.databinding.ItemReviewBinding
 import com.example.gochat.databinding.ItemReviewImageBinding
 
-class ReviewAdapter : ListAdapter<Review, ReviewAdapter.ReviewViewHolder>(ReviewDiffCallback()) {
+class ReviewAdapter(
+    private val onHelpfulClicked: (Review) -> Unit
+) : ListAdapter<Review, ReviewAdapter.ReviewViewHolder>(ReviewDiffCallback()) {
+
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ReviewViewHolder {
         val binding = ItemReviewBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -42,8 +45,11 @@ class ReviewAdapter : ListAdapter<Review, ReviewAdapter.ReviewViewHolder>(Review
             } else {
                 binding.rvReviewImages.visibility = View.GONE
             }
+
+            binding.btnHelpful.setOnClickListener { onHelpfulClicked(review) }
         }
     }
+
 
     class ReviewDiffCallback : DiffUtil.ItemCallback<Review>() {
         override fun areItemsTheSame(oldItem: Review, newItem: Review): Boolean = oldItem.id == newItem.id

@@ -19,9 +19,11 @@ class ProductRemoteMediator(
     private val search: String?,
     private val sortBy: String?,
     private val isNearbyOnly: Boolean = false,
+    private val isFollowingOnly: Boolean = false,
     private val userLat: Double = 6.46,
     private val userLng: Double = 3.40
 ) : RemoteMediator<Int, Product>() {
+
 
 
     override suspend fun load(
@@ -48,15 +50,20 @@ class ProductRemoteMediator(
         }
 
         try {
-            val response = api.getProducts(
-                categoryId = if (categoryId == "all" || categoryId.isNullOrBlank()) null else categoryId,
-                search = search?.ifBlank { null },
-                sortBy = sortBy,
-                page = page,
-                limit = state.config.pageSize
-            )
+            val response = if (isFollowingOnly) {
+                api.getFollowedProducts(page = page, limit = state.config.pageSize)
+            } else {
+                api.getProducts(
+                    categoryId = if (categoryId == "all" || categoryId.isNullOrBlank()) null else categoryId,
+                    search = search?.ifBlank { null },
+                    sortBy = sortBy,
+                    page = page,
+                    limit = state.config.pageSize
+                )
+            }
 
             if (response.isSuccessful) {
+
                 val data = response.body()
                 val products = repository.parseProductsJson(data)
                 val endOfPaginationReached = products.isEmpty()

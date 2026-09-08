@@ -37,7 +37,7 @@ class MarketplaceViewModel @Inject constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     val pagedProducts: Flow<PagingData<Product>> = filterTrigger
         .flatMapLatest { params ->
-            repository.getProductsPaged(params.cat, params.search, params.sort, params.isNearby, params.lat, params.lng)
+            repository.getProductsPaged(params.cat, params.search, params.sort, params.isNearby, params.isFollowing, params.lat, params.lng)
         }
         .cachedIn(viewModelScope)
 
@@ -46,9 +46,11 @@ class MarketplaceViewModel @Inject constructor(
         val search: String? = null,
         val sort: String? = null,
         val isNearby: Boolean = false,
+        val isFollowing: Boolean = false,
         val lat: Double = 6.46,
         val lng: Double = 3.40
     )
+
 
 
     private val _categories = MutableStateFlow<List<Category>>(emptyList())
@@ -116,14 +118,15 @@ class MarketplaceViewModel @Inject constructor(
     }
 
     fun loadData(tabIndex: Int = 0) {
+        currentTabIndex = tabIndex
+        updateFilterTrigger()
+        
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
 
-            when (tabIndex) {
-                0 -> loadExploreProducts()
-                1 -> loadFollowingProducts()
-                2 -> loadMyStore()
+            if (tabIndex == 2) {
+                loadMyStore()
             }
             
             loadCategories()
@@ -132,6 +135,9 @@ class MarketplaceViewModel @Inject constructor(
             _isLoading.value = false
         }
     }
+
+    private var currentTabIndex: Int = 0
+
 
     private suspend fun loadFollowingProducts() {
         val followedRes = repository.getFollowedStores()
@@ -244,10 +250,12 @@ class MarketplaceViewModel @Inject constructor(
             search = currentSearch,
             sort = currentSortBy,
             isNearby = isNearbyOnly,
+            isFollowing = (currentTabIndex == 1),
             lat = userLat,
             lng = userLng
         )
     }
+
 
 
     fun setVerifiedOnly(verified: Boolean) {

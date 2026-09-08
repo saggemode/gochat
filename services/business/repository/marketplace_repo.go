@@ -416,7 +416,67 @@ func (r *BusinessRepository) ListBusinessProducts(ctx context.Context, businessI
 	return products, total, nil
 }
 
+	return products, total, nil
+}
+
+func (r *BusinessRepository) ListFollowedMarketplaceProducts(ctx context.Context, userID string, limit, offset int32) ([]*MarketplaceProduct, int32, error) {
+	var total int32
+	err := r.db.QueryRow(ctx, `
+		SELECT COUNT(*)
+		FROM business.products p
+		JOIN business.store_followers sf ON sf.store_id = p.business_id
+		WHERE sf.user_id = $1 AND p.is_published = TRUE
+	`, userID).Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count followed products: %w", err)
+	}
+
+	rows, err := r.db.Query(ctx, `
+		SELECT
+			p.id, p.business_id, p.owner_id, p.name, COALESCE(p.description, ''),
+			COALESCE(p.category_id::text, ''), COALESCE(p.sub_category_id::text, ''), COALESCE(p.brand_id::text, ''),
+			p.price, COALESCE(p.discount_percent, 0), p.currency, p.quantity, COALESCE(p.sku, ''),
+			COALESCE(p.color, ''), COALESCE(p.size, ''), COALESCE(p.weight, 0), COALESCE(p.shipping_fee, 0),
+			p.is_published, p.view_count, p.order_count, COALESCE(p.rating_avg, 0), p.review_count,
+			COALESCE(b.business_name, u.display_name, 'Official Store'), COALESCE(b.logo_url, u.avatar_url, ''), COALESCE(b.slug, ''),
+			COALESCE(c.name, ''), COALESCE(br.name, ''), p.created_at
+		FROM business.products p
+		JOIN business.store_followers sf ON sf.store_id = p.business_id
+		LEFT JOIN business.business_profiles b ON b.user_id = p.business_id
+		LEFT JOIN core.users u ON u.id = p.owner_id
+		LEFT JOIN business.categories c ON c.id = p.category_id
+		LEFT JOIN business.brands br ON br.id = p.brand_id
+		WHERE sf.user_id = $1 AND p.is_published = TRUE
+		ORDER BY p.created_at DESC
+		LIMIT $2 OFFSET $3
+	`, userID, limit, offset)
+
+	if err != nil {
+		return nil, 0, fmt.Errorf("list followed products: %w", err)
+	}
+	defer rows.Close()
+
+	var products []*MarketplaceProduct
+	for rows.Next() {
+		p := &MarketplaceProduct{}
+		if err := rows.Scan(
+			&p.ID, &p.BusinessID, &p.OwnerID, &p.Name, &p.Description,
+			&p.CategoryID, &p.SubCategoryID, &p.BrandID,
+			&p.Price, &p.DiscountPercent, &p.Currency, &p.Quantity, &p.SKU,
+			&p.Color, &p.Size, &p.Weight, &p.ShippingFee,
+			&p.IsPublished, &p.ViewCount, &p.OrderCount, &p.RatingAvg, &p.ReviewCount,
+			&p.SellerName, &p.SellerAvatar, &p.SellerSlug,
+			&p.CategoryName, &p.BrandName, &p.CreatedAt,
+		); err == nil {
+			products = append(products, p)
+		}
+	}
+
+	return products, total, nil
+}
+
 // ── Global Marketplace Feed (with Amazon/Shopify-style ranking score) ────────
+
 
 func (r *BusinessRepository) ListMarketplaceProducts(ctx context.Context, categoryID, sortBy, search string, limit, offset int32) ([]*MarketplaceProduct, int32, error) {
 	whereClause := "WHERE p.is_published = TRUE"
