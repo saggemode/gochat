@@ -77,7 +77,9 @@ data class Message(
     @SerialName("reply_to_id") val replyToId: String? = null,
     @SerialName("reply_to_text") val replyToText: String? = null,
     @SerialName("reply_to_sender_name") val replyToSenderName: String? = null,
+    @SerialName("blur_hash") val blurHash: String? = null,
     @SerialName("created_at") val createdAt: Long = System.currentTimeMillis(),
+
     val isMe: Boolean = false,
 
     // Enhancements
@@ -146,6 +148,16 @@ data class Message(
 
             val mediaThumbnail = (json["media_thumbnail"] ?: json["mediaThumbnail"] ?: json["thumbnail_url"] ?: json["ThumbnailUrl"])
                 ?.jsonPrimitive?.contentOrNull
+            
+            val blurHash = (json["blur_hash"] ?: json["blurHash"] ?: json["BlurHash"])
+                ?.jsonPrimitive?.contentOrNull
+
+            
+            // If the primary mediaUrl looks like a thumbnail (e.g. contains '/thumbnail/') 
+            // but we have a mediaThumbnail that also exists, ensure we didn't mix them up.
+            // Actually, usually it's the other way around. 
+            // Let's just ensure we capture both.
+
 
             val mediaDuration = (json["media_duration"] ?: json["mediaDuration"] ?: json["duration"] ?: json["Duration"])
                 ?.jsonPrimitive?.intOrNull
@@ -222,7 +234,9 @@ data class Message(
                 replyToId = replyToId,
                 replyToText = replyToText,
                 replyToSenderName = replyToSenderName,
+                blurHash = blurHash,
                 createdAt = createdAt,
+
                 isMe = isMe,
                 reactions = reactions,
                 isEdited = isEdited,

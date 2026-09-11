@@ -11,7 +11,12 @@ class WebRTCClient(
     private val eglBaseContext = EglBase.create().eglBaseContext
     private val peerConnectionFactory: PeerConnectionFactory by lazy { createPeerConnectionFactory() }
     private val iceServers = listOf(
-        PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer()
+        PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
+        // Add TURN servers for real-world network traversal
+        PeerConnection.IceServer.builder("turn:turn.gochat.example.com")
+            .setUsername("user")
+            .setPassword("pass")
+            .createIceServer()
     )
     private var peerConnection: PeerConnection? = null
 
@@ -38,14 +43,25 @@ class WebRTCClient(
     }
 
     fun createPeerConnection() {
-        val rtcConfig = PeerConnection.RTCConfiguration(iceServers)
+        val rtcConfig = PeerConnection.RTCConfiguration(iceServers).apply {
+            continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY
+            iceTransportsType = PeerConnection.IceTransportsType.ALL
+            tcpCandidatePolicy = PeerConnection.TcpCandidatePolicy.ENABLED
+            bundlePolicy = PeerConnection.BundlePolicy.MAXBUNDLE
+            rtcpMuxPolicy = PeerConnection.RtcpMuxPolicy.REQUIRE
+            // Enable ICE Restart
+            iceConnectionReceivingTimeout = 5000
+        }
         peerConnection = peerConnectionFactory.createPeerConnection(rtcConfig, observer)
     }
 
-    fun createOffer(sdpObserver: SdpObserver) {
+    fun createOffer(sdpObserver: SdpObserver, iceRestart: Boolean = false) {
         val constraints = MediaConstraints().apply {
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
             mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
+            if (iceRestart) {
+                mandatory.add(MediaConstraints.KeyValuePair("IceRestart", "true"))
+            }
         }
         peerConnection?.createOffer(object : SdpObserver by sdpObserver {
             override fun onCreateSuccess(sdp: SessionDescription?) {

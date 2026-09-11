@@ -1,8 +1,12 @@
 package com.example.gochat.data.repository
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Base64
 import com.example.gochat.data.api.GoChatApiService
+
 import com.example.gochat.data.api.NetworkModule
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.db.AppDatabase
@@ -16,6 +20,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import com.example.gochat.core.sync.MessageSyncWorker
+import com.example.gochat.core.utils.BlurHashUtil
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.json.*
@@ -176,14 +181,19 @@ class ChatRepository @Inject constructor(
                 val messages = rawList.mapNotNull { element ->
                     if (element is JsonObject) {
                         val msg = Message.fromJson(element, currentUserId)
-                        if (msg.isMe) {
-                            val localExisting = dao.getMessageById(msg.id)
-                            if (localExisting != null && localExisting.content.isNotBlank() && !isBase64Ciphertext(localExisting.content)) {
-                                msg.copy(content = localExisting.content)
-                            } else {
-                                msg
-                            }
+                        // For ALL messages (sent or received), check if we already have
+                        // a local decrypted version. Signal Protocol ratcheting means we
+                        // can't decrypt the same ciphertext twice, so we must preserve
+                        // locally-stored plaintext content.
+                        val localExisting = dao.getMessageById(msg.id)
+                        if (localExisting != null && localExisting.content.isNotBlank() && !isBase64Ciphertext(localExisting.content)) {
+                            // Local DB has readable plaintext — preserve it
+                            msg.copy(content = localExisting.content)
+                        } else if (msg.isMe) {
+                            // Own message with no local plaintext — keep server content as-is
+                            msg
                         } else {
+                            // Received message not yet decrypted locally — try decrypting
                             tryDecryptMessage(msg)
                         }
                     } else null
@@ -215,6 +225,8 @@ class ChatRepository @Inject constructor(
         val currentUserId = tokenManager.userId ?: ""
         
         var encryptedContent = content
+        var blurHash: String? = null
+
         if (conv != null && conv.isDirect && type == 0) {
             val targetUserId = conv.memberIds.find { it != currentUserId }
             if (targetUserId != null) {
@@ -227,6 +239,7 @@ class ChatRepository @Inject constructor(
             conversationId, content, type, mediaUrl,
             replyToId, replyToText, replyToSenderName
         ).copy(status = MessageStatus.SENDING)
+
 
         
         if (disappearingDurationSeconds != null && disappearingDurationSeconds > 0) {
@@ -244,7 +257,20 @@ class ChatRepository @Inject constructor(
                 val uri = Uri.parse(finalMediaUrl)
                 val bytes = readUriBytes(uri)
                 if (bytes != null) {
+                    // Generate BlurHash for images
+                    if (localMsg.type == MessageType.IMAGE) {
+                        try {
+                            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                            if (bitmap != null) {
+                                // Scale down for faster encoding
+                                val scaled = Bitmap.createScaledBitmap(bitmap, 100, 100, false)
+                                blurHash = BlurHashUtil.encode(scaled, 4, 3)
+                            }
+                        } catch (_: Exception) {}
+                    }
+
                     val mimeType = when (localMsg.type) {
+
                         MessageType.IMAGE -> "image/jpeg"
                         MessageType.VIDEO -> "video/mp4"
                         MessageType.VOICE, MessageType.AUDIO -> "audio/mp4"
@@ -263,7 +289,9 @@ class ChatRepository @Inject constructor(
                 put("type", type)
 
                 finalMediaUrl?.let { put("media_url", it) }
+                blurHash?.let { put("blur_hash", it) }
                 telegramFileId?.let { put("telegram_file_id", it) }
+
                 mediaThumbnail?.let { put("media_thumbnail", it) }
                 replyToId?.let { put("parent_id", it) }
                 if (mentionedUserIds.isNotEmpty()) {
@@ -283,8 +311,10 @@ class ChatRepository @Inject constructor(
                     isMe = true,
                     content = content, // Preserve local plaintext
                     mediaUrl = if (!parsed.mediaUrl.isNullOrBlank()) parsed.mediaUrl else finalMediaUrl,
+                    blurHash = if (!parsed.blurHash.isNullOrBlank()) parsed.blurHash else blurHash,
                     status = MessageStatus.SENT
                 )
+
 
                 if (finalMsg.id != localMsg.id) {
                     dao.deleteMessage(localMsg.id)
@@ -424,11 +454,18 @@ class ChatRepository @Inject constructor(
         if (message.type != MessageType.TEXT || message.isMe || message.content.isBlank()) {
             return message
         }
+        
         val trimmed = message.content.trim()
+        // Standard text messages usually have spaces or common punctuation. 
+        // Ciphertext is a dense block of alphanumeric chars.
         if (isBase64Ciphertext(trimmed)) {
             val decrypted = encryptionManager.decryptMessage(message.senderId, trimmed)
-            if (decrypted.isNotBlank() && decrypted != "[Encrypted Message]" && decrypted != trimmed) {
+            if (decrypted.isNotBlank() && decrypted != trimmed) {
                 return message.copy(content = decrypted)
+            } else {
+                // If it looks like ciphertext but decryption failed, show a placeholder 
+                // instead of raw random text to improve UX.
+                return message.copy(content = "[Encrypted Message]")
             }
         }
         return message
@@ -436,8 +473,20 @@ class ChatRepository @Inject constructor(
 
     private fun isBase64Ciphertext(text: String): Boolean {
         val trimmed = text.trim()
-        return trimmed.length > 40 && trimmed.matches(Regex("^[A-Za-z0-9+/=]+$"))
+        // Signal ciphertext for even a short word is usually 50+ chars.
+        // Also, it shouldn't contain spaces.
+        if (trimmed.length < 20 || trimmed.contains(" ")) return false
+        
+        return try {
+            // Check if it's valid Base64
+            Base64.decode(trimmed, Base64.DEFAULT)
+            // Additional heuristic: dense alphanumeric
+            trimmed.matches(Regex("^[A-Za-z0-9+/=]+$"))
+        } catch (_: Exception) {
+            false
+        }
     }
+
 
     suspend fun updateMessageStatus(messageId: String, status: MessageStatus) {
         dao.updateMessageStatus(messageId, status)

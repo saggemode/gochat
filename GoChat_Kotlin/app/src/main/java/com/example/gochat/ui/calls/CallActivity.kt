@@ -6,7 +6,9 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import com.example.gochat.core.webrtc.WebRTCClient
+import com.example.gochat.core.webrtc.WebRTCReconnectionHandler
 import com.example.gochat.data.model.CallRecord
+
 import com.example.gochat.data.repository.CallRepository
 import com.example.gochat.databinding.ActivityCallBinding
 import dagger.hilt.android.AndroidEntryPoint
@@ -28,6 +30,8 @@ class CallActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityCallBinding
     private lateinit var rtcClient: WebRTCClient
+    private var reconnectionHandler: WebRTCReconnectionHandler? = null
+
     
     @Inject
     lateinit var callRepo: CallRepository
@@ -65,8 +69,11 @@ class CallActivity : AppCompatActivity() {
             }
 
             override fun onSignalingChange(p0: PeerConnection.SignalingState?) {}
-            override fun onIceConnectionChange(p0: PeerConnection.IceConnectionState?) {}
+            override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
+                reconnectionHandler?.handleConnectionChange(state)
+            }
             override fun onIceConnectionReceivingChange(p0: Boolean) {}
+
             override fun onIceGatheringChange(p0: PeerConnection.IceGatheringState?) {}
             override fun onIceCandidatesRemoved(p0: Array<out IceCandidate>?) {}
             override fun onRemoveStream(p0: MediaStream?) {}
@@ -77,7 +84,19 @@ class CallActivity : AppCompatActivity() {
 
         rtcClient.createPeerConnection()
         
+        reconnectionHandler = WebRTCReconnectionHandler(rtcClient) {
+            if (isOutgoing) {
+                startOutgoingCall(iceRestart = true)
+            } else {
+                // Incomer waits for new offer or sends a 'reconnect' signal
+                CoroutineScope(Dispatchers.IO).launch {
+                    callRepo.sendSignaling(callId, targetUserId, "request-reconnect")
+                }
+            }
+        }
+
         val localStream = rtcClient.createLocalStream("local_stream")
+
         if (callType == "video") {
             // Setup local video capture
             // ... (simplified for now)
@@ -99,20 +118,21 @@ class CallActivity : AppCompatActivity() {
         }
     }
 
-    private fun startOutgoingCall() {
+    private fun startOutgoingCall(iceRestart: Boolean = false) {
         rtcClient.createOffer(object : SdpObserver {
             override fun onCreateSuccess(sdp: SessionDescription?) {
                 sdp?.let {
                     CoroutineScope(Dispatchers.IO).launch {
-                        callRepo.sendSignaling(callId, targetUserId, "offer", sdp = it.description)
+                        callRepo.sendSignaling(callId, targetUserId, if (iceRestart) "ice-restart-offer" else "offer", sdp = it.description)
                     }
                 }
             }
             override fun onSetSuccess() {}
             override fun onCreateFailure(p0: String?) {}
             override fun onSetFailure(p0: String?) {}
-        })
+        }, iceRestart = iceRestart)
     }
+
 
     private fun endCall() {
         CoroutineScope(Dispatchers.IO).launch {
@@ -122,7 +142,9 @@ class CallActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        reconnectionHandler?.cancel()
         rtcClient.close()
         super.onDestroy()
     }
+
 }

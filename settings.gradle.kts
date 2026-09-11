@@ -26,5 +26,8 @@ dependencyResolutionManagement {
 rootProject.name = "GoChat"
 include(":app")
 project(":app").projectDir = file("GoChat_Kotlin/app")
+
+include(":shared")
+project(":shared").projectDir = file("GoChat_Kotlin/shared")
  
 // Optionally include other services if they are gradle based, but for now we focus on the android app.

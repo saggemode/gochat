@@ -315,7 +315,8 @@ class MessageAdapter(
                         isCircle = false,
                         cornerRadiusDp = 12f,
                         placeholderRes = R.drawable.ic_gallery,
-                        errorRes = R.drawable.ic_gallery
+                        errorRes = R.drawable.ic_gallery,
+                        blurHash = message.blurHash
                     )
                     
                     // Interaction
@@ -541,7 +542,8 @@ class MessageAdapter(
                         isCircle = false,
                         cornerRadiusDp = 12f,
                         placeholderRes = R.drawable.ic_gallery,
-                        errorRes = R.drawable.ic_gallery
+                        errorRes = R.drawable.ic_gallery,
+                        blurHash = message.blurHash
                     )
                     
                     // Interaction

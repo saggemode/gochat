@@ -7,8 +7,11 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.Configuration
 import androidx.hilt.work.HiltWorkerFactory
+import coil.ImageLoader
+import coil.ImageLoaderFactory
 import com.example.gochat.core.notification.NotificationHelper
 import com.example.gochat.core.theme.ThemeManager
+import com.example.gochat.data.api.NetworkModule
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.repository.AuthRepository
 import com.example.gochat.core.sync.DisappearingMessageWorker
@@ -23,7 +26,7 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @HiltAndroidApp
-class GoChatApp : Application(), Configuration.Provider {
+class GoChatApp : Application(), Configuration.Provider, ImageLoaderFactory {
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
 
@@ -50,6 +53,18 @@ class GoChatApp : Application(), Configuration.Provider {
 
         // 4. Schedule Disappearing Messages Cleanup
         scheduleCleanupWorker()
+    }
+
+    /**
+     * Provides a Coil ImageLoader that uses the app's authenticated OkHttpClient.
+     * This ensures all image loads (chat media, avatars, etc.) include the
+     * auth bearer token required by the /api/v1/media/download/ endpoint.
+     */
+    override fun newImageLoader(): ImageLoader {
+        return ImageLoader.Builder(this)
+            .okHttpClient(NetworkModule.getOkHttpClient(this))
+            .crossfade(true)
+            .build()
     }
 
     private fun scheduleCleanupWorker() {

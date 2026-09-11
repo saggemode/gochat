@@ -3,6 +3,7 @@ package com.example.gochat.core.media
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.util.Base64
 import android.widget.ImageView
@@ -11,6 +12,7 @@ import coil.load
 import coil.transform.CircleCropTransformation
 import coil.transform.RoundedCornersTransformation
 import com.example.gochat.R
+import com.example.gochat.core.utils.BlurHashUtil
 import com.example.gochat.data.api.ApiConstants
 import java.io.File
 
@@ -49,8 +51,10 @@ object MediaImageHelper {
         cornerRadiusDp: Float? = null,
         placeholderRes: Int = R.drawable.ic_gallery,
         errorRes: Int = R.drawable.ic_gallery,
-        thumbnailWidth: Int? = null
+        thumbnailWidth: Int? = null,
+        blurHash: String? = null
     ) {
+
 
         val clean = url?.trim().orEmpty()
         if (clean.isBlank()) {
@@ -176,7 +180,16 @@ object MediaImageHelper {
         try {
             imageView.load(finalUrl) {
                 crossfade(true)
-                placeholder(placeholderRes)
+                if (!blurHash.isNullOrBlank()) {
+                    val bitmap = BlurHashUtil.decode(blurHash, 32, 32)
+                    if (bitmap != null) {
+                        placeholder(BitmapDrawable(imageView.context.resources, bitmap))
+                    } else {
+                        placeholder(placeholderRes)
+                    }
+                } else {
+                    placeholder(placeholderRes)
+                }
                 error(errorRes)
                 when {
                     isCircle -> transformations(CircleCropTransformation())
@@ -184,6 +197,7 @@ object MediaImageHelper {
                 }
             }
         } catch (t: Throwable) {
+
             imageView.setImageResource(errorRes)
         }
     }
