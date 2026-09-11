@@ -118,7 +118,16 @@ class ProductDetailsActivity : AppCompatActivity() {
         }
 
         binding.btnWriteReview.setOnClickListener {
-            product?.let { showWriteReviewDialog(it) }
+            val p = product
+            if (p == null) {
+                Toast.makeText(this, "Loading product details, please wait...", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            if (repository.userId.isNullOrBlank()) {
+                Toast.makeText(this, "Please log in to write a review", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            showWriteReviewDialog(p)
         }
 
         binding.layoutStore.setOnClickListener {
@@ -150,9 +159,27 @@ class ProductDetailsActivity : AppCompatActivity() {
                 loadStore(p.storeId)
                 loadReviews(p.id)
             } ?: run {
-
-                Toast.makeText(this@ProductDetailsActivity, getString(R.string.error_product_not_found), Toast.LENGTH_SHORT).show()
-                finish()
+                val name = intent.getStringExtra("product_name")
+                if (!name.isNullOrBlank()) {
+                    val fallback = Product(
+                        id = productId,
+                        name = name,
+                        price = intent.getDoubleExtra("product_price", 0.0),
+                        imageUrl = intent.getStringExtra("product_image").orEmpty(),
+                        imageUrls = intent.getStringArrayListExtra("product_images") ?: listOfNotNull(intent.getStringExtra("product_image")),
+                        storeId = intent.getStringExtra("store_id").orEmpty(),
+                        storeName = intent.getStringExtra("store_name").orEmpty(),
+                        sellerPin = intent.getStringExtra("seller_pin").orEmpty(),
+                        sellerId = intent.getStringExtra("seller_id").orEmpty()
+                    )
+                    product = fallback
+                    displayProduct(fallback)
+                    if (fallback.storeId.isNotBlank()) loadStore(fallback.storeId)
+                    loadReviews(productId)
+                } else {
+                    Toast.makeText(this@ProductDetailsActivity, getString(R.string.error_product_not_found), Toast.LENGTH_SHORT).show()
+                    finish()
+                }
             }
         }
     }
@@ -204,6 +231,11 @@ class ProductDetailsActivity : AppCompatActivity() {
             val rating = dialogBinding.ratingBar.rating.toInt()
             val comment = dialogBinding.etComment.text.toString().trim()
 
+            if (rating < 1) {
+                Toast.makeText(this@ProductDetailsActivity, "Please select at least 1 star", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
             dialogBinding.btnSubmitReview.isEnabled = false
             dialogBinding.btnSubmitReview.text = "Submitting..."
 
@@ -225,7 +257,8 @@ class ProductDetailsActivity : AppCompatActivity() {
                 } else {
                     dialogBinding.btnSubmitReview.isEnabled = true
                     dialogBinding.btnSubmitReview.text = "Submit Review"
-                    Toast.makeText(this@ProductDetailsActivity, "Failed to submit review", Toast.LENGTH_SHORT).show()
+                    val errMsg = res.exceptionOrNull()?.message ?: "Failed to submit review"
+                    Toast.makeText(this@ProductDetailsActivity, errMsg, Toast.LENGTH_LONG).show()
                 }
             }
         }

@@ -361,7 +361,7 @@ class MarketplaceViewModel @Inject constructor(
 
             val primaryImage = uploadedUrls.firstOrNull().orEmpty()
             val newProduct = Product(
-                id = "prod_${System.currentTimeMillis()}",
+                id = java.util.UUID.randomUUID().toString(),
                 sellerId = repository.userId ?: "",
                 name = name,
                 description = description,

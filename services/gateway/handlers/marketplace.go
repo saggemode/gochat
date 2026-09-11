@@ -437,8 +437,9 @@ func (h *BusinessHandler) CreateReview(c *gin.Context) {
 	productID := c.Param("id")
 
 	var req struct {
-		Rating  int32  `json:"rating" binding:"required"`
-		Comment string `json:"comment"`
+		Rating    int32    `json:"rating" binding:"required"`
+		Comment   string   `json:"comment"`
+		ImageURLs []string `json:"image_urls"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -451,6 +452,7 @@ func (h *BusinessHandler) CreateReview(c *gin.Context) {
 		UserId:    userID,
 		Rating:    req.Rating,
 		Comment:   req.Comment,
+		ImageUrls: req.ImageURLs,
 	}, jsonOpt)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

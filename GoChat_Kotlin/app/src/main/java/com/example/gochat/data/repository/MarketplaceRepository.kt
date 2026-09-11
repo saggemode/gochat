@@ -605,9 +605,34 @@ class MarketplaceRepository @Inject constructor(
             if (response.isSuccessful) {
                 val res = response.body() ?: buildJsonObject {}
                 val reviewJson = res["review"]?.jsonObject ?: res
-                Result.success(json.decodeFromJsonElement<Review>(reviewJson))
+                val parsed = try {
+                    json.decodeFromJsonElement<Review>(reviewJson)
+                } catch (_: Exception) {
+                    Review(
+                        id = reviewJson["id"]?.jsonPrimitive?.contentOrNull ?: java.util.UUID.randomUUID().toString(),
+                        productId = productId,
+                        userId = currentUserId,
+                        userName = reviewJson["user_name"]?.jsonPrimitive?.contentOrNull ?: tokenManager.userDisplayName ?: "User",
+                        userAvatar = reviewJson["user_avatar"]?.jsonPrimitive?.contentOrNull ?: tokenManager.userAvatarUrl,
+                        rating = rating,
+                        comment = comment,
+                        imageUrls = imageUrls,
+                        createdAt = reviewJson["created_at"]?.jsonPrimitive?.contentOrNull
+                    )
+                }
+                Result.success(parsed)
             } else {
-                Result.failure(Exception("Failed to create review"))
+                val errorBodyStr = response.errorBody()?.string().orEmpty()
+                val parsedMsg = try {
+                    if (errorBodyStr.isNotBlank()) {
+                        val errObj = json.parseToJsonElement(errorBodyStr).jsonObject
+                        errObj["error"]?.jsonPrimitive?.contentOrNull ?: errorBodyStr
+                    } else null
+                } catch (_: Exception) {
+                    errorBodyStr.ifBlank { null }
+                }
+                val msg = parsedMsg ?: "Failed to submit review (HTTP ${response.code()})"
+                Result.failure(Exception(msg))
             }
         } catch (e: Exception) {
             Result.failure(e)
