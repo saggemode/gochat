@@ -12,7 +12,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"image"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"

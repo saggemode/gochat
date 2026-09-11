@@ -19,65 +19,70 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	BusinessService_CreateBusinessProfile_FullMethodName    = "/business.BusinessService/CreateBusinessProfile"
-	BusinessService_UpdateBusinessProfile_FullMethodName    = "/business.BusinessService/UpdateBusinessProfile"
-	BusinessService_GetBusinessProfile_FullMethodName       = "/business.BusinessService/GetBusinessProfile"
-	BusinessService_CreateCatalog_FullMethodName            = "/business.BusinessService/CreateCatalog"
-	BusinessService_AddProduct_FullMethodName               = "/business.BusinessService/AddProduct"
-	BusinessService_UpdateProduct_FullMethodName            = "/business.BusinessService/UpdateProduct"
-	BusinessService_ListProducts_FullMethodName             = "/business.BusinessService/ListProducts"
-	BusinessService_CreateMarketplaceProduct_FullMethodName = "/business.BusinessService/CreateMarketplaceProduct"
-	BusinessService_UpdateMarketplaceProduct_FullMethodName = "/business.BusinessService/UpdateMarketplaceProduct"
-	BusinessService_DeleteMarketplaceProduct_FullMethodName = "/business.BusinessService/DeleteMarketplaceProduct"
-	BusinessService_GetMarketplaceProduct_FullMethodName    = "/business.BusinessService/GetMarketplaceProduct"
-	BusinessService_ListBusinessProducts_FullMethodName     = "/business.BusinessService/ListBusinessProducts"
-	BusinessService_ListMarketplaceProducts_FullMethodName  = "/business.BusinessService/ListMarketplaceProducts"
-	BusinessService_CreateProductVariant_FullMethodName     = "/business.BusinessService/CreateProductVariant"
-	BusinessService_ListProductVariants_FullMethodName      = "/business.BusinessService/ListProductVariants"
-	BusinessService_UpdateProductVariant_FullMethodName     = "/business.BusinessService/UpdateProductVariant"
-	BusinessService_DeleteProductVariant_FullMethodName     = "/business.BusinessService/DeleteProductVariant"
-	BusinessService_ListCategories_FullMethodName           = "/business.BusinessService/ListCategories"
-	BusinessService_GetStore_FullMethodName                 = "/business.BusinessService/GetStore"
-	BusinessService_TrackProductView_FullMethodName         = "/business.BusinessService/TrackProductView"
-	BusinessService_CreateReview_FullMethodName             = "/business.BusinessService/CreateReview"
-	BusinessService_ListReviews_FullMethodName              = "/business.BusinessService/ListReviews"
-	BusinessService_CreateAppointmentSlot_FullMethodName    = "/business.BusinessService/CreateAppointmentSlot"
-	BusinessService_BookAppointment_FullMethodName          = "/business.BusinessService/BookAppointment"
-	BusinessService_ListAppointments_FullMethodName         = "/business.BusinessService/ListAppointments"
-	BusinessService_SetAutoReply_FullMethodName             = "/business.BusinessService/SetAutoReply"
-	BusinessService_GetAutoReplies_FullMethodName           = "/business.BusinessService/GetAutoReplies"
-	BusinessService_EnqueueCustomer_FullMethodName          = "/business.BusinessService/EnqueueCustomer"
-	BusinessService_DequeueCustomer_FullMethodName          = "/business.BusinessService/DequeueCustomer"
-	BusinessService_GetQueuePosition_FullMethodName         = "/business.BusinessService/GetQueuePosition"
-	BusinessService_AddToCart_FullMethodName                = "/business.BusinessService/AddToCart"
-	BusinessService_GetCart_FullMethodName                  = "/business.BusinessService/GetCart"
-	BusinessService_UpdateCartItem_FullMethodName           = "/business.BusinessService/UpdateCartItem"
-	BusinessService_RemoveFromCart_FullMethodName           = "/business.BusinessService/RemoveFromCart"
-	BusinessService_ClearCart_FullMethodName                = "/business.BusinessService/ClearCart"
-	BusinessService_CreateOrders_FullMethodName             = "/business.BusinessService/CreateOrders"
-	BusinessService_GetOrder_FullMethodName                 = "/business.BusinessService/GetOrder"
-	BusinessService_ListBuyerOrders_FullMethodName          = "/business.BusinessService/ListBuyerOrders"
-	BusinessService_ListSellerOrders_FullMethodName         = "/business.BusinessService/ListSellerOrders"
-	BusinessService_UpdateOrderStatus_FullMethodName        = "/business.BusinessService/UpdateOrderStatus"
-	BusinessService_UpdateOrderTracking_FullMethodName      = "/business.BusinessService/UpdateOrderTracking"
-	BusinessService_CreateCoupon_FullMethodName             = "/business.BusinessService/CreateCoupon"
-	BusinessService_ListBusinessCoupons_FullMethodName      = "/business.BusinessService/ListBusinessCoupons"
-	BusinessService_ValidateCoupon_FullMethodName           = "/business.BusinessService/ValidateCoupon"
-	BusinessService_ToggleWishlist_FullMethodName           = "/business.BusinessService/ToggleWishlist"
-	BusinessService_GetWishlist_FullMethodName              = "/business.BusinessService/GetWishlist"
-	BusinessService_AskProductQuestion_FullMethodName       = "/business.BusinessService/AskProductQuestion"
-	BusinessService_AnswerProductQuestion_FullMethodName    = "/business.BusinessService/AnswerProductQuestion"
-	BusinessService_GetProductQuestions_FullMethodName      = "/business.BusinessService/GetProductQuestions"
-	BusinessService_FlagProductQuestion_FullMethodName      = "/business.BusinessService/FlagProductQuestion"
-	BusinessService_ModerateProductQuestion_FullMethodName  = "/business.BusinessService/ModerateProductQuestion"
-	BusinessService_TransitionOrderStatus_FullMethodName    = "/business.BusinessService/TransitionOrderStatus"
-	BusinessService_GetOrderStatusHistory_FullMethodName    = "/business.BusinessService/GetOrderStatusHistory"
-	BusinessService_CreateRefund_FullMethodName             = "/business.BusinessService/CreateRefund"
-	BusinessService_ProcessRefund_FullMethodName            = "/business.BusinessService/ProcessRefund"
-	BusinessService_ListRefunds_FullMethodName              = "/business.BusinessService/ListRefunds"
-	BusinessService_CreateOrderModification_FullMethodName  = "/business.BusinessService/CreateOrderModification"
-	BusinessService_ProcessOrderModification_FullMethodName = "/business.BusinessService/ProcessOrderModification"
-	BusinessService_ListOrderModifications_FullMethodName   = "/business.BusinessService/ListOrderModifications"
+	BusinessService_CreateBusinessProfile_FullMethodName           = "/business.BusinessService/CreateBusinessProfile"
+	BusinessService_UpdateBusinessProfile_FullMethodName           = "/business.BusinessService/UpdateBusinessProfile"
+	BusinessService_GetBusinessProfile_FullMethodName              = "/business.BusinessService/GetBusinessProfile"
+	BusinessService_CreateCatalog_FullMethodName                   = "/business.BusinessService/CreateCatalog"
+	BusinessService_AddProduct_FullMethodName                      = "/business.BusinessService/AddProduct"
+	BusinessService_UpdateProduct_FullMethodName                   = "/business.BusinessService/UpdateProduct"
+	BusinessService_ListProducts_FullMethodName                    = "/business.BusinessService/ListProducts"
+	BusinessService_CreateMarketplaceProduct_FullMethodName        = "/business.BusinessService/CreateMarketplaceProduct"
+	BusinessService_UpdateMarketplaceProduct_FullMethodName        = "/business.BusinessService/UpdateMarketplaceProduct"
+	BusinessService_DeleteMarketplaceProduct_FullMethodName        = "/business.BusinessService/DeleteMarketplaceProduct"
+	BusinessService_GetMarketplaceProduct_FullMethodName           = "/business.BusinessService/GetMarketplaceProduct"
+	BusinessService_ListBusinessProducts_FullMethodName            = "/business.BusinessService/ListBusinessProducts"
+	BusinessService_ListMarketplaceProducts_FullMethodName         = "/business.BusinessService/ListMarketplaceProducts"
+	BusinessService_ListFollowedMarketplaceProducts_FullMethodName = "/business.BusinessService/ListFollowedMarketplaceProducts"
+	BusinessService_CreateProductVariant_FullMethodName            = "/business.BusinessService/CreateProductVariant"
+	BusinessService_ListProductVariants_FullMethodName             = "/business.BusinessService/ListProductVariants"
+	BusinessService_UpdateProductVariant_FullMethodName            = "/business.BusinessService/UpdateProductVariant"
+	BusinessService_DeleteProductVariant_FullMethodName            = "/business.BusinessService/DeleteProductVariant"
+	BusinessService_ListCategories_FullMethodName                  = "/business.BusinessService/ListCategories"
+	BusinessService_GetStore_FullMethodName                        = "/business.BusinessService/GetStore"
+	BusinessService_TrackProductView_FullMethodName                = "/business.BusinessService/TrackProductView"
+	BusinessService_CreateReview_FullMethodName                    = "/business.BusinessService/CreateReview"
+	BusinessService_ListReviews_FullMethodName                     = "/business.BusinessService/ListReviews"
+	BusinessService_CreateAppointmentSlot_FullMethodName           = "/business.BusinessService/CreateAppointmentSlot"
+	BusinessService_BookAppointment_FullMethodName                 = "/business.BusinessService/BookAppointment"
+	BusinessService_ListAppointments_FullMethodName                = "/business.BusinessService/ListAppointments"
+	BusinessService_SetAutoReply_FullMethodName                    = "/business.BusinessService/SetAutoReply"
+	BusinessService_GetAutoReplies_FullMethodName                  = "/business.BusinessService/GetAutoReplies"
+	BusinessService_EnqueueCustomer_FullMethodName                 = "/business.BusinessService/EnqueueCustomer"
+	BusinessService_DequeueCustomer_FullMethodName                 = "/business.BusinessService/DequeueCustomer"
+	BusinessService_GetQueuePosition_FullMethodName                = "/business.BusinessService/GetQueuePosition"
+	BusinessService_AddToCart_FullMethodName                       = "/business.BusinessService/AddToCart"
+	BusinessService_GetCart_FullMethodName                         = "/business.BusinessService/GetCart"
+	BusinessService_UpdateCartItem_FullMethodName                  = "/business.BusinessService/UpdateCartItem"
+	BusinessService_RemoveFromCart_FullMethodName                  = "/business.BusinessService/RemoveFromCart"
+	BusinessService_ClearCart_FullMethodName                       = "/business.BusinessService/ClearCart"
+	BusinessService_CreateOrders_FullMethodName                    = "/business.BusinessService/CreateOrders"
+	BusinessService_GetOrder_FullMethodName                        = "/business.BusinessService/GetOrder"
+	BusinessService_ListBuyerOrders_FullMethodName                 = "/business.BusinessService/ListBuyerOrders"
+	BusinessService_ListSellerOrders_FullMethodName                = "/business.BusinessService/ListSellerOrders"
+	BusinessService_UpdateOrderStatus_FullMethodName               = "/business.BusinessService/UpdateOrderStatus"
+	BusinessService_UpdateOrderTracking_FullMethodName             = "/business.BusinessService/UpdateOrderTracking"
+	BusinessService_CreateCoupon_FullMethodName                    = "/business.BusinessService/CreateCoupon"
+	BusinessService_ListBusinessCoupons_FullMethodName             = "/business.BusinessService/ListBusinessCoupons"
+	BusinessService_ValidateCoupon_FullMethodName                  = "/business.BusinessService/ValidateCoupon"
+	BusinessService_ToggleWishlist_FullMethodName                  = "/business.BusinessService/ToggleWishlist"
+	BusinessService_GetWishlist_FullMethodName                     = "/business.BusinessService/GetWishlist"
+	BusinessService_AskProductQuestion_FullMethodName              = "/business.BusinessService/AskProductQuestion"
+	BusinessService_AnswerProductQuestion_FullMethodName           = "/business.BusinessService/AnswerProductQuestion"
+	BusinessService_GetProductQuestions_FullMethodName             = "/business.BusinessService/GetProductQuestions"
+	BusinessService_FlagProductQuestion_FullMethodName             = "/business.BusinessService/FlagProductQuestion"
+	BusinessService_ModerateProductQuestion_FullMethodName         = "/business.BusinessService/ModerateProductQuestion"
+	BusinessService_TransitionOrderStatus_FullMethodName           = "/business.BusinessService/TransitionOrderStatus"
+	BusinessService_GetOrderStatusHistory_FullMethodName           = "/business.BusinessService/GetOrderStatusHistory"
+	BusinessService_CreateRefund_FullMethodName                    = "/business.BusinessService/CreateRefund"
+	BusinessService_ProcessRefund_FullMethodName                   = "/business.BusinessService/ProcessRefund"
+	BusinessService_ListRefunds_FullMethodName                     = "/business.BusinessService/ListRefunds"
+	BusinessService_CreateOrderModification_FullMethodName         = "/business.BusinessService/CreateOrderModification"
+	BusinessService_ProcessOrderModification_FullMethodName        = "/business.BusinessService/ProcessOrderModification"
+	BusinessService_ListOrderModifications_FullMethodName          = "/business.BusinessService/ListOrderModifications"
+	BusinessService_ToggleFollowStore_FullMethodName               = "/business.BusinessService/ToggleFollowStore"
+	BusinessService_IsFollowingStore_FullMethodName                = "/business.BusinessService/IsFollowingStore"
+	BusinessService_GetFollowedStores_FullMethodName               = "/business.BusinessService/GetFollowedStores"
+	BusinessService_ToggleReviewHelpful_FullMethodName             = "/business.BusinessService/ToggleReviewHelpful"
 )
 
 // BusinessServiceClient is the client API for BusinessService service.
@@ -100,6 +105,7 @@ type BusinessServiceClient interface {
 	GetMarketplaceProduct(ctx context.Context, in *GetMarketplaceProductRequest, opts ...grpc.CallOption) (*GetMarketplaceProductResponse, error)
 	ListBusinessProducts(ctx context.Context, in *ListBusinessProductsRequest, opts ...grpc.CallOption) (*ListBusinessProductsResponse, error)
 	ListMarketplaceProducts(ctx context.Context, in *ListMarketplaceProductsRequest, opts ...grpc.CallOption) (*ListMarketplaceProductsResponse, error)
+	ListFollowedMarketplaceProducts(ctx context.Context, in *ListFollowedMarketplaceProductsRequest, opts ...grpc.CallOption) (*ListMarketplaceProductsResponse, error)
 	// Product Variants
 	CreateProductVariant(ctx context.Context, in *CreateProductVariantRequest, opts ...grpc.CallOption) (*CreateProductVariantResponse, error)
 	ListProductVariants(ctx context.Context, in *ListProductVariantsRequest, opts ...grpc.CallOption) (*ListProductVariantsResponse, error)
@@ -161,6 +167,12 @@ type BusinessServiceClient interface {
 	CreateOrderModification(ctx context.Context, in *CreateOrderModificationRequest, opts ...grpc.CallOption) (*CreateOrderModificationResponse, error)
 	ProcessOrderModification(ctx context.Context, in *ProcessOrderModificationRequest, opts ...grpc.CallOption) (*ProcessOrderModificationResponse, error)
 	ListOrderModifications(ctx context.Context, in *ListOrderModificationsRequest, opts ...grpc.CallOption) (*ListOrderModificationsResponse, error)
+	// Follow Operations
+	ToggleFollowStore(ctx context.Context, in *ToggleFollowStoreRequest, opts ...grpc.CallOption) (*ToggleFollowStoreResponse, error)
+	IsFollowingStore(ctx context.Context, in *IsFollowingStoreRequest, opts ...grpc.CallOption) (*IsFollowingStoreResponse, error)
+	GetFollowedStores(ctx context.Context, in *GetFollowedStoresRequest, opts ...grpc.CallOption) (*GetFollowedStoresResponse, error)
+	// Review Operations
+	ToggleReviewHelpful(ctx context.Context, in *ToggleReviewHelpfulRequest, opts ...grpc.CallOption) (*ToggleReviewHelpfulResponse, error)
 }
 
 type businessServiceClient struct {
@@ -295,6 +307,16 @@ func (c *businessServiceClient) ListMarketplaceProducts(ctx context.Context, in 
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListMarketplaceProductsResponse)
 	err := c.cc.Invoke(ctx, BusinessService_ListMarketplaceProducts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *businessServiceClient) ListFollowedMarketplaceProducts(ctx context.Context, in *ListFollowedMarketplaceProductsRequest, opts ...grpc.CallOption) (*ListMarketplaceProductsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListMarketplaceProductsResponse)
+	err := c.cc.Invoke(ctx, BusinessService_ListFollowedMarketplaceProducts_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -761,6 +783,46 @@ func (c *businessServiceClient) ListOrderModifications(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *businessServiceClient) ToggleFollowStore(ctx context.Context, in *ToggleFollowStoreRequest, opts ...grpc.CallOption) (*ToggleFollowStoreResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ToggleFollowStoreResponse)
+	err := c.cc.Invoke(ctx, BusinessService_ToggleFollowStore_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *businessServiceClient) IsFollowingStore(ctx context.Context, in *IsFollowingStoreRequest, opts ...grpc.CallOption) (*IsFollowingStoreResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(IsFollowingStoreResponse)
+	err := c.cc.Invoke(ctx, BusinessService_IsFollowingStore_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *businessServiceClient) GetFollowedStores(ctx context.Context, in *GetFollowedStoresRequest, opts ...grpc.CallOption) (*GetFollowedStoresResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFollowedStoresResponse)
+	err := c.cc.Invoke(ctx, BusinessService_GetFollowedStores_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *businessServiceClient) ToggleReviewHelpful(ctx context.Context, in *ToggleReviewHelpfulRequest, opts ...grpc.CallOption) (*ToggleReviewHelpfulResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ToggleReviewHelpfulResponse)
+	err := c.cc.Invoke(ctx, BusinessService_ToggleReviewHelpful_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BusinessServiceServer is the server API for BusinessService service.
 // All implementations must embed UnimplementedBusinessServiceServer
 // for forward compatibility.
@@ -781,6 +843,7 @@ type BusinessServiceServer interface {
 	GetMarketplaceProduct(context.Context, *GetMarketplaceProductRequest) (*GetMarketplaceProductResponse, error)
 	ListBusinessProducts(context.Context, *ListBusinessProductsRequest) (*ListBusinessProductsResponse, error)
 	ListMarketplaceProducts(context.Context, *ListMarketplaceProductsRequest) (*ListMarketplaceProductsResponse, error)
+	ListFollowedMarketplaceProducts(context.Context, *ListFollowedMarketplaceProductsRequest) (*ListMarketplaceProductsResponse, error)
 	// Product Variants
 	CreateProductVariant(context.Context, *CreateProductVariantRequest) (*CreateProductVariantResponse, error)
 	ListProductVariants(context.Context, *ListProductVariantsRequest) (*ListProductVariantsResponse, error)
@@ -842,6 +905,12 @@ type BusinessServiceServer interface {
 	CreateOrderModification(context.Context, *CreateOrderModificationRequest) (*CreateOrderModificationResponse, error)
 	ProcessOrderModification(context.Context, *ProcessOrderModificationRequest) (*ProcessOrderModificationResponse, error)
 	ListOrderModifications(context.Context, *ListOrderModificationsRequest) (*ListOrderModificationsResponse, error)
+	// Follow Operations
+	ToggleFollowStore(context.Context, *ToggleFollowStoreRequest) (*ToggleFollowStoreResponse, error)
+	IsFollowingStore(context.Context, *IsFollowingStoreRequest) (*IsFollowingStoreResponse, error)
+	GetFollowedStores(context.Context, *GetFollowedStoresRequest) (*GetFollowedStoresResponse, error)
+	// Review Operations
+	ToggleReviewHelpful(context.Context, *ToggleReviewHelpfulRequest) (*ToggleReviewHelpfulResponse, error)
 	mustEmbedUnimplementedBusinessServiceServer()
 }
 
@@ -890,6 +959,9 @@ func (UnimplementedBusinessServiceServer) ListBusinessProducts(context.Context, 
 }
 func (UnimplementedBusinessServiceServer) ListMarketplaceProducts(context.Context, *ListMarketplaceProductsRequest) (*ListMarketplaceProductsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListMarketplaceProducts not implemented")
+}
+func (UnimplementedBusinessServiceServer) ListFollowedMarketplaceProducts(context.Context, *ListFollowedMarketplaceProductsRequest) (*ListMarketplaceProductsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListFollowedMarketplaceProducts not implemented")
 }
 func (UnimplementedBusinessServiceServer) CreateProductVariant(context.Context, *CreateProductVariantRequest) (*CreateProductVariantResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateProductVariant not implemented")
@@ -1028,6 +1100,18 @@ func (UnimplementedBusinessServiceServer) ProcessOrderModification(context.Conte
 }
 func (UnimplementedBusinessServiceServer) ListOrderModifications(context.Context, *ListOrderModificationsRequest) (*ListOrderModificationsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListOrderModifications not implemented")
+}
+func (UnimplementedBusinessServiceServer) ToggleFollowStore(context.Context, *ToggleFollowStoreRequest) (*ToggleFollowStoreResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ToggleFollowStore not implemented")
+}
+func (UnimplementedBusinessServiceServer) IsFollowingStore(context.Context, *IsFollowingStoreRequest) (*IsFollowingStoreResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method IsFollowingStore not implemented")
+}
+func (UnimplementedBusinessServiceServer) GetFollowedStores(context.Context, *GetFollowedStoresRequest) (*GetFollowedStoresResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetFollowedStores not implemented")
+}
+func (UnimplementedBusinessServiceServer) ToggleReviewHelpful(context.Context, *ToggleReviewHelpfulRequest) (*ToggleReviewHelpfulResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ToggleReviewHelpful not implemented")
 }
 func (UnimplementedBusinessServiceServer) mustEmbedUnimplementedBusinessServiceServer() {}
 func (UnimplementedBusinessServiceServer) testEmbeddedByValue()                         {}
@@ -1280,6 +1364,24 @@ func _BusinessService_ListMarketplaceProducts_Handler(srv interface{}, ctx conte
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BusinessServiceServer).ListMarketplaceProducts(ctx, req.(*ListMarketplaceProductsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BusinessService_ListFollowedMarketplaceProducts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListFollowedMarketplaceProductsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BusinessServiceServer).ListFollowedMarketplaceProducts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BusinessService_ListFollowedMarketplaceProducts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BusinessServiceServer).ListFollowedMarketplaceProducts(ctx, req.(*ListFollowedMarketplaceProductsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2112,6 +2214,78 @@ func _BusinessService_ListOrderModifications_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BusinessService_ToggleFollowStore_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ToggleFollowStoreRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BusinessServiceServer).ToggleFollowStore(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BusinessService_ToggleFollowStore_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BusinessServiceServer).ToggleFollowStore(ctx, req.(*ToggleFollowStoreRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BusinessService_IsFollowingStore_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(IsFollowingStoreRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BusinessServiceServer).IsFollowingStore(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BusinessService_IsFollowingStore_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BusinessServiceServer).IsFollowingStore(ctx, req.(*IsFollowingStoreRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BusinessService_GetFollowedStores_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFollowedStoresRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BusinessServiceServer).GetFollowedStores(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BusinessService_GetFollowedStores_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BusinessServiceServer).GetFollowedStores(ctx, req.(*GetFollowedStoresRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BusinessService_ToggleReviewHelpful_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ToggleReviewHelpfulRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BusinessServiceServer).ToggleReviewHelpful(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BusinessService_ToggleReviewHelpful_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BusinessServiceServer).ToggleReviewHelpful(ctx, req.(*ToggleReviewHelpfulRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BusinessService_ServiceDesc is the grpc.ServiceDesc for BusinessService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -2170,6 +2344,10 @@ var BusinessService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListMarketplaceProducts",
 			Handler:    _BusinessService_ListMarketplaceProducts_Handler,
+		},
+		{
+			MethodName: "ListFollowedMarketplaceProducts",
+			Handler:    _BusinessService_ListFollowedMarketplaceProducts_Handler,
 		},
 		{
 			MethodName: "CreateProductVariant",
@@ -2354,6 +2532,22 @@ var BusinessService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListOrderModifications",
 			Handler:    _BusinessService_ListOrderModifications_Handler,
+		},
+		{
+			MethodName: "ToggleFollowStore",
+			Handler:    _BusinessService_ToggleFollowStore_Handler,
+		},
+		{
+			MethodName: "IsFollowingStore",
+			Handler:    _BusinessService_IsFollowingStore_Handler,
+		},
+		{
+			MethodName: "GetFollowedStores",
+			Handler:    _BusinessService_GetFollowedStores_Handler,
+		},
+		{
+			MethodName: "ToggleReviewHelpful",
+			Handler:    _BusinessService_ToggleReviewHelpful_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

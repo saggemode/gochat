@@ -416,9 +416,6 @@ func (r *BusinessRepository) ListBusinessProducts(ctx context.Context, businessI
 	return products, total, nil
 }
 
-	return products, total, nil
-}
-
 func (r *BusinessRepository) ListFollowedMarketplaceProducts(ctx context.Context, userID string, limit, offset int32) ([]*MarketplaceProduct, int32, error) {
 	var total int32
 	err := r.db.QueryRow(ctx, `

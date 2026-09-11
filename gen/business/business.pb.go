@@ -598,7 +598,9 @@ type Review struct {
 	UserAvatar    string                 `protobuf:"bytes,5,opt,name=user_avatar,json=userAvatar,proto3" json:"user_avatar,omitempty"`
 	Rating        int32                  `protobuf:"varint,6,opt,name=rating,proto3" json:"rating,omitempty"`
 	Comment       string                 `protobuf:"bytes,7,opt,name=comment,proto3" json:"comment,omitempty"`
-	CreatedAt     string                 `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	ImageUrls     []string               `protobuf:"bytes,8,rep,name=image_urls,json=imageUrls,proto3" json:"image_urls,omitempty"`
+	HelpfulCount  int32                  `protobuf:"varint,9,opt,name=helpful_count,json=helpfulCount,proto3" json:"helpful_count,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -680,6 +682,20 @@ func (x *Review) GetComment() string {
 		return x.Comment
 	}
 	return ""
+}
+
+func (x *Review) GetImageUrls() []string {
+	if x != nil {
+		return x.ImageUrls
+	}
+	return nil
+}
+
+func (x *Review) GetHelpfulCount() int32 {
+	if x != nil {
+		return x.HelpfulCount
+	}
+	return 0
 }
 
 func (x *Review) GetCreatedAt() string {
@@ -3069,6 +3085,66 @@ func (x *ListMarketplaceProductsResponse) GetTotal() int32 {
 	return 0
 }
 
+type ListFollowedMarketplaceProductsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset        int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListFollowedMarketplaceProductsRequest) Reset() {
+	*x = ListFollowedMarketplaceProductsRequest{}
+	mi := &file_proto_business_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListFollowedMarketplaceProductsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListFollowedMarketplaceProductsRequest) ProtoMessage() {}
+
+func (x *ListFollowedMarketplaceProductsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_business_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListFollowedMarketplaceProductsRequest.ProtoReflect.Descriptor instead.
+func (*ListFollowedMarketplaceProductsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_business_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *ListFollowedMarketplaceProductsRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *ListFollowedMarketplaceProductsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListFollowedMarketplaceProductsRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
 type CreateProductVariantRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	ProductId      string                 `protobuf:"bytes,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
@@ -3085,7 +3161,7 @@ type CreateProductVariantRequest struct {
 
 func (x *CreateProductVariantRequest) Reset() {
 	*x = CreateProductVariantRequest{}
-	mi := &file_proto_business_proto_msgTypes[38]
+	mi := &file_proto_business_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3097,7 +3173,7 @@ func (x *CreateProductVariantRequest) String() string {
 func (*CreateProductVariantRequest) ProtoMessage() {}
 
 func (x *CreateProductVariantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[38]
+	mi := &file_proto_business_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3110,7 +3186,7 @@ func (x *CreateProductVariantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateProductVariantRequest.ProtoReflect.Descriptor instead.
 func (*CreateProductVariantRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{38}
+	return file_proto_business_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *CreateProductVariantRequest) GetProductId() string {
@@ -3178,7 +3254,7 @@ type CreateProductVariantResponse struct {
 
 func (x *CreateProductVariantResponse) Reset() {
 	*x = CreateProductVariantResponse{}
-	mi := &file_proto_business_proto_msgTypes[39]
+	mi := &file_proto_business_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3190,7 +3266,7 @@ func (x *CreateProductVariantResponse) String() string {
 func (*CreateProductVariantResponse) ProtoMessage() {}
 
 func (x *CreateProductVariantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[39]
+	mi := &file_proto_business_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3203,7 +3279,7 @@ func (x *CreateProductVariantResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateProductVariantResponse.ProtoReflect.Descriptor instead.
 func (*CreateProductVariantResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{39}
+	return file_proto_business_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *CreateProductVariantResponse) GetVariant() *ProductVariant {
@@ -3222,7 +3298,7 @@ type ListProductVariantsRequest struct {
 
 func (x *ListProductVariantsRequest) Reset() {
 	*x = ListProductVariantsRequest{}
-	mi := &file_proto_business_proto_msgTypes[40]
+	mi := &file_proto_business_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3234,7 +3310,7 @@ func (x *ListProductVariantsRequest) String() string {
 func (*ListProductVariantsRequest) ProtoMessage() {}
 
 func (x *ListProductVariantsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[40]
+	mi := &file_proto_business_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3247,7 +3323,7 @@ func (x *ListProductVariantsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProductVariantsRequest.ProtoReflect.Descriptor instead.
 func (*ListProductVariantsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{40}
+	return file_proto_business_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *ListProductVariantsRequest) GetProductId() string {
@@ -3266,7 +3342,7 @@ type ListProductVariantsResponse struct {
 
 func (x *ListProductVariantsResponse) Reset() {
 	*x = ListProductVariantsResponse{}
-	mi := &file_proto_business_proto_msgTypes[41]
+	mi := &file_proto_business_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3278,7 +3354,7 @@ func (x *ListProductVariantsResponse) String() string {
 func (*ListProductVariantsResponse) ProtoMessage() {}
 
 func (x *ListProductVariantsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[41]
+	mi := &file_proto_business_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3291,7 +3367,7 @@ func (x *ListProductVariantsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProductVariantsResponse.ProtoReflect.Descriptor instead.
 func (*ListProductVariantsResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{41}
+	return file_proto_business_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *ListProductVariantsResponse) GetVariants() []*ProductVariant {
@@ -3318,7 +3394,7 @@ type UpdateProductVariantRequest struct {
 
 func (x *UpdateProductVariantRequest) Reset() {
 	*x = UpdateProductVariantRequest{}
-	mi := &file_proto_business_proto_msgTypes[42]
+	mi := &file_proto_business_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3330,7 +3406,7 @@ func (x *UpdateProductVariantRequest) String() string {
 func (*UpdateProductVariantRequest) ProtoMessage() {}
 
 func (x *UpdateProductVariantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[42]
+	mi := &file_proto_business_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3343,7 +3419,7 @@ func (x *UpdateProductVariantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateProductVariantRequest.ProtoReflect.Descriptor instead.
 func (*UpdateProductVariantRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{42}
+	return file_proto_business_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *UpdateProductVariantRequest) GetId() string {
@@ -3418,7 +3494,7 @@ type UpdateProductVariantResponse struct {
 
 func (x *UpdateProductVariantResponse) Reset() {
 	*x = UpdateProductVariantResponse{}
-	mi := &file_proto_business_proto_msgTypes[43]
+	mi := &file_proto_business_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3430,7 +3506,7 @@ func (x *UpdateProductVariantResponse) String() string {
 func (*UpdateProductVariantResponse) ProtoMessage() {}
 
 func (x *UpdateProductVariantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[43]
+	mi := &file_proto_business_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3443,7 +3519,7 @@ func (x *UpdateProductVariantResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateProductVariantResponse.ProtoReflect.Descriptor instead.
 func (*UpdateProductVariantResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{43}
+	return file_proto_business_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *UpdateProductVariantResponse) GetVariant() *ProductVariant {
@@ -3463,7 +3539,7 @@ type DeleteProductVariantRequest struct {
 
 func (x *DeleteProductVariantRequest) Reset() {
 	*x = DeleteProductVariantRequest{}
-	mi := &file_proto_business_proto_msgTypes[44]
+	mi := &file_proto_business_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3475,7 +3551,7 @@ func (x *DeleteProductVariantRequest) String() string {
 func (*DeleteProductVariantRequest) ProtoMessage() {}
 
 func (x *DeleteProductVariantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[44]
+	mi := &file_proto_business_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3488,7 +3564,7 @@ func (x *DeleteProductVariantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteProductVariantRequest.ProtoReflect.Descriptor instead.
 func (*DeleteProductVariantRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{44}
+	return file_proto_business_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *DeleteProductVariantRequest) GetId() string {
@@ -3514,7 +3590,7 @@ type DeleteProductVariantResponse struct {
 
 func (x *DeleteProductVariantResponse) Reset() {
 	*x = DeleteProductVariantResponse{}
-	mi := &file_proto_business_proto_msgTypes[45]
+	mi := &file_proto_business_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3526,7 +3602,7 @@ func (x *DeleteProductVariantResponse) String() string {
 func (*DeleteProductVariantResponse) ProtoMessage() {}
 
 func (x *DeleteProductVariantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[45]
+	mi := &file_proto_business_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3539,7 +3615,7 @@ func (x *DeleteProductVariantResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteProductVariantResponse.ProtoReflect.Descriptor instead.
 func (*DeleteProductVariantResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{45}
+	return file_proto_business_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *DeleteProductVariantResponse) GetSuccess() bool {
@@ -3557,7 +3633,7 @@ type ListCategoriesRequest struct {
 
 func (x *ListCategoriesRequest) Reset() {
 	*x = ListCategoriesRequest{}
-	mi := &file_proto_business_proto_msgTypes[46]
+	mi := &file_proto_business_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3569,7 +3645,7 @@ func (x *ListCategoriesRequest) String() string {
 func (*ListCategoriesRequest) ProtoMessage() {}
 
 func (x *ListCategoriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[46]
+	mi := &file_proto_business_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3582,7 +3658,7 @@ func (x *ListCategoriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCategoriesRequest.ProtoReflect.Descriptor instead.
 func (*ListCategoriesRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{46}
+	return file_proto_business_proto_rawDescGZIP(), []int{47}
 }
 
 type ListCategoriesResponse struct {
@@ -3594,7 +3670,7 @@ type ListCategoriesResponse struct {
 
 func (x *ListCategoriesResponse) Reset() {
 	*x = ListCategoriesResponse{}
-	mi := &file_proto_business_proto_msgTypes[47]
+	mi := &file_proto_business_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3606,7 +3682,7 @@ func (x *ListCategoriesResponse) String() string {
 func (*ListCategoriesResponse) ProtoMessage() {}
 
 func (x *ListCategoriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[47]
+	mi := &file_proto_business_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3619,7 +3695,7 @@ func (x *ListCategoriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCategoriesResponse.ProtoReflect.Descriptor instead.
 func (*ListCategoriesResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{47}
+	return file_proto_business_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *ListCategoriesResponse) GetCategories() []*Category {
@@ -3639,7 +3715,7 @@ type GetStoreRequest struct {
 
 func (x *GetStoreRequest) Reset() {
 	*x = GetStoreRequest{}
-	mi := &file_proto_business_proto_msgTypes[48]
+	mi := &file_proto_business_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3651,7 +3727,7 @@ func (x *GetStoreRequest) String() string {
 func (*GetStoreRequest) ProtoMessage() {}
 
 func (x *GetStoreRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[48]
+	mi := &file_proto_business_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3664,7 +3740,7 @@ func (x *GetStoreRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStoreRequest.ProtoReflect.Descriptor instead.
 func (*GetStoreRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{48}
+	return file_proto_business_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *GetStoreRequest) GetSlug() string {
@@ -3690,7 +3766,7 @@ type GetStoreResponse struct {
 
 func (x *GetStoreResponse) Reset() {
 	*x = GetStoreResponse{}
-	mi := &file_proto_business_proto_msgTypes[49]
+	mi := &file_proto_business_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3702,7 +3778,7 @@ func (x *GetStoreResponse) String() string {
 func (*GetStoreResponse) ProtoMessage() {}
 
 func (x *GetStoreResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[49]
+	mi := &file_proto_business_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3715,7 +3791,7 @@ func (x *GetStoreResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStoreResponse.ProtoReflect.Descriptor instead.
 func (*GetStoreResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{49}
+	return file_proto_business_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *GetStoreResponse) GetStore() *Store {
@@ -3735,7 +3811,7 @@ type TrackProductViewRequest struct {
 
 func (x *TrackProductViewRequest) Reset() {
 	*x = TrackProductViewRequest{}
-	mi := &file_proto_business_proto_msgTypes[50]
+	mi := &file_proto_business_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3747,7 +3823,7 @@ func (x *TrackProductViewRequest) String() string {
 func (*TrackProductViewRequest) ProtoMessage() {}
 
 func (x *TrackProductViewRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[50]
+	mi := &file_proto_business_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3760,7 +3836,7 @@ func (x *TrackProductViewRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrackProductViewRequest.ProtoReflect.Descriptor instead.
 func (*TrackProductViewRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{50}
+	return file_proto_business_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *TrackProductViewRequest) GetProductId() string {
@@ -3786,7 +3862,7 @@ type TrackProductViewResponse struct {
 
 func (x *TrackProductViewResponse) Reset() {
 	*x = TrackProductViewResponse{}
-	mi := &file_proto_business_proto_msgTypes[51]
+	mi := &file_proto_business_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3798,7 +3874,7 @@ func (x *TrackProductViewResponse) String() string {
 func (*TrackProductViewResponse) ProtoMessage() {}
 
 func (x *TrackProductViewResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[51]
+	mi := &file_proto_business_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3811,7 +3887,7 @@ func (x *TrackProductViewResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrackProductViewResponse.ProtoReflect.Descriptor instead.
 func (*TrackProductViewResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{51}
+	return file_proto_business_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *TrackProductViewResponse) GetSuccess() bool {
@@ -3827,13 +3903,14 @@ type CreateReviewRequest struct {
 	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	Rating        int32                  `protobuf:"varint,3,opt,name=rating,proto3" json:"rating,omitempty"`
 	Comment       string                 `protobuf:"bytes,4,opt,name=comment,proto3" json:"comment,omitempty"`
+	ImageUrls     []string               `protobuf:"bytes,5,rep,name=image_urls,json=imageUrls,proto3" json:"image_urls,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateReviewRequest) Reset() {
 	*x = CreateReviewRequest{}
-	mi := &file_proto_business_proto_msgTypes[52]
+	mi := &file_proto_business_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3845,7 +3922,7 @@ func (x *CreateReviewRequest) String() string {
 func (*CreateReviewRequest) ProtoMessage() {}
 
 func (x *CreateReviewRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[52]
+	mi := &file_proto_business_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3858,7 +3935,7 @@ func (x *CreateReviewRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateReviewRequest.ProtoReflect.Descriptor instead.
 func (*CreateReviewRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{52}
+	return file_proto_business_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *CreateReviewRequest) GetProductId() string {
@@ -3889,6 +3966,13 @@ func (x *CreateReviewRequest) GetComment() string {
 	return ""
 }
 
+func (x *CreateReviewRequest) GetImageUrls() []string {
+	if x != nil {
+		return x.ImageUrls
+	}
+	return nil
+}
+
 type CreateReviewResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Review        *Review                `protobuf:"bytes,1,opt,name=review,proto3" json:"review,omitempty"`
@@ -3898,7 +3982,7 @@ type CreateReviewResponse struct {
 
 func (x *CreateReviewResponse) Reset() {
 	*x = CreateReviewResponse{}
-	mi := &file_proto_business_proto_msgTypes[53]
+	mi := &file_proto_business_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3910,7 +3994,7 @@ func (x *CreateReviewResponse) String() string {
 func (*CreateReviewResponse) ProtoMessage() {}
 
 func (x *CreateReviewResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[53]
+	mi := &file_proto_business_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3923,7 +4007,7 @@ func (x *CreateReviewResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateReviewResponse.ProtoReflect.Descriptor instead.
 func (*CreateReviewResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{53}
+	return file_proto_business_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *CreateReviewResponse) GetReview() *Review {
@@ -3944,7 +4028,7 @@ type ListReviewsRequest struct {
 
 func (x *ListReviewsRequest) Reset() {
 	*x = ListReviewsRequest{}
-	mi := &file_proto_business_proto_msgTypes[54]
+	mi := &file_proto_business_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3956,7 +4040,7 @@ func (x *ListReviewsRequest) String() string {
 func (*ListReviewsRequest) ProtoMessage() {}
 
 func (x *ListReviewsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[54]
+	mi := &file_proto_business_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3969,7 +4053,7 @@ func (x *ListReviewsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListReviewsRequest.ProtoReflect.Descriptor instead.
 func (*ListReviewsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{54}
+	return file_proto_business_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *ListReviewsRequest) GetProductId() string {
@@ -4003,7 +4087,7 @@ type ListReviewsResponse struct {
 
 func (x *ListReviewsResponse) Reset() {
 	*x = ListReviewsResponse{}
-	mi := &file_proto_business_proto_msgTypes[55]
+	mi := &file_proto_business_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4015,7 +4099,7 @@ func (x *ListReviewsResponse) String() string {
 func (*ListReviewsResponse) ProtoMessage() {}
 
 func (x *ListReviewsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[55]
+	mi := &file_proto_business_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4028,7 +4112,7 @@ func (x *ListReviewsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListReviewsResponse.ProtoReflect.Descriptor instead.
 func (*ListReviewsResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{55}
+	return file_proto_business_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *ListReviewsResponse) GetReviews() []*Review {
@@ -4059,7 +4143,7 @@ type CreateAppointmentSlotRequest struct {
 
 func (x *CreateAppointmentSlotRequest) Reset() {
 	*x = CreateAppointmentSlotRequest{}
-	mi := &file_proto_business_proto_msgTypes[56]
+	mi := &file_proto_business_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4071,7 +4155,7 @@ func (x *CreateAppointmentSlotRequest) String() string {
 func (*CreateAppointmentSlotRequest) ProtoMessage() {}
 
 func (x *CreateAppointmentSlotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[56]
+	mi := &file_proto_business_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4084,7 +4168,7 @@ func (x *CreateAppointmentSlotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAppointmentSlotRequest.ProtoReflect.Descriptor instead.
 func (*CreateAppointmentSlotRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{56}
+	return file_proto_business_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *CreateAppointmentSlotRequest) GetBusinessId() string {
@@ -4138,7 +4222,7 @@ type CreateAppointmentSlotResponse struct {
 
 func (x *CreateAppointmentSlotResponse) Reset() {
 	*x = CreateAppointmentSlotResponse{}
-	mi := &file_proto_business_proto_msgTypes[57]
+	mi := &file_proto_business_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4150,7 +4234,7 @@ func (x *CreateAppointmentSlotResponse) String() string {
 func (*CreateAppointmentSlotResponse) ProtoMessage() {}
 
 func (x *CreateAppointmentSlotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[57]
+	mi := &file_proto_business_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4163,7 +4247,7 @@ func (x *CreateAppointmentSlotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAppointmentSlotResponse.ProtoReflect.Descriptor instead.
 func (*CreateAppointmentSlotResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{57}
+	return file_proto_business_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *CreateAppointmentSlotResponse) GetAppointment() *Appointment {
@@ -4184,7 +4268,7 @@ type BookAppointmentRequest struct {
 
 func (x *BookAppointmentRequest) Reset() {
 	*x = BookAppointmentRequest{}
-	mi := &file_proto_business_proto_msgTypes[58]
+	mi := &file_proto_business_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4196,7 +4280,7 @@ func (x *BookAppointmentRequest) String() string {
 func (*BookAppointmentRequest) ProtoMessage() {}
 
 func (x *BookAppointmentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[58]
+	mi := &file_proto_business_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4209,7 +4293,7 @@ func (x *BookAppointmentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BookAppointmentRequest.ProtoReflect.Descriptor instead.
 func (*BookAppointmentRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{58}
+	return file_proto_business_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *BookAppointmentRequest) GetUserId() string {
@@ -4242,7 +4326,7 @@ type BookAppointmentResponse struct {
 
 func (x *BookAppointmentResponse) Reset() {
 	*x = BookAppointmentResponse{}
-	mi := &file_proto_business_proto_msgTypes[59]
+	mi := &file_proto_business_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4254,7 +4338,7 @@ func (x *BookAppointmentResponse) String() string {
 func (*BookAppointmentResponse) ProtoMessage() {}
 
 func (x *BookAppointmentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[59]
+	mi := &file_proto_business_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4267,7 +4351,7 @@ func (x *BookAppointmentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BookAppointmentResponse.ProtoReflect.Descriptor instead.
 func (*BookAppointmentResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{59}
+	return file_proto_business_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *BookAppointmentResponse) GetSuccess() bool {
@@ -4288,7 +4372,7 @@ type ListAppointmentsRequest struct {
 
 func (x *ListAppointmentsRequest) Reset() {
 	*x = ListAppointmentsRequest{}
-	mi := &file_proto_business_proto_msgTypes[60]
+	mi := &file_proto_business_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4300,7 +4384,7 @@ func (x *ListAppointmentsRequest) String() string {
 func (*ListAppointmentsRequest) ProtoMessage() {}
 
 func (x *ListAppointmentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[60]
+	mi := &file_proto_business_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4313,7 +4397,7 @@ func (x *ListAppointmentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAppointmentsRequest.ProtoReflect.Descriptor instead.
 func (*ListAppointmentsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{60}
+	return file_proto_business_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *ListAppointmentsRequest) GetBusinessId() string {
@@ -4347,7 +4431,7 @@ type ListAppointmentsResponse struct {
 
 func (x *ListAppointmentsResponse) Reset() {
 	*x = ListAppointmentsResponse{}
-	mi := &file_proto_business_proto_msgTypes[61]
+	mi := &file_proto_business_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4359,7 +4443,7 @@ func (x *ListAppointmentsResponse) String() string {
 func (*ListAppointmentsResponse) ProtoMessage() {}
 
 func (x *ListAppointmentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[61]
+	mi := &file_proto_business_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4372,7 +4456,7 @@ func (x *ListAppointmentsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAppointmentsResponse.ProtoReflect.Descriptor instead.
 func (*ListAppointmentsResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{61}
+	return file_proto_business_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *ListAppointmentsResponse) GetAppointments() []*Appointment {
@@ -4401,7 +4485,7 @@ type SetAutoReplyRequest struct {
 
 func (x *SetAutoReplyRequest) Reset() {
 	*x = SetAutoReplyRequest{}
-	mi := &file_proto_business_proto_msgTypes[62]
+	mi := &file_proto_business_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4413,7 +4497,7 @@ func (x *SetAutoReplyRequest) String() string {
 func (*SetAutoReplyRequest) ProtoMessage() {}
 
 func (x *SetAutoReplyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[62]
+	mi := &file_proto_business_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4426,7 +4510,7 @@ func (x *SetAutoReplyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetAutoReplyRequest.ProtoReflect.Descriptor instead.
 func (*SetAutoReplyRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{62}
+	return file_proto_business_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *SetAutoReplyRequest) GetUserId() string {
@@ -4466,7 +4550,7 @@ type SetAutoReplyResponse struct {
 
 func (x *SetAutoReplyResponse) Reset() {
 	*x = SetAutoReplyResponse{}
-	mi := &file_proto_business_proto_msgTypes[63]
+	mi := &file_proto_business_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4478,7 +4562,7 @@ func (x *SetAutoReplyResponse) String() string {
 func (*SetAutoReplyResponse) ProtoMessage() {}
 
 func (x *SetAutoReplyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[63]
+	mi := &file_proto_business_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4491,7 +4575,7 @@ func (x *SetAutoReplyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetAutoReplyResponse.ProtoReflect.Descriptor instead.
 func (*SetAutoReplyResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{63}
+	return file_proto_business_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *SetAutoReplyResponse) GetRule() *AutoReply {
@@ -4510,7 +4594,7 @@ type GetAutoRepliesRequest struct {
 
 func (x *GetAutoRepliesRequest) Reset() {
 	*x = GetAutoRepliesRequest{}
-	mi := &file_proto_business_proto_msgTypes[64]
+	mi := &file_proto_business_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4522,7 +4606,7 @@ func (x *GetAutoRepliesRequest) String() string {
 func (*GetAutoRepliesRequest) ProtoMessage() {}
 
 func (x *GetAutoRepliesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[64]
+	mi := &file_proto_business_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4535,7 +4619,7 @@ func (x *GetAutoRepliesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAutoRepliesRequest.ProtoReflect.Descriptor instead.
 func (*GetAutoRepliesRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{64}
+	return file_proto_business_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *GetAutoRepliesRequest) GetUserId() string {
@@ -4554,7 +4638,7 @@ type GetAutoRepliesResponse struct {
 
 func (x *GetAutoRepliesResponse) Reset() {
 	*x = GetAutoRepliesResponse{}
-	mi := &file_proto_business_proto_msgTypes[65]
+	mi := &file_proto_business_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4566,7 +4650,7 @@ func (x *GetAutoRepliesResponse) String() string {
 func (*GetAutoRepliesResponse) ProtoMessage() {}
 
 func (x *GetAutoRepliesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[65]
+	mi := &file_proto_business_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4579,7 +4663,7 @@ func (x *GetAutoRepliesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAutoRepliesResponse.ProtoReflect.Descriptor instead.
 func (*GetAutoRepliesResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{65}
+	return file_proto_business_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *GetAutoRepliesResponse) GetRules() []*AutoReply {
@@ -4599,7 +4683,7 @@ type EnqueueCustomerRequest struct {
 
 func (x *EnqueueCustomerRequest) Reset() {
 	*x = EnqueueCustomerRequest{}
-	mi := &file_proto_business_proto_msgTypes[66]
+	mi := &file_proto_business_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4611,7 +4695,7 @@ func (x *EnqueueCustomerRequest) String() string {
 func (*EnqueueCustomerRequest) ProtoMessage() {}
 
 func (x *EnqueueCustomerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[66]
+	mi := &file_proto_business_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4624,7 +4708,7 @@ func (x *EnqueueCustomerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnqueueCustomerRequest.ProtoReflect.Descriptor instead.
 func (*EnqueueCustomerRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{66}
+	return file_proto_business_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *EnqueueCustomerRequest) GetBusinessId() string {
@@ -4650,7 +4734,7 @@ type EnqueueCustomerResponse struct {
 
 func (x *EnqueueCustomerResponse) Reset() {
 	*x = EnqueueCustomerResponse{}
-	mi := &file_proto_business_proto_msgTypes[67]
+	mi := &file_proto_business_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4662,7 +4746,7 @@ func (x *EnqueueCustomerResponse) String() string {
 func (*EnqueueCustomerResponse) ProtoMessage() {}
 
 func (x *EnqueueCustomerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[67]
+	mi := &file_proto_business_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4675,7 +4759,7 @@ func (x *EnqueueCustomerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnqueueCustomerResponse.ProtoReflect.Descriptor instead.
 func (*EnqueueCustomerResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{67}
+	return file_proto_business_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *EnqueueCustomerResponse) GetEntry() *QueueEntry {
@@ -4694,7 +4778,7 @@ type DequeueCustomerRequest struct {
 
 func (x *DequeueCustomerRequest) Reset() {
 	*x = DequeueCustomerRequest{}
-	mi := &file_proto_business_proto_msgTypes[68]
+	mi := &file_proto_business_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4706,7 +4790,7 @@ func (x *DequeueCustomerRequest) String() string {
 func (*DequeueCustomerRequest) ProtoMessage() {}
 
 func (x *DequeueCustomerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[68]
+	mi := &file_proto_business_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4719,7 +4803,7 @@ func (x *DequeueCustomerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DequeueCustomerRequest.ProtoReflect.Descriptor instead.
 func (*DequeueCustomerRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{68}
+	return file_proto_business_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *DequeueCustomerRequest) GetBusinessId() string {
@@ -4738,7 +4822,7 @@ type DequeueCustomerResponse struct {
 
 func (x *DequeueCustomerResponse) Reset() {
 	*x = DequeueCustomerResponse{}
-	mi := &file_proto_business_proto_msgTypes[69]
+	mi := &file_proto_business_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4750,7 +4834,7 @@ func (x *DequeueCustomerResponse) String() string {
 func (*DequeueCustomerResponse) ProtoMessage() {}
 
 func (x *DequeueCustomerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[69]
+	mi := &file_proto_business_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4763,7 +4847,7 @@ func (x *DequeueCustomerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DequeueCustomerResponse.ProtoReflect.Descriptor instead.
 func (*DequeueCustomerResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{69}
+	return file_proto_business_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *DequeueCustomerResponse) GetEntry() *QueueEntry {
@@ -4783,7 +4867,7 @@ type GetQueuePositionRequest struct {
 
 func (x *GetQueuePositionRequest) Reset() {
 	*x = GetQueuePositionRequest{}
-	mi := &file_proto_business_proto_msgTypes[70]
+	mi := &file_proto_business_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4795,7 +4879,7 @@ func (x *GetQueuePositionRequest) String() string {
 func (*GetQueuePositionRequest) ProtoMessage() {}
 
 func (x *GetQueuePositionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[70]
+	mi := &file_proto_business_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4808,7 +4892,7 @@ func (x *GetQueuePositionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetQueuePositionRequest.ProtoReflect.Descriptor instead.
 func (*GetQueuePositionRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{70}
+	return file_proto_business_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *GetQueuePositionRequest) GetBusinessId() string {
@@ -4835,7 +4919,7 @@ type GetQueuePositionResponse struct {
 
 func (x *GetQueuePositionResponse) Reset() {
 	*x = GetQueuePositionResponse{}
-	mi := &file_proto_business_proto_msgTypes[71]
+	mi := &file_proto_business_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4847,7 +4931,7 @@ func (x *GetQueuePositionResponse) String() string {
 func (*GetQueuePositionResponse) ProtoMessage() {}
 
 func (x *GetQueuePositionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[71]
+	mi := &file_proto_business_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4860,7 +4944,7 @@ func (x *GetQueuePositionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetQueuePositionResponse.ProtoReflect.Descriptor instead.
 func (*GetQueuePositionResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{71}
+	return file_proto_business_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *GetQueuePositionResponse) GetPosition() int32 {
@@ -4895,7 +4979,7 @@ type CartItem struct {
 
 func (x *CartItem) Reset() {
 	*x = CartItem{}
-	mi := &file_proto_business_proto_msgTypes[72]
+	mi := &file_proto_business_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4907,7 +4991,7 @@ func (x *CartItem) String() string {
 func (*CartItem) ProtoMessage() {}
 
 func (x *CartItem) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[72]
+	mi := &file_proto_business_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4920,7 +5004,7 @@ func (x *CartItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CartItem.ProtoReflect.Descriptor instead.
 func (*CartItem) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{72}
+	return file_proto_business_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *CartItem) GetId() string {
@@ -5005,7 +5089,7 @@ type Cart struct {
 
 func (x *Cart) Reset() {
 	*x = Cart{}
-	mi := &file_proto_business_proto_msgTypes[73]
+	mi := &file_proto_business_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5017,7 +5101,7 @@ func (x *Cart) String() string {
 func (*Cart) ProtoMessage() {}
 
 func (x *Cart) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[73]
+	mi := &file_proto_business_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5030,7 +5114,7 @@ func (x *Cart) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Cart.ProtoReflect.Descriptor instead.
 func (*Cart) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{73}
+	return file_proto_business_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *Cart) GetId() string {
@@ -5073,7 +5157,7 @@ type AddToCartRequest struct {
 
 func (x *AddToCartRequest) Reset() {
 	*x = AddToCartRequest{}
-	mi := &file_proto_business_proto_msgTypes[74]
+	mi := &file_proto_business_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5085,7 +5169,7 @@ func (x *AddToCartRequest) String() string {
 func (*AddToCartRequest) ProtoMessage() {}
 
 func (x *AddToCartRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[74]
+	mi := &file_proto_business_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5098,7 +5182,7 @@ func (x *AddToCartRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddToCartRequest.ProtoReflect.Descriptor instead.
 func (*AddToCartRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{74}
+	return file_proto_business_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *AddToCartRequest) GetUserId() string {
@@ -5138,7 +5222,7 @@ type AddToCartResponse struct {
 
 func (x *AddToCartResponse) Reset() {
 	*x = AddToCartResponse{}
-	mi := &file_proto_business_proto_msgTypes[75]
+	mi := &file_proto_business_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5150,7 +5234,7 @@ func (x *AddToCartResponse) String() string {
 func (*AddToCartResponse) ProtoMessage() {}
 
 func (x *AddToCartResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[75]
+	mi := &file_proto_business_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5163,7 +5247,7 @@ func (x *AddToCartResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddToCartResponse.ProtoReflect.Descriptor instead.
 func (*AddToCartResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{75}
+	return file_proto_business_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *AddToCartResponse) GetCart() *Cart {
@@ -5182,7 +5266,7 @@ type GetCartRequest struct {
 
 func (x *GetCartRequest) Reset() {
 	*x = GetCartRequest{}
-	mi := &file_proto_business_proto_msgTypes[76]
+	mi := &file_proto_business_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5194,7 +5278,7 @@ func (x *GetCartRequest) String() string {
 func (*GetCartRequest) ProtoMessage() {}
 
 func (x *GetCartRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[76]
+	mi := &file_proto_business_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5207,7 +5291,7 @@ func (x *GetCartRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCartRequest.ProtoReflect.Descriptor instead.
 func (*GetCartRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{76}
+	return file_proto_business_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *GetCartRequest) GetUserId() string {
@@ -5226,7 +5310,7 @@ type GetCartResponse struct {
 
 func (x *GetCartResponse) Reset() {
 	*x = GetCartResponse{}
-	mi := &file_proto_business_proto_msgTypes[77]
+	mi := &file_proto_business_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5238,7 +5322,7 @@ func (x *GetCartResponse) String() string {
 func (*GetCartResponse) ProtoMessage() {}
 
 func (x *GetCartResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[77]
+	mi := &file_proto_business_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5251,7 +5335,7 @@ func (x *GetCartResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCartResponse.ProtoReflect.Descriptor instead.
 func (*GetCartResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{77}
+	return file_proto_business_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *GetCartResponse) GetCart() *Cart {
@@ -5272,7 +5356,7 @@ type UpdateCartItemRequest struct {
 
 func (x *UpdateCartItemRequest) Reset() {
 	*x = UpdateCartItemRequest{}
-	mi := &file_proto_business_proto_msgTypes[78]
+	mi := &file_proto_business_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5284,7 +5368,7 @@ func (x *UpdateCartItemRequest) String() string {
 func (*UpdateCartItemRequest) ProtoMessage() {}
 
 func (x *UpdateCartItemRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[78]
+	mi := &file_proto_business_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5297,7 +5381,7 @@ func (x *UpdateCartItemRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateCartItemRequest.ProtoReflect.Descriptor instead.
 func (*UpdateCartItemRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{78}
+	return file_proto_business_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *UpdateCartItemRequest) GetUserId() string {
@@ -5330,7 +5414,7 @@ type UpdateCartItemResponse struct {
 
 func (x *UpdateCartItemResponse) Reset() {
 	*x = UpdateCartItemResponse{}
-	mi := &file_proto_business_proto_msgTypes[79]
+	mi := &file_proto_business_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5342,7 +5426,7 @@ func (x *UpdateCartItemResponse) String() string {
 func (*UpdateCartItemResponse) ProtoMessage() {}
 
 func (x *UpdateCartItemResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[79]
+	mi := &file_proto_business_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5355,7 +5439,7 @@ func (x *UpdateCartItemResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateCartItemResponse.ProtoReflect.Descriptor instead.
 func (*UpdateCartItemResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{79}
+	return file_proto_business_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *UpdateCartItemResponse) GetCart() *Cart {
@@ -5375,7 +5459,7 @@ type RemoveFromCartRequest struct {
 
 func (x *RemoveFromCartRequest) Reset() {
 	*x = RemoveFromCartRequest{}
-	mi := &file_proto_business_proto_msgTypes[80]
+	mi := &file_proto_business_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5387,7 +5471,7 @@ func (x *RemoveFromCartRequest) String() string {
 func (*RemoveFromCartRequest) ProtoMessage() {}
 
 func (x *RemoveFromCartRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[80]
+	mi := &file_proto_business_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5400,7 +5484,7 @@ func (x *RemoveFromCartRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveFromCartRequest.ProtoReflect.Descriptor instead.
 func (*RemoveFromCartRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{80}
+	return file_proto_business_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *RemoveFromCartRequest) GetUserId() string {
@@ -5426,7 +5510,7 @@ type RemoveFromCartResponse struct {
 
 func (x *RemoveFromCartResponse) Reset() {
 	*x = RemoveFromCartResponse{}
-	mi := &file_proto_business_proto_msgTypes[81]
+	mi := &file_proto_business_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5438,7 +5522,7 @@ func (x *RemoveFromCartResponse) String() string {
 func (*RemoveFromCartResponse) ProtoMessage() {}
 
 func (x *RemoveFromCartResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[81]
+	mi := &file_proto_business_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5451,7 +5535,7 @@ func (x *RemoveFromCartResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveFromCartResponse.ProtoReflect.Descriptor instead.
 func (*RemoveFromCartResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{81}
+	return file_proto_business_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *RemoveFromCartResponse) GetCart() *Cart {
@@ -5470,7 +5554,7 @@ type ClearCartRequest struct {
 
 func (x *ClearCartRequest) Reset() {
 	*x = ClearCartRequest{}
-	mi := &file_proto_business_proto_msgTypes[82]
+	mi := &file_proto_business_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5482,7 +5566,7 @@ func (x *ClearCartRequest) String() string {
 func (*ClearCartRequest) ProtoMessage() {}
 
 func (x *ClearCartRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[82]
+	mi := &file_proto_business_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5495,7 +5579,7 @@ func (x *ClearCartRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClearCartRequest.ProtoReflect.Descriptor instead.
 func (*ClearCartRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{82}
+	return file_proto_business_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *ClearCartRequest) GetUserId() string {
@@ -5514,7 +5598,7 @@ type ClearCartResponse struct {
 
 func (x *ClearCartResponse) Reset() {
 	*x = ClearCartResponse{}
-	mi := &file_proto_business_proto_msgTypes[83]
+	mi := &file_proto_business_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5526,7 +5610,7 @@ func (x *ClearCartResponse) String() string {
 func (*ClearCartResponse) ProtoMessage() {}
 
 func (x *ClearCartResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[83]
+	mi := &file_proto_business_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5539,7 +5623,7 @@ func (x *ClearCartResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClearCartResponse.ProtoReflect.Descriptor instead.
 func (*ClearCartResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{83}
+	return file_proto_business_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *ClearCartResponse) GetSuccess() bool {
@@ -5569,7 +5653,7 @@ type OrderItem struct {
 
 func (x *OrderItem) Reset() {
 	*x = OrderItem{}
-	mi := &file_proto_business_proto_msgTypes[84]
+	mi := &file_proto_business_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5581,7 +5665,7 @@ func (x *OrderItem) String() string {
 func (*OrderItem) ProtoMessage() {}
 
 func (x *OrderItem) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[84]
+	mi := &file_proto_business_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5594,7 +5678,7 @@ func (x *OrderItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderItem.ProtoReflect.Descriptor instead.
 func (*OrderItem) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{84}
+	return file_proto_business_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *OrderItem) GetId() string {
@@ -5700,7 +5784,7 @@ type OrderFxQuote struct {
 
 func (x *OrderFxQuote) Reset() {
 	*x = OrderFxQuote{}
-	mi := &file_proto_business_proto_msgTypes[85]
+	mi := &file_proto_business_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5712,7 +5796,7 @@ func (x *OrderFxQuote) String() string {
 func (*OrderFxQuote) ProtoMessage() {}
 
 func (x *OrderFxQuote) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[85]
+	mi := &file_proto_business_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5725,7 +5809,7 @@ func (x *OrderFxQuote) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderFxQuote.ProtoReflect.Descriptor instead.
 func (*OrderFxQuote) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{85}
+	return file_proto_business_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *OrderFxQuote) GetTargetCurrency() string {
@@ -5846,7 +5930,7 @@ type Order struct {
 
 func (x *Order) Reset() {
 	*x = Order{}
-	mi := &file_proto_business_proto_msgTypes[86]
+	mi := &file_proto_business_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5858,7 +5942,7 @@ func (x *Order) String() string {
 func (*Order) ProtoMessage() {}
 
 func (x *Order) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[86]
+	mi := &file_proto_business_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5871,7 +5955,7 @@ func (x *Order) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Order.ProtoReflect.Descriptor instead.
 func (*Order) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{86}
+	return file_proto_business_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *Order) GetId() string {
@@ -6115,7 +6199,7 @@ type CreateOrderItemInput struct {
 
 func (x *CreateOrderItemInput) Reset() {
 	*x = CreateOrderItemInput{}
-	mi := &file_proto_business_proto_msgTypes[87]
+	mi := &file_proto_business_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6127,7 +6211,7 @@ func (x *CreateOrderItemInput) String() string {
 func (*CreateOrderItemInput) ProtoMessage() {}
 
 func (x *CreateOrderItemInput) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[87]
+	mi := &file_proto_business_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6140,7 +6224,7 @@ func (x *CreateOrderItemInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateOrderItemInput.ProtoReflect.Descriptor instead.
 func (*CreateOrderItemInput) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{87}
+	return file_proto_business_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *CreateOrderItemInput) GetProductId() string {
@@ -6170,7 +6254,7 @@ type CreateSingleOrderInput struct {
 
 func (x *CreateSingleOrderInput) Reset() {
 	*x = CreateSingleOrderInput{}
-	mi := &file_proto_business_proto_msgTypes[88]
+	mi := &file_proto_business_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6182,7 +6266,7 @@ func (x *CreateSingleOrderInput) String() string {
 func (*CreateSingleOrderInput) ProtoMessage() {}
 
 func (x *CreateSingleOrderInput) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[88]
+	mi := &file_proto_business_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6195,7 +6279,7 @@ func (x *CreateSingleOrderInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSingleOrderInput.ProtoReflect.Descriptor instead.
 func (*CreateSingleOrderInput) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{88}
+	return file_proto_business_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *CreateSingleOrderInput) GetBusinessId() string {
@@ -6251,7 +6335,7 @@ type CreateOrdersRequest struct {
 
 func (x *CreateOrdersRequest) Reset() {
 	*x = CreateOrdersRequest{}
-	mi := &file_proto_business_proto_msgTypes[89]
+	mi := &file_proto_business_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6263,7 +6347,7 @@ func (x *CreateOrdersRequest) String() string {
 func (*CreateOrdersRequest) ProtoMessage() {}
 
 func (x *CreateOrdersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[89]
+	mi := &file_proto_business_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6276,7 +6360,7 @@ func (x *CreateOrdersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateOrdersRequest.ProtoReflect.Descriptor instead.
 func (*CreateOrdersRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{89}
+	return file_proto_business_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *CreateOrdersRequest) GetBuyerId() string {
@@ -6358,7 +6442,7 @@ type CreateOrdersResponse struct {
 
 func (x *CreateOrdersResponse) Reset() {
 	*x = CreateOrdersResponse{}
-	mi := &file_proto_business_proto_msgTypes[90]
+	mi := &file_proto_business_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6370,7 +6454,7 @@ func (x *CreateOrdersResponse) String() string {
 func (*CreateOrdersResponse) ProtoMessage() {}
 
 func (x *CreateOrdersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[90]
+	mi := &file_proto_business_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6383,7 +6467,7 @@ func (x *CreateOrdersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateOrdersResponse.ProtoReflect.Descriptor instead.
 func (*CreateOrdersResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{90}
+	return file_proto_business_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *CreateOrdersResponse) GetOrders() []*Order {
@@ -6403,7 +6487,7 @@ type GetOrderRequest struct {
 
 func (x *GetOrderRequest) Reset() {
 	*x = GetOrderRequest{}
-	mi := &file_proto_business_proto_msgTypes[91]
+	mi := &file_proto_business_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6415,7 +6499,7 @@ func (x *GetOrderRequest) String() string {
 func (*GetOrderRequest) ProtoMessage() {}
 
 func (x *GetOrderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[91]
+	mi := &file_proto_business_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6428,7 +6512,7 @@ func (x *GetOrderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOrderRequest.ProtoReflect.Descriptor instead.
 func (*GetOrderRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{91}
+	return file_proto_business_proto_rawDescGZIP(), []int{92}
 }
 
 func (x *GetOrderRequest) GetId() string {
@@ -6454,7 +6538,7 @@ type GetOrderResponse struct {
 
 func (x *GetOrderResponse) Reset() {
 	*x = GetOrderResponse{}
-	mi := &file_proto_business_proto_msgTypes[92]
+	mi := &file_proto_business_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6466,7 +6550,7 @@ func (x *GetOrderResponse) String() string {
 func (*GetOrderResponse) ProtoMessage() {}
 
 func (x *GetOrderResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[92]
+	mi := &file_proto_business_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6479,7 +6563,7 @@ func (x *GetOrderResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOrderResponse.ProtoReflect.Descriptor instead.
 func (*GetOrderResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{92}
+	return file_proto_business_proto_rawDescGZIP(), []int{93}
 }
 
 func (x *GetOrderResponse) GetOrder() *Order {
@@ -6500,7 +6584,7 @@ type ListBuyerOrdersRequest struct {
 
 func (x *ListBuyerOrdersRequest) Reset() {
 	*x = ListBuyerOrdersRequest{}
-	mi := &file_proto_business_proto_msgTypes[93]
+	mi := &file_proto_business_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6512,7 +6596,7 @@ func (x *ListBuyerOrdersRequest) String() string {
 func (*ListBuyerOrdersRequest) ProtoMessage() {}
 
 func (x *ListBuyerOrdersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[93]
+	mi := &file_proto_business_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6525,7 +6609,7 @@ func (x *ListBuyerOrdersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBuyerOrdersRequest.ProtoReflect.Descriptor instead.
 func (*ListBuyerOrdersRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{93}
+	return file_proto_business_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *ListBuyerOrdersRequest) GetBuyerId() string {
@@ -6559,7 +6643,7 @@ type ListBuyerOrdersResponse struct {
 
 func (x *ListBuyerOrdersResponse) Reset() {
 	*x = ListBuyerOrdersResponse{}
-	mi := &file_proto_business_proto_msgTypes[94]
+	mi := &file_proto_business_proto_msgTypes[95]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6571,7 +6655,7 @@ func (x *ListBuyerOrdersResponse) String() string {
 func (*ListBuyerOrdersResponse) ProtoMessage() {}
 
 func (x *ListBuyerOrdersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[94]
+	mi := &file_proto_business_proto_msgTypes[95]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6584,7 +6668,7 @@ func (x *ListBuyerOrdersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBuyerOrdersResponse.ProtoReflect.Descriptor instead.
 func (*ListBuyerOrdersResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{94}
+	return file_proto_business_proto_rawDescGZIP(), []int{95}
 }
 
 func (x *ListBuyerOrdersResponse) GetOrders() []*Order {
@@ -6613,7 +6697,7 @@ type ListSellerOrdersRequest struct {
 
 func (x *ListSellerOrdersRequest) Reset() {
 	*x = ListSellerOrdersRequest{}
-	mi := &file_proto_business_proto_msgTypes[95]
+	mi := &file_proto_business_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6625,7 +6709,7 @@ func (x *ListSellerOrdersRequest) String() string {
 func (*ListSellerOrdersRequest) ProtoMessage() {}
 
 func (x *ListSellerOrdersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[95]
+	mi := &file_proto_business_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6638,7 +6722,7 @@ func (x *ListSellerOrdersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSellerOrdersRequest.ProtoReflect.Descriptor instead.
 func (*ListSellerOrdersRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{95}
+	return file_proto_business_proto_rawDescGZIP(), []int{96}
 }
 
 func (x *ListSellerOrdersRequest) GetBusinessId() string {
@@ -6679,7 +6763,7 @@ type ListSellerOrdersResponse struct {
 
 func (x *ListSellerOrdersResponse) Reset() {
 	*x = ListSellerOrdersResponse{}
-	mi := &file_proto_business_proto_msgTypes[96]
+	mi := &file_proto_business_proto_msgTypes[97]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6691,7 +6775,7 @@ func (x *ListSellerOrdersResponse) String() string {
 func (*ListSellerOrdersResponse) ProtoMessage() {}
 
 func (x *ListSellerOrdersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[96]
+	mi := &file_proto_business_proto_msgTypes[97]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6704,7 +6788,7 @@ func (x *ListSellerOrdersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSellerOrdersResponse.ProtoReflect.Descriptor instead.
 func (*ListSellerOrdersResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{96}
+	return file_proto_business_proto_rawDescGZIP(), []int{97}
 }
 
 func (x *ListSellerOrdersResponse) GetOrders() []*Order {
@@ -6732,7 +6816,7 @@ type UpdateOrderStatusRequest struct {
 
 func (x *UpdateOrderStatusRequest) Reset() {
 	*x = UpdateOrderStatusRequest{}
-	mi := &file_proto_business_proto_msgTypes[97]
+	mi := &file_proto_business_proto_msgTypes[98]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6744,7 +6828,7 @@ func (x *UpdateOrderStatusRequest) String() string {
 func (*UpdateOrderStatusRequest) ProtoMessage() {}
 
 func (x *UpdateOrderStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[97]
+	mi := &file_proto_business_proto_msgTypes[98]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6757,7 +6841,7 @@ func (x *UpdateOrderStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateOrderStatusRequest.ProtoReflect.Descriptor instead.
 func (*UpdateOrderStatusRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{97}
+	return file_proto_business_proto_rawDescGZIP(), []int{98}
 }
 
 func (x *UpdateOrderStatusRequest) GetId() string {
@@ -6790,7 +6874,7 @@ type UpdateOrderStatusResponse struct {
 
 func (x *UpdateOrderStatusResponse) Reset() {
 	*x = UpdateOrderStatusResponse{}
-	mi := &file_proto_business_proto_msgTypes[98]
+	mi := &file_proto_business_proto_msgTypes[99]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6802,7 +6886,7 @@ func (x *UpdateOrderStatusResponse) String() string {
 func (*UpdateOrderStatusResponse) ProtoMessage() {}
 
 func (x *UpdateOrderStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[98]
+	mi := &file_proto_business_proto_msgTypes[99]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6815,7 +6899,7 @@ func (x *UpdateOrderStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateOrderStatusResponse.ProtoReflect.Descriptor instead.
 func (*UpdateOrderStatusResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{98}
+	return file_proto_business_proto_rawDescGZIP(), []int{99}
 }
 
 func (x *UpdateOrderStatusResponse) GetOrder() *Order {
@@ -6840,7 +6924,7 @@ type UpdateOrderTrackingRequest struct {
 
 func (x *UpdateOrderTrackingRequest) Reset() {
 	*x = UpdateOrderTrackingRequest{}
-	mi := &file_proto_business_proto_msgTypes[99]
+	mi := &file_proto_business_proto_msgTypes[100]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6852,7 +6936,7 @@ func (x *UpdateOrderTrackingRequest) String() string {
 func (*UpdateOrderTrackingRequest) ProtoMessage() {}
 
 func (x *UpdateOrderTrackingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[99]
+	mi := &file_proto_business_proto_msgTypes[100]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6865,7 +6949,7 @@ func (x *UpdateOrderTrackingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateOrderTrackingRequest.ProtoReflect.Descriptor instead.
 func (*UpdateOrderTrackingRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{99}
+	return file_proto_business_proto_rawDescGZIP(), []int{100}
 }
 
 func (x *UpdateOrderTrackingRequest) GetId() string {
@@ -6926,7 +7010,7 @@ type UpdateOrderTrackingResponse struct {
 
 func (x *UpdateOrderTrackingResponse) Reset() {
 	*x = UpdateOrderTrackingResponse{}
-	mi := &file_proto_business_proto_msgTypes[100]
+	mi := &file_proto_business_proto_msgTypes[101]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6938,7 +7022,7 @@ func (x *UpdateOrderTrackingResponse) String() string {
 func (*UpdateOrderTrackingResponse) ProtoMessage() {}
 
 func (x *UpdateOrderTrackingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[100]
+	mi := &file_proto_business_proto_msgTypes[101]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6951,7 +7035,7 @@ func (x *UpdateOrderTrackingResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateOrderTrackingResponse.ProtoReflect.Descriptor instead.
 func (*UpdateOrderTrackingResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{100}
+	return file_proto_business_proto_rawDescGZIP(), []int{101}
 }
 
 func (x *UpdateOrderTrackingResponse) GetOrder() *Order {
@@ -6983,7 +7067,7 @@ type Coupon struct {
 
 func (x *Coupon) Reset() {
 	*x = Coupon{}
-	mi := &file_proto_business_proto_msgTypes[101]
+	mi := &file_proto_business_proto_msgTypes[102]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6995,7 +7079,7 @@ func (x *Coupon) String() string {
 func (*Coupon) ProtoMessage() {}
 
 func (x *Coupon) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[101]
+	mi := &file_proto_business_proto_msgTypes[102]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7008,7 +7092,7 @@ func (x *Coupon) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Coupon.ProtoReflect.Descriptor instead.
 func (*Coupon) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{101}
+	return file_proto_business_proto_rawDescGZIP(), []int{102}
 }
 
 func (x *Coupon) GetId() string {
@@ -7126,7 +7210,7 @@ type CreateCouponRequest struct {
 
 func (x *CreateCouponRequest) Reset() {
 	*x = CreateCouponRequest{}
-	mi := &file_proto_business_proto_msgTypes[102]
+	mi := &file_proto_business_proto_msgTypes[103]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7138,7 +7222,7 @@ func (x *CreateCouponRequest) String() string {
 func (*CreateCouponRequest) ProtoMessage() {}
 
 func (x *CreateCouponRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[102]
+	mi := &file_proto_business_proto_msgTypes[103]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7151,7 +7235,7 @@ func (x *CreateCouponRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateCouponRequest.ProtoReflect.Descriptor instead.
 func (*CreateCouponRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{102}
+	return file_proto_business_proto_rawDescGZIP(), []int{103}
 }
 
 func (x *CreateCouponRequest) GetBusinessId() string {
@@ -7226,7 +7310,7 @@ type CreateCouponResponse struct {
 
 func (x *CreateCouponResponse) Reset() {
 	*x = CreateCouponResponse{}
-	mi := &file_proto_business_proto_msgTypes[103]
+	mi := &file_proto_business_proto_msgTypes[104]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7238,7 +7322,7 @@ func (x *CreateCouponResponse) String() string {
 func (*CreateCouponResponse) ProtoMessage() {}
 
 func (x *CreateCouponResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[103]
+	mi := &file_proto_business_proto_msgTypes[104]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7251,7 +7335,7 @@ func (x *CreateCouponResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateCouponResponse.ProtoReflect.Descriptor instead.
 func (*CreateCouponResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{103}
+	return file_proto_business_proto_rawDescGZIP(), []int{104}
 }
 
 func (x *CreateCouponResponse) GetCoupon() *Coupon {
@@ -7270,7 +7354,7 @@ type ListBusinessCouponsRequest struct {
 
 func (x *ListBusinessCouponsRequest) Reset() {
 	*x = ListBusinessCouponsRequest{}
-	mi := &file_proto_business_proto_msgTypes[104]
+	mi := &file_proto_business_proto_msgTypes[105]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7282,7 +7366,7 @@ func (x *ListBusinessCouponsRequest) String() string {
 func (*ListBusinessCouponsRequest) ProtoMessage() {}
 
 func (x *ListBusinessCouponsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[104]
+	mi := &file_proto_business_proto_msgTypes[105]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7295,7 +7379,7 @@ func (x *ListBusinessCouponsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBusinessCouponsRequest.ProtoReflect.Descriptor instead.
 func (*ListBusinessCouponsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{104}
+	return file_proto_business_proto_rawDescGZIP(), []int{105}
 }
 
 func (x *ListBusinessCouponsRequest) GetBusinessId() string {
@@ -7314,7 +7398,7 @@ type ListBusinessCouponsResponse struct {
 
 func (x *ListBusinessCouponsResponse) Reset() {
 	*x = ListBusinessCouponsResponse{}
-	mi := &file_proto_business_proto_msgTypes[105]
+	mi := &file_proto_business_proto_msgTypes[106]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7326,7 +7410,7 @@ func (x *ListBusinessCouponsResponse) String() string {
 func (*ListBusinessCouponsResponse) ProtoMessage() {}
 
 func (x *ListBusinessCouponsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[105]
+	mi := &file_proto_business_proto_msgTypes[106]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7339,7 +7423,7 @@ func (x *ListBusinessCouponsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBusinessCouponsResponse.ProtoReflect.Descriptor instead.
 func (*ListBusinessCouponsResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{105}
+	return file_proto_business_proto_rawDescGZIP(), []int{106}
 }
 
 func (x *ListBusinessCouponsResponse) GetCoupons() []*Coupon {
@@ -7362,7 +7446,7 @@ type ValidateCouponRequest struct {
 
 func (x *ValidateCouponRequest) Reset() {
 	*x = ValidateCouponRequest{}
-	mi := &file_proto_business_proto_msgTypes[106]
+	mi := &file_proto_business_proto_msgTypes[107]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7374,7 +7458,7 @@ func (x *ValidateCouponRequest) String() string {
 func (*ValidateCouponRequest) ProtoMessage() {}
 
 func (x *ValidateCouponRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[106]
+	mi := &file_proto_business_proto_msgTypes[107]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7387,7 +7471,7 @@ func (x *ValidateCouponRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValidateCouponRequest.ProtoReflect.Descriptor instead.
 func (*ValidateCouponRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{106}
+	return file_proto_business_proto_rawDescGZIP(), []int{107}
 }
 
 func (x *ValidateCouponRequest) GetBusinessId() string {
@@ -7437,7 +7521,7 @@ type ValidateCouponResponse struct {
 
 func (x *ValidateCouponResponse) Reset() {
 	*x = ValidateCouponResponse{}
-	mi := &file_proto_business_proto_msgTypes[107]
+	mi := &file_proto_business_proto_msgTypes[108]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7449,7 +7533,7 @@ func (x *ValidateCouponResponse) String() string {
 func (*ValidateCouponResponse) ProtoMessage() {}
 
 func (x *ValidateCouponResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[107]
+	mi := &file_proto_business_proto_msgTypes[108]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7462,7 +7546,7 @@ func (x *ValidateCouponResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValidateCouponResponse.ProtoReflect.Descriptor instead.
 func (*ValidateCouponResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{107}
+	return file_proto_business_proto_rawDescGZIP(), []int{108}
 }
 
 func (x *ValidateCouponResponse) GetValid() bool {
@@ -7503,7 +7587,7 @@ type ToggleWishlistRequest struct {
 
 func (x *ToggleWishlistRequest) Reset() {
 	*x = ToggleWishlistRequest{}
-	mi := &file_proto_business_proto_msgTypes[108]
+	mi := &file_proto_business_proto_msgTypes[109]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7515,7 +7599,7 @@ func (x *ToggleWishlistRequest) String() string {
 func (*ToggleWishlistRequest) ProtoMessage() {}
 
 func (x *ToggleWishlistRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[108]
+	mi := &file_proto_business_proto_msgTypes[109]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7528,7 +7612,7 @@ func (x *ToggleWishlistRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToggleWishlistRequest.ProtoReflect.Descriptor instead.
 func (*ToggleWishlistRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{108}
+	return file_proto_business_proto_rawDescGZIP(), []int{109}
 }
 
 func (x *ToggleWishlistRequest) GetUserId() string {
@@ -7554,7 +7638,7 @@ type ToggleWishlistResponse struct {
 
 func (x *ToggleWishlistResponse) Reset() {
 	*x = ToggleWishlistResponse{}
-	mi := &file_proto_business_proto_msgTypes[109]
+	mi := &file_proto_business_proto_msgTypes[110]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7566,7 +7650,7 @@ func (x *ToggleWishlistResponse) String() string {
 func (*ToggleWishlistResponse) ProtoMessage() {}
 
 func (x *ToggleWishlistResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[109]
+	mi := &file_proto_business_proto_msgTypes[110]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7579,7 +7663,7 @@ func (x *ToggleWishlistResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToggleWishlistResponse.ProtoReflect.Descriptor instead.
 func (*ToggleWishlistResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{109}
+	return file_proto_business_proto_rawDescGZIP(), []int{110}
 }
 
 func (x *ToggleWishlistResponse) GetIsWishlisted() bool {
@@ -7598,7 +7682,7 @@ type GetWishlistRequest struct {
 
 func (x *GetWishlistRequest) Reset() {
 	*x = GetWishlistRequest{}
-	mi := &file_proto_business_proto_msgTypes[110]
+	mi := &file_proto_business_proto_msgTypes[111]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7610,7 +7694,7 @@ func (x *GetWishlistRequest) String() string {
 func (*GetWishlistRequest) ProtoMessage() {}
 
 func (x *GetWishlistRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[110]
+	mi := &file_proto_business_proto_msgTypes[111]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7623,7 +7707,7 @@ func (x *GetWishlistRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWishlistRequest.ProtoReflect.Descriptor instead.
 func (*GetWishlistRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{110}
+	return file_proto_business_proto_rawDescGZIP(), []int{111}
 }
 
 func (x *GetWishlistRequest) GetUserId() string {
@@ -7642,7 +7726,7 @@ type GetWishlistResponse struct {
 
 func (x *GetWishlistResponse) Reset() {
 	*x = GetWishlistResponse{}
-	mi := &file_proto_business_proto_msgTypes[111]
+	mi := &file_proto_business_proto_msgTypes[112]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7654,7 +7738,7 @@ func (x *GetWishlistResponse) String() string {
 func (*GetWishlistResponse) ProtoMessage() {}
 
 func (x *GetWishlistResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[111]
+	mi := &file_proto_business_proto_msgTypes[112]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7667,7 +7751,7 @@ func (x *GetWishlistResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWishlistResponse.ProtoReflect.Descriptor instead.
 func (*GetWishlistResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{111}
+	return file_proto_business_proto_rawDescGZIP(), []int{112}
 }
 
 func (x *GetWishlistResponse) GetProducts() []*MarketplaceProduct {
@@ -7699,7 +7783,7 @@ type ProductQuestionPB struct {
 
 func (x *ProductQuestionPB) Reset() {
 	*x = ProductQuestionPB{}
-	mi := &file_proto_business_proto_msgTypes[112]
+	mi := &file_proto_business_proto_msgTypes[113]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7711,7 +7795,7 @@ func (x *ProductQuestionPB) String() string {
 func (*ProductQuestionPB) ProtoMessage() {}
 
 func (x *ProductQuestionPB) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[112]
+	mi := &file_proto_business_proto_msgTypes[113]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7724,7 +7808,7 @@ func (x *ProductQuestionPB) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProductQuestionPB.ProtoReflect.Descriptor instead.
 func (*ProductQuestionPB) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{112}
+	return file_proto_business_proto_rawDescGZIP(), []int{113}
 }
 
 func (x *ProductQuestionPB) GetId() string {
@@ -7836,7 +7920,7 @@ type AskProductQuestionRequest struct {
 
 func (x *AskProductQuestionRequest) Reset() {
 	*x = AskProductQuestionRequest{}
-	mi := &file_proto_business_proto_msgTypes[113]
+	mi := &file_proto_business_proto_msgTypes[114]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7848,7 +7932,7 @@ func (x *AskProductQuestionRequest) String() string {
 func (*AskProductQuestionRequest) ProtoMessage() {}
 
 func (x *AskProductQuestionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[113]
+	mi := &file_proto_business_proto_msgTypes[114]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7861,7 +7945,7 @@ func (x *AskProductQuestionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AskProductQuestionRequest.ProtoReflect.Descriptor instead.
 func (*AskProductQuestionRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{113}
+	return file_proto_business_proto_rawDescGZIP(), []int{114}
 }
 
 func (x *AskProductQuestionRequest) GetProductId() string {
@@ -7894,7 +7978,7 @@ type AskProductQuestionResponse struct {
 
 func (x *AskProductQuestionResponse) Reset() {
 	*x = AskProductQuestionResponse{}
-	mi := &file_proto_business_proto_msgTypes[114]
+	mi := &file_proto_business_proto_msgTypes[115]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7906,7 +7990,7 @@ func (x *AskProductQuestionResponse) String() string {
 func (*AskProductQuestionResponse) ProtoMessage() {}
 
 func (x *AskProductQuestionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[114]
+	mi := &file_proto_business_proto_msgTypes[115]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7919,7 +8003,7 @@ func (x *AskProductQuestionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AskProductQuestionResponse.ProtoReflect.Descriptor instead.
 func (*AskProductQuestionResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{114}
+	return file_proto_business_proto_rawDescGZIP(), []int{115}
 }
 
 func (x *AskProductQuestionResponse) GetQuestion() *ProductQuestionPB {
@@ -7940,7 +8024,7 @@ type AnswerProductQuestionRequest struct {
 
 func (x *AnswerProductQuestionRequest) Reset() {
 	*x = AnswerProductQuestionRequest{}
-	mi := &file_proto_business_proto_msgTypes[115]
+	mi := &file_proto_business_proto_msgTypes[116]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7952,7 +8036,7 @@ func (x *AnswerProductQuestionRequest) String() string {
 func (*AnswerProductQuestionRequest) ProtoMessage() {}
 
 func (x *AnswerProductQuestionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[115]
+	mi := &file_proto_business_proto_msgTypes[116]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7965,7 +8049,7 @@ func (x *AnswerProductQuestionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnswerProductQuestionRequest.ProtoReflect.Descriptor instead.
 func (*AnswerProductQuestionRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{115}
+	return file_proto_business_proto_rawDescGZIP(), []int{116}
 }
 
 func (x *AnswerProductQuestionRequest) GetQuestionId() string {
@@ -7998,7 +8082,7 @@ type AnswerProductQuestionResponse struct {
 
 func (x *AnswerProductQuestionResponse) Reset() {
 	*x = AnswerProductQuestionResponse{}
-	mi := &file_proto_business_proto_msgTypes[116]
+	mi := &file_proto_business_proto_msgTypes[117]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8010,7 +8094,7 @@ func (x *AnswerProductQuestionResponse) String() string {
 func (*AnswerProductQuestionResponse) ProtoMessage() {}
 
 func (x *AnswerProductQuestionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[116]
+	mi := &file_proto_business_proto_msgTypes[117]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8023,7 +8107,7 @@ func (x *AnswerProductQuestionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnswerProductQuestionResponse.ProtoReflect.Descriptor instead.
 func (*AnswerProductQuestionResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{116}
+	return file_proto_business_proto_rawDescGZIP(), []int{117}
 }
 
 func (x *AnswerProductQuestionResponse) GetSuccess() bool {
@@ -8042,7 +8126,7 @@ type GetProductQuestionsRequest struct {
 
 func (x *GetProductQuestionsRequest) Reset() {
 	*x = GetProductQuestionsRequest{}
-	mi := &file_proto_business_proto_msgTypes[117]
+	mi := &file_proto_business_proto_msgTypes[118]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8054,7 +8138,7 @@ func (x *GetProductQuestionsRequest) String() string {
 func (*GetProductQuestionsRequest) ProtoMessage() {}
 
 func (x *GetProductQuestionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[117]
+	mi := &file_proto_business_proto_msgTypes[118]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8067,7 +8151,7 @@ func (x *GetProductQuestionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProductQuestionsRequest.ProtoReflect.Descriptor instead.
 func (*GetProductQuestionsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{117}
+	return file_proto_business_proto_rawDescGZIP(), []int{118}
 }
 
 func (x *GetProductQuestionsRequest) GetProductId() string {
@@ -8086,7 +8170,7 @@ type GetProductQuestionsResponse struct {
 
 func (x *GetProductQuestionsResponse) Reset() {
 	*x = GetProductQuestionsResponse{}
-	mi := &file_proto_business_proto_msgTypes[118]
+	mi := &file_proto_business_proto_msgTypes[119]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8098,7 +8182,7 @@ func (x *GetProductQuestionsResponse) String() string {
 func (*GetProductQuestionsResponse) ProtoMessage() {}
 
 func (x *GetProductQuestionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[118]
+	mi := &file_proto_business_proto_msgTypes[119]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8111,7 +8195,7 @@ func (x *GetProductQuestionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProductQuestionsResponse.ProtoReflect.Descriptor instead.
 func (*GetProductQuestionsResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{118}
+	return file_proto_business_proto_rawDescGZIP(), []int{119}
 }
 
 func (x *GetProductQuestionsResponse) GetQuestions() []*ProductQuestionPB {
@@ -8132,7 +8216,7 @@ type FlagProductQuestionRequest struct {
 
 func (x *FlagProductQuestionRequest) Reset() {
 	*x = FlagProductQuestionRequest{}
-	mi := &file_proto_business_proto_msgTypes[119]
+	mi := &file_proto_business_proto_msgTypes[120]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8144,7 +8228,7 @@ func (x *FlagProductQuestionRequest) String() string {
 func (*FlagProductQuestionRequest) ProtoMessage() {}
 
 func (x *FlagProductQuestionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[119]
+	mi := &file_proto_business_proto_msgTypes[120]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8157,7 +8241,7 @@ func (x *FlagProductQuestionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FlagProductQuestionRequest.ProtoReflect.Descriptor instead.
 func (*FlagProductQuestionRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{119}
+	return file_proto_business_proto_rawDescGZIP(), []int{120}
 }
 
 func (x *FlagProductQuestionRequest) GetQuestionId() string {
@@ -8190,7 +8274,7 @@ type FlagProductQuestionResponse struct {
 
 func (x *FlagProductQuestionResponse) Reset() {
 	*x = FlagProductQuestionResponse{}
-	mi := &file_proto_business_proto_msgTypes[120]
+	mi := &file_proto_business_proto_msgTypes[121]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8202,7 +8286,7 @@ func (x *FlagProductQuestionResponse) String() string {
 func (*FlagProductQuestionResponse) ProtoMessage() {}
 
 func (x *FlagProductQuestionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[120]
+	mi := &file_proto_business_proto_msgTypes[121]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8215,7 +8299,7 @@ func (x *FlagProductQuestionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FlagProductQuestionResponse.ProtoReflect.Descriptor instead.
 func (*FlagProductQuestionResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{120}
+	return file_proto_business_proto_rawDescGZIP(), []int{121}
 }
 
 func (x *FlagProductQuestionResponse) GetSuccess() bool {
@@ -8237,7 +8321,7 @@ type TransitionOrderStatusRequest struct {
 
 func (x *TransitionOrderStatusRequest) Reset() {
 	*x = TransitionOrderStatusRequest{}
-	mi := &file_proto_business_proto_msgTypes[121]
+	mi := &file_proto_business_proto_msgTypes[122]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8249,7 +8333,7 @@ func (x *TransitionOrderStatusRequest) String() string {
 func (*TransitionOrderStatusRequest) ProtoMessage() {}
 
 func (x *TransitionOrderStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[121]
+	mi := &file_proto_business_proto_msgTypes[122]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8262,7 +8346,7 @@ func (x *TransitionOrderStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransitionOrderStatusRequest.ProtoReflect.Descriptor instead.
 func (*TransitionOrderStatusRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{121}
+	return file_proto_business_proto_rawDescGZIP(), []int{122}
 }
 
 func (x *TransitionOrderStatusRequest) GetOrderId() string {
@@ -8303,7 +8387,7 @@ type TransitionOrderStatusResponse struct {
 
 func (x *TransitionOrderStatusResponse) Reset() {
 	*x = TransitionOrderStatusResponse{}
-	mi := &file_proto_business_proto_msgTypes[122]
+	mi := &file_proto_business_proto_msgTypes[123]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8315,7 +8399,7 @@ func (x *TransitionOrderStatusResponse) String() string {
 func (*TransitionOrderStatusResponse) ProtoMessage() {}
 
 func (x *TransitionOrderStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[122]
+	mi := &file_proto_business_proto_msgTypes[123]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8328,7 +8412,7 @@ func (x *TransitionOrderStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransitionOrderStatusResponse.ProtoReflect.Descriptor instead.
 func (*TransitionOrderStatusResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{122}
+	return file_proto_business_proto_rawDescGZIP(), []int{123}
 }
 
 func (x *TransitionOrderStatusResponse) GetOrder() *Order {
@@ -8354,7 +8438,7 @@ type GetOrderStatusHistoryRequest struct {
 
 func (x *GetOrderStatusHistoryRequest) Reset() {
 	*x = GetOrderStatusHistoryRequest{}
-	mi := &file_proto_business_proto_msgTypes[123]
+	mi := &file_proto_business_proto_msgTypes[124]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8366,7 +8450,7 @@ func (x *GetOrderStatusHistoryRequest) String() string {
 func (*GetOrderStatusHistoryRequest) ProtoMessage() {}
 
 func (x *GetOrderStatusHistoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[123]
+	mi := &file_proto_business_proto_msgTypes[124]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8379,7 +8463,7 @@ func (x *GetOrderStatusHistoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOrderStatusHistoryRequest.ProtoReflect.Descriptor instead.
 func (*GetOrderStatusHistoryRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{123}
+	return file_proto_business_proto_rawDescGZIP(), []int{124}
 }
 
 func (x *GetOrderStatusHistoryRequest) GetOrderId() string {
@@ -8398,7 +8482,7 @@ type GetOrderStatusHistoryResponse struct {
 
 func (x *GetOrderStatusHistoryResponse) Reset() {
 	*x = GetOrderStatusHistoryResponse{}
-	mi := &file_proto_business_proto_msgTypes[124]
+	mi := &file_proto_business_proto_msgTypes[125]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8410,7 +8494,7 @@ func (x *GetOrderStatusHistoryResponse) String() string {
 func (*GetOrderStatusHistoryResponse) ProtoMessage() {}
 
 func (x *GetOrderStatusHistoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[124]
+	mi := &file_proto_business_proto_msgTypes[125]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8423,7 +8507,7 @@ func (x *GetOrderStatusHistoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOrderStatusHistoryResponse.ProtoReflect.Descriptor instead.
 func (*GetOrderStatusHistoryResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{124}
+	return file_proto_business_proto_rawDescGZIP(), []int{125}
 }
 
 func (x *GetOrderStatusHistoryResponse) GetHistory() []*OrderStatusChangePB {
@@ -8448,7 +8532,7 @@ type OrderStatusChangePB struct {
 
 func (x *OrderStatusChangePB) Reset() {
 	*x = OrderStatusChangePB{}
-	mi := &file_proto_business_proto_msgTypes[125]
+	mi := &file_proto_business_proto_msgTypes[126]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8460,7 +8544,7 @@ func (x *OrderStatusChangePB) String() string {
 func (*OrderStatusChangePB) ProtoMessage() {}
 
 func (x *OrderStatusChangePB) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[125]
+	mi := &file_proto_business_proto_msgTypes[126]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8473,7 +8557,7 @@ func (x *OrderStatusChangePB) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderStatusChangePB.ProtoReflect.Descriptor instead.
 func (*OrderStatusChangePB) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{125}
+	return file_proto_business_proto_rawDescGZIP(), []int{126}
 }
 
 func (x *OrderStatusChangePB) GetId() string {
@@ -8547,7 +8631,7 @@ type RefundPB struct {
 
 func (x *RefundPB) Reset() {
 	*x = RefundPB{}
-	mi := &file_proto_business_proto_msgTypes[126]
+	mi := &file_proto_business_proto_msgTypes[127]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8559,7 +8643,7 @@ func (x *RefundPB) String() string {
 func (*RefundPB) ProtoMessage() {}
 
 func (x *RefundPB) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[126]
+	mi := &file_proto_business_proto_msgTypes[127]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8572,7 +8656,7 @@ func (x *RefundPB) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RefundPB.ProtoReflect.Descriptor instead.
 func (*RefundPB) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{126}
+	return file_proto_business_proto_rawDescGZIP(), []int{127}
 }
 
 func (x *RefundPB) GetId() string {
@@ -8687,7 +8771,7 @@ type RefundItemPB struct {
 
 func (x *RefundItemPB) Reset() {
 	*x = RefundItemPB{}
-	mi := &file_proto_business_proto_msgTypes[127]
+	mi := &file_proto_business_proto_msgTypes[128]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8699,7 +8783,7 @@ func (x *RefundItemPB) String() string {
 func (*RefundItemPB) ProtoMessage() {}
 
 func (x *RefundItemPB) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[127]
+	mi := &file_proto_business_proto_msgTypes[128]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8712,7 +8796,7 @@ func (x *RefundItemPB) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RefundItemPB.ProtoReflect.Descriptor instead.
 func (*RefundItemPB) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{127}
+	return file_proto_business_proto_rawDescGZIP(), []int{128}
 }
 
 func (x *RefundItemPB) GetId() string {
@@ -8771,7 +8855,7 @@ type CreateRefundRequest struct {
 
 func (x *CreateRefundRequest) Reset() {
 	*x = CreateRefundRequest{}
-	mi := &file_proto_business_proto_msgTypes[128]
+	mi := &file_proto_business_proto_msgTypes[129]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8783,7 +8867,7 @@ func (x *CreateRefundRequest) String() string {
 func (*CreateRefundRequest) ProtoMessage() {}
 
 func (x *CreateRefundRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[128]
+	mi := &file_proto_business_proto_msgTypes[129]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8796,7 +8880,7 @@ func (x *CreateRefundRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateRefundRequest.ProtoReflect.Descriptor instead.
 func (*CreateRefundRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{128}
+	return file_proto_business_proto_rawDescGZIP(), []int{129}
 }
 
 func (x *CreateRefundRequest) GetOrderId() string {
@@ -8850,7 +8934,7 @@ type CreateRefundResponse struct {
 
 func (x *CreateRefundResponse) Reset() {
 	*x = CreateRefundResponse{}
-	mi := &file_proto_business_proto_msgTypes[129]
+	mi := &file_proto_business_proto_msgTypes[130]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8862,7 +8946,7 @@ func (x *CreateRefundResponse) String() string {
 func (*CreateRefundResponse) ProtoMessage() {}
 
 func (x *CreateRefundResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[129]
+	mi := &file_proto_business_proto_msgTypes[130]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8875,7 +8959,7 @@ func (x *CreateRefundResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateRefundResponse.ProtoReflect.Descriptor instead.
 func (*CreateRefundResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{129}
+	return file_proto_business_proto_rawDescGZIP(), []int{130}
 }
 
 func (x *CreateRefundResponse) GetRefund() *RefundPB {
@@ -8899,7 +8983,7 @@ type ProcessRefundRequest struct {
 
 func (x *ProcessRefundRequest) Reset() {
 	*x = ProcessRefundRequest{}
-	mi := &file_proto_business_proto_msgTypes[130]
+	mi := &file_proto_business_proto_msgTypes[131]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8911,7 +8995,7 @@ func (x *ProcessRefundRequest) String() string {
 func (*ProcessRefundRequest) ProtoMessage() {}
 
 func (x *ProcessRefundRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[130]
+	mi := &file_proto_business_proto_msgTypes[131]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8924,7 +9008,7 @@ func (x *ProcessRefundRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessRefundRequest.ProtoReflect.Descriptor instead.
 func (*ProcessRefundRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{130}
+	return file_proto_business_proto_rawDescGZIP(), []int{131}
 }
 
 func (x *ProcessRefundRequest) GetRefundId() string {
@@ -8979,7 +9063,7 @@ type ProcessRefundResponse struct {
 
 func (x *ProcessRefundResponse) Reset() {
 	*x = ProcessRefundResponse{}
-	mi := &file_proto_business_proto_msgTypes[131]
+	mi := &file_proto_business_proto_msgTypes[132]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8991,7 +9075,7 @@ func (x *ProcessRefundResponse) String() string {
 func (*ProcessRefundResponse) ProtoMessage() {}
 
 func (x *ProcessRefundResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[131]
+	mi := &file_proto_business_proto_msgTypes[132]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9004,7 +9088,7 @@ func (x *ProcessRefundResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessRefundResponse.ProtoReflect.Descriptor instead.
 func (*ProcessRefundResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{131}
+	return file_proto_business_proto_rawDescGZIP(), []int{132}
 }
 
 func (x *ProcessRefundResponse) GetRefund() *RefundPB {
@@ -9034,7 +9118,7 @@ type ListRefundsRequest struct {
 
 func (x *ListRefundsRequest) Reset() {
 	*x = ListRefundsRequest{}
-	mi := &file_proto_business_proto_msgTypes[132]
+	mi := &file_proto_business_proto_msgTypes[133]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9046,7 +9130,7 @@ func (x *ListRefundsRequest) String() string {
 func (*ListRefundsRequest) ProtoMessage() {}
 
 func (x *ListRefundsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[132]
+	mi := &file_proto_business_proto_msgTypes[133]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9059,7 +9143,7 @@ func (x *ListRefundsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRefundsRequest.ProtoReflect.Descriptor instead.
 func (*ListRefundsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{132}
+	return file_proto_business_proto_rawDescGZIP(), []int{133}
 }
 
 func (x *ListRefundsRequest) GetOrderId() string {
@@ -9107,7 +9191,7 @@ type ListRefundsResponse struct {
 
 func (x *ListRefundsResponse) Reset() {
 	*x = ListRefundsResponse{}
-	mi := &file_proto_business_proto_msgTypes[133]
+	mi := &file_proto_business_proto_msgTypes[134]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9119,7 +9203,7 @@ func (x *ListRefundsResponse) String() string {
 func (*ListRefundsResponse) ProtoMessage() {}
 
 func (x *ListRefundsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[133]
+	mi := &file_proto_business_proto_msgTypes[134]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9132,7 +9216,7 @@ func (x *ListRefundsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRefundsResponse.ProtoReflect.Descriptor instead.
 func (*ListRefundsResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{133}
+	return file_proto_business_proto_rawDescGZIP(), []int{134}
 }
 
 func (x *ListRefundsResponse) GetRefunds() []*RefundPB {
@@ -9168,7 +9252,7 @@ type OrderModificationPB struct {
 
 func (x *OrderModificationPB) Reset() {
 	*x = OrderModificationPB{}
-	mi := &file_proto_business_proto_msgTypes[134]
+	mi := &file_proto_business_proto_msgTypes[135]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9180,7 +9264,7 @@ func (x *OrderModificationPB) String() string {
 func (*OrderModificationPB) ProtoMessage() {}
 
 func (x *OrderModificationPB) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[134]
+	mi := &file_proto_business_proto_msgTypes[135]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9193,7 +9277,7 @@ func (x *OrderModificationPB) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OrderModificationPB.ProtoReflect.Descriptor instead.
 func (*OrderModificationPB) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{134}
+	return file_proto_business_proto_rawDescGZIP(), []int{135}
 }
 
 func (x *OrderModificationPB) GetId() string {
@@ -9287,7 +9371,7 @@ type CreateOrderModificationRequest struct {
 
 func (x *CreateOrderModificationRequest) Reset() {
 	*x = CreateOrderModificationRequest{}
-	mi := &file_proto_business_proto_msgTypes[135]
+	mi := &file_proto_business_proto_msgTypes[136]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9299,7 +9383,7 @@ func (x *CreateOrderModificationRequest) String() string {
 func (*CreateOrderModificationRequest) ProtoMessage() {}
 
 func (x *CreateOrderModificationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[135]
+	mi := &file_proto_business_proto_msgTypes[136]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9312,7 +9396,7 @@ func (x *CreateOrderModificationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateOrderModificationRequest.ProtoReflect.Descriptor instead.
 func (*CreateOrderModificationRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{135}
+	return file_proto_business_proto_rawDescGZIP(), []int{136}
 }
 
 func (x *CreateOrderModificationRequest) GetOrderId() string {
@@ -9366,7 +9450,7 @@ type CreateOrderModificationResponse struct {
 
 func (x *CreateOrderModificationResponse) Reset() {
 	*x = CreateOrderModificationResponse{}
-	mi := &file_proto_business_proto_msgTypes[136]
+	mi := &file_proto_business_proto_msgTypes[137]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9378,7 +9462,7 @@ func (x *CreateOrderModificationResponse) String() string {
 func (*CreateOrderModificationResponse) ProtoMessage() {}
 
 func (x *CreateOrderModificationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[136]
+	mi := &file_proto_business_proto_msgTypes[137]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9391,7 +9475,7 @@ func (x *CreateOrderModificationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateOrderModificationResponse.ProtoReflect.Descriptor instead.
 func (*CreateOrderModificationResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{136}
+	return file_proto_business_proto_rawDescGZIP(), []int{137}
 }
 
 func (x *CreateOrderModificationResponse) GetModification() *OrderModificationPB {
@@ -9413,7 +9497,7 @@ type ProcessOrderModificationRequest struct {
 
 func (x *ProcessOrderModificationRequest) Reset() {
 	*x = ProcessOrderModificationRequest{}
-	mi := &file_proto_business_proto_msgTypes[137]
+	mi := &file_proto_business_proto_msgTypes[138]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9425,7 +9509,7 @@ func (x *ProcessOrderModificationRequest) String() string {
 func (*ProcessOrderModificationRequest) ProtoMessage() {}
 
 func (x *ProcessOrderModificationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[137]
+	mi := &file_proto_business_proto_msgTypes[138]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9438,7 +9522,7 @@ func (x *ProcessOrderModificationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessOrderModificationRequest.ProtoReflect.Descriptor instead.
 func (*ProcessOrderModificationRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{137}
+	return file_proto_business_proto_rawDescGZIP(), []int{138}
 }
 
 func (x *ProcessOrderModificationRequest) GetModificationId() string {
@@ -9479,7 +9563,7 @@ type ProcessOrderModificationResponse struct {
 
 func (x *ProcessOrderModificationResponse) Reset() {
 	*x = ProcessOrderModificationResponse{}
-	mi := &file_proto_business_proto_msgTypes[138]
+	mi := &file_proto_business_proto_msgTypes[139]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9491,7 +9575,7 @@ func (x *ProcessOrderModificationResponse) String() string {
 func (*ProcessOrderModificationResponse) ProtoMessage() {}
 
 func (x *ProcessOrderModificationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[138]
+	mi := &file_proto_business_proto_msgTypes[139]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9504,7 +9588,7 @@ func (x *ProcessOrderModificationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessOrderModificationResponse.ProtoReflect.Descriptor instead.
 func (*ProcessOrderModificationResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{138}
+	return file_proto_business_proto_rawDescGZIP(), []int{139}
 }
 
 func (x *ProcessOrderModificationResponse) GetModification() *OrderModificationPB {
@@ -9533,7 +9617,7 @@ type ListOrderModificationsRequest struct {
 
 func (x *ListOrderModificationsRequest) Reset() {
 	*x = ListOrderModificationsRequest{}
-	mi := &file_proto_business_proto_msgTypes[139]
+	mi := &file_proto_business_proto_msgTypes[140]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9545,7 +9629,7 @@ func (x *ListOrderModificationsRequest) String() string {
 func (*ListOrderModificationsRequest) ProtoMessage() {}
 
 func (x *ListOrderModificationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[139]
+	mi := &file_proto_business_proto_msgTypes[140]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9558,7 +9642,7 @@ func (x *ListOrderModificationsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListOrderModificationsRequest.ProtoReflect.Descriptor instead.
 func (*ListOrderModificationsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{139}
+	return file_proto_business_proto_rawDescGZIP(), []int{140}
 }
 
 func (x *ListOrderModificationsRequest) GetOrderId() string {
@@ -9599,7 +9683,7 @@ type ListOrderModificationsResponse struct {
 
 func (x *ListOrderModificationsResponse) Reset() {
 	*x = ListOrderModificationsResponse{}
-	mi := &file_proto_business_proto_msgTypes[140]
+	mi := &file_proto_business_proto_msgTypes[141]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9611,7 +9695,7 @@ func (x *ListOrderModificationsResponse) String() string {
 func (*ListOrderModificationsResponse) ProtoMessage() {}
 
 func (x *ListOrderModificationsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[140]
+	mi := &file_proto_business_proto_msgTypes[141]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9624,7 +9708,7 @@ func (x *ListOrderModificationsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListOrderModificationsResponse.ProtoReflect.Descriptor instead.
 func (*ListOrderModificationsResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{140}
+	return file_proto_business_proto_rawDescGZIP(), []int{141}
 }
 
 func (x *ListOrderModificationsResponse) GetModifications() []*OrderModificationPB {
@@ -9653,7 +9737,7 @@ type ModerateProductQuestionRequest struct {
 
 func (x *ModerateProductQuestionRequest) Reset() {
 	*x = ModerateProductQuestionRequest{}
-	mi := &file_proto_business_proto_msgTypes[141]
+	mi := &file_proto_business_proto_msgTypes[142]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9665,7 +9749,7 @@ func (x *ModerateProductQuestionRequest) String() string {
 func (*ModerateProductQuestionRequest) ProtoMessage() {}
 
 func (x *ModerateProductQuestionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[141]
+	mi := &file_proto_business_proto_msgTypes[142]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9678,7 +9762,7 @@ func (x *ModerateProductQuestionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModerateProductQuestionRequest.ProtoReflect.Descriptor instead.
 func (*ModerateProductQuestionRequest) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{141}
+	return file_proto_business_proto_rawDescGZIP(), []int{142}
 }
 
 func (x *ModerateProductQuestionRequest) GetQuestionId() string {
@@ -9718,7 +9802,7 @@ type ModerateProductQuestionResponse struct {
 
 func (x *ModerateProductQuestionResponse) Reset() {
 	*x = ModerateProductQuestionResponse{}
-	mi := &file_proto_business_proto_msgTypes[142]
+	mi := &file_proto_business_proto_msgTypes[143]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9730,7 +9814,7 @@ func (x *ModerateProductQuestionResponse) String() string {
 func (*ModerateProductQuestionResponse) ProtoMessage() {}
 
 func (x *ModerateProductQuestionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_business_proto_msgTypes[142]
+	mi := &file_proto_business_proto_msgTypes[143]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9743,12 +9827,388 @@ func (x *ModerateProductQuestionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ModerateProductQuestionResponse.ProtoReflect.Descriptor instead.
 func (*ModerateProductQuestionResponse) Descriptor() ([]byte, []int) {
-	return file_proto_business_proto_rawDescGZIP(), []int{142}
+	return file_proto_business_proto_rawDescGZIP(), []int{143}
 }
 
 func (x *ModerateProductQuestionResponse) GetSuccess() bool {
 	if x != nil {
 		return x.Success
+	}
+	return false
+}
+
+type ToggleFollowStoreRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StoreId       string                 `protobuf:"bytes,1,opt,name=store_id,json=storeId,proto3" json:"store_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ToggleFollowStoreRequest) Reset() {
+	*x = ToggleFollowStoreRequest{}
+	mi := &file_proto_business_proto_msgTypes[144]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ToggleFollowStoreRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ToggleFollowStoreRequest) ProtoMessage() {}
+
+func (x *ToggleFollowStoreRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_business_proto_msgTypes[144]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ToggleFollowStoreRequest.ProtoReflect.Descriptor instead.
+func (*ToggleFollowStoreRequest) Descriptor() ([]byte, []int) {
+	return file_proto_business_proto_rawDescGZIP(), []int{144}
+}
+
+func (x *ToggleFollowStoreRequest) GetStoreId() string {
+	if x != nil {
+		return x.StoreId
+	}
+	return ""
+}
+
+func (x *ToggleFollowStoreRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type ToggleFollowStoreResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	IsFollowing   bool                   `protobuf:"varint,1,opt,name=is_following,json=isFollowing,proto3" json:"is_following,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ToggleFollowStoreResponse) Reset() {
+	*x = ToggleFollowStoreResponse{}
+	mi := &file_proto_business_proto_msgTypes[145]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ToggleFollowStoreResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ToggleFollowStoreResponse) ProtoMessage() {}
+
+func (x *ToggleFollowStoreResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_business_proto_msgTypes[145]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ToggleFollowStoreResponse.ProtoReflect.Descriptor instead.
+func (*ToggleFollowStoreResponse) Descriptor() ([]byte, []int) {
+	return file_proto_business_proto_rawDescGZIP(), []int{145}
+}
+
+func (x *ToggleFollowStoreResponse) GetIsFollowing() bool {
+	if x != nil {
+		return x.IsFollowing
+	}
+	return false
+}
+
+type IsFollowingStoreRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StoreId       string                 `protobuf:"bytes,1,opt,name=store_id,json=storeId,proto3" json:"store_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *IsFollowingStoreRequest) Reset() {
+	*x = IsFollowingStoreRequest{}
+	mi := &file_proto_business_proto_msgTypes[146]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *IsFollowingStoreRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IsFollowingStoreRequest) ProtoMessage() {}
+
+func (x *IsFollowingStoreRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_business_proto_msgTypes[146]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IsFollowingStoreRequest.ProtoReflect.Descriptor instead.
+func (*IsFollowingStoreRequest) Descriptor() ([]byte, []int) {
+	return file_proto_business_proto_rawDescGZIP(), []int{146}
+}
+
+func (x *IsFollowingStoreRequest) GetStoreId() string {
+	if x != nil {
+		return x.StoreId
+	}
+	return ""
+}
+
+func (x *IsFollowingStoreRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type IsFollowingStoreResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	IsFollowing   bool                   `protobuf:"varint,1,opt,name=is_following,json=isFollowing,proto3" json:"is_following,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *IsFollowingStoreResponse) Reset() {
+	*x = IsFollowingStoreResponse{}
+	mi := &file_proto_business_proto_msgTypes[147]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *IsFollowingStoreResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IsFollowingStoreResponse) ProtoMessage() {}
+
+func (x *IsFollowingStoreResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_business_proto_msgTypes[147]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IsFollowingStoreResponse.ProtoReflect.Descriptor instead.
+func (*IsFollowingStoreResponse) Descriptor() ([]byte, []int) {
+	return file_proto_business_proto_rawDescGZIP(), []int{147}
+}
+
+func (x *IsFollowingStoreResponse) GetIsFollowing() bool {
+	if x != nil {
+		return x.IsFollowing
+	}
+	return false
+}
+
+type GetFollowedStoresRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetFollowedStoresRequest) Reset() {
+	*x = GetFollowedStoresRequest{}
+	mi := &file_proto_business_proto_msgTypes[148]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetFollowedStoresRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFollowedStoresRequest) ProtoMessage() {}
+
+func (x *GetFollowedStoresRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_business_proto_msgTypes[148]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFollowedStoresRequest.ProtoReflect.Descriptor instead.
+func (*GetFollowedStoresRequest) Descriptor() ([]byte, []int) {
+	return file_proto_business_proto_rawDescGZIP(), []int{148}
+}
+
+func (x *GetFollowedStoresRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type GetFollowedStoresResponse struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	FollowedStores []*BusinessProfile     `protobuf:"bytes,1,rep,name=followed_stores,json=followedStores,proto3" json:"followed_stores,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GetFollowedStoresResponse) Reset() {
+	*x = GetFollowedStoresResponse{}
+	mi := &file_proto_business_proto_msgTypes[149]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetFollowedStoresResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFollowedStoresResponse) ProtoMessage() {}
+
+func (x *GetFollowedStoresResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_business_proto_msgTypes[149]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFollowedStoresResponse.ProtoReflect.Descriptor instead.
+func (*GetFollowedStoresResponse) Descriptor() ([]byte, []int) {
+	return file_proto_business_proto_rawDescGZIP(), []int{149}
+}
+
+func (x *GetFollowedStoresResponse) GetFollowedStores() []*BusinessProfile {
+	if x != nil {
+		return x.FollowedStores
+	}
+	return nil
+}
+
+type ToggleReviewHelpfulRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ReviewId      string                 `protobuf:"bytes,1,opt,name=review_id,json=reviewId,proto3" json:"review_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ToggleReviewHelpfulRequest) Reset() {
+	*x = ToggleReviewHelpfulRequest{}
+	mi := &file_proto_business_proto_msgTypes[150]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ToggleReviewHelpfulRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ToggleReviewHelpfulRequest) ProtoMessage() {}
+
+func (x *ToggleReviewHelpfulRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_business_proto_msgTypes[150]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ToggleReviewHelpfulRequest.ProtoReflect.Descriptor instead.
+func (*ToggleReviewHelpfulRequest) Descriptor() ([]byte, []int) {
+	return file_proto_business_proto_rawDescGZIP(), []int{150}
+}
+
+func (x *ToggleReviewHelpfulRequest) GetReviewId() string {
+	if x != nil {
+		return x.ReviewId
+	}
+	return ""
+}
+
+func (x *ToggleReviewHelpfulRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type ToggleReviewHelpfulResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	IsHelpful     bool                   `protobuf:"varint,1,opt,name=is_helpful,json=isHelpful,proto3" json:"is_helpful,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ToggleReviewHelpfulResponse) Reset() {
+	*x = ToggleReviewHelpfulResponse{}
+	mi := &file_proto_business_proto_msgTypes[151]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ToggleReviewHelpfulResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ToggleReviewHelpfulResponse) ProtoMessage() {}
+
+func (x *ToggleReviewHelpfulResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_business_proto_msgTypes[151]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ToggleReviewHelpfulResponse.ProtoReflect.Descriptor instead.
+func (*ToggleReviewHelpfulResponse) Descriptor() ([]byte, []int) {
+	return file_proto_business_proto_rawDescGZIP(), []int{151}
+}
+
+func (x *ToggleReviewHelpfulResponse) GetIsHelpful() bool {
+	if x != nil {
+		return x.IsHelpful
 	}
 	return false
 }
@@ -9832,7 +10292,7 @@ const file_proto_business_proto_rawDesc = "" +
 	"categoryId\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1d\n" +
 	"\n" +
-	"sort_order\x18\x04 \x01(\x05R\tsortOrder\"\xdf\x01\n" +
+	"sort_order\x18\x04 \x01(\x05R\tsortOrder\"\xa3\x02\n" +
 	"\x06Review\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -9844,7 +10304,11 @@ const file_proto_business_proto_rawDesc = "" +
 	"\x06rating\x18\x06 \x01(\x05R\x06rating\x12\x18\n" +
 	"\acomment\x18\a \x01(\tR\acomment\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\b \x01(\tR\tcreatedAt\"\xdf\x01\n" +
+	"image_urls\x18\b \x03(\tR\timageUrls\x12#\n" +
+	"\rhelpful_count\x18\t \x01(\x05R\fhelpfulCount\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\n" +
+	" \x01(\tR\tcreatedAt\"\xdf\x01\n" +
 	"\x05Store\x123\n" +
 	"\aprofile\x18\x01 \x01(\v2\x19.business.BusinessProfileR\aprofile\x128\n" +
 	"\bproducts\x18\x02 \x03(\v2\x1c.business.MarketplaceProductR\bproducts\x12#\n" +
@@ -10052,7 +10516,11 @@ const file_proto_business_proto_rawDesc = "" +
 	"\x06offset\x18\x05 \x01(\x05R\x06offset\"q\n" +
 	"\x1fListMarketplaceProductsResponse\x128\n" +
 	"\bproducts\x18\x01 \x03(\v2\x1c.business.MarketplaceProductR\bproducts\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x05R\x05total\"\x95\x02\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"o\n" +
+	"&ListFollowedMarketplaceProductsRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x03 \x01(\x05R\x06offset\"\x95\x02\n" +
 	"\x1bCreateProductVariantRequest\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\tR\tproductId\x12\x10\n" +
@@ -10104,13 +10572,15 @@ const file_proto_business_proto_rawDesc = "" +
 	"product_id\x18\x01 \x01(\tR\tproductId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"4\n" +
 	"\x18TrackProductViewResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"\x7f\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"\x9e\x01\n" +
 	"\x13CreateReviewRequest\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\tR\tproductId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x16\n" +
 	"\x06rating\x18\x03 \x01(\x05R\x06rating\x12\x18\n" +
-	"\acomment\x18\x04 \x01(\tR\acomment\"@\n" +
+	"\acomment\x18\x04 \x01(\tR\acomment\x12\x1d\n" +
+	"\n" +
+	"image_urls\x18\x05 \x03(\tR\timageUrls\"@\n" +
 	"\x14CreateReviewResponse\x12(\n" +
 	"\x06review\x18\x01 \x01(\v2\x10.business.ReviewR\x06review\"a\n" +
 	"\x12ListReviewsRequest\x12\x1d\n" +
@@ -10608,7 +11078,27 @@ const file_proto_business_proto_rawDesc = "" +
 	"\x06action\x18\x03 \x01(\tR\x06action\x12\x16\n" +
 	"\x06reason\x18\x04 \x01(\tR\x06reason\";\n" +
 	"\x1fModerateProductQuestionResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess2\xc9*\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"N\n" +
+	"\x18ToggleFollowStoreRequest\x12\x19\n" +
+	"\bstore_id\x18\x01 \x01(\tR\astoreId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\">\n" +
+	"\x19ToggleFollowStoreResponse\x12!\n" +
+	"\fis_following\x18\x01 \x01(\bR\visFollowing\"M\n" +
+	"\x17IsFollowingStoreRequest\x12\x19\n" +
+	"\bstore_id\x18\x01 \x01(\tR\astoreId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"=\n" +
+	"\x18IsFollowingStoreResponse\x12!\n" +
+	"\fis_following\x18\x01 \x01(\bR\visFollowing\"3\n" +
+	"\x18GetFollowedStoresRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"_\n" +
+	"\x19GetFollowedStoresResponse\x12B\n" +
+	"\x0ffollowed_stores\x18\x01 \x03(\v2\x19.business.BusinessProfileR\x0efollowedStores\"R\n" +
+	"\x1aToggleReviewHelpfulRequest\x12\x1b\n" +
+	"\treview_id\x18\x01 \x01(\tR\breviewId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"<\n" +
+	"\x1bToggleReviewHelpfulResponse\x12\x1d\n" +
+	"\n" +
+	"is_helpful\x18\x01 \x01(\bR\tisHelpful2\xc4.\n" +
 	"\x0fBusinessService\x12h\n" +
 	"\x15CreateBusinessProfile\x12&.business.CreateBusinessProfileRequest\x1a'.business.CreateBusinessProfileResponse\x12h\n" +
 	"\x15UpdateBusinessProfile\x12&.business.UpdateBusinessProfileRequest\x1a'.business.UpdateBusinessProfileResponse\x12_\n" +
@@ -10623,7 +11113,8 @@ const file_proto_business_proto_rawDesc = "" +
 	"\x18DeleteMarketplaceProduct\x12).business.DeleteMarketplaceProductRequest\x1a*.business.DeleteMarketplaceProductResponse\x12h\n" +
 	"\x15GetMarketplaceProduct\x12&.business.GetMarketplaceProductRequest\x1a'.business.GetMarketplaceProductResponse\x12e\n" +
 	"\x14ListBusinessProducts\x12%.business.ListBusinessProductsRequest\x1a&.business.ListBusinessProductsResponse\x12n\n" +
-	"\x17ListMarketplaceProducts\x12(.business.ListMarketplaceProductsRequest\x1a).business.ListMarketplaceProductsResponse\x12e\n" +
+	"\x17ListMarketplaceProducts\x12(.business.ListMarketplaceProductsRequest\x1a).business.ListMarketplaceProductsResponse\x12~\n" +
+	"\x1fListFollowedMarketplaceProducts\x120.business.ListFollowedMarketplaceProductsRequest\x1a).business.ListMarketplaceProductsResponse\x12e\n" +
 	"\x14CreateProductVariant\x12%.business.CreateProductVariantRequest\x1a&.business.CreateProductVariantResponse\x12b\n" +
 	"\x13ListProductVariants\x12$.business.ListProductVariantsRequest\x1a%.business.ListProductVariantsResponse\x12e\n" +
 	"\x14UpdateProductVariant\x12%.business.UpdateProductVariantRequest\x1a&.business.UpdateProductVariantResponse\x12e\n" +
@@ -10669,7 +11160,11 @@ const file_proto_business_proto_rawDesc = "" +
 	"\vListRefunds\x12\x1c.business.ListRefundsRequest\x1a\x1d.business.ListRefundsResponse\x12n\n" +
 	"\x17CreateOrderModification\x12(.business.CreateOrderModificationRequest\x1a).business.CreateOrderModificationResponse\x12q\n" +
 	"\x18ProcessOrderModification\x12).business.ProcessOrderModificationRequest\x1a*.business.ProcessOrderModificationResponse\x12k\n" +
-	"\x16ListOrderModifications\x12'.business.ListOrderModificationsRequest\x1a(.business.ListOrderModificationsResponseB\x15Z\x13gochat/gen/businessb\x06proto3"
+	"\x16ListOrderModifications\x12'.business.ListOrderModificationsRequest\x1a(.business.ListOrderModificationsResponse\x12\\\n" +
+	"\x11ToggleFollowStore\x12\".business.ToggleFollowStoreRequest\x1a#.business.ToggleFollowStoreResponse\x12Y\n" +
+	"\x10IsFollowingStore\x12!.business.IsFollowingStoreRequest\x1a\".business.IsFollowingStoreResponse\x12\\\n" +
+	"\x11GetFollowedStores\x12\".business.GetFollowedStoresRequest\x1a#.business.GetFollowedStoresResponse\x12b\n" +
+	"\x13ToggleReviewHelpful\x12$.business.ToggleReviewHelpfulRequest\x1a%.business.ToggleReviewHelpfulResponseB\x15Z\x13gochat/gen/businessb\x06proto3"
 
 var (
 	file_proto_business_proto_rawDescOnce sync.Once
@@ -10683,152 +11178,161 @@ func file_proto_business_proto_rawDescGZIP() []byte {
 	return file_proto_business_proto_rawDescData
 }
 
-var file_proto_business_proto_msgTypes = make([]protoimpl.MessageInfo, 144)
+var file_proto_business_proto_msgTypes = make([]protoimpl.MessageInfo, 153)
 var file_proto_business_proto_goTypes = []any{
-	(*BusinessProfile)(nil),                  // 0: business.BusinessProfile
-	(*MarketplaceProduct)(nil),               // 1: business.MarketplaceProduct
-	(*Category)(nil),                         // 2: business.Category
-	(*SubCategory)(nil),                      // 3: business.SubCategory
-	(*Review)(nil),                           // 4: business.Review
-	(*Store)(nil),                            // 5: business.Store
-	(*ProductCatalog)(nil),                   // 6: business.ProductCatalog
-	(*ProductVariant)(nil),                   // 7: business.ProductVariant
-	(*Product)(nil),                          // 8: business.Product
-	(*Appointment)(nil),                      // 9: business.Appointment
-	(*AutoReply)(nil),                        // 10: business.AutoReply
-	(*QueueEntry)(nil),                       // 11: business.QueueEntry
-	(*CreateBusinessProfileRequest)(nil),     // 12: business.CreateBusinessProfileRequest
-	(*CreateBusinessProfileResponse)(nil),    // 13: business.CreateBusinessProfileResponse
-	(*UpdateBusinessProfileRequest)(nil),     // 14: business.UpdateBusinessProfileRequest
-	(*UpdateBusinessProfileResponse)(nil),    // 15: business.UpdateBusinessProfileResponse
-	(*GetBusinessProfileRequest)(nil),        // 16: business.GetBusinessProfileRequest
-	(*GetBusinessProfileResponse)(nil),       // 17: business.GetBusinessProfileResponse
-	(*CreateCatalogRequest)(nil),             // 18: business.CreateCatalogRequest
-	(*CreateCatalogResponse)(nil),            // 19: business.CreateCatalogResponse
-	(*AddProductRequest)(nil),                // 20: business.AddProductRequest
-	(*AddProductResponse)(nil),               // 21: business.AddProductResponse
-	(*UpdateProductRequest)(nil),             // 22: business.UpdateProductRequest
-	(*UpdateProductResponse)(nil),            // 23: business.UpdateProductResponse
-	(*ListProductsRequest)(nil),              // 24: business.ListProductsRequest
-	(*ListProductsResponse)(nil),             // 25: business.ListProductsResponse
-	(*CreateMarketplaceProductRequest)(nil),  // 26: business.CreateMarketplaceProductRequest
-	(*CreateMarketplaceProductResponse)(nil), // 27: business.CreateMarketplaceProductResponse
-	(*UpdateMarketplaceProductRequest)(nil),  // 28: business.UpdateMarketplaceProductRequest
-	(*UpdateMarketplaceProductResponse)(nil), // 29: business.UpdateMarketplaceProductResponse
-	(*DeleteMarketplaceProductRequest)(nil),  // 30: business.DeleteMarketplaceProductRequest
-	(*DeleteMarketplaceProductResponse)(nil), // 31: business.DeleteMarketplaceProductResponse
-	(*GetMarketplaceProductRequest)(nil),     // 32: business.GetMarketplaceProductRequest
-	(*GetMarketplaceProductResponse)(nil),    // 33: business.GetMarketplaceProductResponse
-	(*ListBusinessProductsRequest)(nil),      // 34: business.ListBusinessProductsRequest
-	(*ListBusinessProductsResponse)(nil),     // 35: business.ListBusinessProductsResponse
-	(*ListMarketplaceProductsRequest)(nil),   // 36: business.ListMarketplaceProductsRequest
-	(*ListMarketplaceProductsResponse)(nil),  // 37: business.ListMarketplaceProductsResponse
-	(*CreateProductVariantRequest)(nil),      // 38: business.CreateProductVariantRequest
-	(*CreateProductVariantResponse)(nil),     // 39: business.CreateProductVariantResponse
-	(*ListProductVariantsRequest)(nil),       // 40: business.ListProductVariantsRequest
-	(*ListProductVariantsResponse)(nil),      // 41: business.ListProductVariantsResponse
-	(*UpdateProductVariantRequest)(nil),      // 42: business.UpdateProductVariantRequest
-	(*UpdateProductVariantResponse)(nil),     // 43: business.UpdateProductVariantResponse
-	(*DeleteProductVariantRequest)(nil),      // 44: business.DeleteProductVariantRequest
-	(*DeleteProductVariantResponse)(nil),     // 45: business.DeleteProductVariantResponse
-	(*ListCategoriesRequest)(nil),            // 46: business.ListCategoriesRequest
-	(*ListCategoriesResponse)(nil),           // 47: business.ListCategoriesResponse
-	(*GetStoreRequest)(nil),                  // 48: business.GetStoreRequest
-	(*GetStoreResponse)(nil),                 // 49: business.GetStoreResponse
-	(*TrackProductViewRequest)(nil),          // 50: business.TrackProductViewRequest
-	(*TrackProductViewResponse)(nil),         // 51: business.TrackProductViewResponse
-	(*CreateReviewRequest)(nil),              // 52: business.CreateReviewRequest
-	(*CreateReviewResponse)(nil),             // 53: business.CreateReviewResponse
-	(*ListReviewsRequest)(nil),               // 54: business.ListReviewsRequest
-	(*ListReviewsResponse)(nil),              // 55: business.ListReviewsResponse
-	(*CreateAppointmentSlotRequest)(nil),     // 56: business.CreateAppointmentSlotRequest
-	(*CreateAppointmentSlotResponse)(nil),    // 57: business.CreateAppointmentSlotResponse
-	(*BookAppointmentRequest)(nil),           // 58: business.BookAppointmentRequest
-	(*BookAppointmentResponse)(nil),          // 59: business.BookAppointmentResponse
-	(*ListAppointmentsRequest)(nil),          // 60: business.ListAppointmentsRequest
-	(*ListAppointmentsResponse)(nil),         // 61: business.ListAppointmentsResponse
-	(*SetAutoReplyRequest)(nil),              // 62: business.SetAutoReplyRequest
-	(*SetAutoReplyResponse)(nil),             // 63: business.SetAutoReplyResponse
-	(*GetAutoRepliesRequest)(nil),            // 64: business.GetAutoRepliesRequest
-	(*GetAutoRepliesResponse)(nil),           // 65: business.GetAutoRepliesResponse
-	(*EnqueueCustomerRequest)(nil),           // 66: business.EnqueueCustomerRequest
-	(*EnqueueCustomerResponse)(nil),          // 67: business.EnqueueCustomerResponse
-	(*DequeueCustomerRequest)(nil),           // 68: business.DequeueCustomerRequest
-	(*DequeueCustomerResponse)(nil),          // 69: business.DequeueCustomerResponse
-	(*GetQueuePositionRequest)(nil),          // 70: business.GetQueuePositionRequest
-	(*GetQueuePositionResponse)(nil),         // 71: business.GetQueuePositionResponse
-	(*CartItem)(nil),                         // 72: business.CartItem
-	(*Cart)(nil),                             // 73: business.Cart
-	(*AddToCartRequest)(nil),                 // 74: business.AddToCartRequest
-	(*AddToCartResponse)(nil),                // 75: business.AddToCartResponse
-	(*GetCartRequest)(nil),                   // 76: business.GetCartRequest
-	(*GetCartResponse)(nil),                  // 77: business.GetCartResponse
-	(*UpdateCartItemRequest)(nil),            // 78: business.UpdateCartItemRequest
-	(*UpdateCartItemResponse)(nil),           // 79: business.UpdateCartItemResponse
-	(*RemoveFromCartRequest)(nil),            // 80: business.RemoveFromCartRequest
-	(*RemoveFromCartResponse)(nil),           // 81: business.RemoveFromCartResponse
-	(*ClearCartRequest)(nil),                 // 82: business.ClearCartRequest
-	(*ClearCartResponse)(nil),                // 83: business.ClearCartResponse
-	(*OrderItem)(nil),                        // 84: business.OrderItem
-	(*OrderFxQuote)(nil),                     // 85: business.OrderFxQuote
-	(*Order)(nil),                            // 86: business.Order
-	(*CreateOrderItemInput)(nil),             // 87: business.CreateOrderItemInput
-	(*CreateSingleOrderInput)(nil),           // 88: business.CreateSingleOrderInput
-	(*CreateOrdersRequest)(nil),              // 89: business.CreateOrdersRequest
-	(*CreateOrdersResponse)(nil),             // 90: business.CreateOrdersResponse
-	(*GetOrderRequest)(nil),                  // 91: business.GetOrderRequest
-	(*GetOrderResponse)(nil),                 // 92: business.GetOrderResponse
-	(*ListBuyerOrdersRequest)(nil),           // 93: business.ListBuyerOrdersRequest
-	(*ListBuyerOrdersResponse)(nil),          // 94: business.ListBuyerOrdersResponse
-	(*ListSellerOrdersRequest)(nil),          // 95: business.ListSellerOrdersRequest
-	(*ListSellerOrdersResponse)(nil),         // 96: business.ListSellerOrdersResponse
-	(*UpdateOrderStatusRequest)(nil),         // 97: business.UpdateOrderStatusRequest
-	(*UpdateOrderStatusResponse)(nil),        // 98: business.UpdateOrderStatusResponse
-	(*UpdateOrderTrackingRequest)(nil),       // 99: business.UpdateOrderTrackingRequest
-	(*UpdateOrderTrackingResponse)(nil),      // 100: business.UpdateOrderTrackingResponse
-	(*Coupon)(nil),                           // 101: business.Coupon
-	(*CreateCouponRequest)(nil),              // 102: business.CreateCouponRequest
-	(*CreateCouponResponse)(nil),             // 103: business.CreateCouponResponse
-	(*ListBusinessCouponsRequest)(nil),       // 104: business.ListBusinessCouponsRequest
-	(*ListBusinessCouponsResponse)(nil),      // 105: business.ListBusinessCouponsResponse
-	(*ValidateCouponRequest)(nil),            // 106: business.ValidateCouponRequest
-	(*ValidateCouponResponse)(nil),           // 107: business.ValidateCouponResponse
-	(*ToggleWishlistRequest)(nil),            // 108: business.ToggleWishlistRequest
-	(*ToggleWishlistResponse)(nil),           // 109: business.ToggleWishlistResponse
-	(*GetWishlistRequest)(nil),               // 110: business.GetWishlistRequest
-	(*GetWishlistResponse)(nil),              // 111: business.GetWishlistResponse
-	(*ProductQuestionPB)(nil),                // 112: business.ProductQuestionPB
-	(*AskProductQuestionRequest)(nil),        // 113: business.AskProductQuestionRequest
-	(*AskProductQuestionResponse)(nil),       // 114: business.AskProductQuestionResponse
-	(*AnswerProductQuestionRequest)(nil),     // 115: business.AnswerProductQuestionRequest
-	(*AnswerProductQuestionResponse)(nil),    // 116: business.AnswerProductQuestionResponse
-	(*GetProductQuestionsRequest)(nil),       // 117: business.GetProductQuestionsRequest
-	(*GetProductQuestionsResponse)(nil),      // 118: business.GetProductQuestionsResponse
-	(*FlagProductQuestionRequest)(nil),       // 119: business.FlagProductQuestionRequest
-	(*FlagProductQuestionResponse)(nil),      // 120: business.FlagProductQuestionResponse
-	(*TransitionOrderStatusRequest)(nil),     // 121: business.TransitionOrderStatusRequest
-	(*TransitionOrderStatusResponse)(nil),    // 122: business.TransitionOrderStatusResponse
-	(*GetOrderStatusHistoryRequest)(nil),     // 123: business.GetOrderStatusHistoryRequest
-	(*GetOrderStatusHistoryResponse)(nil),    // 124: business.GetOrderStatusHistoryResponse
-	(*OrderStatusChangePB)(nil),              // 125: business.OrderStatusChangePB
-	(*RefundPB)(nil),                         // 126: business.RefundPB
-	(*RefundItemPB)(nil),                     // 127: business.RefundItemPB
-	(*CreateRefundRequest)(nil),              // 128: business.CreateRefundRequest
-	(*CreateRefundResponse)(nil),             // 129: business.CreateRefundResponse
-	(*ProcessRefundRequest)(nil),             // 130: business.ProcessRefundRequest
-	(*ProcessRefundResponse)(nil),            // 131: business.ProcessRefundResponse
-	(*ListRefundsRequest)(nil),               // 132: business.ListRefundsRequest
-	(*ListRefundsResponse)(nil),              // 133: business.ListRefundsResponse
-	(*OrderModificationPB)(nil),              // 134: business.OrderModificationPB
-	(*CreateOrderModificationRequest)(nil),   // 135: business.CreateOrderModificationRequest
-	(*CreateOrderModificationResponse)(nil),  // 136: business.CreateOrderModificationResponse
-	(*ProcessOrderModificationRequest)(nil),  // 137: business.ProcessOrderModificationRequest
-	(*ProcessOrderModificationResponse)(nil), // 138: business.ProcessOrderModificationResponse
-	(*ListOrderModificationsRequest)(nil),    // 139: business.ListOrderModificationsRequest
-	(*ListOrderModificationsResponse)(nil),   // 140: business.ListOrderModificationsResponse
-	(*ModerateProductQuestionRequest)(nil),   // 141: business.ModerateProductQuestionRequest
-	(*ModerateProductQuestionResponse)(nil),  // 142: business.ModerateProductQuestionResponse
-	nil,                                      // 143: business.OrderFxQuote.RatesEntry
+	(*BusinessProfile)(nil),                        // 0: business.BusinessProfile
+	(*MarketplaceProduct)(nil),                     // 1: business.MarketplaceProduct
+	(*Category)(nil),                               // 2: business.Category
+	(*SubCategory)(nil),                            // 3: business.SubCategory
+	(*Review)(nil),                                 // 4: business.Review
+	(*Store)(nil),                                  // 5: business.Store
+	(*ProductCatalog)(nil),                         // 6: business.ProductCatalog
+	(*ProductVariant)(nil),                         // 7: business.ProductVariant
+	(*Product)(nil),                                // 8: business.Product
+	(*Appointment)(nil),                            // 9: business.Appointment
+	(*AutoReply)(nil),                              // 10: business.AutoReply
+	(*QueueEntry)(nil),                             // 11: business.QueueEntry
+	(*CreateBusinessProfileRequest)(nil),           // 12: business.CreateBusinessProfileRequest
+	(*CreateBusinessProfileResponse)(nil),          // 13: business.CreateBusinessProfileResponse
+	(*UpdateBusinessProfileRequest)(nil),           // 14: business.UpdateBusinessProfileRequest
+	(*UpdateBusinessProfileResponse)(nil),          // 15: business.UpdateBusinessProfileResponse
+	(*GetBusinessProfileRequest)(nil),              // 16: business.GetBusinessProfileRequest
+	(*GetBusinessProfileResponse)(nil),             // 17: business.GetBusinessProfileResponse
+	(*CreateCatalogRequest)(nil),                   // 18: business.CreateCatalogRequest
+	(*CreateCatalogResponse)(nil),                  // 19: business.CreateCatalogResponse
+	(*AddProductRequest)(nil),                      // 20: business.AddProductRequest
+	(*AddProductResponse)(nil),                     // 21: business.AddProductResponse
+	(*UpdateProductRequest)(nil),                   // 22: business.UpdateProductRequest
+	(*UpdateProductResponse)(nil),                  // 23: business.UpdateProductResponse
+	(*ListProductsRequest)(nil),                    // 24: business.ListProductsRequest
+	(*ListProductsResponse)(nil),                   // 25: business.ListProductsResponse
+	(*CreateMarketplaceProductRequest)(nil),        // 26: business.CreateMarketplaceProductRequest
+	(*CreateMarketplaceProductResponse)(nil),       // 27: business.CreateMarketplaceProductResponse
+	(*UpdateMarketplaceProductRequest)(nil),        // 28: business.UpdateMarketplaceProductRequest
+	(*UpdateMarketplaceProductResponse)(nil),       // 29: business.UpdateMarketplaceProductResponse
+	(*DeleteMarketplaceProductRequest)(nil),        // 30: business.DeleteMarketplaceProductRequest
+	(*DeleteMarketplaceProductResponse)(nil),       // 31: business.DeleteMarketplaceProductResponse
+	(*GetMarketplaceProductRequest)(nil),           // 32: business.GetMarketplaceProductRequest
+	(*GetMarketplaceProductResponse)(nil),          // 33: business.GetMarketplaceProductResponse
+	(*ListBusinessProductsRequest)(nil),            // 34: business.ListBusinessProductsRequest
+	(*ListBusinessProductsResponse)(nil),           // 35: business.ListBusinessProductsResponse
+	(*ListMarketplaceProductsRequest)(nil),         // 36: business.ListMarketplaceProductsRequest
+	(*ListMarketplaceProductsResponse)(nil),        // 37: business.ListMarketplaceProductsResponse
+	(*ListFollowedMarketplaceProductsRequest)(nil), // 38: business.ListFollowedMarketplaceProductsRequest
+	(*CreateProductVariantRequest)(nil),            // 39: business.CreateProductVariantRequest
+	(*CreateProductVariantResponse)(nil),           // 40: business.CreateProductVariantResponse
+	(*ListProductVariantsRequest)(nil),             // 41: business.ListProductVariantsRequest
+	(*ListProductVariantsResponse)(nil),            // 42: business.ListProductVariantsResponse
+	(*UpdateProductVariantRequest)(nil),            // 43: business.UpdateProductVariantRequest
+	(*UpdateProductVariantResponse)(nil),           // 44: business.UpdateProductVariantResponse
+	(*DeleteProductVariantRequest)(nil),            // 45: business.DeleteProductVariantRequest
+	(*DeleteProductVariantResponse)(nil),           // 46: business.DeleteProductVariantResponse
+	(*ListCategoriesRequest)(nil),                  // 47: business.ListCategoriesRequest
+	(*ListCategoriesResponse)(nil),                 // 48: business.ListCategoriesResponse
+	(*GetStoreRequest)(nil),                        // 49: business.GetStoreRequest
+	(*GetStoreResponse)(nil),                       // 50: business.GetStoreResponse
+	(*TrackProductViewRequest)(nil),                // 51: business.TrackProductViewRequest
+	(*TrackProductViewResponse)(nil),               // 52: business.TrackProductViewResponse
+	(*CreateReviewRequest)(nil),                    // 53: business.CreateReviewRequest
+	(*CreateReviewResponse)(nil),                   // 54: business.CreateReviewResponse
+	(*ListReviewsRequest)(nil),                     // 55: business.ListReviewsRequest
+	(*ListReviewsResponse)(nil),                    // 56: business.ListReviewsResponse
+	(*CreateAppointmentSlotRequest)(nil),           // 57: business.CreateAppointmentSlotRequest
+	(*CreateAppointmentSlotResponse)(nil),          // 58: business.CreateAppointmentSlotResponse
+	(*BookAppointmentRequest)(nil),                 // 59: business.BookAppointmentRequest
+	(*BookAppointmentResponse)(nil),                // 60: business.BookAppointmentResponse
+	(*ListAppointmentsRequest)(nil),                // 61: business.ListAppointmentsRequest
+	(*ListAppointmentsResponse)(nil),               // 62: business.ListAppointmentsResponse
+	(*SetAutoReplyRequest)(nil),                    // 63: business.SetAutoReplyRequest
+	(*SetAutoReplyResponse)(nil),                   // 64: business.SetAutoReplyResponse
+	(*GetAutoRepliesRequest)(nil),                  // 65: business.GetAutoRepliesRequest
+	(*GetAutoRepliesResponse)(nil),                 // 66: business.GetAutoRepliesResponse
+	(*EnqueueCustomerRequest)(nil),                 // 67: business.EnqueueCustomerRequest
+	(*EnqueueCustomerResponse)(nil),                // 68: business.EnqueueCustomerResponse
+	(*DequeueCustomerRequest)(nil),                 // 69: business.DequeueCustomerRequest
+	(*DequeueCustomerResponse)(nil),                // 70: business.DequeueCustomerResponse
+	(*GetQueuePositionRequest)(nil),                // 71: business.GetQueuePositionRequest
+	(*GetQueuePositionResponse)(nil),               // 72: business.GetQueuePositionResponse
+	(*CartItem)(nil),                               // 73: business.CartItem
+	(*Cart)(nil),                                   // 74: business.Cart
+	(*AddToCartRequest)(nil),                       // 75: business.AddToCartRequest
+	(*AddToCartResponse)(nil),                      // 76: business.AddToCartResponse
+	(*GetCartRequest)(nil),                         // 77: business.GetCartRequest
+	(*GetCartResponse)(nil),                        // 78: business.GetCartResponse
+	(*UpdateCartItemRequest)(nil),                  // 79: business.UpdateCartItemRequest
+	(*UpdateCartItemResponse)(nil),                 // 80: business.UpdateCartItemResponse
+	(*RemoveFromCartRequest)(nil),                  // 81: business.RemoveFromCartRequest
+	(*RemoveFromCartResponse)(nil),                 // 82: business.RemoveFromCartResponse
+	(*ClearCartRequest)(nil),                       // 83: business.ClearCartRequest
+	(*ClearCartResponse)(nil),                      // 84: business.ClearCartResponse
+	(*OrderItem)(nil),                              // 85: business.OrderItem
+	(*OrderFxQuote)(nil),                           // 86: business.OrderFxQuote
+	(*Order)(nil),                                  // 87: business.Order
+	(*CreateOrderItemInput)(nil),                   // 88: business.CreateOrderItemInput
+	(*CreateSingleOrderInput)(nil),                 // 89: business.CreateSingleOrderInput
+	(*CreateOrdersRequest)(nil),                    // 90: business.CreateOrdersRequest
+	(*CreateOrdersResponse)(nil),                   // 91: business.CreateOrdersResponse
+	(*GetOrderRequest)(nil),                        // 92: business.GetOrderRequest
+	(*GetOrderResponse)(nil),                       // 93: business.GetOrderResponse
+	(*ListBuyerOrdersRequest)(nil),                 // 94: business.ListBuyerOrdersRequest
+	(*ListBuyerOrdersResponse)(nil),                // 95: business.ListBuyerOrdersResponse
+	(*ListSellerOrdersRequest)(nil),                // 96: business.ListSellerOrdersRequest
+	(*ListSellerOrdersResponse)(nil),               // 97: business.ListSellerOrdersResponse
+	(*UpdateOrderStatusRequest)(nil),               // 98: business.UpdateOrderStatusRequest
+	(*UpdateOrderStatusResponse)(nil),              // 99: business.UpdateOrderStatusResponse
+	(*UpdateOrderTrackingRequest)(nil),             // 100: business.UpdateOrderTrackingRequest
+	(*UpdateOrderTrackingResponse)(nil),            // 101: business.UpdateOrderTrackingResponse
+	(*Coupon)(nil),                                 // 102: business.Coupon
+	(*CreateCouponRequest)(nil),                    // 103: business.CreateCouponRequest
+	(*CreateCouponResponse)(nil),                   // 104: business.CreateCouponResponse
+	(*ListBusinessCouponsRequest)(nil),             // 105: business.ListBusinessCouponsRequest
+	(*ListBusinessCouponsResponse)(nil),            // 106: business.ListBusinessCouponsResponse
+	(*ValidateCouponRequest)(nil),                  // 107: business.ValidateCouponRequest
+	(*ValidateCouponResponse)(nil),                 // 108: business.ValidateCouponResponse
+	(*ToggleWishlistRequest)(nil),                  // 109: business.ToggleWishlistRequest
+	(*ToggleWishlistResponse)(nil),                 // 110: business.ToggleWishlistResponse
+	(*GetWishlistRequest)(nil),                     // 111: business.GetWishlistRequest
+	(*GetWishlistResponse)(nil),                    // 112: business.GetWishlistResponse
+	(*ProductQuestionPB)(nil),                      // 113: business.ProductQuestionPB
+	(*AskProductQuestionRequest)(nil),              // 114: business.AskProductQuestionRequest
+	(*AskProductQuestionResponse)(nil),             // 115: business.AskProductQuestionResponse
+	(*AnswerProductQuestionRequest)(nil),           // 116: business.AnswerProductQuestionRequest
+	(*AnswerProductQuestionResponse)(nil),          // 117: business.AnswerProductQuestionResponse
+	(*GetProductQuestionsRequest)(nil),             // 118: business.GetProductQuestionsRequest
+	(*GetProductQuestionsResponse)(nil),            // 119: business.GetProductQuestionsResponse
+	(*FlagProductQuestionRequest)(nil),             // 120: business.FlagProductQuestionRequest
+	(*FlagProductQuestionResponse)(nil),            // 121: business.FlagProductQuestionResponse
+	(*TransitionOrderStatusRequest)(nil),           // 122: business.TransitionOrderStatusRequest
+	(*TransitionOrderStatusResponse)(nil),          // 123: business.TransitionOrderStatusResponse
+	(*GetOrderStatusHistoryRequest)(nil),           // 124: business.GetOrderStatusHistoryRequest
+	(*GetOrderStatusHistoryResponse)(nil),          // 125: business.GetOrderStatusHistoryResponse
+	(*OrderStatusChangePB)(nil),                    // 126: business.OrderStatusChangePB
+	(*RefundPB)(nil),                               // 127: business.RefundPB
+	(*RefundItemPB)(nil),                           // 128: business.RefundItemPB
+	(*CreateRefundRequest)(nil),                    // 129: business.CreateRefundRequest
+	(*CreateRefundResponse)(nil),                   // 130: business.CreateRefundResponse
+	(*ProcessRefundRequest)(nil),                   // 131: business.ProcessRefundRequest
+	(*ProcessRefundResponse)(nil),                  // 132: business.ProcessRefundResponse
+	(*ListRefundsRequest)(nil),                     // 133: business.ListRefundsRequest
+	(*ListRefundsResponse)(nil),                    // 134: business.ListRefundsResponse
+	(*OrderModificationPB)(nil),                    // 135: business.OrderModificationPB
+	(*CreateOrderModificationRequest)(nil),         // 136: business.CreateOrderModificationRequest
+	(*CreateOrderModificationResponse)(nil),        // 137: business.CreateOrderModificationResponse
+	(*ProcessOrderModificationRequest)(nil),        // 138: business.ProcessOrderModificationRequest
+	(*ProcessOrderModificationResponse)(nil),       // 139: business.ProcessOrderModificationResponse
+	(*ListOrderModificationsRequest)(nil),          // 140: business.ListOrderModificationsRequest
+	(*ListOrderModificationsResponse)(nil),         // 141: business.ListOrderModificationsResponse
+	(*ModerateProductQuestionRequest)(nil),         // 142: business.ModerateProductQuestionRequest
+	(*ModerateProductQuestionResponse)(nil),        // 143: business.ModerateProductQuestionResponse
+	(*ToggleFollowStoreRequest)(nil),               // 144: business.ToggleFollowStoreRequest
+	(*ToggleFollowStoreResponse)(nil),              // 145: business.ToggleFollowStoreResponse
+	(*IsFollowingStoreRequest)(nil),                // 146: business.IsFollowingStoreRequest
+	(*IsFollowingStoreResponse)(nil),               // 147: business.IsFollowingStoreResponse
+	(*GetFollowedStoresRequest)(nil),               // 148: business.GetFollowedStoresRequest
+	(*GetFollowedStoresResponse)(nil),              // 149: business.GetFollowedStoresResponse
+	(*ToggleReviewHelpfulRequest)(nil),             // 150: business.ToggleReviewHelpfulRequest
+	(*ToggleReviewHelpfulResponse)(nil),            // 151: business.ToggleReviewHelpfulResponse
+	nil,                                            // 152: business.OrderFxQuote.RatesEntry
 }
 var file_proto_business_proto_depIdxs = []int32{
 	3,   // 0: business.Category.sub_categories:type_name -> business.SubCategory
@@ -10862,162 +11366,173 @@ var file_proto_business_proto_depIdxs = []int32{
 	11,  // 28: business.EnqueueCustomerResponse.entry:type_name -> business.QueueEntry
 	11,  // 29: business.DequeueCustomerResponse.entry:type_name -> business.QueueEntry
 	1,   // 30: business.CartItem.product:type_name -> business.MarketplaceProduct
-	72,  // 31: business.Cart.items:type_name -> business.CartItem
-	73,  // 32: business.AddToCartResponse.cart:type_name -> business.Cart
-	73,  // 33: business.GetCartResponse.cart:type_name -> business.Cart
-	73,  // 34: business.UpdateCartItemResponse.cart:type_name -> business.Cart
-	73,  // 35: business.RemoveFromCartResponse.cart:type_name -> business.Cart
-	143, // 36: business.OrderFxQuote.rates:type_name -> business.OrderFxQuote.RatesEntry
-	84,  // 37: business.Order.items:type_name -> business.OrderItem
-	85,  // 38: business.Order.fx_quote:type_name -> business.OrderFxQuote
-	87,  // 39: business.CreateSingleOrderInput.items:type_name -> business.CreateOrderItemInput
-	85,  // 40: business.CreateSingleOrderInput.fx_quote:type_name -> business.OrderFxQuote
-	88,  // 41: business.CreateOrdersRequest.orders:type_name -> business.CreateSingleOrderInput
-	86,  // 42: business.CreateOrdersResponse.orders:type_name -> business.Order
-	86,  // 43: business.GetOrderResponse.order:type_name -> business.Order
-	86,  // 44: business.ListBuyerOrdersResponse.orders:type_name -> business.Order
-	86,  // 45: business.ListSellerOrdersResponse.orders:type_name -> business.Order
-	86,  // 46: business.UpdateOrderStatusResponse.order:type_name -> business.Order
-	86,  // 47: business.UpdateOrderTrackingResponse.order:type_name -> business.Order
-	101, // 48: business.CreateCouponResponse.coupon:type_name -> business.Coupon
-	101, // 49: business.ListBusinessCouponsResponse.coupons:type_name -> business.Coupon
-	101, // 50: business.ValidateCouponResponse.coupon:type_name -> business.Coupon
+	73,  // 31: business.Cart.items:type_name -> business.CartItem
+	74,  // 32: business.AddToCartResponse.cart:type_name -> business.Cart
+	74,  // 33: business.GetCartResponse.cart:type_name -> business.Cart
+	74,  // 34: business.UpdateCartItemResponse.cart:type_name -> business.Cart
+	74,  // 35: business.RemoveFromCartResponse.cart:type_name -> business.Cart
+	152, // 36: business.OrderFxQuote.rates:type_name -> business.OrderFxQuote.RatesEntry
+	85,  // 37: business.Order.items:type_name -> business.OrderItem
+	86,  // 38: business.Order.fx_quote:type_name -> business.OrderFxQuote
+	88,  // 39: business.CreateSingleOrderInput.items:type_name -> business.CreateOrderItemInput
+	86,  // 40: business.CreateSingleOrderInput.fx_quote:type_name -> business.OrderFxQuote
+	89,  // 41: business.CreateOrdersRequest.orders:type_name -> business.CreateSingleOrderInput
+	87,  // 42: business.CreateOrdersResponse.orders:type_name -> business.Order
+	87,  // 43: business.GetOrderResponse.order:type_name -> business.Order
+	87,  // 44: business.ListBuyerOrdersResponse.orders:type_name -> business.Order
+	87,  // 45: business.ListSellerOrdersResponse.orders:type_name -> business.Order
+	87,  // 46: business.UpdateOrderStatusResponse.order:type_name -> business.Order
+	87,  // 47: business.UpdateOrderTrackingResponse.order:type_name -> business.Order
+	102, // 48: business.CreateCouponResponse.coupon:type_name -> business.Coupon
+	102, // 49: business.ListBusinessCouponsResponse.coupons:type_name -> business.Coupon
+	102, // 50: business.ValidateCouponResponse.coupon:type_name -> business.Coupon
 	1,   // 51: business.GetWishlistResponse.products:type_name -> business.MarketplaceProduct
-	112, // 52: business.AskProductQuestionResponse.question:type_name -> business.ProductQuestionPB
-	112, // 53: business.GetProductQuestionsResponse.questions:type_name -> business.ProductQuestionPB
-	86,  // 54: business.TransitionOrderStatusResponse.order:type_name -> business.Order
-	125, // 55: business.GetOrderStatusHistoryResponse.history:type_name -> business.OrderStatusChangePB
-	127, // 56: business.RefundPB.items:type_name -> business.RefundItemPB
-	127, // 57: business.CreateRefundRequest.items:type_name -> business.RefundItemPB
-	126, // 58: business.CreateRefundResponse.refund:type_name -> business.RefundPB
-	126, // 59: business.ProcessRefundResponse.refund:type_name -> business.RefundPB
-	126, // 60: business.ListRefundsResponse.refunds:type_name -> business.RefundPB
-	134, // 61: business.CreateOrderModificationResponse.modification:type_name -> business.OrderModificationPB
-	134, // 62: business.ProcessOrderModificationResponse.modification:type_name -> business.OrderModificationPB
-	134, // 63: business.ListOrderModificationsResponse.modifications:type_name -> business.OrderModificationPB
-	12,  // 64: business.BusinessService.CreateBusinessProfile:input_type -> business.CreateBusinessProfileRequest
-	14,  // 65: business.BusinessService.UpdateBusinessProfile:input_type -> business.UpdateBusinessProfileRequest
-	16,  // 66: business.BusinessService.GetBusinessProfile:input_type -> business.GetBusinessProfileRequest
-	18,  // 67: business.BusinessService.CreateCatalog:input_type -> business.CreateCatalogRequest
-	20,  // 68: business.BusinessService.AddProduct:input_type -> business.AddProductRequest
-	22,  // 69: business.BusinessService.UpdateProduct:input_type -> business.UpdateProductRequest
-	24,  // 70: business.BusinessService.ListProducts:input_type -> business.ListProductsRequest
-	26,  // 71: business.BusinessService.CreateMarketplaceProduct:input_type -> business.CreateMarketplaceProductRequest
-	28,  // 72: business.BusinessService.UpdateMarketplaceProduct:input_type -> business.UpdateMarketplaceProductRequest
-	30,  // 73: business.BusinessService.DeleteMarketplaceProduct:input_type -> business.DeleteMarketplaceProductRequest
-	32,  // 74: business.BusinessService.GetMarketplaceProduct:input_type -> business.GetMarketplaceProductRequest
-	34,  // 75: business.BusinessService.ListBusinessProducts:input_type -> business.ListBusinessProductsRequest
-	36,  // 76: business.BusinessService.ListMarketplaceProducts:input_type -> business.ListMarketplaceProductsRequest
-	38,  // 77: business.BusinessService.CreateProductVariant:input_type -> business.CreateProductVariantRequest
-	40,  // 78: business.BusinessService.ListProductVariants:input_type -> business.ListProductVariantsRequest
-	42,  // 79: business.BusinessService.UpdateProductVariant:input_type -> business.UpdateProductVariantRequest
-	44,  // 80: business.BusinessService.DeleteProductVariant:input_type -> business.DeleteProductVariantRequest
-	46,  // 81: business.BusinessService.ListCategories:input_type -> business.ListCategoriesRequest
-	48,  // 82: business.BusinessService.GetStore:input_type -> business.GetStoreRequest
-	50,  // 83: business.BusinessService.TrackProductView:input_type -> business.TrackProductViewRequest
-	52,  // 84: business.BusinessService.CreateReview:input_type -> business.CreateReviewRequest
-	54,  // 85: business.BusinessService.ListReviews:input_type -> business.ListReviewsRequest
-	56,  // 86: business.BusinessService.CreateAppointmentSlot:input_type -> business.CreateAppointmentSlotRequest
-	58,  // 87: business.BusinessService.BookAppointment:input_type -> business.BookAppointmentRequest
-	60,  // 88: business.BusinessService.ListAppointments:input_type -> business.ListAppointmentsRequest
-	62,  // 89: business.BusinessService.SetAutoReply:input_type -> business.SetAutoReplyRequest
-	64,  // 90: business.BusinessService.GetAutoReplies:input_type -> business.GetAutoRepliesRequest
-	66,  // 91: business.BusinessService.EnqueueCustomer:input_type -> business.EnqueueCustomerRequest
-	68,  // 92: business.BusinessService.DequeueCustomer:input_type -> business.DequeueCustomerRequest
-	70,  // 93: business.BusinessService.GetQueuePosition:input_type -> business.GetQueuePositionRequest
-	74,  // 94: business.BusinessService.AddToCart:input_type -> business.AddToCartRequest
-	76,  // 95: business.BusinessService.GetCart:input_type -> business.GetCartRequest
-	78,  // 96: business.BusinessService.UpdateCartItem:input_type -> business.UpdateCartItemRequest
-	80,  // 97: business.BusinessService.RemoveFromCart:input_type -> business.RemoveFromCartRequest
-	82,  // 98: business.BusinessService.ClearCart:input_type -> business.ClearCartRequest
-	89,  // 99: business.BusinessService.CreateOrders:input_type -> business.CreateOrdersRequest
-	91,  // 100: business.BusinessService.GetOrder:input_type -> business.GetOrderRequest
-	93,  // 101: business.BusinessService.ListBuyerOrders:input_type -> business.ListBuyerOrdersRequest
-	95,  // 102: business.BusinessService.ListSellerOrders:input_type -> business.ListSellerOrdersRequest
-	97,  // 103: business.BusinessService.UpdateOrderStatus:input_type -> business.UpdateOrderStatusRequest
-	99,  // 104: business.BusinessService.UpdateOrderTracking:input_type -> business.UpdateOrderTrackingRequest
-	102, // 105: business.BusinessService.CreateCoupon:input_type -> business.CreateCouponRequest
-	104, // 106: business.BusinessService.ListBusinessCoupons:input_type -> business.ListBusinessCouponsRequest
-	106, // 107: business.BusinessService.ValidateCoupon:input_type -> business.ValidateCouponRequest
-	108, // 108: business.BusinessService.ToggleWishlist:input_type -> business.ToggleWishlistRequest
-	110, // 109: business.BusinessService.GetWishlist:input_type -> business.GetWishlistRequest
-	113, // 110: business.BusinessService.AskProductQuestion:input_type -> business.AskProductQuestionRequest
-	115, // 111: business.BusinessService.AnswerProductQuestion:input_type -> business.AnswerProductQuestionRequest
-	117, // 112: business.BusinessService.GetProductQuestions:input_type -> business.GetProductQuestionsRequest
-	119, // 113: business.BusinessService.FlagProductQuestion:input_type -> business.FlagProductQuestionRequest
-	141, // 114: business.BusinessService.ModerateProductQuestion:input_type -> business.ModerateProductQuestionRequest
-	121, // 115: business.BusinessService.TransitionOrderStatus:input_type -> business.TransitionOrderStatusRequest
-	123, // 116: business.BusinessService.GetOrderStatusHistory:input_type -> business.GetOrderStatusHistoryRequest
-	128, // 117: business.BusinessService.CreateRefund:input_type -> business.CreateRefundRequest
-	130, // 118: business.BusinessService.ProcessRefund:input_type -> business.ProcessRefundRequest
-	132, // 119: business.BusinessService.ListRefunds:input_type -> business.ListRefundsRequest
-	135, // 120: business.BusinessService.CreateOrderModification:input_type -> business.CreateOrderModificationRequest
-	137, // 121: business.BusinessService.ProcessOrderModification:input_type -> business.ProcessOrderModificationRequest
-	139, // 122: business.BusinessService.ListOrderModifications:input_type -> business.ListOrderModificationsRequest
-	13,  // 123: business.BusinessService.CreateBusinessProfile:output_type -> business.CreateBusinessProfileResponse
-	15,  // 124: business.BusinessService.UpdateBusinessProfile:output_type -> business.UpdateBusinessProfileResponse
-	17,  // 125: business.BusinessService.GetBusinessProfile:output_type -> business.GetBusinessProfileResponse
-	19,  // 126: business.BusinessService.CreateCatalog:output_type -> business.CreateCatalogResponse
-	21,  // 127: business.BusinessService.AddProduct:output_type -> business.AddProductResponse
-	23,  // 128: business.BusinessService.UpdateProduct:output_type -> business.UpdateProductResponse
-	25,  // 129: business.BusinessService.ListProducts:output_type -> business.ListProductsResponse
-	27,  // 130: business.BusinessService.CreateMarketplaceProduct:output_type -> business.CreateMarketplaceProductResponse
-	29,  // 131: business.BusinessService.UpdateMarketplaceProduct:output_type -> business.UpdateMarketplaceProductResponse
-	31,  // 132: business.BusinessService.DeleteMarketplaceProduct:output_type -> business.DeleteMarketplaceProductResponse
-	33,  // 133: business.BusinessService.GetMarketplaceProduct:output_type -> business.GetMarketplaceProductResponse
-	35,  // 134: business.BusinessService.ListBusinessProducts:output_type -> business.ListBusinessProductsResponse
-	37,  // 135: business.BusinessService.ListMarketplaceProducts:output_type -> business.ListMarketplaceProductsResponse
-	39,  // 136: business.BusinessService.CreateProductVariant:output_type -> business.CreateProductVariantResponse
-	41,  // 137: business.BusinessService.ListProductVariants:output_type -> business.ListProductVariantsResponse
-	43,  // 138: business.BusinessService.UpdateProductVariant:output_type -> business.UpdateProductVariantResponse
-	45,  // 139: business.BusinessService.DeleteProductVariant:output_type -> business.DeleteProductVariantResponse
-	47,  // 140: business.BusinessService.ListCategories:output_type -> business.ListCategoriesResponse
-	49,  // 141: business.BusinessService.GetStore:output_type -> business.GetStoreResponse
-	51,  // 142: business.BusinessService.TrackProductView:output_type -> business.TrackProductViewResponse
-	53,  // 143: business.BusinessService.CreateReview:output_type -> business.CreateReviewResponse
-	55,  // 144: business.BusinessService.ListReviews:output_type -> business.ListReviewsResponse
-	57,  // 145: business.BusinessService.CreateAppointmentSlot:output_type -> business.CreateAppointmentSlotResponse
-	59,  // 146: business.BusinessService.BookAppointment:output_type -> business.BookAppointmentResponse
-	61,  // 147: business.BusinessService.ListAppointments:output_type -> business.ListAppointmentsResponse
-	63,  // 148: business.BusinessService.SetAutoReply:output_type -> business.SetAutoReplyResponse
-	65,  // 149: business.BusinessService.GetAutoReplies:output_type -> business.GetAutoRepliesResponse
-	67,  // 150: business.BusinessService.EnqueueCustomer:output_type -> business.EnqueueCustomerResponse
-	69,  // 151: business.BusinessService.DequeueCustomer:output_type -> business.DequeueCustomerResponse
-	71,  // 152: business.BusinessService.GetQueuePosition:output_type -> business.GetQueuePositionResponse
-	75,  // 153: business.BusinessService.AddToCart:output_type -> business.AddToCartResponse
-	77,  // 154: business.BusinessService.GetCart:output_type -> business.GetCartResponse
-	79,  // 155: business.BusinessService.UpdateCartItem:output_type -> business.UpdateCartItemResponse
-	81,  // 156: business.BusinessService.RemoveFromCart:output_type -> business.RemoveFromCartResponse
-	83,  // 157: business.BusinessService.ClearCart:output_type -> business.ClearCartResponse
-	90,  // 158: business.BusinessService.CreateOrders:output_type -> business.CreateOrdersResponse
-	92,  // 159: business.BusinessService.GetOrder:output_type -> business.GetOrderResponse
-	94,  // 160: business.BusinessService.ListBuyerOrders:output_type -> business.ListBuyerOrdersResponse
-	96,  // 161: business.BusinessService.ListSellerOrders:output_type -> business.ListSellerOrdersResponse
-	98,  // 162: business.BusinessService.UpdateOrderStatus:output_type -> business.UpdateOrderStatusResponse
-	100, // 163: business.BusinessService.UpdateOrderTracking:output_type -> business.UpdateOrderTrackingResponse
-	103, // 164: business.BusinessService.CreateCoupon:output_type -> business.CreateCouponResponse
-	105, // 165: business.BusinessService.ListBusinessCoupons:output_type -> business.ListBusinessCouponsResponse
-	107, // 166: business.BusinessService.ValidateCoupon:output_type -> business.ValidateCouponResponse
-	109, // 167: business.BusinessService.ToggleWishlist:output_type -> business.ToggleWishlistResponse
-	111, // 168: business.BusinessService.GetWishlist:output_type -> business.GetWishlistResponse
-	114, // 169: business.BusinessService.AskProductQuestion:output_type -> business.AskProductQuestionResponse
-	116, // 170: business.BusinessService.AnswerProductQuestion:output_type -> business.AnswerProductQuestionResponse
-	118, // 171: business.BusinessService.GetProductQuestions:output_type -> business.GetProductQuestionsResponse
-	120, // 172: business.BusinessService.FlagProductQuestion:output_type -> business.FlagProductQuestionResponse
-	142, // 173: business.BusinessService.ModerateProductQuestion:output_type -> business.ModerateProductQuestionResponse
-	122, // 174: business.BusinessService.TransitionOrderStatus:output_type -> business.TransitionOrderStatusResponse
-	124, // 175: business.BusinessService.GetOrderStatusHistory:output_type -> business.GetOrderStatusHistoryResponse
-	129, // 176: business.BusinessService.CreateRefund:output_type -> business.CreateRefundResponse
-	131, // 177: business.BusinessService.ProcessRefund:output_type -> business.ProcessRefundResponse
-	133, // 178: business.BusinessService.ListRefunds:output_type -> business.ListRefundsResponse
-	136, // 179: business.BusinessService.CreateOrderModification:output_type -> business.CreateOrderModificationResponse
-	138, // 180: business.BusinessService.ProcessOrderModification:output_type -> business.ProcessOrderModificationResponse
-	140, // 181: business.BusinessService.ListOrderModifications:output_type -> business.ListOrderModificationsResponse
-	123, // [123:182] is the sub-list for method output_type
-	64,  // [64:123] is the sub-list for method input_type
-	64,  // [64:64] is the sub-list for extension type_name
-	64,  // [64:64] is the sub-list for extension extendee
-	0,   // [0:64] is the sub-list for field type_name
+	113, // 52: business.AskProductQuestionResponse.question:type_name -> business.ProductQuestionPB
+	113, // 53: business.GetProductQuestionsResponse.questions:type_name -> business.ProductQuestionPB
+	87,  // 54: business.TransitionOrderStatusResponse.order:type_name -> business.Order
+	126, // 55: business.GetOrderStatusHistoryResponse.history:type_name -> business.OrderStatusChangePB
+	128, // 56: business.RefundPB.items:type_name -> business.RefundItemPB
+	128, // 57: business.CreateRefundRequest.items:type_name -> business.RefundItemPB
+	127, // 58: business.CreateRefundResponse.refund:type_name -> business.RefundPB
+	127, // 59: business.ProcessRefundResponse.refund:type_name -> business.RefundPB
+	127, // 60: business.ListRefundsResponse.refunds:type_name -> business.RefundPB
+	135, // 61: business.CreateOrderModificationResponse.modification:type_name -> business.OrderModificationPB
+	135, // 62: business.ProcessOrderModificationResponse.modification:type_name -> business.OrderModificationPB
+	135, // 63: business.ListOrderModificationsResponse.modifications:type_name -> business.OrderModificationPB
+	0,   // 64: business.GetFollowedStoresResponse.followed_stores:type_name -> business.BusinessProfile
+	12,  // 65: business.BusinessService.CreateBusinessProfile:input_type -> business.CreateBusinessProfileRequest
+	14,  // 66: business.BusinessService.UpdateBusinessProfile:input_type -> business.UpdateBusinessProfileRequest
+	16,  // 67: business.BusinessService.GetBusinessProfile:input_type -> business.GetBusinessProfileRequest
+	18,  // 68: business.BusinessService.CreateCatalog:input_type -> business.CreateCatalogRequest
+	20,  // 69: business.BusinessService.AddProduct:input_type -> business.AddProductRequest
+	22,  // 70: business.BusinessService.UpdateProduct:input_type -> business.UpdateProductRequest
+	24,  // 71: business.BusinessService.ListProducts:input_type -> business.ListProductsRequest
+	26,  // 72: business.BusinessService.CreateMarketplaceProduct:input_type -> business.CreateMarketplaceProductRequest
+	28,  // 73: business.BusinessService.UpdateMarketplaceProduct:input_type -> business.UpdateMarketplaceProductRequest
+	30,  // 74: business.BusinessService.DeleteMarketplaceProduct:input_type -> business.DeleteMarketplaceProductRequest
+	32,  // 75: business.BusinessService.GetMarketplaceProduct:input_type -> business.GetMarketplaceProductRequest
+	34,  // 76: business.BusinessService.ListBusinessProducts:input_type -> business.ListBusinessProductsRequest
+	36,  // 77: business.BusinessService.ListMarketplaceProducts:input_type -> business.ListMarketplaceProductsRequest
+	38,  // 78: business.BusinessService.ListFollowedMarketplaceProducts:input_type -> business.ListFollowedMarketplaceProductsRequest
+	39,  // 79: business.BusinessService.CreateProductVariant:input_type -> business.CreateProductVariantRequest
+	41,  // 80: business.BusinessService.ListProductVariants:input_type -> business.ListProductVariantsRequest
+	43,  // 81: business.BusinessService.UpdateProductVariant:input_type -> business.UpdateProductVariantRequest
+	45,  // 82: business.BusinessService.DeleteProductVariant:input_type -> business.DeleteProductVariantRequest
+	47,  // 83: business.BusinessService.ListCategories:input_type -> business.ListCategoriesRequest
+	49,  // 84: business.BusinessService.GetStore:input_type -> business.GetStoreRequest
+	51,  // 85: business.BusinessService.TrackProductView:input_type -> business.TrackProductViewRequest
+	53,  // 86: business.BusinessService.CreateReview:input_type -> business.CreateReviewRequest
+	55,  // 87: business.BusinessService.ListReviews:input_type -> business.ListReviewsRequest
+	57,  // 88: business.BusinessService.CreateAppointmentSlot:input_type -> business.CreateAppointmentSlotRequest
+	59,  // 89: business.BusinessService.BookAppointment:input_type -> business.BookAppointmentRequest
+	61,  // 90: business.BusinessService.ListAppointments:input_type -> business.ListAppointmentsRequest
+	63,  // 91: business.BusinessService.SetAutoReply:input_type -> business.SetAutoReplyRequest
+	65,  // 92: business.BusinessService.GetAutoReplies:input_type -> business.GetAutoRepliesRequest
+	67,  // 93: business.BusinessService.EnqueueCustomer:input_type -> business.EnqueueCustomerRequest
+	69,  // 94: business.BusinessService.DequeueCustomer:input_type -> business.DequeueCustomerRequest
+	71,  // 95: business.BusinessService.GetQueuePosition:input_type -> business.GetQueuePositionRequest
+	75,  // 96: business.BusinessService.AddToCart:input_type -> business.AddToCartRequest
+	77,  // 97: business.BusinessService.GetCart:input_type -> business.GetCartRequest
+	79,  // 98: business.BusinessService.UpdateCartItem:input_type -> business.UpdateCartItemRequest
+	81,  // 99: business.BusinessService.RemoveFromCart:input_type -> business.RemoveFromCartRequest
+	83,  // 100: business.BusinessService.ClearCart:input_type -> business.ClearCartRequest
+	90,  // 101: business.BusinessService.CreateOrders:input_type -> business.CreateOrdersRequest
+	92,  // 102: business.BusinessService.GetOrder:input_type -> business.GetOrderRequest
+	94,  // 103: business.BusinessService.ListBuyerOrders:input_type -> business.ListBuyerOrdersRequest
+	96,  // 104: business.BusinessService.ListSellerOrders:input_type -> business.ListSellerOrdersRequest
+	98,  // 105: business.BusinessService.UpdateOrderStatus:input_type -> business.UpdateOrderStatusRequest
+	100, // 106: business.BusinessService.UpdateOrderTracking:input_type -> business.UpdateOrderTrackingRequest
+	103, // 107: business.BusinessService.CreateCoupon:input_type -> business.CreateCouponRequest
+	105, // 108: business.BusinessService.ListBusinessCoupons:input_type -> business.ListBusinessCouponsRequest
+	107, // 109: business.BusinessService.ValidateCoupon:input_type -> business.ValidateCouponRequest
+	109, // 110: business.BusinessService.ToggleWishlist:input_type -> business.ToggleWishlistRequest
+	111, // 111: business.BusinessService.GetWishlist:input_type -> business.GetWishlistRequest
+	114, // 112: business.BusinessService.AskProductQuestion:input_type -> business.AskProductQuestionRequest
+	116, // 113: business.BusinessService.AnswerProductQuestion:input_type -> business.AnswerProductQuestionRequest
+	118, // 114: business.BusinessService.GetProductQuestions:input_type -> business.GetProductQuestionsRequest
+	120, // 115: business.BusinessService.FlagProductQuestion:input_type -> business.FlagProductQuestionRequest
+	142, // 116: business.BusinessService.ModerateProductQuestion:input_type -> business.ModerateProductQuestionRequest
+	122, // 117: business.BusinessService.TransitionOrderStatus:input_type -> business.TransitionOrderStatusRequest
+	124, // 118: business.BusinessService.GetOrderStatusHistory:input_type -> business.GetOrderStatusHistoryRequest
+	129, // 119: business.BusinessService.CreateRefund:input_type -> business.CreateRefundRequest
+	131, // 120: business.BusinessService.ProcessRefund:input_type -> business.ProcessRefundRequest
+	133, // 121: business.BusinessService.ListRefunds:input_type -> business.ListRefundsRequest
+	136, // 122: business.BusinessService.CreateOrderModification:input_type -> business.CreateOrderModificationRequest
+	138, // 123: business.BusinessService.ProcessOrderModification:input_type -> business.ProcessOrderModificationRequest
+	140, // 124: business.BusinessService.ListOrderModifications:input_type -> business.ListOrderModificationsRequest
+	144, // 125: business.BusinessService.ToggleFollowStore:input_type -> business.ToggleFollowStoreRequest
+	146, // 126: business.BusinessService.IsFollowingStore:input_type -> business.IsFollowingStoreRequest
+	148, // 127: business.BusinessService.GetFollowedStores:input_type -> business.GetFollowedStoresRequest
+	150, // 128: business.BusinessService.ToggleReviewHelpful:input_type -> business.ToggleReviewHelpfulRequest
+	13,  // 129: business.BusinessService.CreateBusinessProfile:output_type -> business.CreateBusinessProfileResponse
+	15,  // 130: business.BusinessService.UpdateBusinessProfile:output_type -> business.UpdateBusinessProfileResponse
+	17,  // 131: business.BusinessService.GetBusinessProfile:output_type -> business.GetBusinessProfileResponse
+	19,  // 132: business.BusinessService.CreateCatalog:output_type -> business.CreateCatalogResponse
+	21,  // 133: business.BusinessService.AddProduct:output_type -> business.AddProductResponse
+	23,  // 134: business.BusinessService.UpdateProduct:output_type -> business.UpdateProductResponse
+	25,  // 135: business.BusinessService.ListProducts:output_type -> business.ListProductsResponse
+	27,  // 136: business.BusinessService.CreateMarketplaceProduct:output_type -> business.CreateMarketplaceProductResponse
+	29,  // 137: business.BusinessService.UpdateMarketplaceProduct:output_type -> business.UpdateMarketplaceProductResponse
+	31,  // 138: business.BusinessService.DeleteMarketplaceProduct:output_type -> business.DeleteMarketplaceProductResponse
+	33,  // 139: business.BusinessService.GetMarketplaceProduct:output_type -> business.GetMarketplaceProductResponse
+	35,  // 140: business.BusinessService.ListBusinessProducts:output_type -> business.ListBusinessProductsResponse
+	37,  // 141: business.BusinessService.ListMarketplaceProducts:output_type -> business.ListMarketplaceProductsResponse
+	37,  // 142: business.BusinessService.ListFollowedMarketplaceProducts:output_type -> business.ListMarketplaceProductsResponse
+	40,  // 143: business.BusinessService.CreateProductVariant:output_type -> business.CreateProductVariantResponse
+	42,  // 144: business.BusinessService.ListProductVariants:output_type -> business.ListProductVariantsResponse
+	44,  // 145: business.BusinessService.UpdateProductVariant:output_type -> business.UpdateProductVariantResponse
+	46,  // 146: business.BusinessService.DeleteProductVariant:output_type -> business.DeleteProductVariantResponse
+	48,  // 147: business.BusinessService.ListCategories:output_type -> business.ListCategoriesResponse
+	50,  // 148: business.BusinessService.GetStore:output_type -> business.GetStoreResponse
+	52,  // 149: business.BusinessService.TrackProductView:output_type -> business.TrackProductViewResponse
+	54,  // 150: business.BusinessService.CreateReview:output_type -> business.CreateReviewResponse
+	56,  // 151: business.BusinessService.ListReviews:output_type -> business.ListReviewsResponse
+	58,  // 152: business.BusinessService.CreateAppointmentSlot:output_type -> business.CreateAppointmentSlotResponse
+	60,  // 153: business.BusinessService.BookAppointment:output_type -> business.BookAppointmentResponse
+	62,  // 154: business.BusinessService.ListAppointments:output_type -> business.ListAppointmentsResponse
+	64,  // 155: business.BusinessService.SetAutoReply:output_type -> business.SetAutoReplyResponse
+	66,  // 156: business.BusinessService.GetAutoReplies:output_type -> business.GetAutoRepliesResponse
+	68,  // 157: business.BusinessService.EnqueueCustomer:output_type -> business.EnqueueCustomerResponse
+	70,  // 158: business.BusinessService.DequeueCustomer:output_type -> business.DequeueCustomerResponse
+	72,  // 159: business.BusinessService.GetQueuePosition:output_type -> business.GetQueuePositionResponse
+	76,  // 160: business.BusinessService.AddToCart:output_type -> business.AddToCartResponse
+	78,  // 161: business.BusinessService.GetCart:output_type -> business.GetCartResponse
+	80,  // 162: business.BusinessService.UpdateCartItem:output_type -> business.UpdateCartItemResponse
+	82,  // 163: business.BusinessService.RemoveFromCart:output_type -> business.RemoveFromCartResponse
+	84,  // 164: business.BusinessService.ClearCart:output_type -> business.ClearCartResponse
+	91,  // 165: business.BusinessService.CreateOrders:output_type -> business.CreateOrdersResponse
+	93,  // 166: business.BusinessService.GetOrder:output_type -> business.GetOrderResponse
+	95,  // 167: business.BusinessService.ListBuyerOrders:output_type -> business.ListBuyerOrdersResponse
+	97,  // 168: business.BusinessService.ListSellerOrders:output_type -> business.ListSellerOrdersResponse
+	99,  // 169: business.BusinessService.UpdateOrderStatus:output_type -> business.UpdateOrderStatusResponse
+	101, // 170: business.BusinessService.UpdateOrderTracking:output_type -> business.UpdateOrderTrackingResponse
+	104, // 171: business.BusinessService.CreateCoupon:output_type -> business.CreateCouponResponse
+	106, // 172: business.BusinessService.ListBusinessCoupons:output_type -> business.ListBusinessCouponsResponse
+	108, // 173: business.BusinessService.ValidateCoupon:output_type -> business.ValidateCouponResponse
+	110, // 174: business.BusinessService.ToggleWishlist:output_type -> business.ToggleWishlistResponse
+	112, // 175: business.BusinessService.GetWishlist:output_type -> business.GetWishlistResponse
+	115, // 176: business.BusinessService.AskProductQuestion:output_type -> business.AskProductQuestionResponse
+	117, // 177: business.BusinessService.AnswerProductQuestion:output_type -> business.AnswerProductQuestionResponse
+	119, // 178: business.BusinessService.GetProductQuestions:output_type -> business.GetProductQuestionsResponse
+	121, // 179: business.BusinessService.FlagProductQuestion:output_type -> business.FlagProductQuestionResponse
+	143, // 180: business.BusinessService.ModerateProductQuestion:output_type -> business.ModerateProductQuestionResponse
+	123, // 181: business.BusinessService.TransitionOrderStatus:output_type -> business.TransitionOrderStatusResponse
+	125, // 182: business.BusinessService.GetOrderStatusHistory:output_type -> business.GetOrderStatusHistoryResponse
+	130, // 183: business.BusinessService.CreateRefund:output_type -> business.CreateRefundResponse
+	132, // 184: business.BusinessService.ProcessRefund:output_type -> business.ProcessRefundResponse
+	134, // 185: business.BusinessService.ListRefunds:output_type -> business.ListRefundsResponse
+	137, // 186: business.BusinessService.CreateOrderModification:output_type -> business.CreateOrderModificationResponse
+	139, // 187: business.BusinessService.ProcessOrderModification:output_type -> business.ProcessOrderModificationResponse
+	141, // 188: business.BusinessService.ListOrderModifications:output_type -> business.ListOrderModificationsResponse
+	145, // 189: business.BusinessService.ToggleFollowStore:output_type -> business.ToggleFollowStoreResponse
+	147, // 190: business.BusinessService.IsFollowingStore:output_type -> business.IsFollowingStoreResponse
+	149, // 191: business.BusinessService.GetFollowedStores:output_type -> business.GetFollowedStoresResponse
+	151, // 192: business.BusinessService.ToggleReviewHelpful:output_type -> business.ToggleReviewHelpfulResponse
+	129, // [129:193] is the sub-list for method output_type
+	65,  // [65:129] is the sub-list for method input_type
+	65,  // [65:65] is the sub-list for extension type_name
+	65,  // [65:65] is the sub-list for extension extendee
+	0,   // [0:65] is the sub-list for field type_name
 }
 
 func init() { file_proto_business_proto_init() }
@@ -11031,7 +11546,7 @@ func file_proto_business_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_business_proto_rawDesc), len(file_proto_business_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   144,
+			NumMessages:   153,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
