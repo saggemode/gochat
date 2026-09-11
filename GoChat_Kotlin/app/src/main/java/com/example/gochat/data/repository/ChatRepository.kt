@@ -232,11 +232,29 @@ class ChatRepository @Inject constructor(
         //     }
         // }
 
-        // 1. Insert optimistic message into local Room DB immediately (status = SENDING)
+        // 1. Pre-read media bytes and generate BlurHash BEFORE the optimistic insert,
+        //    so the UI immediately shows the blurry placeholder while uploading.
+        var cachedMediaBytes: ByteArray? = null
+        var cachedMediaUri: Uri? = null
+        if (!mediaUrl.isNullOrBlank() && !mediaUrl.startsWith("http://") && !mediaUrl.startsWith("https://")) {
+            cachedMediaUri = Uri.parse(mediaUrl)
+            cachedMediaBytes = readUriBytes(cachedMediaUri!!)
+            if (cachedMediaBytes != null && type == 1) { // IMAGE
+                try {
+                    val bitmap = BitmapFactory.decodeByteArray(cachedMediaBytes, 0, cachedMediaBytes.size)
+                    if (bitmap != null) {
+                        val scaled = Bitmap.createScaledBitmap(bitmap, 100, 100, false)
+                        blurHash = BlurHashUtil.encode(scaled, 4, 3)
+                    }
+                } catch (_: Exception) {}
+            }
+        }
+
+        // 2. Insert optimistic message into local Room DB immediately (status = SENDING)
         var localMsg = createOptimisticMessage(
             conversationId, content, type, mediaUrl,
             replyToId, replyToText, replyToSenderName
-        ).copy(status = MessageStatus.SENDING)
+        ).copy(status = MessageStatus.SENDING, blurHash = blurHash)
 
 
         
@@ -249,35 +267,18 @@ class ChatRepository @Inject constructor(
         dao.insertMessage(localMsg)
 
         return try {
-            // 2. Upload media first if it is a local device path / URI
+            // 3. Upload media using the pre-cached bytes (no second read needed)
             var finalMediaUrl = mediaUrl
-            if (!finalMediaUrl.isNullOrBlank() && !finalMediaUrl.startsWith("http://") && !finalMediaUrl.startsWith("https://")) {
-                val uri = Uri.parse(finalMediaUrl)
-                val bytes = readUriBytes(uri)
-                if (bytes != null) {
-                    // Generate BlurHash for images
-                    if (localMsg.type == MessageType.IMAGE) {
-                        try {
-                            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                            if (bitmap != null) {
-                                // Scale down for faster encoding
-                                val scaled = Bitmap.createScaledBitmap(bitmap, 100, 100, false)
-                                blurHash = BlurHashUtil.encode(scaled, 4, 3)
-                            }
-                        } catch (_: Exception) {}
-                    }
-
-                    val mimeType = when (localMsg.type) {
-
-                        MessageType.IMAGE -> "image/jpeg"
-                        MessageType.VIDEO -> "video/mp4"
-                        MessageType.VOICE, MessageType.AUDIO -> "audio/mp4"
-                        else -> "application/octet-stream"
-                    }
-                    val uploaded = uploadMedia(bytes, mimeType, uri.lastPathSegment ?: "media.jpg")
-                    if (!uploaded.isNullOrBlank()) {
-                        finalMediaUrl = uploaded
-                    }
+            if (cachedMediaBytes != null && cachedMediaUri != null) {
+                val mimeType = when (localMsg.type) {
+                    MessageType.IMAGE -> "image/jpeg"
+                    MessageType.VIDEO -> "video/mp4"
+                    MessageType.VOICE, MessageType.AUDIO -> "audio/mp4"
+                    else -> "application/octet-stream"
+                }
+                val uploaded = uploadMedia(cachedMediaBytes, mimeType, cachedMediaUri.lastPathSegment ?: "media.jpg")
+                if (!uploaded.isNullOrBlank()) {
+                    finalMediaUrl = uploaded
                 }
             }
 

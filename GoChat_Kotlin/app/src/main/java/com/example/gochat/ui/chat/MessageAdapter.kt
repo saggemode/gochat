@@ -306,18 +306,33 @@ class MessageAdapter(
                 // Media Image Preview
                 if (isImage) {
                     layoutImageContainer.visibility = View.VISIBLE
-                    pbImageLoading.visibility = if (message.status == MessageStatus.SENDING) View.VISIBLE else View.GONE
-                    ivMessageImage.alpha = if (message.status == MessageStatus.SENDING) 0.6f else 1.0f
+                    val isSending = message.status == MessageStatus.SENDING
+                    pbImageLoadingContainer.visibility = if (isSending) View.VISIBLE else View.GONE
 
-                    MediaImageHelper.loadSafeImage(
-                        imageView = ivMessageImage,
-                        url = message.mediaUrl,
-                        isCircle = false,
-                        cornerRadiusDp = 12f,
-                        placeholderRes = R.drawable.ic_gallery,
-                        errorRes = R.drawable.ic_gallery,
-                        blurHash = message.blurHash
-                    )
+                    if (isSending && !message.blurHash.isNullOrBlank()) {
+                        // WhatsApp-style: show blurry preview while uploading
+                        val blurBitmap = com.example.gochat.core.utils.BlurHashUtil.decode(message.blurHash, 32, 32)
+                        if (blurBitmap != null) {
+                            ivMessageImage.setImageDrawable(
+                                android.graphics.drawable.BitmapDrawable(itemView.context.resources, blurBitmap)
+                            )
+                        } else {
+                            ivMessageImage.setImageResource(R.drawable.ic_gallery)
+                        }
+                        ivMessageImage.alpha = 1.0f
+                    } else {
+                        // Load real image (with blur as placeholder for crossfade)
+                        ivMessageImage.alpha = if (isSending) 0.6f else 1.0f
+                        MediaImageHelper.loadSafeImage(
+                            imageView = ivMessageImage,
+                            url = message.mediaUrl,
+                            isCircle = false,
+                            cornerRadiusDp = 12f,
+                            placeholderRes = R.drawable.ic_gallery,
+                            errorRes = R.drawable.ic_gallery,
+                            blurHash = message.blurHash
+                        )
+                    }
                     
                     // Interaction
                     layoutImageContainer.setOnClickListener {
@@ -533,18 +548,33 @@ class MessageAdapter(
                 // Media Image Preview
                 if (isImage) {
                     layoutImageContainer.visibility = View.VISIBLE
-                    pbImageLoading.visibility = if (message.status == MessageStatus.SENDING) View.VISIBLE else View.GONE
-                    ivMessageImage.alpha = if (message.status == MessageStatus.SENDING) 0.6f else 1.0f
+                    val isSending = message.status == MessageStatus.SENDING
+                    pbImageLoadingContainer.visibility = if (isSending) View.VISIBLE else View.GONE
 
-                    MediaImageHelper.loadSafeImage(
-                        imageView = ivMessageImage,
-                        url = message.mediaUrl,
-                        isCircle = false,
-                        cornerRadiusDp = 12f,
-                        placeholderRes = R.drawable.ic_gallery,
-                        errorRes = R.drawable.ic_gallery,
-                        blurHash = message.blurHash
-                    )
+                    if (isSending && !message.blurHash.isNullOrBlank()) {
+                        // WhatsApp-style: show blurry preview while uploading
+                        val blurBitmap = com.example.gochat.core.utils.BlurHashUtil.decode(message.blurHash, 32, 32)
+                        if (blurBitmap != null) {
+                            ivMessageImage.setImageDrawable(
+                                android.graphics.drawable.BitmapDrawable(itemView.context.resources, blurBitmap)
+                            )
+                        } else {
+                            ivMessageImage.setImageResource(R.drawable.ic_gallery)
+                        }
+                        ivMessageImage.alpha = 1.0f
+                    } else {
+                        // Load real image (with blur as placeholder for crossfade)
+                        ivMessageImage.alpha = if (isSending) 0.6f else 1.0f
+                        MediaImageHelper.loadSafeImage(
+                            imageView = ivMessageImage,
+                            url = message.mediaUrl,
+                            isCircle = false,
+                            cornerRadiusDp = 12f,
+                            placeholderRes = R.drawable.ic_gallery,
+                            errorRes = R.drawable.ic_gallery,
+                            blurHash = message.blurHash
+                        )
+                    }
                     
                     // Interaction
                     layoutImageContainer.setOnClickListener {
