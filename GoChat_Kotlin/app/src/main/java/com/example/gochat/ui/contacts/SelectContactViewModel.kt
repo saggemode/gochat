@@ -7,6 +7,8 @@ import com.example.gochat.R
 import com.example.gochat.core.contacts.ContactSyncManager
 import com.example.gochat.data.model.Conversation
 import com.example.gochat.data.model.SyncedContact
+import com.example.gochat.data.model.User
+import com.example.gochat.data.repository.AuthRepository
 import com.example.gochat.data.repository.ChatRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -19,7 +21,8 @@ import javax.inject.Inject
 class SelectContactViewModel @Inject constructor(
     application: Application,
     private val syncManager: ContactSyncManager,
-    private val chatRepository: ChatRepository
+    private val chatRepository: ChatRepository,
+    private val authRepository: AuthRepository
 ) : AndroidViewModel(application) {
 
     private val _allContacts = MutableStateFlow<List<SyncedContact>>(emptyList())
@@ -204,6 +207,63 @@ class SelectContactViewModel @Inject constructor(
                 isGroup = false
             )
 
+            onComplete(result.getOrNull())
+        }
+    }
+
+    /**
+     * Fast real-time PIN lookup to preview user as the PIN is being typed.
+     */
+    fun previewUserByPin(pin: String, onResult: (User?) -> Unit): kotlinx.coroutines.Job {
+        return viewModelScope.launch {
+            val cleanPin = pin.trim().uppercase()
+            if (cleanPin.length < 4) {
+                onResult(null)
+                return@launch
+            }
+            // 1. Check in synced contacts first
+            val local = _allContacts.value.firstOrNull { it.pin.equals(cleanPin, ignoreCase = true) }
+            if (local != null) {
+                onResult(
+                    User(
+                        id = local.finalUserId,
+                        displayName = local.displayName,
+                        avatarUrl = local.avatarUrl,
+                        pin = local.pin
+                    )
+                )
+                return@launch
+            }
+            // 2. Query backend
+            val result = authRepository.lookupUserByPin(cleanPin)
+            onResult(result.getOrNull())
+        }
+    }
+
+    /**
+     * Open or create direct chat with a pre-resolved User object.
+     */
+    fun openOrCreateChatWithUser(user: User, onComplete: (Conversation?) -> Unit) {
+        viewModelScope.launch {
+            val userId = user.id
+            if (userId.isBlank()) {
+                onComplete(null)
+                return@launch
+            }
+            val existing = withContext(Dispatchers.IO) {
+                chatRepository.getAllConversationsList().firstOrNull { conv ->
+                    !conv.isGroup && (conv.memberIds.contains(userId) || (user.pin.isNotBlank() && conv.partnerPin?.equals(user.pin, ignoreCase = true) == true))
+                }
+            }
+            if (existing != null) {
+                onComplete(existing)
+                return@launch
+            }
+            val result = chatRepository.createConversation(
+                name = user.displayName.ifBlank { "User ${user.pin}" },
+                memberIds = listOf(userId),
+                isGroup = false
+            )
             onComplete(result.getOrNull())
         }
     }

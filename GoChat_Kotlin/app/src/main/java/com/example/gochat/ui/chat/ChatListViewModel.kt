@@ -10,12 +10,14 @@ import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.model.Conversation
 import com.example.gochat.data.model.ConversationType
 import com.example.gochat.data.model.InvitationStatus
+import com.example.gochat.data.model.User
 import com.example.gochat.data.model.UserStories
 import com.example.gochat.data.repository.AuthRepository
 import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.data.repository.StoryRepository
 import com.example.gochat.data.websocket.GoChatWebSocket
 import com.example.gochat.core.network.NetworkMonitor
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -219,6 +221,67 @@ class ChatListViewModel @Inject constructor(
             }
 
             // Otherwise create new conversation via repository
+            val createResult = chatRepository.createConversation(
+                name = targetUser.displayName.ifBlank { "User ${targetUser.pin}" },
+                memberIds = listOf(targetUser.id),
+                isGroup = false
+            )
+
+            createResult.onSuccess { newConv ->
+                _newConversationEvent.tryEmit(newConv)
+            }
+            onResult(createResult)
+        }
+    }
+
+    /**
+     * Fast real-time PIN lookup to preview user as the PIN is being typed.
+     */
+    fun previewUserByPin(pin: String, onResult: (User?) -> Unit): kotlinx.coroutines.Job {
+        return viewModelScope.launch {
+            val cleanPin = pin.trim().uppercase()
+            if (cleanPin.length < 4) {
+                onResult(null)
+                return@launch
+            }
+            // 1. Check local conversations first for instant match
+            val existing = allConversations.value.firstOrNull { conv ->
+                conv.partnerPin?.equals(cleanPin, ignoreCase = true) == true
+            }
+            if (existing != null) {
+                onResult(
+                    User(
+                        id = existing.id,
+                        displayName = existing.title,
+                        avatarUrl = existing.avatarUrl,
+                        pin = cleanPin
+                    )
+                )
+                return@launch
+            }
+
+            // 2. Fetch from backend
+            val result = authRepository.lookupUserByPin(cleanPin)
+            onResult(result.getOrNull())
+        }
+    }
+
+    /**
+     * Start chat directly with a pre-resolved User object (from PIN preview).
+     */
+    fun startChatWithUser(targetUser: User, onResult: (Result<Conversation>) -> Unit) {
+        viewModelScope.launch {
+            val existing = allConversations.value.firstOrNull { conv ->
+                conv.memberIds.contains(targetUser.id) ||
+                (targetUser.pin.isNotBlank() && conv.partnerPin.equals(targetUser.pin, ignoreCase = true))
+            }
+
+            if (existing != null) {
+                _newConversationEvent.tryEmit(existing)
+                onResult(Result.success(existing))
+                return@launch
+            }
+
             val createResult = chatRepository.createConversation(
                 name = targetUser.displayName.ifBlank { "User ${targetUser.pin}" },
                 memberIds = listOf(targetUser.id),

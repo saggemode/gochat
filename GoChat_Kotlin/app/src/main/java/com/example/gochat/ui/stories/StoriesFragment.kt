@@ -207,9 +207,13 @@ class StoriesFragment : Fragment() {
             val chosenColor = bgColors[currentColorIndex]
             dialogBinding.fabPostStatus.isEnabled = false
 
-            viewModel.postTextStatus(text, chosenColor) { success, _ ->
+            viewModel.postTextStatus(text, chosenColor) { success, error ->
                 dialog.dismiss()
-                Toast.makeText(requireContext(), getString(R.string.toast_status_updated), Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    requireContext(),
+                    if (success) getString(R.string.toast_status_updated) else (error ?: getString(R.string.error_image_processing)),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
 
@@ -229,14 +233,19 @@ class StoriesFragment : Fragment() {
                 }
 
                 if (compressed != null) {
-                    Toast.makeText(requireContext(), getString(R.string.toast_status_updated), Toast.LENGTH_SHORT).show()
                     viewModel.postMediaStatus(
                         mediaBytes = compressed.bytes,
                         mimeType = compressed.mimeType,
                         localDataUri = compressed.dataUri,
                         caption = "",
                         mediaType = "image"
-                    ) { _, _ -> }
+                    ) { success, error ->
+                        Toast.makeText(
+                            requireContext(),
+                            if (success) getString(R.string.toast_status_updated) else (error ?: getString(R.string.error_image_processing)),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 } else {
                     Toast.makeText(requireContext(), getString(R.string.error_image_processing), Toast.LENGTH_SHORT).show()
                 }

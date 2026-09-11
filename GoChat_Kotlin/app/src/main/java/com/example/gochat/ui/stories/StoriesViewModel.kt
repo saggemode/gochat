@@ -221,8 +221,7 @@ class StoriesViewModel @Inject constructor(
                 loadStories()
                 onComplete(true, null)
             }.onFailure { e ->
-                // Local status is already displayed; notify caller gracefully
-                onComplete(true, null)
+                onComplete(false, e.message ?: "Failed to post status")
             }
         }
     }
@@ -307,9 +306,8 @@ class StoriesViewModel @Inject constructor(
             result.onSuccess {
                 loadStories()
                 onComplete(true, null)
-            }.onFailure {
-                // Local status is already displayed
-                onComplete(true, null)
+            }.onFailure { e ->
+                onComplete(false, e.message ?: "Failed to post status")
             }
         }
     }

@@ -17,8 +17,10 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.gochat.R
+import com.example.gochat.core.media.MediaImageHelper
 import com.example.gochat.data.model.Conversation
 import com.example.gochat.data.model.SyncedContact
+import com.example.gochat.data.model.User
 import com.example.gochat.databinding.ActivitySelectContactBinding
 import com.example.gochat.databinding.DialogNewChatByPinBinding
 import com.example.gochat.ui.chat.ChatRoomActivity
@@ -275,28 +277,92 @@ class SelectContactActivity : AppCompatActivity() {
 
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
-        dialogBinding.btnCancelPin.setOnClickListener { dialog.dismiss() }
+        var matchedUser: User? = null
+        var lookupJob: kotlinx.coroutines.Job? = null
+
+        dialogBinding.btnCancelPin.setOnClickListener {
+            lookupJob?.cancel()
+            dialog.dismiss()
+        }
+
+        dialogBinding.btnConnectPin.isEnabled = false
+
+        // Live PIN input watcher: Automatically loads and previews user as PIN is typed
+        dialogBinding.etPinInput.doAfterTextChanged { editable ->
+            val pin = editable?.toString()?.trim()?.uppercase().orEmpty()
+            lookupJob?.cancel()
+
+            if (pin.length < 4) {
+                matchedUser = null
+                dialogBinding.pbPinLoading.visibility = View.GONE
+                dialogBinding.layoutUserPreview.visibility = View.GONE
+                dialogBinding.tvPinError.visibility = View.GONE
+                dialogBinding.btnConnectPin.isEnabled = false
+                return@doAfterTextChanged
+            }
+
+            dialogBinding.pbPinLoading.visibility = View.VISIBLE
+            dialogBinding.tvPinError.visibility = View.GONE
+
+            lookupJob = lifecycleScope.launch {
+                kotlinx.coroutines.delay(250) // Debounce typing
+                viewModel.previewUserByPin(pin) { user ->
+                    dialogBinding.pbPinLoading.visibility = View.GONE
+                    if (user != null) {
+                        matchedUser = user
+                        dialogBinding.tvPinError.visibility = View.GONE
+                        dialogBinding.layoutUserPreview.visibility = View.VISIBLE
+
+                        dialogBinding.tvPreviewName.text = user.displayName.ifBlank { "User ${user.pin}" }
+                        dialogBinding.tvPreviewPin.text = "PIN: ${user.pin}"
+                        dialogBinding.tvPreviewBio.text = user.bio.ifBlank { user.statusText }
+
+                        MediaImageHelper.loadSafeImage(
+                            imageView = dialogBinding.ivPreviewAvatar,
+                            url = user.avatarUrl,
+                            isCircle = true,
+                            placeholderRes = R.drawable.ic_account,
+                            errorRes = R.drawable.ic_account
+                        )
+
+                        dialogBinding.btnConnectPin.isEnabled = true
+                    } else {
+                        matchedUser = null
+                        dialogBinding.layoutUserPreview.visibility = View.GONE
+                        if (pin.length >= 6) {
+                            dialogBinding.tvPinError.visibility = View.VISIBLE
+                            dialogBinding.tvPinError.text = "User not found with this PIN"
+                        }
+                        dialogBinding.btnConnectPin.isEnabled = false
+                    }
+                }
+            }
+        }
 
         dialogBinding.btnConnectPin.setOnClickListener {
-            val pin = dialogBinding.etPinInput.text?.toString()?.trim()?.uppercase().orEmpty()
-            if (pin.length < 4) {
-                dialogBinding.tvPinError.visibility = View.VISIBLE
-                dialogBinding.tvPinError.text = "Please enter a valid 6-character PIN"
-                return@setOnClickListener
+            val user = matchedUser
+            if (user != null) {
+                dialogBinding.btnConnectPin.isEnabled = false
+                viewModel.openOrCreateChatWithUser(user) { conv ->
+                    if (conv != null) {
+                        dialog.dismiss()
+                        val intent = Intent(this, ChatRoomActivity::class.java).apply {
+                            putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, conv.id)
+                            putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, conv.title)
+                            putExtra(ChatRoomActivity.EXTRA_CONVERSATION_AVATAR, conv.avatarUrl)
+                            putExtra(ChatRoomActivity.EXTRA_IS_ONLINE, conv.isOnline)
+                            putExtra(ChatRoomActivity.EXTRA_LAST_SEEN, conv.lastSeen ?: 0L)
+                            putExtra(ChatRoomActivity.EXTRA_IS_GROUP, conv.isGroup)
+                        }
+                        startActivity(intent)
+                        finish()
+                    } else {
+                        dialogBinding.btnConnectPin.isEnabled = true
+                        dialogBinding.tvPinError.visibility = View.VISIBLE
+                        dialogBinding.tvPinError.text = "Failed to start conversation"
+                    }
+                }
             }
-
-            dialogBinding.tvPinError.visibility = View.GONE
-            dialogBinding.btnConnectPin.isEnabled = false
-
-            viewModel.allContacts.value.firstOrNull { it.pin.equals(pin, ignoreCase = true) }?.let { matched ->
-                dialog.dismiss()
-                openChatWithContact(matched)
-                return@setOnClickListener
-            }
-
-            // Otherwise search via backend
-            dialog.dismiss()
-            Toast.makeText(this, "Connecting to PIN: $pin…", Toast.LENGTH_SHORT).show()
         }
 
         dialog.show()

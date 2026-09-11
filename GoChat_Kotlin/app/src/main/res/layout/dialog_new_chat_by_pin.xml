@@ -43,25 +43,117 @@
         android:textColor="@color/gochat_text_secondary"
         android:textSize="12.5sp" />
 
-    <!-- PIN Input Field -->
-    <EditText
-        android:id="@+id/etPinInput"
+    <!-- PIN Input Field with Live Search Indicator -->
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginTop="18dp"
-        android:background="@drawable/bg_input_field"
-        android:fontFamily="monospace"
-        android:gravity="center"
-        android:hint="8492A1"
-        android:imeOptions="actionDone"
-        android:importantForAutofill="no"
-        android:inputType="textCapCharacters"
-        android:letterSpacing="0.25"
-        android:maxLength="8"
-        android:textColor="@color/gochat_emerald_light"
-        android:textColorHint="@color/gochat_text_subtle"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp">
+
+        <EditText
+            android:id="@+id/etPinInput"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_input_field"
+            android:fontFamily="monospace"
+            android:gravity="center"
+            android:hint="8492A1"
+            android:imeOptions="actionDone"
+            android:importantForAutofill="no"
+            android:inputType="textCapCharacters"
+            android:letterSpacing="0.25"
+            android:maxLength="8"
+            android:paddingEnd="40dp"
+            android:paddingStart="40dp"
+            android:textColor="@color/gochat_emerald_light"
+            android:textColorHint="@color/gochat_text_subtle"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <ProgressBar
+            android:id="@+id/pbPinLoading"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="end|center_vertical"
+            android:layout_marginEnd="14dp"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/gochat_accent"
+            android:visibility="gone"
+            tools:visibility="visible" />
+    </FrameLayout>
+
+    <!-- User Preview Card (Auto-loaded when PIN is valid) -->
+    <LinearLayout
+        android:id="@+id/layoutUserPreview"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_pin_user_preview"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <ImageView
+            android:id="@+id/ivPreviewAvatar"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:contentDescription="Avatar"
+            android:src="@drawable/ic_account" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tvPreviewName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/gochat_text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    tools:text="Alice Johnson" />
+
+                <ImageView
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:layout_marginStart="6dp"
+                    android:contentDescription="Verified"
+                    android:src="@drawable/ic_check"
+                    app:tint="@color/gochat_accent" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvPreviewPin"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="@color/gochat_emerald_light"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                tools:text="PIN: 8492A1" />
+
+            <TextView
+                android:id="@+id/tvPreviewBio"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/gochat_text_muted"
+                android:textSize="11.5sp"
+                tools:text="Hey there! I am using GoChat." />
+        </LinearLayout>
+    </LinearLayout>
 
     <!-- Error Banner -->
     <TextView

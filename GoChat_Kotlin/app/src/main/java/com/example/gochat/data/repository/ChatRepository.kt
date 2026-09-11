@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Base64
+import android.util.Log
 import com.example.gochat.data.api.GoChatApiService
 
 import com.example.gochat.data.api.NetworkModule
@@ -221,12 +222,15 @@ class ChatRepository @Inject constructor(
         var encryptedContent = content
         var blurHash: String? = null
 
-        if (conv != null && conv.isDirect && type == 0) {
-            val targetUserId = conv.memberIds.find { it != currentUserId }
-            if (targetUserId != null) {
-                encryptedContent = encryptionManager.encryptMessage(targetUserId, content)
-            }
-        }
+        // NOTE: Client-side Signal Protocol encryption is disabled until session
+        // management is fully stable. Messages are already secured in transit
+        // via HTTPS/WSS. Re-enable once E2EE key exchange is verified end-to-end.
+        // if (conv != null && conv.isDirect && type == 0) {
+        //     val targetUserId = conv.memberIds.find { it != currentUserId }
+        //     if (targetUserId != null) {
+        //         encryptedContent = encryptionManager.encryptMessage(targetUserId, content)
+        //     }
+        // }
 
         // 1. Insert optimistic message into local Room DB immediately (status = SENDING)
         var localMsg = createOptimisticMessage(
@@ -392,9 +396,37 @@ class ChatRepository @Inject constructor(
 
             val msgObj = if (rawMsg is JsonObject) rawMsg else event
             val currentUserId = tokenManager.userId ?: ""
-            var msg = tryDecryptMessage(Message.fromJson(msgObj, currentUserId))
+            var msg = Message.fromJson(msgObj, currentUserId)
             if (msg.conversationId.isEmpty() && convId.isNotEmpty()) {
                 msg = msg.copy(conversationId = convId)
+            }
+
+            // Guard: preserve locally-stored plaintext to prevent WS echo from
+            // overwriting our decrypted/original content with server ciphertext.
+            val localExisting = dao.getMessageById(msg.id)
+            if (localExisting != null && localExisting.content.isNotBlank() && !isBase64Ciphertext(localExisting.content)) {
+                if (msg.isMe) {
+                    // Own message already stored correctly by sendMessage() HTTP response.
+                    // Skip insert entirely — the WS echo may have incomplete fields
+                    // (missing mediaUrl, blurHash, etc.) that would corrupt local data.
+                    val isViewing = activeConversationId == msg.conversationId
+                    if (!isViewing && msg.conversationId.isNotEmpty()) {
+                        dao.updateLastMessageAndIncrementUnread(
+                            convId = msg.conversationId,
+                            lastText = localExisting.content.ifBlank { "Media" },
+                            lastTime = localExisting.createdAt,
+                            updatedAt = System.currentTimeMillis()
+                        )
+                    }
+                    return localExisting
+                }
+                // Received message with local plaintext — preserve content
+                msg = msg.copy(content = localExisting.content)
+            } else if (msg.isMe) {
+                // Own message echo with no local plaintext — keep as-is
+            } else {
+                // Received message — attempt decryption
+                msg = tryDecryptMessage(msg)
             }
 
             if (msg.conversationId.isNotEmpty()) {
@@ -559,26 +591,28 @@ class ChatRepository @Inject constructor(
             val decrypted = encryptionManager.decryptMessage(message.senderId, trimmed)
             if (decrypted.isNotBlank() && decrypted != trimmed) {
                 return message.copy(content = decrypted)
-            } else {
-                // If it looks like ciphertext but decryption failed, show a placeholder 
-                // instead of raw random text to improve UX.
-                return message.copy(content = "[Encrypted Message]")
             }
+            // Decryption failed — return the message unchanged so we don't permanently
+            // mask content that could be decrypted later when the session is established.
+            // The raw ciphertext will be re-attempted on next fetch.
+            Log.w("ChatRepository", "Decryption failed for msg ${message.id} from ${message.senderId}")
+            return message
         }
         return message
     }
 
     private fun isBase64Ciphertext(text: String): Boolean {
         val trimmed = text.trim()
-        // Signal ciphertext for even a short word is usually 50+ chars.
-        // Also, it shouldn't contain spaces.
-        if (trimmed.length < 20 || trimmed.contains(" ")) return false
+        // Signal Protocol ciphertext for even a single character is 50+ bytes,
+        // which Base64-encodes to ~70+ characters. A threshold of 44 chars
+        // (32 bytes) avoids false positives on short IDs, hashes, and normal text.
+        if (trimmed.length < 44 || trimmed.contains(" ") || trimmed.contains("\n")) return false
+        // Quick reject: must be pure Base64 character set
+        if (!trimmed.matches(Regex("^[A-Za-z0-9+/=]+$"))) return false
         
         return try {
-            // Check if it's valid Base64
             Base64.decode(trimmed, Base64.DEFAULT)
-            // Additional heuristic: dense alphanumeric
-            trimmed.matches(Regex("^[A-Za-z0-9+/=]+$"))
+            true
         } catch (_: Exception) {
             false
         }
