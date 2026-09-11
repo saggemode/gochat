@@ -249,6 +249,28 @@ class ChatListFragment : Fragment() {
                         binding.swipeRefresh.isRefreshing = refreshing
                     }
                 }
+
+                launch {
+                    viewModel.connectionState.collect { state ->
+                        when (state) {
+                            ConnectionState.WAITING_FOR_NETWORK -> {
+                                binding.layoutNetworkStatusBanner.visibility = View.VISIBLE
+                                binding.pbNetworkStatus.visibility = View.GONE
+                                binding.ivNetworkStatusIcon.visibility = View.VISIBLE
+                                binding.tvNetworkStatusText.text = getString(R.string.waiting_for_network)
+                            }
+                            ConnectionState.CONNECTING -> {
+                                binding.layoutNetworkStatusBanner.visibility = View.VISIBLE
+                                binding.pbNetworkStatus.visibility = View.VISIBLE
+                                binding.ivNetworkStatusIcon.visibility = View.GONE
+                                binding.tvNetworkStatusText.text = getString(R.string.connecting)
+                            }
+                            ConnectionState.CONNECTED -> {
+                                binding.layoutNetworkStatusBanner.visibility = View.GONE
+                            }
+                        }
+                    }
+                }
             }
         }
     }

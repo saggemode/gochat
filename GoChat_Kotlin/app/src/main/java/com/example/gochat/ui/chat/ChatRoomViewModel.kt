@@ -22,6 +22,7 @@ import kotlinx.serialization.json.*
 import java.io.File
 import java.io.FileOutputStream
 import java.util.regex.Pattern
+import com.example.gochat.core.network.NetworkMonitor
 import javax.inject.Inject
 
 @HiltViewModel
@@ -31,8 +32,11 @@ class ChatRoomViewModel @Inject constructor(
     private val tokenManager: TokenManager,
     private val webSocket: GoChatWebSocket,
     private val soundManager: ChatSoundManager,
-    private val encryptionManager: EncryptionManager
+    private val encryptionManager: EncryptionManager,
+    private val networkMonitor: NetworkMonitor
 ) : AndroidViewModel(application) {
+
+    val isDeviceOnline: Flow<Boolean> = networkMonitor.isOnline
 
     private val _conversationId = MutableStateFlow("")
     val conversationId: StateFlow<String> = _conversationId.asStateFlow()
@@ -96,6 +100,16 @@ class ChatRoomViewModel @Inject constructor(
         viewModelScope.launch {
             webSocket.events.collect { eventJson ->
                 handleWebSocketEvent(eventJson)
+            }
+        }
+
+        // Auto-refresh messages when internet connectivity returns
+        viewModelScope.launch {
+            networkMonitor.isOnline.collect { isOnline ->
+                val id = _conversationId.value
+                if (isOnline && id.isNotEmpty()) {
+                    chatRepository.refreshMessages(id)
+                }
             }
         }
     }

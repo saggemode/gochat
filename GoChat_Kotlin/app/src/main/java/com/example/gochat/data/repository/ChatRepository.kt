@@ -101,13 +101,7 @@ class ChatRepository @Inject constructor(
                 val conversations = rawList.mapNotNull {
                     if (it is JsonObject) Conversation.fromJson(it, currentUserId) else null
                 }
-                if (conversations.isEmpty()) {
-                    dao.clearAllConversations()
-                } else {
-                    val remoteIds = conversations.map { it.id }.toSet()
-                    val localConvs = dao.getAllConversationsList()
-                    val toDelete = localConvs.filter { it.id !in remoteIds }
-                    toDelete.forEach { dao.deleteConversation(it.id) }
+                if (conversations.isNotEmpty()) {
                     dao.insertConversations(conversations)
                 }
                 Result.success(conversations)
@@ -427,6 +421,109 @@ class ChatRepository @Inject constructor(
             }
         }
         return null
+    }
+
+    /**
+     * Ingest an incoming message payload delivered via FCM push notification.
+     * Inserts the message into Room DB and updates conversation metadata in the background
+     * so that messages are already cached locally even if the app was closed or network is later cut off.
+     */
+    suspend fun ingestIncomingPushMessage(
+        messageId: String,
+        conversationId: String,
+        senderId: String,
+        senderName: String,
+        content: String,
+        mediaUrl: String? = null,
+        type: Int = 0,
+        createdAt: Long = System.currentTimeMillis()
+    ): Message {
+        val currentUserId = tokenManager.userId ?: ""
+        val isMe = senderId.isNotEmpty() && senderId == currentUserId
+
+        val msgType = when (type) {
+            1 -> MessageType.IMAGE
+            2 -> MessageType.VIDEO
+            3 -> MessageType.AUDIO
+            4 -> MessageType.FILE
+            5 -> MessageType.VOICE
+            6 -> MessageType.POLL
+            7 -> MessageType.PRODUCT
+            8 -> MessageType.PING
+            else -> MessageType.TEXT
+        }
+
+        val existing = dao.getMessageById(messageId)
+        val rawMsg = Message(
+            id = messageId,
+            conversationId = conversationId,
+            senderId = senderId,
+            senderName = senderName,
+            content = content,
+            type = msgType,
+            status = MessageStatus.DELIVERED,
+            mediaUrl = mediaUrl,
+            isMe = isMe,
+            createdAt = createdAt
+        )
+
+        val finalMsg = if (existing != null && existing.content.isNotBlank() && !isBase64Ciphertext(existing.content)) {
+            existing
+        } else {
+            tryDecryptMessage(rawMsg)
+        }
+
+        dao.insertMessage(finalMsg)
+
+        // Update or create conversation record
+        val isViewing = activeConversationId == conversationId
+        val lastText = when (finalMsg.type) {
+            MessageType.TEXT -> finalMsg.content.ifBlank { "Message" }
+            MessageType.IMAGE -> "📷 Photo"
+            MessageType.VIDEO -> "🎥 Video"
+            MessageType.VOICE, MessageType.AUDIO -> "🎵 Voice note"
+            MessageType.FILE -> "📄 Document"
+            MessageType.POLL -> "📊 Poll"
+            MessageType.PING -> "💥 PING"
+            else -> "Media"
+        }
+
+        val existingConv = dao.getConversationById(conversationId)
+        val now = System.currentTimeMillis()
+        if (existingConv != null) {
+            if (isViewing) {
+                dao.updateLastMessage(
+                    convId = conversationId,
+                    lastText = lastText,
+                    lastTime = finalMsg.createdAt,
+                    updatedAt = now
+                )
+            } else {
+                dao.updateLastMessageAndIncrementUnread(
+                    convId = conversationId,
+                    lastText = lastText,
+                    lastTime = finalMsg.createdAt,
+                    updatedAt = now
+                )
+            }
+        } else {
+            // First time seeing this conversation - insert minimal conversation so it appears in chat list
+            val memberIds = listOf(senderId, currentUserId).filter { it.isNotBlank() }.distinct()
+            val newConv = Conversation(
+                id = conversationId,
+                title = senderName.ifBlank { "Chat" },
+                avatarUrl = "",
+                type = ConversationType.DIRECT,
+                unreadCount = if (isViewing) 0 else 1,
+                memberIds = memberIds,
+                lastMessageText = lastText,
+                lastMessageTime = finalMsg.createdAt,
+                updatedAt = now
+            )
+            dao.insertConversation(newConv)
+        }
+
+        return finalMsg
     }
 
     suspend fun insertWebSocketMessage(message: Message) {

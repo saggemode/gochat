@@ -741,12 +741,11 @@ class ChatRoomActivity : AppCompatActivity() {
                     combine(
                         viewModel.isOtherUserTyping,
                         viewModel.isPartnerOnline,
-                        viewModel.partnerLastSeen
-                    ) { isTyping, isOnline, lastSeen ->
-                        Triple(isTyping, isOnline, lastSeen)
-                    }.collect { (isTyping, isOnline, lastSeen) ->
-                        renderPresence(isTyping, isOnline, lastSeen)
-                    }
+                        viewModel.partnerLastSeen,
+                        viewModel.isDeviceOnline
+                    ) { isTyping, isOnline, lastSeen, isDeviceOnline ->
+                        renderPresence(isTyping, isOnline, lastSeen, isDeviceOnline)
+                    }.collect {}
                 }
 
                 launch {
@@ -928,8 +927,14 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     }
 
-    private fun renderPresence(isTyping: Boolean, isOnline: Boolean, lastSeen: Long?) {
+    private fun renderPresence(isTyping: Boolean, isOnline: Boolean, lastSeen: Long?, isDeviceOnline: Boolean) {
         val isGroup = intent.getBooleanExtra(EXTRA_IS_GROUP, false)
+        if (!isDeviceOnline) {
+            binding.tvChatSubtitle.text = getString(R.string.waiting_for_network)
+            binding.tvChatSubtitle.visibility = View.VISIBLE
+            binding.viewHeaderOnlineDot.visibility = View.GONE
+            return
+        }
         if (isTyping) {
             binding.tvChatSubtitle.text = getString(R.string.status_typing)
             binding.tvChatSubtitle.visibility = View.VISIBLE

@@ -53,4 +53,9 @@
     <color name="bg_surface_card">#FFFFFF</color>
     <color name="border_subtle">#E4E6EB</color>
     <color name="text_secondary">#54656F</color>
+
+    <!-- Network / Connectivity Status -->
+    <color name="gochat_amber">#F59E0B</color>
+    <color name="gochat_network_banner_bg">#1F2C34</color>
+    <color name="gochat_network_banner_text">#F59E0B</color>
 </resources>

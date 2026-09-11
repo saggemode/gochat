@@ -496,4 +496,8 @@
     <string name="security_verification_scan_code">Scan code</string>
     <string name="security_verification_matching">Security code matched</string>
     <string name="security_verification_not_matching">Security code does not match</string>
+
+    <!-- Network Connectivity Status -->
+    <string name="waiting_for_network">Waiting for network…</string>
+    <string name="connecting">Connecting…</string>
 </resources>

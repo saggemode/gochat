@@ -241,6 +241,45 @@
             </LinearLayout>
         </HorizontalScrollView>
 
+        <!-- WhatsApp-Style Network / Sync Status Banner -->
+        <LinearLayout
+            android:id="@+id/layoutNetworkStatusBanner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/gochat_network_banner_bg"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <ProgressBar
+                android:id="@+id/pbNetworkStatus"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:indeterminate="true"
+                android:indeterminateTint="@color/gochat_network_banner_text" />
+
+            <ImageView
+                android:id="@+id/ivNetworkStatusIcon"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@drawable/ic_error"
+                android:visibility="gone"
+                app:tint="@color/gochat_network_banner_text" />
+
+            <TextView
+                android:id="@+id/tvNetworkStatusText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:textColor="@color/gochat_network_banner_text"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                tools:text="Waiting for network…" />
+        </LinearLayout>
+
         <!-- Pending Contact Invitations Banner -->
         <LinearLayout
             android:id="@+id/layoutPendingBanner"

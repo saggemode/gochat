@@ -18,6 +18,7 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
 
     @Inject lateinit var tokenManager: TokenManager
     @Inject lateinit var authRepository: AuthRepository
+    @Inject lateinit var chatRepository: ChatRepository
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -104,7 +105,41 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
         }
 
 
-        // Suppression check: using a static/shared state is better, but for now we fix the instance issue
+        // 1. WhatsApp-Style Background Ingestion: Persist message into Room DB immediately
+        // so that even if the app was closed, the message is already saved and available offline.
+        val isChatMessage = eventType == "chat_message" ||
+                eventType == "new_message" ||
+                eventType == "message" ||
+                conversationId.isNotEmpty()
+
+        if (isChatMessage && conversationId.isNotEmpty()) {
+            val messageId = data["message_id"] ?: data["id"] ?: "msg_${System.currentTimeMillis()}"
+            val senderId = data["sender_id"] ?: data["senderId"] ?: ""
+            val senderName = title
+            val content = body
+            val mediaUrl = data["media_url"] ?: data["mediaUrl"]
+            val rawType = data["message_type"] ?: data["type_int"]
+            val msgTypeInt = rawType?.toIntOrNull() ?: 0
+
+            serviceScope.launch {
+                try {
+                    chatRepository.ingestIncomingPushMessage(
+                        messageId = messageId,
+                        conversationId = conversationId,
+                        senderId = senderId,
+                        senderName = senderName,
+                        content = content,
+                        mediaUrl = mediaUrl,
+                        type = msgTypeInt
+                    )
+                    Log.d(TAG, "Ingested push message $messageId into Room DB for conversation $conversationId")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to ingest push message into Room DB: ${e.message}", e)
+                }
+            }
+        }
+
+        // 2. Suppression check: If user is currently actively viewing this conversation, suppress the notification banner
         val activeConv = ChatRepository.activeConversationIdStatic
         if (conversationId.isNotEmpty() && activeConv == conversationId) {
             Log.d(TAG, "Suppressing notification: user is active in conversation $conversationId")

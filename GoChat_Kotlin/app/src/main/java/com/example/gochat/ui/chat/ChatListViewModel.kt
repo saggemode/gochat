@@ -15,10 +15,16 @@ import com.example.gochat.data.repository.AuthRepository
 import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.data.repository.StoryRepository
 import com.example.gochat.data.websocket.GoChatWebSocket
-import dagger.hilt.android.lifecycle.HiltViewModel
+import com.example.gochat.core.network.NetworkMonitor
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+enum class ConnectionState {
+    CONNECTED,
+    CONNECTING,
+    WAITING_FOR_NETWORK
+}
 
 @HiltViewModel
 class ChatListViewModel @Inject constructor(
@@ -27,7 +33,8 @@ class ChatListViewModel @Inject constructor(
     private val storyRepository: StoryRepository,
     private val authRepository: AuthRepository,
     private val tokenManager: TokenManager,
-    private val webSocket: GoChatWebSocket
+    private val webSocket: GoChatWebSocket,
+    private val networkMonitor: NetworkMonitor
 ) : AndroidViewModel(application) {
 
     val selectedFilter = MutableStateFlow("All")
@@ -101,9 +108,35 @@ class ChatListViewModel @Inject constructor(
         list.sumOf { it.unreadCount }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
+    // WhatsApp-style Connection State: WAITING_FOR_NETWORK, CONNECTING, or CONNECTED
+    val connectionState: StateFlow<ConnectionState> = combine(
+        networkMonitor.isOnline,
+        webSocket.isConnected
+    ) { isOnline, isConnected ->
+        when {
+            !isOnline -> ConnectionState.WAITING_FOR_NETWORK
+            !isConnected -> ConnectionState.CONNECTING
+            else -> ConnectionState.CONNECTED
+        }
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        if (!networkMonitor.isCurrentlyOnline()) ConnectionState.WAITING_FOR_NETWORK else ConnectionState.CONNECTING
+    )
+
     init {
         connectWebSocket()
         refreshData()
+
+        // Auto-reconnect & Auto-sync when internet connectivity is restored
+        viewModelScope.launch {
+            networkMonitor.isOnline.collect { isOnline ->
+                if (isOnline) {
+                    connectWebSocket()
+                    refreshData()
+                }
+            }
+        }
 
         viewModelScope.launch {
             webSocket.events.collect { event ->
