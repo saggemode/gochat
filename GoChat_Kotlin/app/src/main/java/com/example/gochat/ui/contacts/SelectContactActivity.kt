@@ -245,6 +245,7 @@ class SelectContactActivity : AppCompatActivity() {
     }
 
     private fun openChatRoom(conversation: Conversation) {
+        val partnerId = conversation.memberIds.firstOrNull()
         val intent = Intent(this, ChatRoomActivity::class.java).apply {
             putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, conversation.id)
             putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, conversation.title)
@@ -252,6 +253,9 @@ class SelectContactActivity : AppCompatActivity() {
             putExtra(ChatRoomActivity.EXTRA_IS_ONLINE, conversation.isOnline)
             putExtra(ChatRoomActivity.EXTRA_LAST_SEEN, conversation.lastSeen ?: 0L)
             putExtra(ChatRoomActivity.EXTRA_IS_GROUP, conversation.isGroup)
+            if (!partnerId.isNullOrEmpty()) {
+                putExtra(ChatRoomActivity.EXTRA_PARTNER_ID, partnerId)
+            }
         }
         startActivity(intent)
     }
@@ -353,6 +357,7 @@ class SelectContactActivity : AppCompatActivity() {
                             putExtra(ChatRoomActivity.EXTRA_IS_ONLINE, conv.isOnline)
                             putExtra(ChatRoomActivity.EXTRA_LAST_SEEN, conv.lastSeen ?: 0L)
                             putExtra(ChatRoomActivity.EXTRA_IS_GROUP, conv.isGroup)
+                            putExtra(ChatRoomActivity.EXTRA_PARTNER_ID, user.id)
                         }
                         startActivity(intent)
                         finish()

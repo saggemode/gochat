@@ -66,9 +66,21 @@ class ChatRoomViewModel @Inject constructor(
 
     private var currentPartnerId: String? = null
 
-    fun setInitialPresence(isOnline: Boolean, lastSeen: Long?) {
+    fun setInitialPresence(isOnline: Boolean, lastSeen: Long?, partnerId: String? = null) {
         _isPartnerOnline.value = isOnline
         _partnerLastSeen.value = if (lastSeen != null && lastSeen > 0L) lastSeen else null
+        if (!partnerId.isNullOrEmpty()) {
+            currentPartnerId = partnerId
+        }
+    }
+
+    fun queryPresence() {
+        val payload = buildJsonObject {
+            put("type", "query_presence")
+            put("conversation_id", _conversationId.value)
+            currentPartnerId?.let { put("target_user_id", it) }
+        }
+        webSocket.send(payload)
     }
 
     private val _members = MutableStateFlow<List<User>>(emptyList())
@@ -103,12 +115,14 @@ class ChatRoomViewModel @Inject constructor(
             }
         }
 
-        // Auto-refresh messages when internet connectivity returns
+        // Auto-refresh messages and presence when internet connectivity returns
         viewModelScope.launch {
             networkMonitor.isOnline.collect { isOnline ->
                 val id = _conversationId.value
                 if (isOnline && id.isNotEmpty()) {
                     chatRepository.refreshMessages(id)
+                    chatRepository.fetchConversation(id)
+                    queryPresence()
                 }
             }
         }
@@ -120,10 +134,13 @@ class ChatRoomViewModel @Inject constructor(
 
         viewModelScope.launch {
             val conv = chatRepository.getConversationById(convId)
+            val currentUserId = tokenManager.userId ?: ""
             if (conv != null) {
-                val currentUserId = tokenManager.userId ?: ""
                 if (conv.isDirect) {
-                    currentPartnerId = conv.memberIds.find { it != currentUserId }
+                    val partner = conv.memberIds.find { it != currentUserId }
+                    if (!partner.isNullOrEmpty()) {
+                        currentPartnerId = partner
+                    }
                     currentPartnerId?.let { partnerId ->
                         launch(Dispatchers.IO) {
                             try {
@@ -139,11 +156,29 @@ class ChatRoomViewModel @Inject constructor(
                 }
             }
 
+            // Asynchronously fetch fresh conversation data (including real-time is_online and last_seen)
+            launch {
+                val remoteResult = chatRepository.fetchConversation(convId)
+                remoteResult.getOrNull()?.let { remoteConv ->
+                    _isPartnerOnline.value = remoteConv.isOnline
+                    if (remoteConv.lastSeen != null && remoteConv.lastSeen > 0L) {
+                        _partnerLastSeen.value = remoteConv.lastSeen
+                    }
+                    if (currentPartnerId == null && remoteConv.isDirect) {
+                        val partner = remoteConv.memberIds.find { it != currentUserId }
+                        if (!partner.isNullOrEmpty()) {
+                            currentPartnerId = partner
+                        }
+                    }
+                }
+            }
+
             chatRepository.markConversationAsRead(convId)
             chatRepository.refreshMessages(convId)
             
-            // Send read receipt to server
+            // Send read receipt and query presence from server
             sendReadReceipt(convId)
+            queryPresence()
             
             // Populate members for mentions
             loadMembersFromLocal(convId)
@@ -439,6 +474,9 @@ class ChatRoomViewModel @Inject constructor(
 
             val currentUserId = tokenManager.userId ?: ""
             if (userId.isNotEmpty() && userId != currentUserId) {
+                if (currentPartnerId.isNullOrEmpty()) {
+                    currentPartnerId = userId
+                }
                 val isPartner = userId == currentPartnerId
                 val isMember = _members.value.any { it.id == userId }
                 
@@ -462,15 +500,29 @@ class ChatRoomViewModel @Inject constructor(
         when {
             type == "ping" -> {
                 _screenShakeEvent.tryEmit(Unit)
+                _isPartnerOnline.value = true
             }
             type == "typing" -> {
                 val isTyping = event["is_typing"]?.jsonPrimitive?.booleanOrNull ?: false
                 _isOtherUserTyping.value = isTyping
+                val senderId = (event["sender_id"] ?: event["user_id"])?.jsonPrimitive?.contentOrNull.orEmpty()
+                val currentUserId = tokenManager.userId ?: ""
+                if (senderId.isNotEmpty() && senderId != currentUserId && currentPartnerId.isNullOrEmpty()) {
+                    currentPartnerId = senderId
+                }
+                // Typing implies the user is online
+                if (isTyping) {
+                    _isPartnerOnline.value = true
+                }
             }
             type == "read_receipt" || type == "event_read_receipt" -> {
                 val readerId = (event["sender_id"] ?: event["user_id"])?.jsonPrimitive?.contentOrNull.orEmpty()
                 val currentUserId = tokenManager.userId ?: ""
                 if (readerId.isNotEmpty() && readerId != currentUserId) {
+                    _isPartnerOnline.value = true
+                    if (currentPartnerId.isNullOrEmpty()) {
+                        currentPartnerId = readerId
+                    }
                     viewModelScope.launch {
                         chatRepository.markOutgoingMessagesAsRead(convId)
                     }
@@ -512,6 +564,10 @@ class ChatRoomViewModel @Inject constructor(
                         _screenShakeEvent.tryEmit(Unit)
                     }
                     if (msg.senderId != currentUserId) {
+                        _isPartnerOnline.value = true
+                        if (currentPartnerId.isNullOrEmpty()) {
+                            currentPartnerId = msg.senderId
+                        }
                         soundManager.playReceivedSound()
                         // If we are active, mark as read immediately
                         if (convId == _conversationId.value) {

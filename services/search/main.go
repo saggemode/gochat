@@ -3,12 +3,11 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+
 	"log"
 	"net/http"
 	"os"
-	"strings"
-	"time"
+
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )

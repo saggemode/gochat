@@ -105,6 +105,11 @@ interface GoChatApiService {
     @GET(ApiConstants.CONVERSATIONS)
     suspend fun getConversations(): Response<JsonElement>
 
+    @GET("api/v1/chat/conversations/{id}")
+    suspend fun getConversation(
+        @Path("id") convId: String
+    ): Response<JsonObject>
+
     @POST(ApiConstants.CONVERSATIONS)
     suspend fun createConversation(
         @Body body: JsonObject

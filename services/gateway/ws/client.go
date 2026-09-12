@@ -59,6 +59,21 @@ func (c *Client) readPump() {
 	})
 	c.hub.Broadcast(onlineEvt, c.userID)
 
+	// Send presence of all currently online users to this newly connected client immediately
+	for _, onlineUID := range c.hub.GetOnlineUsers() {
+		if onlineUID != c.userID {
+			pEvt, _ := json.Marshal(map[string]interface{}{
+				"type":      "presence",
+				"user_id":   onlineUID,
+				"is_online": true,
+			})
+			select {
+			case c.send <- pEvt:
+			default:
+			}
+		}
+	}
+
 	defer func() {
 		c.cancel()
 		c.hub.unregister <- c
@@ -140,6 +155,40 @@ func (c *Client) readPump() {
 							"status":          "delivered",
 						})
 						c.hub.SendToUser(c.userID, ack)
+					}
+				}
+
+				// ── Query Presence ──────────────────────────────────────────
+				if msgType == "query_presence" || msgType == "get_presence" {
+					targetUID, _ := payload["user_id"].(string)
+					if targetUID == "" {
+						targetUID, _ = payload["target_user_id"].(string)
+					}
+					if targetUID != "" {
+						isOnline := c.hub.IsUserOnline(targetUID)
+						resp, _ := json.Marshal(map[string]interface{}{
+							"type":      "presence",
+							"user_id":   targetUID,
+							"is_online": isOnline,
+						})
+						select {
+						case c.send <- resp:
+						default:
+						}
+					}
+					// Also reply with all currently online users
+					for _, onlineUID := range c.hub.GetOnlineUsers() {
+						if onlineUID != c.userID {
+							pEvt, _ := json.Marshal(map[string]interface{}{
+								"type":      "presence",
+								"user_id":   onlineUID,
+								"is_online": true,
+							})
+							select {
+							case c.send <- pEvt:
+							default:
+							}
+						}
 					}
 				}
 

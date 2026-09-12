@@ -88,6 +88,29 @@ class ChatRepository @Inject constructor(
 
     suspend fun getConversationById(id: String): Conversation? = dao.getConversationById(id)
 
+    suspend fun fetchConversation(convId: String): Result<Conversation> {
+        return try {
+            val response = api.getConversation(convId)
+            if (response.isSuccessful) {
+                val body = response.body() ?: return Result.failure(Exception("Empty body"))
+                val convObj = body["conversation"]?.jsonObject ?: body
+                val isOnline = (body["is_online"] ?: body["isOnline"])?.jsonPrimitive?.booleanOrNull ?: false
+                val lastSeen = (body["last_seen"] ?: body["lastSeen"])?.jsonPrimitive?.longOrNull
+                val currentUserId = tokenManager.userId ?: ""
+                val conv = Conversation.fromJson(convObj, currentUserId).copy(
+                    isOnline = isOnline,
+                    lastSeen = lastSeen
+                )
+                dao.insertConversation(conv)
+                Result.success(conv)
+            } else {
+                Result.failure(Exception("Failed to fetch conversation (${response.code()})"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun refreshConversations(): Result<List<Conversation>> {
         return try {
             val response = api.getConversations()

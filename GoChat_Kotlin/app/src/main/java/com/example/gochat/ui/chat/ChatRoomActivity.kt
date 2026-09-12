@@ -78,6 +78,7 @@ class ChatRoomActivity : AppCompatActivity() {
         const val EXTRA_IS_ONLINE = "extra_is_online"
         const val EXTRA_LAST_SEEN = "extra_last_seen"
         const val EXTRA_IS_GROUP = "extra_is_group"
+        const val EXTRA_PARTNER_ID = "extra_partner_id"
         const val EXTRA_PRODUCT_ID = "extra_product_id"
         const val EXTRA_PRODUCT_NAME = "extra_product_name"
         const val EXTRA_PRODUCT_PRICE = "extra_product_price"
@@ -173,7 +174,8 @@ class ChatRoomActivity : AppCompatActivity() {
         val avatarUrl = intent.getStringExtra(EXTRA_CONVERSATION_AVATAR).orEmpty()
         val isOnline = intent.getBooleanExtra(EXTRA_IS_ONLINE, false)
         val lastSeen = intent.getLongExtra(EXTRA_LAST_SEEN, 0L)
-        viewModel.setInitialPresence(isOnline, if (lastSeen > 0L) lastSeen else null)
+        val partnerId = intent.getStringExtra(EXTRA_PARTNER_ID)
+        viewModel.setInitialPresence(isOnline, if (lastSeen > 0L) lastSeen else null, partnerId)
 
         setupToolbar(title, avatarUrl)
         setupTheme(convId)

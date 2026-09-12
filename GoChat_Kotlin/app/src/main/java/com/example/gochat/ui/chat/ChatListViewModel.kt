@@ -42,6 +42,7 @@ class ChatListViewModel @Inject constructor(
     val selectedFilter = MutableStateFlow("All")
     val searchQuery = MutableStateFlow("")
     val isRefreshing = MutableStateFlow(false)
+    val currentUserId: String get() = tokenManager.userId ?: ""
 
     private val _stories = MutableStateFlow<List<UserStories>>(emptyList())
     val stories: StateFlow<List<UserStories>> = _stories.asStateFlow()
