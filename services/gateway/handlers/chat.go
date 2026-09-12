@@ -1272,6 +1272,14 @@ func (h *ChatHandler) fanOutEvent(eventType string, messageID string, convID str
 
 		if !delivered {
 			h.hub.Broadcast(data, userID)
+		} else if eventType == "new_message" && messageID != "" {
+			ack, _ := json.Marshal(map[string]interface{}{
+				"type":            "message_status",
+				"message_id":      messageID,
+				"conversation_id": convID,
+				"status":          "delivered",
+			})
+			h.hub.SendToUser(userID, ack)
 		}
 
 		// Dispatch high-priority FCM Push Notification for new messages
