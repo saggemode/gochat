@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import java.io.File
+import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
@@ -297,7 +298,7 @@ class MarketplaceViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             val newStore = Store(
-                id = "store_${System.currentTimeMillis()}",
+                id = UUID.randomUUID().toString(),
                 ownerId = repository.userId ?: "",
                 name = name,
                 category = category.ifBlank { "General Retail" },
@@ -451,7 +452,7 @@ class MarketplaceViewModel @Inject constructor(
             _isLoading.value = true
             val existing = _myStore.value
             val updatedStore = (existing ?: Store(
-                id = "store_${System.currentTimeMillis()}",
+                id = UUID.randomUUID().toString(),
                 ownerId = repository.userId ?: "",
                 name = name
             )).copy(

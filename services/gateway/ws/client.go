@@ -107,6 +107,8 @@ func (c *Client) readPump() {
 					payload["sender_id"] = c.userID
 				}
 
+				msgType, _ := payload["type"].(string)
+
 				// Check if targeted to a specific recipient user
 				targetUserID, hasTarget := payload["recipient_id"].(string)
 				delivered := false
@@ -121,6 +123,26 @@ func (c *Client) readPump() {
 						c.hub.Broadcast(b, c.userID)
 					}
 				}
+
+				// ── Delivery acknowledgment ────────────────────────────────
+				// If the payload is a chat message and was delivered, notify sender
+				if delivered && (msgType == "message" || msgType == "new_message" || msgType == "chat_message" || msgType == "") {
+					msgID, _ := payload["message_id"].(string)
+					if msgID == "" {
+						msgID, _ = payload["id"].(string)
+					}
+					convID, _ := payload["conversation_id"].(string)
+					if msgID != "" {
+						ack, _ := json.Marshal(map[string]interface{}{
+							"type":            "message_status",
+							"message_id":      msgID,
+							"conversation_id": convID,
+							"status":          "delivered",
+						})
+						c.hub.SendToUser(c.userID, ack)
+					}
+				}
+
 			}
 		}
 	}

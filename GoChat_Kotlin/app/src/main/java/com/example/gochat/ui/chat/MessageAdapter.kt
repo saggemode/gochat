@@ -287,7 +287,7 @@ class MessageAdapter(
                 // Read Receipt status icon
                 ivMessageStatus.visibility = if (message.isDeleted) View.GONE else View.VISIBLE
                 when (message.status) {
-                    MessageStatus.SENDING -> ivMessageStatus.setImageResource(R.drawable.ic_status_sent)
+                    MessageStatus.SENDING -> ivMessageStatus.setImageResource(R.drawable.ic_status_pending)
                     MessageStatus.SENT -> ivMessageStatus.setImageResource(R.drawable.ic_status_sent)
                     MessageStatus.DELIVERED -> ivMessageStatus.setImageResource(R.drawable.ic_status_delivered)
                     MessageStatus.READ -> ivMessageStatus.setImageResource(R.drawable.ic_status_read)

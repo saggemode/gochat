@@ -19,6 +19,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.Calendar
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -593,6 +594,12 @@ class MarketplaceRepository @Inject constructor(
 
     suspend fun createReview(productId: String, rating: Int, comment: String, imageUrls: List<String>): Result<Review> {
         val currentUserId = tokenManager.userId ?: ""
+        
+        // Validate that productId is a valid UUID to avoid backend SQL errors
+        if (productId.startsWith("prod_") || !productId.contains("-")) {
+            return Result.failure(Exception("Invalid Product ID format. Reviews require a UUID. Please create a new product to test this feature."))
+        }
+
         return try {
             val body = buildJsonObject {
                 put("product_id", productId)
@@ -793,7 +800,7 @@ class MarketplaceRepository @Inject constructor(
                 marketplaceDao.removeCartItem(productId)
             } else {
                 val item = CartItem(
-                    id = "cart_$productId",
+                    id = UUID.randomUUID().toString(),
                     productId = productId,
                     quantity = quantity,
                     productName = product?.name ?: "Marketplace Item",
@@ -886,7 +893,7 @@ class MarketplaceRepository @Inject constructor(
             }
             val response = api.placeOrder(body)
             val newOrder = Order(
-                id = "ord_${System.currentTimeMillis()}",
+                id = UUID.randomUUID().toString(),
                 orderNumber = "ORD-${System.currentTimeMillis().toString().takeLast(6)}",
                 storeId = storeId,
                 storeName = items.firstOrNull()?.storeName ?: "Official Store",
@@ -908,7 +915,7 @@ class MarketplaceRepository @Inject constructor(
             Result.success(finalOrder)
         } catch (e: Exception) {
             val fallbackOrder = Order(
-                id = "ord_${System.currentTimeMillis()}",
+                id = UUID.randomUUID().toString(),
                 orderNumber = "ORD-${System.currentTimeMillis().toString().takeLast(6)}",
                 storeId = storeId,
                 storeName = items.firstOrNull()?.storeName ?: "Official Store",
