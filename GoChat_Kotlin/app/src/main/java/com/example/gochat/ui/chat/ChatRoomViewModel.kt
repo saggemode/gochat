@@ -424,8 +424,10 @@ class ChatRoomViewModel @Inject constructor(
 
         val payload = buildJsonObject {
             put("type", "typing")
+            put("event_type", "typing")
             put("conversation_id", convId)
             put("is_typing", isTyping)
+            tokenManager.userId?.let { put("sender_id", it) }
         }
         webSocket.send(payload)
     }

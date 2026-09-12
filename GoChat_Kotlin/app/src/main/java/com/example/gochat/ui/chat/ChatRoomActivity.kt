@@ -119,6 +119,46 @@ class ChatRoomActivity : AppCompatActivity() {
 
     private var cameraTempPhotoUri: Uri? = null
 
+    // Typing animation & outgoing typing debounce
+    private var isCurrentlyTypingSent = false
+    private val stopTypingHandler = Handler(Looper.getMainLooper())
+    private val stopTypingRunnable = Runnable {
+        if (isCurrentlyTypingSent) {
+            isCurrentlyTypingSent = false
+            viewModel.sendTypingEvent(false)
+        }
+    }
+
+    private val typingAnimHandler = Handler(Looper.getMainLooper())
+    private var typingDotCount = 0
+    private var isTypingAnimationRunning = false
+    private val typingAnimationRunnable = object : Runnable {
+        override fun run() {
+            if (!isTypingAnimationRunning) return
+            val dots = ".".repeat((typingDotCount % 3) + 1)
+            binding.tvChatSubtitle.text = "typing$dots"
+            typingDotCount++
+            typingAnimHandler.postDelayed(this, 400)
+        }
+    }
+
+    private fun startTypingAnimation() {
+        if (!isTypingAnimationRunning) {
+            isTypingAnimationRunning = true
+            typingDotCount = 0
+            binding.tvChatSubtitle.text = "typing."
+            typingAnimHandler.removeCallbacks(typingAnimationRunnable)
+            typingAnimHandler.postDelayed(typingAnimationRunnable, 400)
+        }
+    }
+
+    private fun stopTypingAnimation() {
+        if (isTypingAnimationRunning) {
+            isTypingAnimationRunning = false
+            typingAnimHandler.removeCallbacks(typingAnimationRunnable)
+        }
+    }
+
     // Permission launchers
     private val requestAudioPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -400,7 +440,21 @@ class ChatRoomActivity : AppCompatActivity() {
                 val hasText = !text.isNullOrBlank()
                 ivSendIcon.visibility = if (hasText) View.VISIBLE else View.GONE
                 ivMicIcon.visibility = if (hasText) View.GONE else View.VISIBLE
-                viewModel.sendTypingEvent(hasText)
+                
+                if (hasText) {
+                    if (!isCurrentlyTypingSent) {
+                        isCurrentlyTypingSent = true
+                        viewModel.sendTypingEvent(true)
+                    }
+                    stopTypingHandler.removeCallbacks(stopTypingRunnable)
+                    stopTypingHandler.postDelayed(stopTypingRunnable, 2500)
+                } else {
+                    if (isCurrentlyTypingSent) {
+                        isCurrentlyTypingSent = false
+                        stopTypingHandler.removeCallbacks(stopTypingRunnable)
+                        viewModel.sendTypingEvent(false)
+                    }
+                }
                 
                 viewModel.onInputTextChanged(text?.toString().orEmpty(), etMessageInput.selectionStart)
             }
@@ -424,6 +478,11 @@ class ChatRoomActivity : AppCompatActivity() {
             btnSendOrVoice.setOnClickListener {
                 val text = etMessageInput.text?.toString().orEmpty()
                 if (text.isNotBlank()) {
+                    if (isCurrentlyTypingSent) {
+                        isCurrentlyTypingSent = false
+                        stopTypingHandler.removeCallbacks(stopTypingRunnable)
+                        viewModel.sendTypingEvent(false)
+                    }
                     viewModel.sendTextMessage(text)
                     etMessageInput.setText("")
                 } else {
@@ -938,30 +997,33 @@ class ChatRoomActivity : AppCompatActivity() {
             return
         }
         if (isTyping) {
-            binding.tvChatSubtitle.text = getString(R.string.status_typing)
-            binding.tvChatSubtitle.visibility = View.VISIBLE
-            binding.viewHeaderOnlineDot.visibility = View.VISIBLE
-        } else if (isGroup) {
-            val memberCount = viewModel.members.value.size
-            if (memberCount > 0) {
-                binding.tvChatSubtitle.text = "$memberCount members"
-                binding.tvChatSubtitle.visibility = View.VISIBLE
-            } else {
-                binding.tvChatSubtitle.visibility = View.GONE
-            }
-            binding.viewHeaderOnlineDot.visibility = View.GONE
-        } else if (isOnline) {
-            binding.tvChatSubtitle.text = getString(R.string.status_online)
+            startTypingAnimation()
             binding.tvChatSubtitle.visibility = View.VISIBLE
             binding.viewHeaderOnlineDot.visibility = View.VISIBLE
         } else {
-            binding.viewHeaderOnlineDot.visibility = View.GONE
-            if (lastSeen != null && lastSeen > 0L) {
-                binding.tvChatSubtitle.text = formatLastSeen(lastSeen)
+            stopTypingAnimation()
+            if (isGroup) {
+                val memberCount = viewModel.members.value.size
+                if (memberCount > 0) {
+                    binding.tvChatSubtitle.text = "$memberCount members"
+                    binding.tvChatSubtitle.visibility = View.VISIBLE
+                } else {
+                    binding.tvChatSubtitle.visibility = View.GONE
+                }
+                binding.viewHeaderOnlineDot.visibility = View.GONE
+            } else if (isOnline) {
+                binding.tvChatSubtitle.text = getString(R.string.status_online)
                 binding.tvChatSubtitle.visibility = View.VISIBLE
+                binding.viewHeaderOnlineDot.visibility = View.VISIBLE
             } else {
-                binding.tvChatSubtitle.text = getString(R.string.status_offline)
-                binding.tvChatSubtitle.visibility = View.VISIBLE
+                binding.viewHeaderOnlineDot.visibility = View.GONE
+                if (lastSeen != null && lastSeen > 0L) {
+                    binding.tvChatSubtitle.text = formatLastSeen(lastSeen)
+                    binding.tvChatSubtitle.visibility = View.VISIBLE
+                } else {
+                    binding.tvChatSubtitle.text = getString(R.string.status_offline)
+                    binding.tvChatSubtitle.visibility = View.VISIBLE
+                }
             }
         }
     }
@@ -1005,6 +1067,12 @@ class ChatRoomActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
+        if (isCurrentlyTypingSent) {
+            isCurrentlyTypingSent = false
+            stopTypingHandler.removeCallbacks(stopTypingRunnable)
+            viewModel.sendTypingEvent(false)
+        }
+        stopTypingAnimation()
         if (audioRecorderManager.isRecording) {
             cancelVoiceRecording()
         }
@@ -1013,6 +1081,8 @@ class ChatRoomActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         recordingHandler.removeCallbacks(recordingTimerRunnable)
+        stopTypingHandler.removeCallbacks(stopTypingRunnable)
+        stopTypingAnimation()
         audioRecorderManager.cancelRecording()
         AudioPlayerManager.release()
         super.onDestroy()
