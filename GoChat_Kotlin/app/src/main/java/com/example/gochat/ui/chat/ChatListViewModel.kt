@@ -14,12 +14,15 @@ import com.example.gochat.data.model.User
 import com.example.gochat.data.model.UserStories
 import com.example.gochat.data.repository.AuthRepository
 import com.example.gochat.data.repository.ChatRepository
+import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.data.repository.StoryRepository
 import com.example.gochat.data.websocket.GoChatWebSocket
 import com.example.gochat.core.network.NetworkMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 
 enum class ConnectionState {
@@ -33,6 +36,7 @@ class ChatListViewModel @Inject constructor(
     application: Application,
     private val chatRepository: ChatRepository,
     private val storyRepository: StoryRepository,
+    private val marketplaceRepository: MarketplaceRepository,
     private val authRepository: AuthRepository,
     private val tokenManager: TokenManager,
     private val webSocket: GoChatWebSocket,
@@ -143,11 +147,16 @@ class ChatListViewModel @Inject constructor(
 
         viewModelScope.launch {
             webSocket.events.collect { event ->
-                val msg = chatRepository.handleIncomingWebSocketEvent(event)
-                if (msg != null) {
-                    val exists = allConversations.value.any { it.id == msg.conversationId }
-                    if (!exists) {
-                        chatRepository.refreshConversations()
+                val type = event["type"]?.jsonPrimitive?.contentOrNull
+                if (type == "new_product") {
+                    marketplaceRepository.handleIncomingWebSocketEvent(event)
+                } else {
+                    val msg = chatRepository.handleIncomingWebSocketEvent(event)
+                    if (msg != null) {
+                        val exists = allConversations.value.any { it.id == msg.conversationId }
+                        if (!exists) {
+                            chatRepository.refreshConversations()
+                        }
                     }
                 }
             }
@@ -184,6 +193,8 @@ class ChatListViewModel @Inject constructor(
                 if (storyResult.isSuccess) {
                     _stories.value = storyResult.getOrDefault(emptyList())
                 }
+                // Eagerly refresh marketplace cache on app start / refresh data as well
+                marketplaceRepository.refreshProducts()
             } catch (_: Exception) {
             } finally {
                 isRefreshing.value = false

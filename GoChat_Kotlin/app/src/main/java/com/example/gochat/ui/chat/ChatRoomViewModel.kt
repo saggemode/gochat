@@ -95,8 +95,14 @@ class ChatRoomViewModel @Inject constructor(
     private val _disappearingDuration = MutableStateFlow(0) // Seconds, 0 means off
     val disappearingDuration: StateFlow<Int> = _disappearingDuration.asStateFlow()
 
+    private val _screenshotNotificationsEnabled = MutableStateFlow(false)
+    val screenshotNotificationsEnabled: StateFlow<Boolean> = _screenshotNotificationsEnabled.asStateFlow()
+
     private val _screenShakeEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val screenShakeEvent: SharedFlow<Unit> = _screenShakeEvent.asSharedFlow()
+
+    private val _toastEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val toastEvent: SharedFlow<String> = _toastEvent.asSharedFlow()
 
     // Real-time messages from Room Database
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -136,6 +142,7 @@ class ChatRoomViewModel @Inject constructor(
             val conv = chatRepository.getConversationById(convId)
             val currentUserId = tokenManager.userId ?: ""
             if (conv != null) {
+                _screenshotNotificationsEnabled.value = conv.screenshotNotificationsEnabled
                 if (conv.isDirect) {
                     val partner = conv.memberIds.find { it != currentUserId }
                     if (!partner.isNullOrEmpty()) {
@@ -463,6 +470,49 @@ class ChatRoomViewModel @Inject constructor(
         _disappearingDuration.value = durationSeconds
     }
 
+    fun toggleScreenshotNotifications(enabled: Boolean) {
+        val convId = _conversationId.value
+        if (convId.isEmpty()) return
+
+        viewModelScope.launch {
+            val result = chatRepository.toggleScreenshotNotifications(convId, enabled)
+            if (result.isSuccess) {
+                _screenshotNotificationsEnabled.value = enabled
+                
+                // Notify partner about setting change via WebSocket
+                val payload = buildJsonObject {
+                    put("type", "screenshot_setting_changed")
+                    put("conversation_id", convId)
+                    put("enabled", enabled)
+                    put("sender_name", tokenManager.userDisplayName ?: "Someone")
+                }
+                webSocket.send(payload)
+            }
+        }
+    }
+
+    fun sendScreenshotNotification() {
+        val convId = _conversationId.value
+        if (convId.isEmpty() || !_screenshotNotificationsEnabled.value) return
+
+        viewModelScope.launch {
+            // Send special message or just a WS event
+            // Sending as a message so it persists in history
+            chatRepository.sendMessage(
+                conversationId = convId,
+                content = "📸 Took a screenshot",
+                type = 0 // Using text for now, but could be a specific type
+            )
+
+            val payload = buildJsonObject {
+                put("type", "screenshot_taken")
+                put("conversation_id", convId)
+                put("sender_name", tokenManager.userDisplayName ?: "Someone")
+            }
+            webSocket.send(payload)
+        }
+    }
+
     private fun handleWebSocketEvent(event: JsonObject) {
         val type = (event["type"] ?: event["event_type"])?.jsonPrimitive?.contentOrNull.orEmpty().lowercase()
 
@@ -503,6 +553,18 @@ class ChatRoomViewModel @Inject constructor(
             type == "ping" -> {
                 _screenShakeEvent.tryEmit(Unit)
                 _isPartnerOnline.value = true
+            }
+            type == "screenshot_setting_changed" -> {
+                val enabled = event["enabled"]?.jsonPrimitive?.booleanOrNull ?: false
+                _screenshotNotificationsEnabled.value = enabled
+                // Optionally update local DB if we want settings to sync across devices via WS
+                viewModelScope.launch {
+                    chatRepository.toggleScreenshotNotifications(convId, enabled)
+                }
+            }
+            type == "screenshot_taken" -> {
+                val name = event["sender_name"]?.jsonPrimitive?.contentOrNull ?: "Someone"
+                _toastEvent.tryEmit("📸 $name took a screenshot!")
             }
             type == "typing" -> {
                 val isTyping = event["is_typing"]?.jsonPrimitive?.booleanOrNull ?: false

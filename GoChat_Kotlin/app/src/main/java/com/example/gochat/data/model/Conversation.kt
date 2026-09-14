@@ -40,6 +40,7 @@ data class Conversation(
     @SerialName("member_ids") val memberIds: List<String> = emptyList(),
     @SerialName("last_message_text") val lastMessageText: String? = null,
     @SerialName("last_message_time") val lastMessageTime: Long? = null,
+    @SerialName("screenshot_notifications_enabled") val screenshotNotificationsEnabled: Boolean = false,
     @SerialName("updated_at") val updatedAt: Long = System.currentTimeMillis()
 ) {
     val isGroup: Boolean get() = type == ConversationType.GROUP
@@ -118,6 +119,9 @@ data class Conversation(
                 lastTime = parseTimestamp(lastMsgElem["created_at"] ?: lastMsgElem["send_at"] ?: lastMsgElem["createdAt"])
             }
 
+            val screenshotNotificationsEnabled = (json["screenshot_notifications_enabled"] ?: json["screenshotNotificationsEnabled"])
+                ?.jsonPrimitive?.booleanOrNull ?: false
+
             val updatedAt = parseTimestamp(json["updated_at"] ?: json["updatedAt"] ?: json["UpdatedAt"])
 
             return Conversation(
@@ -136,6 +140,7 @@ data class Conversation(
                 memberIds = membersList,
                 lastMessageText = lastText,
                 lastMessageTime = lastTime,
+                screenshotNotificationsEnabled = screenshotNotificationsEnabled,
                 updatedAt = updatedAt
             )
         }

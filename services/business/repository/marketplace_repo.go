@@ -113,6 +113,56 @@ func deriveCurrencyFromCountry(country string) string {
 	}
 }
 
+func (r *BusinessRepository) resolveOrCreateCategoryID(ctx context.Context, catInput string) string {
+	catInput = strings.TrimSpace(catInput)
+	if catInput == "" {
+		return ""
+	}
+	if _, err := uuid.Parse(catInput); err == nil {
+		return catInput
+	}
+	var catID string
+	// 1. Try matching top-level category name
+	err := r.db.QueryRow(ctx, `SELECT id::text FROM business.categories WHERE name ILIKE $1 LIMIT 1`, catInput).Scan(&catID)
+	if err == nil && catID != "" {
+		return catID
+	}
+	// 2. Try matching sub-category name
+	err = r.db.QueryRow(ctx, `SELECT category_id::text FROM business.sub_categories WHERE name ILIKE $1 LIMIT 1`, catInput).Scan(&catID)
+	if err == nil && catID != "" {
+		return catID
+	}
+	// 3. Auto-insert/upsert into business.categories so custom categories are NEVER lost
+	titleName := strings.Title(strings.ToLower(catInput))
+	newID := uuid.New().String()
+	_ = r.db.QueryRow(ctx, `
+		INSERT INTO business.categories (id, name, icon, sort_order)
+		VALUES ($1, $2, '🏷️', 50)
+		ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+		RETURNING id::text
+	`, newID, titleName).Scan(&catID)
+	if catID == "" {
+		_ = r.db.QueryRow(ctx, `SELECT id::text FROM business.categories WHERE name ILIKE $1 LIMIT 1`, catInput).Scan(&catID)
+	}
+	return catID
+}
+
+func (r *BusinessRepository) resolveSubCategoryID(ctx context.Context, subCatInput string) string {
+	subCatInput = strings.TrimSpace(subCatInput)
+	if subCatInput == "" {
+		return ""
+	}
+	if _, err := uuid.Parse(subCatInput); err == nil {
+		return subCatInput
+	}
+	var subCatID string
+	err := r.db.QueryRow(ctx, `SELECT id::text FROM business.sub_categories WHERE name ILIKE $1 LIMIT 1`, subCatInput).Scan(&subCatID)
+	if err == nil && subCatID != "" {
+		return subCatID
+	}
+	return ""
+}
+
 func (r *BusinessRepository) CreateMarketplaceProduct(ctx context.Context, p *MarketplaceProduct) (*MarketplaceProduct, error) {
 	// Verify user has created a business profile, or auto-create a default one
 	var profileExists bool
@@ -145,29 +195,9 @@ func (r *BusinessRepository) CreateMarketplaceProduct(ctx context.Context, p *Ma
 	p.IsPublished = true
 	p.CreatedAt = time.Now()
 
-	// Safely resolve category ID if user supplied a category name instead of UUID
-	if p.CategoryID != "" {
-		if _, err := uuid.Parse(p.CategoryID); err != nil {
-			var catID string
-			err := r.db.QueryRow(ctx, `SELECT id::text FROM business.categories WHERE name ILIKE $1 LIMIT 1`, p.CategoryID).Scan(&catID)
-			if err == nil && catID != "" {
-				p.CategoryID = catID
-			} else {
-				p.CategoryID = ""
-			}
-		}
-	}
-	if p.SubCategoryID != "" {
-		if _, err := uuid.Parse(p.SubCategoryID); err != nil {
-			var subCatID string
-			err := r.db.QueryRow(ctx, `SELECT id::text FROM business.sub_categories WHERE name ILIKE $1 LIMIT 1`, p.SubCategoryID).Scan(&subCatID)
-			if err == nil && subCatID != "" {
-				p.SubCategoryID = subCatID
-			} else {
-				p.SubCategoryID = ""
-			}
-		}
-	}
+	// Safely resolve category ID
+	p.CategoryID = r.resolveOrCreateCategoryID(ctx, p.CategoryID)
+	p.SubCategoryID = r.resolveSubCategoryID(ctx, p.SubCategoryID)
 	if p.BrandID != "" {
 		if _, err := uuid.Parse(p.BrandID); err != nil {
 			p.BrandID = ""
@@ -218,29 +248,9 @@ func (r *BusinessRepository) CreateMarketplaceProduct(ctx context.Context, p *Ma
 }
 
 func (r *BusinessRepository) UpdateMarketplaceProduct(ctx context.Context, p *MarketplaceProduct) (*MarketplaceProduct, error) {
-	// Safely resolve category ID if user supplied a category name instead of UUID
-	if p.CategoryID != "" {
-		if _, err := uuid.Parse(p.CategoryID); err != nil {
-			var catID string
-			err := r.db.QueryRow(ctx, `SELECT id::text FROM business.categories WHERE name ILIKE $1 LIMIT 1`, p.CategoryID).Scan(&catID)
-			if err == nil && catID != "" {
-				p.CategoryID = catID
-			} else {
-				p.CategoryID = ""
-			}
-		}
-	}
-	if p.SubCategoryID != "" {
-		if _, err := uuid.Parse(p.SubCategoryID); err != nil {
-			var subCatID string
-			err := r.db.QueryRow(ctx, `SELECT id::text FROM business.sub_categories WHERE name ILIKE $1 LIMIT 1`, p.SubCategoryID).Scan(&subCatID)
-			if err == nil && subCatID != "" {
-				p.SubCategoryID = subCatID
-			} else {
-				p.SubCategoryID = ""
-			}
-		}
-	}
+	// Safely resolve category ID
+	p.CategoryID = r.resolveOrCreateCategoryID(ctx, p.CategoryID)
+	p.SubCategoryID = r.resolveSubCategoryID(ctx, p.SubCategoryID)
 	if p.BrandID != "" {
 		if _, err := uuid.Parse(p.BrandID); err != nil {
 			p.BrandID = ""
@@ -362,7 +372,7 @@ func (r *BusinessRepository) GetMarketplaceProduct(ctx context.Context, id strin
 
 func (r *BusinessRepository) ListBusinessProducts(ctx context.Context, businessID string, limit, offset int32) ([]*MarketplaceProduct, int32, error) {
 	var total int32
-	_ = r.db.QueryRow(ctx, `SELECT COUNT(*) FROM business.products WHERE business_id = $1`, businessID).Scan(&total)
+	_ = r.db.QueryRow(ctx, `SELECT COUNT(*) FROM business.products WHERE (business_id = $1 OR owner_id = $1)`, businessID).Scan(&total)
 
 	rows, err := r.db.Query(ctx,
 		`SELECT 
@@ -378,7 +388,7 @@ func (r *BusinessRepository) ListBusinessProducts(ctx context.Context, businessI
 		 LEFT JOIN core.users u ON u.id = p.owner_id
 		 LEFT JOIN business.categories c ON c.id = p.category_id
 		 LEFT JOIN business.brands br ON br.id = p.brand_id
-		 WHERE p.business_id = $1
+		 WHERE (p.business_id = $1 OR p.owner_id = $1)
 		 ORDER BY p.created_at DESC
 		 LIMIT $2 OFFSET $3`, businessID, limit, offset)
 	if err != nil {
@@ -447,7 +457,6 @@ func (r *BusinessRepository) ListFollowedMarketplaceProducts(ctx context.Context
 		ORDER BY p.created_at DESC
 		LIMIT $2 OFFSET $3
 	`, userID, limit, offset)
-
 	if err != nil {
 		return nil, 0, fmt.Errorf("list followed products: %w", err)
 	}
@@ -482,11 +491,11 @@ func (r *BusinessRepository) ListMarketplaceProducts(ctx context.Context, catego
 
 	if categoryID != "" && categoryID != "all" {
 		if _, err := uuid.Parse(categoryID); err == nil {
-			whereClause += fmt.Sprintf(" AND p.category_id = $%d", argIdx)
+			whereClause += fmt.Sprintf(" AND (p.category_id = $%d OR p.sub_category_id = $%d)", argIdx, argIdx)
 			args = append(args, categoryID)
 			argIdx++
 		} else {
-			whereClause += fmt.Sprintf(" AND (c.name ILIKE $%d OR p.category_id::text = $%d)", argIdx, argIdx)
+			whereClause += fmt.Sprintf(" AND (c.name ILIKE $%d OR sc.name ILIKE $%d OR p.category_id::text = $%d)", argIdx, argIdx, argIdx)
 			args = append(args, "%"+categoryID+"%")
 			argIdx++
 		}
@@ -498,22 +507,24 @@ func (r *BusinessRepository) ListMarketplaceProducts(ctx context.Context, catego
 		argIdx++
 	}
 
-	var countQuery = fmt.Sprintf("SELECT COUNT(*) FROM business.products p LEFT JOIN business.categories c ON c.id = p.category_id %s", whereClause)
+	var countQuery = fmt.Sprintf(`SELECT COUNT(*) FROM business.products p 
+		LEFT JOIN business.categories c ON c.id = p.category_id 
+		LEFT JOIN business.sub_categories sc ON sc.id = p.sub_category_id %s`, whereClause)
 	var total int32
 	_ = r.db.QueryRow(ctx, countQuery, args...).Scan(&total)
 
-	orderBy := "ORDER BY score DESC"
+	orderBy := "ORDER BY score DESC, p.created_at DESC, p.id DESC"
 	switch sortBy {
 	case "newest":
-		orderBy = "ORDER BY p.created_at DESC"
+		orderBy = "ORDER BY p.created_at DESC, p.id DESC"
 	case "top_rated":
-		orderBy = "ORDER BY p.rating_avg DESC, p.review_count DESC"
+		orderBy = "ORDER BY p.rating_avg DESC, p.review_count DESC, p.created_at DESC, p.id DESC"
 	case "price_low":
-		orderBy = "ORDER BY p.price ASC"
+		orderBy = "ORDER BY p.price ASC, p.created_at DESC, p.id DESC"
 	case "price_high":
-		orderBy = "ORDER BY p.price DESC"
+		orderBy = "ORDER BY p.price DESC, p.created_at DESC, p.id DESC"
 	case "best_selling":
-		orderBy = "ORDER BY p.order_count DESC, score DESC"
+		orderBy = "ORDER BY p.order_count DESC, score DESC, p.created_at DESC, p.id DESC"
 	}
 
 	query := fmt.Sprintf(`
@@ -536,6 +547,7 @@ func (r *BusinessRepository) ListMarketplaceProducts(ctx context.Context, catego
 		LEFT JOIN business.business_profiles b ON b.user_id = p.business_id
 		LEFT JOIN core.users u ON u.id = p.owner_id
 		LEFT JOIN business.categories c ON c.id = p.category_id
+		LEFT JOIN business.sub_categories sc ON sc.id = p.sub_category_id
 		LEFT JOIN business.brands br ON br.id = p.brand_id
 		%s
 		%s

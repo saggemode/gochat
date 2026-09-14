@@ -201,6 +201,13 @@ class ChatRoomActivity : AppCompatActivity() {
         uri?.let { handleSelectedAudioFile(it) }
     }
 
+    // Android 14+ Screenshot Detection
+    private val screenCaptureCallback = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        ScreenCaptureCallback {
+            viewModel.sendScreenshotNotification()
+        }
+    } else null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -816,6 +823,12 @@ class ChatRoomActivity : AppCompatActivity() {
                 }
 
                 launch {
+                    viewModel.toastEvent.collect { message ->
+                        Toast.makeText(this@ChatRoomActivity, message, Toast.LENGTH_LONG).show()
+                    }
+                }
+
+                launch {
                     viewModel.mentionSuggestions.collect { suggestions ->
                         if (suggestions.isNotEmpty()) {
                             binding.rvMentionSuggestions.visibility = View.VISIBLE
@@ -899,6 +912,7 @@ class ChatRoomActivity : AppCompatActivity() {
         val items = arrayOf(
             getString(R.string.option_wallpaper_theme),
             getString(R.string.option_disappearing_messages),
+            if (viewModel.screenshotNotificationsEnabled.value) "Disable Screenshot Alerts" else "Enable Screenshot Alerts",
             getString(R.string.option_mute_notifications),
             getString(R.string.option_clear_chat),
             getString(R.string.option_export_chat)
@@ -920,6 +934,12 @@ class ChatRoomActivity : AppCompatActivity() {
                     }
                     1 -> {
                         showDisappearingMessagesDialog()
+                    }
+                    2 -> {
+                        val current = viewModel.screenshotNotificationsEnabled.value
+                        viewModel.toggleScreenshotNotifications(!current)
+                        val status = if (!current) "enabled" else "disabled"
+                        Toast.makeText(this, "Screenshot alerts $status", Toast.LENGTH_SHORT).show()
                     }
                     else -> Toast.makeText(this, getString(R.string.toast_option_selected), Toast.LENGTH_SHORT).show()
                 }
@@ -1077,6 +1097,24 @@ class ChatRoomActivity : AppCompatActivity() {
             cancelVoiceRecording()
         }
         AudioPlayerManager.stop()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            screenCaptureCallback?.let {
+                registerScreenCaptureCallback(mainExecutor, it)
+            }
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            screenCaptureCallback?.let {
+                unregisterScreenCaptureCallback(it)
+            }
+        }
     }
 
     override fun onDestroy() {

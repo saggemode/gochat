@@ -3,6 +3,7 @@ package com.example.gochat.data.db
 import androidx.paging.PagingSource
 import androidx.room.*
 import com.example.gochat.data.model.*
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MarketplaceDao {
@@ -26,6 +27,17 @@ interface MarketplaceDao {
 
     @Query("SELECT * FROM products ORDER BY createdAt DESC")
     fun getProductsPaged(): PagingSource<Int, Product>
+
+    @Query("""
+        SELECT * FROM products 
+        WHERE (:categoryId IS NULL OR :categoryId = '' OR :categoryId = 'all' OR categoryId = :categoryId OR category = :categoryId)
+          AND (:search IS NULL OR :search = '' OR name LIKE '%' || :search || '%' OR description LIKE '%' || :search || '%' OR storeName LIKE '%' || :search || '%')
+        ORDER BY createdAt DESC
+    """)
+    fun getProductsPagedFiltered(categoryId: String?, search: String?): PagingSource<Int, Product>
+
+    @Query("SELECT * FROM products ORDER BY createdAt DESC")
+    fun observeAllProducts(): Flow<List<Product>>
 
     @Query("SELECT * FROM products")
     suspend fun getAllProducts(): List<Product>

@@ -952,11 +952,11 @@ class MarketplaceFragment : Fragment() {
             MediaImageHelper.loadSafeImage(binding.ivHubStoreLogo, store.logoUrl, isCircle = true)
 
             // Update store tab title
-            binding.tabLayoutMain.getTabAt(1)?.text = store.name.take(12)
+            binding.tabLayoutMain.getTabAt(2)?.text = store.name.take(12)
         } else {
             binding.layoutNoStore.visibility = View.VISIBLE
             binding.layoutHasStore.visibility = View.GONE
-            binding.tabLayoutMain.getTabAt(1)?.text = getString(R.string.tab_open_store)
+            binding.tabLayoutMain.getTabAt(2)?.text = getString(R.string.tab_open_store)
         }
     }
 

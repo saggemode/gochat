@@ -266,6 +266,11 @@ func (h *BusinessHandler) GetMyProducts(c *gin.Context) {
 
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	if pageStr := c.Query("page"); pageStr != "" && c.Query("offset") == "" {
+		if page, err := strconv.Atoi(pageStr); err == nil && page > 1 {
+			offset = (page - 1) * limit
+		}
+	}
 
 	resp, err := h.client.ListBusinessProducts(c.Request.Context(), &pb.ListBusinessProductsRequest{
 		BusinessId: userID,
@@ -296,6 +301,11 @@ func (h *BusinessHandler) ListMarketplaceProducts(c *gin.Context) {
 
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	if pageStr := c.Query("page"); pageStr != "" && c.Query("offset") == "" {
+		if page, err := strconv.Atoi(pageStr); err == nil && page > 1 {
+			offset = (page - 1) * limit
+		}
+	}
 
 	resp, err := h.client.ListMarketplaceProducts(c.Request.Context(), &pb.ListMarketplaceProductsRequest{
 		CategoryId: categoryID,
@@ -327,6 +337,11 @@ func (h *BusinessHandler) ListFollowedProducts(c *gin.Context) {
 
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	if pageStr := c.Query("page"); pageStr != "" && c.Query("offset") == "" {
+		if page, err := strconv.Atoi(pageStr); err == nil && page > 1 {
+			offset = (page - 1) * limit
+		}
+	}
 
 	resp, err := h.client.ListFollowedMarketplaceProducts(c.Request.Context(), &pb.ListFollowedMarketplaceProductsRequest{
 		UserId: userID,

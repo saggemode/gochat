@@ -54,9 +54,37 @@ class MarketplaceRepository @Inject constructor(
             ),
             remoteMediator = ProductRemoteMediator(api, db, this, categoryId, search, sortBy, isNearbyOnly, isFollowingOnly, userLat, userLng),
             pagingSourceFactory = {
-                marketplaceDao.getProductsPaged()
+                marketplaceDao.getProductsPagedFiltered(categoryId, search)
             }
         ).flow
+    }
+
+    suspend fun refreshProducts(
+        categoryId: String? = null,
+        search: String? = null,
+        sortBy: String? = null
+    ): Result<List<Product>> {
+        return try {
+            val response = api.getProducts(
+                categoryId = if (categoryId == "all" || categoryId.isNullOrBlank()) null else categoryId,
+                search = search?.ifBlank { null },
+                sortBy = sortBy,
+                page = 1,
+                limit = 50
+            )
+            if (response.isSuccessful) {
+                val data = response.body()
+                val apiList = parseProductsJson(data)
+                if (apiList.isNotEmpty()) {
+                    marketplaceDao.insertProducts(apiList)
+                }
+                Result.success(apiList)
+            } else {
+                Result.failure(Exception("Failed to fetch products (${response.code()})"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
 
@@ -686,14 +714,14 @@ class MarketplaceRepository @Inject constructor(
                 put("image_urls", JsonArray(product.imageUrls.map { JsonPrimitive(it) }))
             }
             val response = api.createProduct(body)
-            val created = if (response.isSuccessful) {
+            if (response.isSuccessful) {
                 val data = response.body()
                 val targetObj = when (data) {
                     is JsonObject -> data["product"]?.jsonObject ?: data
                     else -> null
                 }
                 val parsed = parseSingleProductJson(targetObj)
-                if (parsed != null) {
+                val created = if (parsed != null) {
                     if (parsed.id != product.id) {
                         marketplaceDao.deleteProduct(product.id)
                     }
@@ -701,14 +729,14 @@ class MarketplaceRepository @Inject constructor(
                 } else {
                     product
                 }
+                marketplaceDao.insertProduct(created)
+                Result.success(created)
             } else {
-                product
+                val errBody = response.errorBody()?.string().orEmpty()
+                Result.failure(Exception("Failed to create product (${response.code()}): $errBody"))
             }
-            marketplaceDao.insertProduct(created)
-            Result.success(created)
         } catch (e: Exception) {
-            marketplaceDao.insertProduct(product)
-            Result.success(product)
+            Result.failure(e)
         }
     }
 
@@ -733,21 +761,21 @@ class MarketplaceRepository @Inject constructor(
                 put("image_urls", JsonArray(product.imageUrls.map { JsonPrimitive(it) }))
             }
             val response = api.updateProduct(product.id, body)
-            val updated = if (response.isSuccessful) {
+            if (response.isSuccessful) {
                 val data = response.body()
                 val targetObj = when (data) {
                     is JsonObject -> data["product"]?.jsonObject ?: data
                     else -> null
                 }
-                parseSingleProductJson(targetObj) ?: product
+                val updated = parseSingleProductJson(targetObj) ?: product
+                marketplaceDao.insertProduct(updated)
+                Result.success(updated)
             } else {
-                product
+                val errBody = response.errorBody()?.string().orEmpty()
+                Result.failure(Exception("Failed to update product (${response.code()}): $errBody"))
             }
-            marketplaceDao.insertProduct(updated)
-            Result.success(updated)
         } catch (e: Exception) {
-            marketplaceDao.insertProduct(product)
-            Result.success(product)
+            Result.failure(e)
         }
     }
 

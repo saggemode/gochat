@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
+import com.example.gochat.core.network.NetworkMonitor
 import java.io.File
 import java.util.UUID
 import javax.inject.Inject
@@ -27,7 +28,8 @@ class MarketplaceViewModel @Inject constructor(
     private val repository: MarketplaceRepository,
     private val webSocket: GoChatWebSocket,
     private val json: Json,
-    private val workManager: WorkManager
+    private val workManager: WorkManager,
+    private val networkMonitor: NetworkMonitor
 ) : AndroidViewModel(application) {
 
     private val _products = MutableStateFlow<List<Product>>(emptyList())
@@ -96,6 +98,14 @@ class MarketplaceViewModel @Inject constructor(
     init {
         observeWebSocketEvents()
         loadData()
+
+        viewModelScope.launch {
+            networkMonitor.isOnline.collect { isOnline ->
+                if (isOnline) {
+                    loadData(currentTabIndex)
+                }
+            }
+        }
     }
 
     private fun observeWebSocketEvents() {
@@ -126,8 +136,23 @@ class MarketplaceViewModel @Inject constructor(
             _isLoading.value = true
             _error.value = null
 
+            // Eagerly refresh explore products from the backend API into Room DB
+            launch {
+                val refreshResult = repository.refreshProducts(
+                    categoryId = currentCategory,
+                    search = currentSearch,
+                    sortBy = currentSortBy
+                )
+                if (refreshResult.isSuccess) {
+                    _refreshEvent.tryEmit(Unit)
+                }
+            }
+
             if (tabIndex == 2) {
                 loadMyStore()
+            } else {
+                // Background sync store inventory as well
+                launch { repository.getMyProducts() }
             }
             
             loadCategories()

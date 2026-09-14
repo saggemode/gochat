@@ -42,6 +42,9 @@ interface ChatDao {
     @Query("UPDATE conversations SET lastMessageText = :lastText, lastMessageTime = :lastTime, updatedAt = :updatedAt WHERE id = :convId")
     suspend fun updateLastMessage(convId: String, lastText: String, lastTime: Long, updatedAt: Long): Int
 
+    @Query("UPDATE conversations SET screenshotNotificationsEnabled = :enabled WHERE id = :convId")
+    suspend fun updateScreenshotNotifications(convId: String, enabled: Boolean): Int
+
     @Query("UPDATE conversations SET isOnline = :isOnline, lastSeen = :lastSeen WHERE type = 'DIRECT' AND memberIds LIKE '%' || :userId || '%'")
     suspend fun updatePresenceGlobal(userId: String, isOnline: Boolean, lastSeen: Long): Int
 

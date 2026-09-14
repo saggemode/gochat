@@ -178,6 +178,15 @@ class ChatRepository @Inject constructor(
         dao.clearMessagesForConversation(convId)
     }
 
+    suspend fun toggleScreenshotNotifications(convId: String, enabled: Boolean): Result<Unit> {
+        return try {
+            dao.updateScreenshotNotifications(convId, enabled)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // ── Messages ─────────────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════
