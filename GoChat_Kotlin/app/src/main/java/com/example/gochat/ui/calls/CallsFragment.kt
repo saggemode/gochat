@@ -94,14 +94,15 @@ class CallsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 callRepository.observeCalls().collect { calls ->
+                    val b = _binding ?: return@collect
                     if (calls.isEmpty()) {
-                        binding.layoutEmptyCalls.visibility = View.VISIBLE
-                        binding.rvCalls.visibility = View.GONE
-                        binding.tvRecentLabel.visibility = View.GONE
+                        b.layoutEmptyCalls.visibility = View.VISIBLE
+                        b.rvCalls.visibility = View.GONE
+                        b.tvRecentLabel.visibility = View.GONE
                     } else {
-                        binding.layoutEmptyCalls.visibility = View.GONE
-                        binding.rvCalls.visibility = View.VISIBLE
-                        binding.tvRecentLabel.visibility = View.VISIBLE
+                        b.layoutEmptyCalls.visibility = View.GONE
+                        b.rvCalls.visibility = View.VISIBLE
+                        b.tvRecentLabel.visibility = View.VISIBLE
                         callAdapter.submitList(calls)
                     }
                 }
@@ -111,9 +112,16 @@ class CallsFragment : Fragment() {
 
     private fun refreshCallHistory() {
         viewLifecycleOwner.lifecycleScope.launch {
-            binding.swipeRefreshCalls.isRefreshing = true
+            _binding?.swipeRefreshCalls?.isRefreshing = true
             callRepository.refreshCallHistory()
-            binding.swipeRefreshCalls.isRefreshing = false
+            _binding?.swipeRefreshCalls?.isRefreshing = false
+        }
+    }
+
+    override fun onHiddenChanged(hidden: Boolean) {
+        super.onHiddenChanged(hidden)
+        if (!hidden) {
+            refreshCallHistory()
         }
     }
 

@@ -255,6 +255,13 @@ class StoriesFragment : Fragment() {
         }
     }
 
+    override fun onHiddenChanged(hidden: Boolean) {
+        super.onHiddenChanged(hidden)
+        if (!hidden) {
+            viewModel.loadStories()
+        }
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null

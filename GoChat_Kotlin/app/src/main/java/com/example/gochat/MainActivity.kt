@@ -44,11 +44,16 @@ class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var tokenManager: TokenManager
 
-    private val chatListFragment by lazy { ChatListFragment() }
-    private val storiesFragment by lazy { StoriesFragment() }
-    private val marketplaceFragment by lazy { MarketplaceFragment() }
-    private val callsFragment by lazy { CallsFragment() }
-    private val settingsFragment by lazy { SettingsFragment() }
+    companion object {
+        private const val KEY_ACTIVE_TAB = "key_active_tab"
+        private const val TAG_CHATS = "tab_chats"
+        private const val TAG_STATUS = "tab_status"
+        private const val TAG_MARKETPLACE = "tab_marketplace"
+        private const val TAG_CALLS = "tab_calls"
+        private const val TAG_SETTINGS = "tab_settings"
+    }
+
+    private var currentTabTag: String = TAG_CHATS
 
     private val requestNotificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -78,8 +83,22 @@ class MainActivity : AppCompatActivity() {
             if (tokenManager.isBiometricLockEnabled) {
                 showBiometricPrompt()
             } else {
-                switchFragment(chatListFragment)
+                switchTab(TAG_CHATS)
             }
+        } else {
+            currentTabTag = savedInstanceState.getString(KEY_ACTIVE_TAB, TAG_CHATS)
+            val transaction = supportFragmentManager.beginTransaction()
+            for (fragment in supportFragmentManager.fragments) {
+                val fTag = fragment.tag
+                if (fTag != null) {
+                    if (fTag == currentTabTag) {
+                        transaction.show(fragment)
+                    } else {
+                        transaction.hide(fragment)
+                    }
+                }
+            }
+            transaction.commit()
         }
 
         setupBottomNavigation()
@@ -91,6 +110,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         handleIntent(intent)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(KEY_ACTIVE_TAB, currentTabTag)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -126,7 +150,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
     private fun checkNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
@@ -146,23 +169,23 @@ class MainActivity : AppCompatActivity() {
         binding.bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_chats -> {
-                    switchFragment(chatListFragment)
+                    switchTab(TAG_CHATS)
                     true
                 }
                 R.id.nav_status -> {
-                    switchFragment(storiesFragment)
+                    switchTab(TAG_STATUS)
                     true
                 }
                 R.id.nav_marketplace -> {
-                    switchFragment(marketplaceFragment)
+                    switchTab(TAG_MARKETPLACE)
                     true
                 }
                 R.id.nav_calls -> {
-                    switchFragment(callsFragment)
+                    switchTab(TAG_CALLS)
                     true
                 }
                 R.id.nav_settings -> {
-                    switchFragment(settingsFragment)
+                    switchTab(TAG_SETTINGS)
                     true
                 }
                 else -> false
@@ -170,10 +193,37 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun switchFragment(fragment: Fragment) {
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.fragmentContainer, fragment)
-            .commit()
+    private fun switchTab(tag: String) {
+        val fragmentManager = supportFragmentManager
+        val transaction = fragmentManager.beginTransaction()
+
+        val currentFragment = fragmentManager.findFragmentByTag(currentTabTag)
+        var targetFragment = fragmentManager.findFragmentByTag(tag)
+
+        if (targetFragment != null && targetFragment.isAdded && !targetFragment.isHidden && currentTabTag == tag) {
+            return
+        }
+
+        if (currentFragment != null && currentFragment != targetFragment) {
+            transaction.hide(currentFragment)
+        }
+
+        if (targetFragment == null) {
+            targetFragment = when (tag) {
+                TAG_CHATS -> ChatListFragment()
+                TAG_STATUS -> StoriesFragment()
+                TAG_MARKETPLACE -> MarketplaceFragment()
+                TAG_CALLS -> CallsFragment()
+                TAG_SETTINGS -> SettingsFragment()
+                else -> ChatListFragment()
+            }
+            transaction.add(R.id.fragmentContainer, targetFragment, tag)
+        } else {
+            transaction.show(targetFragment)
+        }
+
+        currentTabTag = tag
+        transaction.commit()
     }
 
     private fun showBiometricPrompt() {
@@ -190,7 +240,7 @@ class MainActivity : AppCompatActivity() {
 
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                     super.onAuthenticationSucceeded(result)
-                    switchFragment(chatListFragment)
+                    switchTab(TAG_CHATS)
                 }
 
                 override fun onAuthenticationFailed() {

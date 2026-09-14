@@ -71,10 +71,11 @@ class MarketplaceFragment : Fragment() {
     ) { uri: Uri? ->
         selectedStoreLogoUri = uri
         if (uri != null) {
-            binding.ivStoreLogoPreview.setPadding(0, 0, 0, 0)
-            MediaImageHelper.loadSafeImage(binding.ivStoreLogoPreview, uri.toString(), cornerRadiusDp = 12f)
-            binding.btnRemoveStoreLogo.visibility = View.VISIBLE
-            binding.tvStoreLogoSubtitle.text = "Logo selected from phone"
+            val b = _binding ?: return@registerForActivityResult
+            b.ivStoreLogoPreview.setPadding(0, 0, 0, 0)
+            MediaImageHelper.loadSafeImage(b.ivStoreLogoPreview, uri.toString(), cornerRadiusDp = 12f)
+            b.btnRemoveStoreLogo.visibility = View.VISIBLE
+            b.tvStoreLogoSubtitle.text = "Logo selected from phone"
         } else {
             resetStoreLogoPreview()
         }
@@ -88,12 +89,13 @@ class MarketplaceFragment : Fragment() {
 
     private fun resetStoreLogoPreview() {
         selectedStoreLogoUri = null
-        binding.ivStoreLogoPreview.setImageDrawable(null)
-        binding.ivStoreLogoPreview.setImageResource(R.drawable.ic_camera_status)
+        val b = _binding ?: return
+        b.ivStoreLogoPreview.setImageDrawable(null)
+        b.ivStoreLogoPreview.setImageResource(R.drawable.ic_camera_status)
         val pad = (14 * resources.displayMetrics.density).toInt()
-        binding.ivStoreLogoPreview.setPadding(pad, pad, pad, pad)
-        binding.btnRemoveStoreLogo.visibility = View.GONE
-        binding.tvStoreLogoSubtitle.text = "Tap to select logo from phone"
+        b.ivStoreLogoPreview.setPadding(pad, pad, pad, pad)
+        b.btnRemoveStoreLogo.visibility = View.GONE
+        b.tvStoreLogoSubtitle.text = "Tap to select logo from phone"
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -325,14 +327,16 @@ class MarketplaceFragment : Fragment() {
                 description = description,
                 logoUrl = uploadedLogoUrl,
                 onSuccess = {
-                    binding.btnCreateStore.isEnabled = true
-                    binding.btnCreateStore.text = "Create Business Store"
+                    val b = _binding ?: return@createStore
+                    b.btnCreateStore.isEnabled = true
+                    b.btnCreateStore.text = "Create Business Store"
                     resetStoreLogoPreview()
                     Toast.makeText(requireContext(), "🎉 Store \"$name\" is now live on GoChat!", Toast.LENGTH_LONG).show()
                 },
                 onError = { err ->
-                    binding.btnCreateStore.isEnabled = true
-                    binding.btnCreateStore.text = "Create Business Store"
+                    val b = _binding ?: return@createStore
+                    b.btnCreateStore.isEnabled = true
+                    b.btnCreateStore.text = "Create Business Store"
                     Toast.makeText(requireContext(), err, Toast.LENGTH_SHORT).show()
                 }
             )
@@ -957,6 +961,13 @@ class MarketplaceFragment : Fragment() {
             binding.layoutNoStore.visibility = View.VISIBLE
             binding.layoutHasStore.visibility = View.GONE
             binding.tabLayoutMain.getTabAt(2)?.text = getString(R.string.tab_open_store)
+        }
+    }
+
+    override fun onHiddenChanged(hidden: Boolean) {
+        super.onHiddenChanged(hidden)
+        if (!hidden) {
+            viewModel.loadData()
         }
     }
 
