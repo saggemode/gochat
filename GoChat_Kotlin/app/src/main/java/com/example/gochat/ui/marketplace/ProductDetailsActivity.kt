@@ -43,6 +43,7 @@ class ProductDetailsActivity : AppCompatActivity() {
     private lateinit var variantAdapterPrimary: VariantChipAdapter
     private lateinit var variantAdapterSecondary: VariantChipAdapter
     private lateinit var reviewAdapter: ReviewAdapter
+    private var myExistingReview: Review? = null
 
     private var primaryAttributeName: String? = null
 
@@ -123,8 +124,13 @@ class ProductDetailsActivity : AppCompatActivity() {
                 Toast.makeText(this, "Loading product details, please wait...", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            if (repository.userId.isNullOrBlank()) {
+            val currentUserId = repository.userId
+            if (currentUserId.isNullOrBlank()) {
                 Toast.makeText(this, "Please log in to write a review", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            if (p.sellerId.isNotBlank() && p.sellerId == currentUserId) {
+                Toast.makeText(this, "You cannot review your own product", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             showWriteReviewDialog(p)
@@ -196,8 +202,31 @@ class ProductDetailsActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val result = repository.getReviews(productId)
             if (result.isSuccess) {
-                reviewAdapter.submitList(result.getOrThrow())
+                val list = result.getOrThrow()
+                val currentUserId = repository.userId
+                myExistingReview = if (!currentUserId.isNullOrBlank()) {
+                    list.find { it.userId == currentUserId }
+                } else null
+
+                updateReviewUI()
+                reviewAdapter.submitList(list)
             }
+        }
+    }
+
+    private fun updateReviewUI() {
+        val currentUserId = repository.userId
+        val isOwner = !currentUserId.isNullOrBlank() && (product?.sellerId == currentUserId)
+        if (isOwner) {
+            binding.btnWriteReview.visibility = View.GONE
+            return
+        }
+
+        binding.btnWriteReview.visibility = View.VISIBLE
+        if (myExistingReview != null) {
+            binding.btnWriteReview.text = "✏️ Edit Your Review"
+        } else {
+            binding.btnWriteReview.text = "Write a Review"
         }
     }
 
@@ -210,13 +239,34 @@ class ProductDetailsActivity : AppCompatActivity() {
         }
     }
 
-
     private fun showWriteReviewDialog(product: Product) {
+        val currentUserId = repository.userId
+        if (!currentUserId.isNullOrBlank() && product.sellerId.isNotBlank() && product.sellerId == currentUserId) {
+            Toast.makeText(this, "You cannot review your own product", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val dialog = BottomSheetDialog(this)
         val dialogBinding = DialogWriteReviewBinding.inflate(layoutInflater)
         dialog.setContentView(dialogBinding.root)
 
         reviewPhotos.clear()
+
+        val existing = myExistingReview
+        if (existing != null) {
+            dialogBinding.tvDialogTitle.text = "Edit Your Review"
+            dialogBinding.ratingBar.rating = existing.rating.coerceIn(1, 5).toFloat()
+            dialogBinding.etComment.setText(existing.comment)
+            dialogBinding.btnSubmitReview.text = "Update Review"
+            if (existing.imageUrls.isNotEmpty()) {
+                dialogBinding.tvPhotosLabel.text = "${existing.imageUrls.size} existing photos (tap to replace)"
+            }
+        } else {
+            dialogBinding.tvDialogTitle.text = "Rate this Product"
+            dialogBinding.ratingBar.rating = 5f
+            dialogBinding.etComment.setText("")
+            dialogBinding.btnSubmitReview.text = "Submit Review"
+        }
 
         dialogBinding.layoutPickPhotos.setOnClickListener {
             onReviewPhotosPicked = { uris ->
@@ -236,8 +286,9 @@ class ProductDetailsActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
+            val isUpdate = (existing != null)
             dialogBinding.btnSubmitReview.isEnabled = false
-            dialogBinding.btnSubmitReview.text = "Submitting..."
+            dialogBinding.btnSubmitReview.text = if (isUpdate) "Updating..." else "Submitting..."
 
             lifecycleScope.launch {
                 val uploadedUrls = mutableListOf<String>()
@@ -249,14 +300,22 @@ class ProductDetailsActivity : AppCompatActivity() {
                     }
                 }
 
-                val res = repository.createReview(product.id, rating, comment, uploadedUrls)
+                // If user didn't pick new photos but had existing photos, preserve existing
+                val finalImageUrls = if (uploadedUrls.isNotEmpty()) {
+                    uploadedUrls
+                } else {
+                    existing?.imageUrls ?: emptyList()
+                }
+
+                val res = repository.createReview(product.id, rating, comment, finalImageUrls)
                 if (res.isSuccess) {
-                    Toast.makeText(this@ProductDetailsActivity, "Review submitted! Thank you.", Toast.LENGTH_SHORT).show()
+                    val successMsg = if (isUpdate) "Review updated successfully!" else "Review submitted! Thank you."
+                    Toast.makeText(this@ProductDetailsActivity, successMsg, Toast.LENGTH_SHORT).show()
                     loadReviews(product.id)
                     dialog.dismiss()
                 } else {
                     dialogBinding.btnSubmitReview.isEnabled = true
-                    dialogBinding.btnSubmitReview.text = "Submit Review"
+                    dialogBinding.btnSubmitReview.text = if (isUpdate) "Update Review" else "Submit Review"
                     val errMsg = res.exceptionOrNull()?.message ?: "Failed to submit review"
                     Toast.makeText(this@ProductDetailsActivity, errMsg, Toast.LENGTH_LONG).show()
                 }
@@ -269,6 +328,7 @@ class ProductDetailsActivity : AppCompatActivity() {
 
 
     private fun displayProduct(product: Product) {
+        updateReviewUI()
         binding.tvProductName.text = product.displayTitle
         binding.tvProductPrice.text = String.format(Locale.US, "$%.2f", product.price)
 

@@ -470,6 +470,10 @@ func (h *BusinessHandler) CreateReview(c *gin.Context) {
 		ImageUrls: req.ImageURLs,
 	}, jsonOpt)
 	if err != nil {
+		if strings.Contains(err.Error(), "cannot review your own product") {
+			c.JSON(http.StatusForbidden, gin.H{"error": "You cannot review your own product"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

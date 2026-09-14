@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -675,15 +676,32 @@ func (r *BusinessRepository) TrackProductView(ctx context.Context, productID, us
 }
 
 func (r *BusinessRepository) CreateReview(ctx context.Context, productID, userID string, rating int32, comment string, imageURLs []string) (*Review, error) {
-	id := uuid.New().String()
-	now := time.Now()
+	// Prevent users from reviewing their own product
+	var ownerID, businessID string
+	err := r.db.QueryRow(ctx, `SELECT COALESCE(owner_id::text, ''), COALESCE(business_id::text, '') FROM business.products WHERE id = $1`, productID).Scan(&ownerID, &businessID)
+	if err != nil {
+		return nil, fmt.Errorf("product not found: %w", err)
+	}
+	if (ownerID != "" && ownerID == userID) || (businessID != "" && businessID == userID) {
+		return nil, errors.New("cannot review your own product")
+	}
 
-	_, err := r.db.Exec(ctx,
+	id := uuid.New().String()
+	var actualID string
+	var actualCreatedAt time.Time
+
+	// Single review per user per product: ON CONFLICT updates the existing review
+	err = r.db.QueryRow(ctx,
 		`INSERT INTO business.reviews (id, product_id, user_id, rating, comment, image_urls)
 		 VALUES ($1, $2, $3, $4, $5, $6)
-		 ON CONFLICT (product_id, user_id) DO UPDATE SET rating = $4, comment = $5, image_urls = $6, created_at = NOW()`,
+		 ON CONFLICT (product_id, user_id) 
+		 DO UPDATE SET rating = EXCLUDED.rating, 
+		               comment = EXCLUDED.comment, 
+		               image_urls = CASE WHEN array_length(EXCLUDED.image_urls, 1) > 0 THEN EXCLUDED.image_urls ELSE business.reviews.image_urls END, 
+		               created_at = NOW()
+		 RETURNING id::text, created_at`,
 		id, productID, userID, rating, comment, imageURLs,
-	)
+	).Scan(&actualID, &actualCreatedAt)
 
 	if err != nil {
 		return nil, fmt.Errorf("create review: %w", err)
@@ -701,7 +719,7 @@ func (r *BusinessRepository) CreateReview(ctx context.Context, productID, userID
 	_ = r.db.QueryRow(ctx, `SELECT display_name, COALESCE(avatar_url, '') FROM core.users WHERE id = $1`, userID).Scan(&userName, &userAvatar)
 
 	return &Review{
-		ID:         id,
+		ID:         actualID,
 		ProductID:  productID,
 		UserID:     userID,
 		UserName:   userName,
@@ -709,7 +727,7 @@ func (r *BusinessRepository) CreateReview(ctx context.Context, productID, userID
 		Rating:     rating,
 		Comment:    comment,
 		ImageURLs:  imageURLs,
-		CreatedAt:  now,
+		CreatedAt:  actualCreatedAt,
 	}, nil
 }
 
