@@ -18,9 +18,7 @@ import com.example.gochat.data.model.*
         Order::class,
         ProductRemoteKeys::class
     ],
-    version = 7,
-
-
+    version = 8,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

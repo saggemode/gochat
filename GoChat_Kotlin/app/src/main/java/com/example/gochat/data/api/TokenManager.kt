@@ -2,9 +2,12 @@ package com.example.gochat.data.api
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Build
 import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import java.io.File
+import java.security.KeyStore
 
 /**
  * Secure JWT token and user-session storage using EncryptedSharedPreferences.
@@ -14,6 +17,7 @@ class TokenManager private constructor(context: Context) {
 
     companion object {
         private const val PREFS_FILE = "gochat_secure_prefs"
+        private const val PREFS_FALLBACK_FILE = "gochat_prefs_compat"
         private const val KEY_TOKEN = "jwt_token"
         private const val KEY_USER_ID = "user_id"
         private const val KEY_USER_PIN = "user_pin"
@@ -37,28 +41,70 @@ class TokenManager private constructor(context: Context) {
     private val prefs: SharedPreferences
 
     init {
-        val masterKey = try {
-            MasterKey.Builder(context.applicationContext)
+        prefs = createPreferences(context.applicationContext)
+    }
+
+    private fun createPreferences(appContext: Context): SharedPreferences {
+        // Attempt 1: Normal EncryptedSharedPreferences creation
+        try {
+            val masterKey = MasterKey.Builder(appContext)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                 .build()
-        } catch (e: Throwable) {
-            // Android 15 workaround: If KeyStore initialization fails with Binder error during early startup,
-            // we log it and try a fallback or just let it fail gracefully if it's a platform bug.
-            Log.e("TokenManager", "MasterKey initialization failed: ${e.message}", e)
-            throw e
-        }
 
-        prefs = try {
-            EncryptedSharedPreferences.create(
-                context.applicationContext,
+            return EncryptedSharedPreferences.create(
+                appContext,
                 PREFS_FILE,
                 masterKey,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
         } catch (e: Throwable) {
-            Log.e("TokenManager", "EncryptedSharedPreferences creation failed: ${e.message}", e)
-            throw e
+            Log.e("TokenManager", "EncryptedSharedPreferences creation failed (attempt 1): ${e.message}", e)
+        }
+
+        // Attempt 2: Clear corrupted Keystore keys & shared_prefs files (e.g. AEADBadTagException / KeyMint error -30)
+        try {
+            wipeCorruptedEncryptedPrefs(appContext)
+
+            val masterKey = MasterKey.Builder(appContext)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+
+            return EncryptedSharedPreferences.create(
+                appContext,
+                PREFS_FILE,
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+        } catch (e: Throwable) {
+            Log.e("TokenManager", "EncryptedSharedPreferences creation failed after wipe (attempt 2): ${e.message}", e)
+        }
+
+        // Fallback: If hardware Keystore/KeyMint remains broken on this device,
+        // use app-private SharedPreferences so the app never crashes on startup.
+        Log.w("TokenManager", "Falling back to app-private SharedPreferences store")
+        return appContext.getSharedPreferences(PREFS_FALLBACK_FILE, Context.MODE_PRIVATE)
+    }
+
+    private fun wipeCorruptedEncryptedPrefs(context: Context) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                context.deleteSharedPreferences(PREFS_FILE)
+                context.deleteSharedPreferences("__androidx_security_crypto_encrypted_prefs__$PREFS_FILE")
+            } else {
+                context.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE).edit().clear().commit()
+            }
+            val sharedPrefsDir = File(context.filesDir.parent, "shared_prefs")
+            if (sharedPrefsDir.exists()) {
+                File(sharedPrefsDir, "$PREFS_FILE.xml").delete()
+                File(sharedPrefsDir, "__androidx_security_crypto_encrypted_prefs__$PREFS_FILE.xml").delete()
+            }
+            val keyStore = KeyStore.getInstance("AndroidKeyStore")
+            keyStore.load(null)
+            keyStore.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
+        } catch (t: Throwable) {
+            Log.w("TokenManager", "Failed to clear corrupted secure prefs/keys: ${t.message}")
         }
     }
 
