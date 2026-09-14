@@ -219,5 +219,19 @@
             app:cornerRadius="8dp"
             app:strokeColor="@color/whatsapp_teal_light"
             tools:visibility="visible" />
+
+        <!-- Chat About Order button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnChatOrder"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="38dp"
+            android:layout_marginTop="4dp"
+            android:text="💬 Chat about this Order"
+            android:textAllCaps="false"
+            android:textColor="@color/whatsapp_teal_light"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            app:cornerRadius="8dp" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

@@ -257,6 +257,39 @@ class MarketplaceRepository @Inject constructor(
     }
 
 
+    /**
+     * Fetch a single product by ID from the dedicated detail endpoint.
+     * This returns ALL images for the product (unlike the list endpoint which returns only 1).
+     */
+    suspend fun getProductById(productId: String): Result<Product> {
+        return try {
+            val response = api.getProductById(productId)
+            if (response.isSuccessful) {
+                val product = parseSingleProductJson(response.body())
+                if (product != null) {
+                    // Update local DB with full product data (including all images)
+                    marketplaceDao.insertProducts(listOf(product))
+                    Result.success(product)
+                } else {
+                    // Fallback to local DB
+                    val local = marketplaceDao.getAllProducts().find { it.id == productId }
+                    if (local != null) Result.success(local)
+                    else Result.failure(Exception("Product not found"))
+                }
+            } else {
+                // Fallback to local DB
+                val local = marketplaceDao.getAllProducts().find { it.id == productId }
+                if (local != null) Result.success(local)
+                else Result.failure(Exception("Product not found"))
+            }
+        } catch (e: Exception) {
+            // Fallback to local DB
+            val local = marketplaceDao.getAllProducts().find { it.id == productId }
+            if (local != null) Result.success(local)
+            else Result.failure(e)
+        }
+    }
+
     suspend fun getLocalProducts(): List<Product> = marketplaceDao.getAllProducts()
 
     suspend fun handleIncomingWebSocketEvent(event: JsonObject): Product? {
@@ -770,6 +803,7 @@ class MarketplaceRepository @Inject constructor(
                 val list = parseProductsJson(data)
                 if (list.isNotEmpty()) {
                     marketplaceDao.insertProducts(list)
+                    return Result.success(list)
                 }
             }
             Result.success(marketplaceDao.getMyProducts(currentUserId))

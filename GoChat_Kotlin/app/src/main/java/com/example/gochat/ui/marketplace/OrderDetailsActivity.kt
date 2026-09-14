@@ -50,6 +50,19 @@ class OrderDetailsActivity : AppCompatActivity() {
         binding.tvStoreName.text = order.storeName.ifBlank { "Official Store" }
         binding.tvTotalAmount.text = String.format(Locale.US, "Total: $%.2f", order.totalAmount)
         binding.tvShippingAddress.text = order.shippingAddress?.ifBlank { "Lagos, Nigeria" } ?: "Lagos, Nigeria"
+
+        binding.btnChatWithParty.text = "💬 Chat with ${order.storeName.ifBlank { "Seller" }}"
+        binding.btnChatWithParty.setOnClickListener {
+            val convId = "conv_store_${order.storeId.ifBlank { "official" }}"
+            val intent = android.content.Intent(this, com.example.gochat.ui.chat.ChatRoomActivity::class.java).apply {
+                putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_CONVERSATION_ID, convId)
+                putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_CONVERSATION_TITLE, order.storeName.ifBlank { "Seller" })
+                putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_ORDER_ID, order.id)
+                putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_ORDER_NUMBER, order.orderNumber)
+                putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_ORDER_TOTAL, order.totalAmount)
+            }
+            startActivity(intent)
+        }
     }
 
     private fun setupTimeline(status: OrderStatus) {

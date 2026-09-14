@@ -71,7 +71,6 @@ type Review struct {
 	CreatedAt    time.Time
 }
 
-
 type Store struct {
 	Profile      *BusinessProfile
 	Products     []*MarketplaceProduct
@@ -484,7 +483,6 @@ func (r *BusinessRepository) ListFollowedMarketplaceProducts(ctx context.Context
 
 // ── Global Marketplace Feed (with Amazon/Shopify-style ranking score) ────────
 
-
 func (r *BusinessRepository) ListMarketplaceProducts(ctx context.Context, categoryID, sortBy, search string, limit, offset int32) ([]*MarketplaceProduct, int32, error) {
 	whereClause := "WHERE p.is_published = TRUE"
 	args := []interface{}{}
@@ -753,7 +751,6 @@ func (r *BusinessRepository) ToggleReviewHelpful(ctx context.Context, reviewID, 
 	return !exists, err
 }
 
-
 func (r *BusinessRepository) ListReviews(ctx context.Context, productID string, limit, offset int32) ([]*Review, int32, error) {
 	var total int32
 	_ = r.db.QueryRow(ctx, `SELECT COUNT(*) FROM business.reviews WHERE product_id = $1`, productID).Scan(&total)
@@ -837,5 +834,3 @@ func (r *BusinessRepository) GetFollowedStores(ctx context.Context, userID strin
 	}
 	return profiles, nil
 }
-
-

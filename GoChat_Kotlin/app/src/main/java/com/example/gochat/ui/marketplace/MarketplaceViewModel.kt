@@ -560,4 +560,8 @@ class MarketplaceViewModel @Inject constructor(
             loadExploreProducts()
         }
     }
+
+    suspend fun getProductById(productId: String): Product? {
+        return repository.getProductById(productId).getOrNull()
+    }
 }

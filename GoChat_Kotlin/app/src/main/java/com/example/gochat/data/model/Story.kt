@@ -16,13 +16,26 @@ data class StoryViewer(
             val userId = (json["user_id"] ?: json["userId"])?.jsonPrimitive?.contentOrNull.orEmpty()
             val displayName = (json["display_name"] ?: json["displayName"])?.jsonPrimitive?.contentOrNull ?: "Contact"
             val avatarUrl = (json["avatar_url"] ?: json["avatarUrl"])?.jsonPrimitive?.contentOrNull.orEmpty()
-            val viewedAt = (json["viewed_at"] ?: json["viewedAt"])?.jsonPrimitive?.contentOrNull.orEmpty()
+
+            val rawViewed = json["viewed_at"] ?: json["viewedAt"]
+            val viewedAtStr = when {
+                rawViewed == null || rawViewed is JsonNull -> "Just now"
+                rawViewed.jsonPrimitive.longOrNull != null -> {
+                    StoryItem.formatEpochTime(rawViewed.jsonPrimitive.long)
+                }
+                rawViewed.jsonPrimitive.isString -> {
+                    val s = rawViewed.jsonPrimitive.content
+                    val asLong = s.toLongOrNull()
+                    if (asLong != null) StoryItem.formatEpochTime(asLong) else s.ifBlank { "Just now" }
+                }
+                else -> "Just now"
+            }
 
             return StoryViewer(
                 userId = userId,
                 displayName = displayName,
                 avatarUrl = avatarUrl,
-                viewedAt = viewedAt
+                viewedAt = viewedAtStr
             )
         }
     }
@@ -39,6 +52,12 @@ data class StoryItem(
     @SerialName("view_count") val viewCount: Int = 0,
     val viewers: List<StoryViewer> = emptyList()
 ) {
+    val isProductStory: Boolean get() = caption.contains("🏷️") || caption.contains("#prod_")
+    val extractedProductId: String? get() = if (caption.contains("#prod_")) {
+        caption.substringAfter("#prod_").substringBefore("\n").substringBefore(" ").trim().takeIf { it.isNotBlank() }
+    } else null
+    val displayCaption: String get() = caption.replace(Regex("#prod_[a-zA-Z0-9_-]+"), "").trim()
+
     companion object {
         fun fromJson(json: JsonObject): StoryItem {
             val id = (json["id"] ?: json["Id"])?.jsonPrimitive?.contentOrNull ?: "story_${System.currentTimeMillis()}"
@@ -79,15 +98,17 @@ data class StoryItem(
             )
         }
 
-        private fun formatEpochTime(epoch: Long): String {
+        fun formatEpochTime(epoch: Long): String {
             val ms = if (epoch < 100_000_000_000L) epoch * 1000L else epoch
             val diff = (System.currentTimeMillis() - ms).coerceAtLeast(0)
             val minutes = diff / (1000 * 60)
             val hours = diff / (1000 * 60 * 60)
+            val days = diff / (1000 * 60 * 60 * 24)
             return when {
                 minutes < 1 -> "Just now"
                 minutes < 60 -> "${minutes}m ago"
                 hours < 24 -> "${hours}h ago"
+                days == 1L -> "Yesterday at " + java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()).format(java.util.Date(ms))
                 else -> java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.getDefault()).format(java.util.Date(ms))
             }
         }

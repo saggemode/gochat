@@ -249,20 +249,165 @@
                         android:layout_marginTop="2dp"
                         tools:text="$0.00" />
 
-                    <TextView
-                        android:id="@+id/btnViewProductCard"
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:background="@drawable/bg_pill"
-                        android:backgroundTint="#30FFFFFF"
-                        android:gravity="center"
-                        android:paddingVertical="4dp"
-                        android:text="View Product"
-                        android:textColor="@color/white"
-                        android:textSize="11sp"
-                        android:textStyle="bold" />
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/btnViewProductCard"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="4dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_pill"
+                            android:backgroundTint="#30FFFFFF"
+                            android:gravity="center"
+                            android:paddingVertical="5dp"
+                            android:text="View Details"
+                            android:textColor="@color/white"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/btnBuyNowProductCard"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_pill"
+                            android:backgroundTint="@color/whatsapp_teal_light"
+                            android:gravity="center"
+                            android:paddingVertical="5dp"
+                            android:text="⚡ Buy Now"
+                            android:textColor="@color/white"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
                 </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Order Confirmation Card Preview -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/layoutOrderCard"
+            android:layout_width="240dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="6dp"
+            app:cardBackgroundColor="#20FFFFFF"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp"
+            app:strokeColor="#30FFFFFF"
+            app:strokeWidth="1dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="10dp">
+
+                <!-- Header: Icon, Order Number, Status -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:src="@drawable/ic_orders"
+                        app:tint="@color/gochat_emerald_light"
+                        android:contentDescription="Order" />
+
+                    <TextView
+                        android:id="@+id/tvOrderCardNumber"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:layout_weight="1"
+                        android:textColor="@color/white"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        tools:text="#ORD-849201" />
+
+                    <TextView
+                        android:id="@+id/tvOrderCardStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_pill"
+                        android:backgroundTint="@color/whatsapp_teal_light"
+                        android:paddingHorizontal="7dp"
+                        android:paddingVertical="2dp"
+                        android:textColor="@color/white"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        tools:text="PAID" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvOrderCardStore"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:textColor="@color/gochat_text_primary"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    tools:text="Apple Official Store" />
+
+                <TextView
+                    android:id="@+id/tvOrderCardSummary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:textColor="@color/gochat_text_muted"
+                    android:textSize="11sp"
+                    android:maxLines="2"
+                    android:ellipsize="end"
+                    tools:text="iPhone 15 Pro (x1)" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Total:"
+                        android:textColor="@color/gochat_text_muted"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tvOrderCardTotal"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/gochat_emerald_light"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        tools:text="$1,199.00" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/btnViewOrderCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_pill"
+                    android:backgroundTint="#30FFFFFF"
+                    android:gravity="center"
+                    android:paddingVertical="5dp"
+                    android:text="Track / View Order →"
+                    android:textColor="@color/white"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

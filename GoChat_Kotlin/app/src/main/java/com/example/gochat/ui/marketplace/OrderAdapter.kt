@@ -105,6 +105,25 @@ class OrderAdapter(
                 binding.btnUpdateStatus.visibility = View.GONE
             }
 
+            binding.btnChatOrder.text = if (isSellerView) "💬 Chat with Customer" else "💬 Chat with Seller"
+            binding.btnChatOrder.setOnClickListener {
+                val context = binding.root.context
+                val convId = if (isSellerView) {
+                    if (order.buyerId.isNotBlank()) "conv_user_${order.buyerId}" else "conv_store_${order.storeId}"
+                } else {
+                    "conv_store_${order.storeId.ifBlank { "official" }}"
+                }
+                val title = if (isSellerView) order.buyerName.ifBlank { "Customer" } else order.storeName.ifBlank { "Official Store" }
+                val intent = Intent(context, com.example.gochat.ui.chat.ChatRoomActivity::class.java).apply {
+                    putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_CONVERSATION_ID, convId)
+                    putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_CONVERSATION_TITLE, title)
+                    putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_ORDER_ID, order.id)
+                    putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_ORDER_NUMBER, order.orderNumber)
+                    putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_ORDER_TOTAL, order.totalAmount)
+                }
+                context.startActivity(intent)
+            }
+
             binding.root.setOnClickListener {
                 val context = binding.root.context
                 val intent = Intent(context, OrderDetailsActivity::class.java).apply {

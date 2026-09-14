@@ -18,6 +18,7 @@ import com.example.gochat.data.model.ProductVariant
 import com.example.gochat.data.model.Review
 import com.example.gochat.data.model.Store
 import com.example.gochat.data.repository.MarketplaceRepository
+import com.example.gochat.data.repository.StoryRepository
 import com.example.gochat.databinding.ActivityProductDetailsBinding
 import com.example.gochat.databinding.DialogWriteReviewBinding
 import com.example.gochat.ui.chat.ChatRoomActivity
@@ -36,6 +37,9 @@ class ProductDetailsActivity : AppCompatActivity() {
     
     @Inject
     lateinit var repository: MarketplaceRepository
+
+    @Inject
+    lateinit var storyRepository: StoryRepository
     
     private var product: Product? = null
     private var store: Store? = null
@@ -104,6 +108,17 @@ class ProductDetailsActivity : AppCompatActivity() {
     private fun setupListeners() {
         binding.toolbar.setNavigationOnClickListener { finish() }
 
+        binding.btnShareProduct.setOnClickListener {
+            val p = product ?: return@setOnClickListener
+            val shareDialog = com.example.gochat.ui.chat.ShareToChatBottomSheet(p)
+            shareDialog.show(supportFragmentManager, "ShareToChat")
+        }
+
+        binding.btnShareToStatus.setOnClickListener {
+            val p = product ?: return@setOnClickListener
+            shareProductDirectlyToStatus(p)
+        }
+
         // WhatsApp-style inquiry: Chat with Seller
         binding.btnChatSeller.setOnClickListener {
             val p = product ?: return@setOnClickListener
@@ -157,13 +172,18 @@ class ProductDetailsActivity : AppCompatActivity() {
 
     private fun loadProductDetails(productId: String) {
         lifecycleScope.launch {
-            val result = repository.getProducts()
-            product = result.getOrNull()?.find { it.id == productId }
+            // Use the dedicated single-product endpoint which returns ALL images
+            val result = repository.getProductById(productId)
+            product = result.getOrNull()
 
             product?.let { p ->
                 displayProduct(p)
                 loadStore(p.storeId)
                 loadReviews(p.id)
+                if (intent.getBooleanExtra("auto_buy", false)) {
+                    intent.removeExtra("auto_buy")
+                    addToCart(p, andProceedToCheckout = true)
+                }
             } ?: run {
                 val name = intent.getStringExtra("product_name")
                 if (!name.isNullOrBlank()) {
@@ -506,6 +526,29 @@ class ProductDetailsActivity : AppCompatActivity() {
                 }
             } else {
                 Toast.makeText(this@ProductDetailsActivity, getString(R.string.error_add_to_cart), Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun shareProductDirectlyToStatus(p: Product) {
+        binding.btnShareToStatus.isEnabled = false
+        val priceFormatted = String.format(Locale.US, "%.2f", p.price)
+        val shortDesc = p.description.lineSequence().firstOrNull()?.take(100) ?: ""
+        val caption = "🏷️ ${p.displayTitle} • $$priceFormatted\n$shortDesc\n#prod_${p.id}".trim()
+        val mediaUrl = p.primaryImage
+        val mediaType = if (mediaUrl.isNotBlank()) "image" else "text"
+
+        lifecycleScope.launch {
+            val res = storyRepository.postStory(
+                mediaUrl = mediaUrl,
+                caption = caption,
+                mediaType = mediaType
+            )
+            binding.btnShareToStatus.isEnabled = true
+            res.onSuccess {
+                Toast.makeText(this@ProductDetailsActivity, "✅ Product shared to your Status!", Toast.LENGTH_SHORT).show()
+            }.onFailure { err ->
+                Toast.makeText(this@ProductDetailsActivity, "Failed to share: ${err.message ?: "Unknown error"}", Toast.LENGTH_SHORT).show()
             }
         }
     }

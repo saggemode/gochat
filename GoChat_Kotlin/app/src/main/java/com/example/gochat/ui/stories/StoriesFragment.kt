@@ -149,10 +149,12 @@ class StoriesFragment : Fragment() {
                 if (hasStories) {
                     val count = myStory.stories.size
                     val countStr = if (count == 1) getString(R.string.story_count_singular) else getString(R.string.story_count_plural, count)
+                    val totalViews = myStory.totalViewCount
+                    val viewsStr = if (totalViews > 0) " • 👁️ $totalViews ${if (totalViews == 1) "view" else "views"}" else ""
                     val latestTime = myStory.stories.firstOrNull()?.createdAt?.ifBlank { getString(R.string.time_recently) } ?: getString(R.string.time_recently)
-                    binding.tvMyStatusSubtitle.text = "$countStr • $latestTime"
+                    binding.tvMyStatusSubtitle.text = "$countStr$viewsStr • $latestTime"
                 } else {
-                    binding.tvMyStatusSubtitle.text = getString(R.string.no_recent_updates_desc) // or similar
+                    binding.tvMyStatusSubtitle.text = "Tap to add status update"
                 }
             }
         }

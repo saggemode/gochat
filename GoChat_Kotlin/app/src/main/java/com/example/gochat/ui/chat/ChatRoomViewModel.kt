@@ -321,12 +321,14 @@ class ChatRoomViewModel @Inject constructor(
         name: String,
         price: Double,
         image: String,
-        inquiry: String
+        inquiry: String,
+        targetConvId: String? = null
     ) {
-        val convId = _conversationId.value
+        val convId = targetConvId ?: _conversationId.value
         if (convId.isEmpty()) return
 
         val productJson = buildJsonObject {
+            put("type", "product")
             put("inquiry", inquiry)
             put("product", buildJsonObject {
                 put("id", productId)
@@ -341,6 +343,46 @@ class ChatRoomViewModel @Inject constructor(
                 conversationId = convId,
                 content = productJson,
                 type = 7 // Product
+            )
+        }
+    }
+
+    fun sendOrderMessage(
+        order: Order,
+        targetConvId: String? = null
+    ) {
+        val convId = targetConvId ?: _conversationId.value
+        if (convId.isEmpty()) return
+
+        val itemsSummary = if (order.items.isNotEmpty()) {
+            order.items.joinToString(", ") { "${it.productName} (x${it.quantity})" }
+        } else {
+            "Marketplace Order"
+        }
+
+        val orderJson = buildJsonObject {
+            put("type", "order")
+            put("order", buildJsonObject {
+                put("id", order.id)
+                put("order_number", order.orderNumber)
+                put("store_id", order.storeId)
+                put("store_name", order.storeName)
+                put("buyer_id", order.buyerId)
+                put("buyer_name", order.buyerName)
+                put("total_amount", order.totalAmount)
+                put("status", order.status.name)
+                put("shipping_address", order.shippingAddress ?: "Lagos, Nigeria")
+                put("items_count", order.items.size)
+                put("items_summary", itemsSummary)
+                put("created_at", order.createdAt)
+            })
+        }.toString()
+
+        viewModelScope.launch {
+            chatRepository.sendMessage(
+                conversationId = convId,
+                content = orderJson,
+                type = 9 // Order
             )
         }
     }

@@ -63,7 +63,13 @@ class MessageSyncWorker @AssistedInject constructor(
                             MessageType.VOICE, MessageType.AUDIO -> "audio/mp4"
                             else -> "application/octet-stream"
                         }
-                        finalMediaUrl = authRepo.uploadMedia(bytes, mimeType, uri.lastPathSegment ?: "file")
+                        val uploaded = authRepo.uploadMedia(bytes, mimeType, uri.lastPathSegment ?: "file")
+                        if (!uploaded.isNullOrBlank()) {
+                            finalMediaUrl = uploaded
+                        } else if (msg.type == MessageType.IMAGE) {
+                            val b64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                            finalMediaUrl = "data:$mimeType;base64,$b64"
+                        }
                     }
                 }
 

@@ -14,6 +14,7 @@ import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.databinding.ActivityCheckoutBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.*
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -23,6 +24,9 @@ class CheckoutActivity : AppCompatActivity() {
     
     @Inject
     lateinit var repository: MarketplaceRepository
+
+    @Inject
+    lateinit var chatRepository: com.example.gochat.data.repository.ChatRepository
     
     private var cartItems: List<CartItem> = emptyList()
 
@@ -91,9 +95,77 @@ class CheckoutActivity : AppCompatActivity() {
             binding.progressBar.visibility = View.GONE
 
             if (result.isSuccess) {
+                val order = result.getOrNull()
+                if (order != null) {
+                    val convId = "conv_store_${order.storeId.ifBlank { "official" }}"
+                    val itemsSummary = if (order.items.isNotEmpty()) {
+                        order.items.joinToString(", ") { "${it.productName} (x${it.quantity})" }
+                    } else {
+                        "Marketplace Order"
+                    }
+                    val orderJson = kotlinx.serialization.json.buildJsonObject {
+                        put("type", "order")
+                        put("order", kotlinx.serialization.json.buildJsonObject {
+                            put("id", order.id)
+                            put("order_number", order.orderNumber)
+                            put("store_id", order.storeId)
+                            put("store_name", order.storeName)
+                            put("buyer_id", order.buyerId)
+                            put("buyer_name", order.buyerName)
+                            put("total_amount", order.totalAmount)
+                            put("status", order.status.name)
+                            put("shipping_address", order.shippingAddress ?: address)
+                            put("items_count", order.items.size)
+                            put("items_summary", itemsSummary)
+                            put("created_at", order.createdAt)
+                        })
+                    }.toString()
+
+                    // Ensure conversation exists in local DB
+                    val existingConv = chatRepository.getConversationById(convId)
+                    if (existingConv == null) {
+                        chatRepository.insertConversationLocally(
+                            com.example.gochat.data.model.Conversation(
+                                id = convId,
+                                title = order.storeName.ifBlank { "Official Store" },
+                                type = com.example.gochat.data.model.ConversationType.DIRECT,
+                                lastMessageText = "📦 Order #${order.orderNumber} placed",
+                                lastMessageTime = System.currentTimeMillis()
+                            )
+                        )
+                    }
+
+                    chatRepository.sendMessage(
+                        conversationId = convId,
+                        content = orderJson,
+                        type = 9 // Order
+                    )
+                }
+
                 Toast.makeText(this@CheckoutActivity, getString(R.string.toast_order_placed_success), Toast.LENGTH_LONG).show()
-                startActivity(Intent(this@CheckoutActivity, OrdersActivity::class.java))
-                finish()
+
+                // Offer immediate navigation to the linked seller chat thread or orders overview
+                android.app.AlertDialog.Builder(this@CheckoutActivity)
+                    .setTitle("Order Placed Successfully! 🎉")
+                    .setMessage("Your order has been sent to ${order?.storeName ?: "the seller"}. Would you like to chat with them about your order?")
+                    .setPositiveButton("Chat with Seller") { _, _ ->
+                        val convId = "conv_store_${order?.storeId?.ifBlank { "official" } ?: "official"}"
+                        val chatIntent = Intent(this@CheckoutActivity, com.example.gochat.ui.chat.ChatRoomActivity::class.java).apply {
+                            putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_CONVERSATION_ID, convId)
+                            putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_CONVERSATION_TITLE, order?.storeName ?: "Seller")
+                            putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_ORDER_ID, order?.id)
+                            putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_ORDER_NUMBER, order?.orderNumber)
+                            putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_ORDER_TOTAL, order?.totalAmount ?: total)
+                        }
+                        startActivity(chatIntent)
+                        finish()
+                    }
+                    .setNegativeButton("View Orders") { _, _ ->
+                        startActivity(Intent(this@CheckoutActivity, OrdersActivity::class.java))
+                        finish()
+                    }
+                    .setCancelable(false)
+                    .show()
             } else {
                 Toast.makeText(this@CheckoutActivity, getString(R.string.error_place_order), Toast.LENGTH_SHORT).show()
             }

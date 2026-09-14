@@ -3,9 +3,8 @@ package com.example.gochat.ui.stories
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import coil.load
-import coil.transform.CircleCropTransformation
 import com.example.gochat.R
+import com.example.gochat.core.media.MediaImageHelper
 import com.example.gochat.data.model.StoryViewer
 import com.example.gochat.databinding.ItemStoryViewerBinding
 
@@ -29,16 +28,13 @@ class StoryViewersAdapter(
             tvViewerName.text = viewer.displayName.ifBlank { "Contact" }
             tvViewedTime.text = viewer.viewedAt.ifBlank { "Just now" }
 
-            if (viewer.avatarUrl.isNotBlank()) {
-                ivViewerAvatar.load(viewer.avatarUrl) {
-                    crossfade(true)
-                    placeholder(R.drawable.ic_account)
-                    error(R.drawable.ic_account)
-                    transformations(CircleCropTransformation())
-                }
-            } else {
-                ivViewerAvatar.setImageResource(R.drawable.ic_account)
-            }
+            MediaImageHelper.loadSafeImage(
+                imageView = ivViewerAvatar,
+                url = viewer.avatarUrl,
+                isCircle = true,
+                placeholderRes = R.drawable.ic_account,
+                errorRes = R.drawable.ic_account
+            )
         }
     }
 

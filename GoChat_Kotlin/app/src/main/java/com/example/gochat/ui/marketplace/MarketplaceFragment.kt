@@ -152,10 +152,17 @@ class MarketplaceFragment : Fragment() {
                 startActivity(intent)
             },
             onEdit = { product ->
-                showEditProductBottomSheet(product)
+                lifecycleScope.launch {
+                    val fullProduct = viewModel.getProductById(product.id) ?: product
+                    showEditProductBottomSheet(fullProduct)
+                }
             },
             onDelete = { product ->
                 showDeleteProductDialog(product)
+            },
+            onShare = { product ->
+                val shareSheet = com.example.gochat.ui.chat.ShareToChatBottomSheet(product)
+                shareSheet.show(childFragmentManager, "ShareToChat")
             }
         )
         binding.rvStoreProducts.apply {
@@ -805,6 +812,16 @@ class MarketplaceFragment : Fragment() {
 
         updateEditPreviews()
         dialog.show()
+
+        // Fetch complete product details by ID asynchronously to guarantee all photos are populated
+        lifecycleScope.launch {
+            val fresh = viewModel.getProductById(product.id)
+            if (fresh != null && fresh.imageUrls.size > existingPhotoUrls.size) {
+                existingPhotoUrls.clear()
+                existingPhotoUrls.addAll(fresh.imageUrls)
+                updateEditPreviews()
+            }
+        }
     }
 
     private fun showDeleteProductDialog(product: Product) {

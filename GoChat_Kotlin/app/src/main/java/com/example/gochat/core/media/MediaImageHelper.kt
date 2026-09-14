@@ -66,10 +66,14 @@ object MediaImageHelper {
             imageView.context.resources.displayMetrics.density * dp
         }
 
-        // 1. Base64 Data URI (e.g. data:image/jpeg;base64,...)
-        if (clean.startsWith("data:") && clean.contains(";base64,")) {
+        // 1. Base64 Data URI (e.g. data:image/jpeg;base64,...) or raw Base64 image payload
+        val isDataUri = clean.startsWith("data:") && clean.contains(";base64,")
+        val isRawBase64 = !isDataUri && clean.length > 200 && !clean.contains(" ") &&
+                (clean.startsWith("/9j/") || clean.startsWith("iVBOR") || clean.startsWith("R0lGOD") || clean.startsWith("UklGR"))
+
+        if (isDataUri || isRawBase64) {
             try {
-                val b64 = clean.substringAfter(";base64,").trim()
+                val b64 = if (isDataUri) clean.substringAfter(";base64,").trim() else clean
                 val bytes = try {
                     Base64.decode(b64, Base64.DEFAULT)
                 } catch (_: Exception) {
@@ -81,27 +85,29 @@ object MediaImageHelper {
                 }
 
                 if (bytes != null && bytes.isNotEmpty()) {
-                    imageView.load(bytes) {
-                        crossfade(true)
-                        placeholder(placeholderRes)
-                        error(errorRes)
-                        when {
-                            isCircle -> transformations(CircleCropTransformation())
-                            radiusPx != null -> transformations(RoundedCornersTransformation(radiusPx))
+                    val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                    if (bitmap != null) {
+                        imageView.load(bitmap) {
+                            crossfade(true)
+                            placeholder(placeholderRes)
+                            error(errorRes)
+                            when {
+                                isCircle -> transformations(CircleCropTransformation())
+                                radiusPx != null -> transformations(RoundedCornersTransformation(radiusPx))
+                            }
                         }
+                        return
                     }
-                    return
-                } else {
-                    imageView.setImageResource(errorRes)
-                    return
                 }
+                imageView.setImageResource(errorRes)
+                return
             } catch (_: Throwable) {
                 imageView.setImageResource(errorRes)
                 return
             }
         }
 
-        // 2. Local Android Content URI
+        // 2. Local Android Content URI (content://)
         if (clean.startsWith("content://")) {
             try {
                 imageView.load(Uri.parse(clean)) {
@@ -120,30 +126,11 @@ object MediaImageHelper {
             }
         }
 
-        // 3. Local file:// URI
-        if (clean.startsWith("file://")) {
+        // 3. Local file:// URI or device path (/data/..., /storage/..., /sdcard/...)
+        if (clean.startsWith("file://") || (clean.startsWith("/") && isLocalDevicePath(clean))) {
+            val localPath = if (clean.startsWith("file://")) clean.removePrefix("file://") else clean
             try {
-                val file = File(clean.removePrefix("file://"))
-                imageView.load(file) {
-                    crossfade(true)
-                    placeholder(placeholderRes)
-                    error(errorRes)
-                    when {
-                        isCircle -> transformations(CircleCropTransformation())
-                        radiusPx != null -> transformations(RoundedCornersTransformation(radiusPx))
-                    }
-                }
-                return
-            } catch (_: Throwable) {
-                imageView.setImageResource(errorRes)
-                return
-            }
-        }
-
-        // 4. Absolute local device storage paths (/data/..., /storage/..., /sdcard/...)
-        if (clean.startsWith("/") && isLocalDevicePath(clean)) {
-            try {
-                val file = File(clean)
+                val file = File(localPath)
                 if (file.exists()) {
                     imageView.load(file) {
                         crossfade(true)
@@ -155,16 +142,38 @@ object MediaImageHelper {
                         }
                     }
                     return
+                } else {
+                    // Local file does not exist on this device (e.g. sender's private path sent to friend)
+                    if (!blurHash.isNullOrBlank()) {
+                        val blurBitmap = BlurHashUtil.decode(blurHash, 32, 32)
+                        if (blurBitmap != null) {
+                            imageView.setImageDrawable(BitmapDrawable(imageView.context.resources, blurBitmap))
+                            return
+                        }
+                    }
+                    imageView.setImageResource(placeholderRes)
+                    return
                 }
             } catch (_: Throwable) {
+                imageView.setImageResource(errorRes)
+                return
             }
         }
 
-        // 5. Relative API / media path (e.g. /media/uploads/..., /api/...)
-        var finalUrl = if (clean.startsWith("/") && !isLocalDevicePath(clean)) {
-            "${ApiConstants.BASE_URL.removeSuffix("/")}$clean"
-        } else {
-            clean
+        // 4. Relative API / media path (e.g. /media/uploads/..., /api/..., api/..., media/...)
+        var finalUrl = when {
+            clean.startsWith("http://") || clean.startsWith("https://") -> clean
+            clean.startsWith("/") -> "${ApiConstants.BASE_URL.removeSuffix("/")}$clean"
+            clean.startsWith("api/") -> "${ApiConstants.BASE_URL.removeSuffix("/")}/$clean"
+            clean.startsWith("media/") -> "${ApiConstants.BASE_URL.removeSuffix("/")}/api/v1/$clean"
+            else -> clean
+        }
+
+        // Remap internal emulator/container addresses to host reachable address
+        if (finalUrl.contains("localhost:9000") || finalUrl.contains("127.0.0.1:9000") || finalUrl.contains("minio:9000")) {
+            finalUrl = finalUrl.replace("localhost:9000", "10.0.2.2:9000")
+                .replace("127.0.0.1:9000", "10.0.2.2:9000")
+                .replace("minio:9000", "10.0.2.2:9000")
         }
 
         // Apply thumbnail resizing if requested and it's a server URL
@@ -174,8 +183,6 @@ object MediaImageHelper {
                 finalUrl += if (finalUrl.contains("?")) "&w=$thumbnailWidth" else "?w=$thumbnailWidth"
             }
         }
-
-
 
         try {
             imageView.load(finalUrl) {
@@ -197,7 +204,6 @@ object MediaImageHelper {
                 }
             }
         } catch (t: Throwable) {
-
             imageView.setImageResource(errorRes)
         }
     }

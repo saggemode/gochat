@@ -270,6 +270,11 @@ interface GoChatApiService {
         @Query("limit") limit: Int? = null
     ): Response<JsonElement>
 
+    @GET("api/v1/marketplace/products/{id}")
+    suspend fun getProductById(
+        @Path("id") productId: String
+    ): Response<JsonElement>
+
     @GET("api/v1/marketplace/products/followed")
     suspend fun getFollowedProducts(
         @Query("page") page: Int? = null,

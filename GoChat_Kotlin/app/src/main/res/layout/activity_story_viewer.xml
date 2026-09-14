@@ -178,6 +178,41 @@
         </LinearLayout>
     </LinearLayout>
 
+    <!-- Interactive Floating Pill for Product Status Updates -->
+    <LinearLayout
+        android:id="@+id/layoutProductPill"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="76dp"
+        android:background="@drawable/bg_view_count_pill"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <ImageView
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:contentDescription="Product"
+            android:src="@drawable/ic_cart"
+            app:tint="@color/whatsapp_teal_light" />
+
+        <TextView
+            android:id="@+id/tvProductPillText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="🛍️ View Product"
+            android:textColor="@color/white"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
     <!-- Bottom Footer for Own Story (View Count Pill) -->
     <LinearLayout
         android:id="@+id/layoutOwnStoryFooter"

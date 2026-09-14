@@ -19,6 +19,7 @@ enum class MessageType {
     @SerialName("poll") POLL,
     @SerialName("sticker") STICKER,
     @SerialName("product") PRODUCT,
+    @SerialName("order") ORDER,
     @SerialName("ping") PING
 }
 
@@ -117,8 +118,15 @@ data class Message(
                     content.contains("💥 PING") ||
                     content.contains("[PING]")
 
+            val isProductVal = typeInt == 7 || typeStr.contains("product") ||
+                    (content.startsWith("{") && content.contains("\"product\"") && content.contains("\"price\""))
+            val isOrderVal = typeInt == 9 || typeStr.contains("order") ||
+                    (content.startsWith("{") && (content.contains("\"order_id\"") || content.contains("\"order_number\"") || content.contains("\"order\"")))
+
             val msgType = when {
                 isPingVal -> MessageType.PING
+                isOrderVal -> MessageType.ORDER
+                isProductVal -> MessageType.PRODUCT
                 typeInt == 1 || typeStr.contains("image") -> MessageType.IMAGE
                 typeInt == 2 || typeStr.contains("video") -> MessageType.VIDEO
                 typeInt == 3 || typeStr.contains("audio") -> MessageType.AUDIO
@@ -143,8 +151,15 @@ data class Message(
                 else -> MessageStatus.SENT
             }
 
-            val mediaUrl = (json["media_url"] ?: json["mediaUrl"] ?: json["MediaUrl"] ?: json["url"])
+            val telegramFileId = (json["telegram_file_id"] ?: json["telegramFileId"] ?: json["file_id"])
                 ?.jsonPrimitive?.contentOrNull
+
+            var mediaUrl = (json["media_url"] ?: json["mediaUrl"] ?: json["MediaUrl"] ?: json["url"])
+                ?.jsonPrimitive?.contentOrNull
+
+            if (mediaUrl.isNullOrBlank() && !telegramFileId.isNullOrBlank()) {
+                mediaUrl = "${com.example.gochat.data.api.ApiConstants.BASE_URL.removeSuffix("/")}/api/v1/media/download/$telegramFileId"
+            }
 
             val mediaThumbnail = (json["media_thumbnail"] ?: json["mediaThumbnail"] ?: json["thumbnail_url"] ?: json["ThumbnailUrl"])
                 ?.jsonPrimitive?.contentOrNull
@@ -152,21 +167,11 @@ data class Message(
             val blurHash = (json["blur_hash"] ?: json["blurHash"] ?: json["BlurHash"])
                 ?.jsonPrimitive?.contentOrNull
 
-            
-            // If the primary mediaUrl looks like a thumbnail (e.g. contains '/thumbnail/') 
-            // but we have a mediaThumbnail that also exists, ensure we didn't mix them up.
-            // Actually, usually it's the other way around. 
-            // Let's just ensure we capture both.
-
-
             val mediaDuration = (json["media_duration"] ?: json["mediaDuration"] ?: json["duration"] ?: json["Duration"])
                 ?.jsonPrimitive?.intOrNull
 
             val mediaSize = (json["media_size"] ?: json["mediaSize"] ?: json["file_size"] ?: json["size"])
                 ?.jsonPrimitive?.longOrNull
-
-            val telegramFileId = (json["telegram_file_id"] ?: json["telegramFileId"] ?: json["file_id"])
-                ?.jsonPrimitive?.contentOrNull
 
             val isViewOnce = (json["is_view_once"] ?: json["isViewOnce"])
                 ?.jsonPrimitive?.booleanOrNull ?: false

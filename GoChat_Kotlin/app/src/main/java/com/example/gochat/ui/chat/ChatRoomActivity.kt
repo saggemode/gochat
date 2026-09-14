@@ -42,6 +42,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.example.gochat.R
+import com.example.gochat.ui.marketplace.OrdersActivity
+import com.example.gochat.ui.marketplace.ProductDetailsActivity
 import com.example.gochat.core.media.AudioPlayerManager
 import com.example.gochat.core.media.AudioRecorderManager
 import com.example.gochat.core.media.ImageCompressor
@@ -83,6 +85,9 @@ class ChatRoomActivity : AppCompatActivity() {
         const val EXTRA_PRODUCT_NAME = "extra_product_name"
         const val EXTRA_PRODUCT_PRICE = "extra_product_price"
         const val EXTRA_PRODUCT_IMAGE = "extra_product_image"
+        const val EXTRA_ORDER_ID = "extra_order_id"
+        const val EXTRA_ORDER_NUMBER = "extra_order_number"
+        const val EXTRA_ORDER_TOTAL = "extra_order_total"
     }
 
     private lateinit var binding: ActivityChatRoomBinding
@@ -233,6 +238,12 @@ class ChatRoomActivity : AppCompatActivity() {
         setupWindowInsets()
         observeState()
 
+        if (convId.isNotEmpty()) {
+            viewModel.initConversation(convId)
+        }
+
+        setupLinkedOrderBanner()
+
         if (savedInstanceState == null) {
             val prodId = intent.getStringExtra(EXTRA_PRODUCT_ID)
             if (!prodId.isNullOrBlank()) {
@@ -241,7 +252,7 @@ class ChatRoomActivity : AppCompatActivity() {
                 val prodImage = intent.getStringExtra(EXTRA_PRODUCT_IMAGE).orEmpty()
                 val inquiry = intent.getStringExtra(EXTRA_INITIAL_MESSAGE).orEmpty()
                 
-                viewModel.sendProductMessage(prodId, prodName, prodPrice, prodImage, inquiry)
+                viewModel.sendProductMessage(prodId, prodName, prodPrice, prodImage, inquiry, convId)
             } else {
                 val initialMessage = intent.getStringExtra(EXTRA_INITIAL_MESSAGE)
                 if (!initialMessage.isNullOrBlank()) {
@@ -249,10 +260,6 @@ class ChatRoomActivity : AppCompatActivity() {
                     binding.etMessageInput.setSelection(initialMessage.length)
                 }
             }
-        }
-
-        if (convId.isNotEmpty()) {
-            viewModel.initConversation(convId)
         }
     }
 
@@ -384,6 +391,16 @@ class ChatRoomActivity : AppCompatActivity() {
         ).apply {
             onImageClicked = { imageUrl ->
                 showFullScreenImage(imageUrl)
+            }
+            onBuyNowClicked = { prodId, name, price, image ->
+                val intent = Intent(this@ChatRoomActivity, ProductDetailsActivity::class.java).apply {
+                    putExtra("product_id", prodId)
+                    putExtra("product_name", name)
+                    putExtra("product_price", price)
+                    putExtra("product_image", image)
+                    putExtra("auto_buy", true)
+                }
+                startActivity(intent)
             }
         }
 
@@ -615,7 +632,51 @@ class ChatRoomActivity : AppCompatActivity() {
             showGifPicker()
         }
 
+        sheetBinding.btnPickProduct.setOnClickListener {
+            sheet.dismiss()
+            showProductPicker()
+        }
+
         sheet.show()
+    }
+
+    private fun showProductPicker() {
+        val picker = ProductPickerBottomSheet { product ->
+            viewModel.sendProductMessage(
+                productId = product.id,
+                name = product.displayTitle,
+                price = product.price,
+                image = product.primaryImage,
+                inquiry = ""
+            )
+        }
+        picker.show(supportFragmentManager, "ProductPicker")
+    }
+
+    private fun setupLinkedOrderBanner() {
+        val orderId = intent.getStringExtra(EXTRA_ORDER_ID)
+        val orderNumber = intent.getStringExtra(EXTRA_ORDER_NUMBER)
+        val orderTotal = intent.getDoubleExtra(EXTRA_ORDER_TOTAL, 0.0)
+
+        if (!orderId.isNullOrBlank()) {
+            binding.layoutLinkedOrder.visibility = View.VISIBLE
+            val displayNum = if (!orderNumber.isNullOrBlank()) orderNumber else "ORD-${orderId.takeLast(6)}"
+            val totalStr = if (orderTotal > 0) String.format(Locale.US, " • $%.2f", orderTotal) else ""
+            binding.tvLinkedOrderText.text = "Linked Order: #$displayNum$totalStr"
+
+            binding.btnViewLinkedOrder.setOnClickListener {
+                val intent = Intent(this, OrdersActivity::class.java).apply {
+                    putExtra("highlight_order_id", orderId)
+                }
+                startActivity(intent)
+            }
+
+            binding.btnCloseLinkedOrder.setOnClickListener {
+                binding.layoutLinkedOrder.visibility = View.GONE
+            }
+        } else {
+            binding.layoutLinkedOrder.visibility = View.GONE
+        }
     }
 
     private fun startLocationPicker() {

@@ -145,6 +145,13 @@
     <string name="attachment_audio">Audio</string>
     <string name="attachment_location">Location</string>
     <string name="attachment_gif">GIF</string>
+    <string name="attachment_product">Product</string>
+    <string name="share_product_title">Share Product to Chat</string>
+    <string name="btn_buy_now_chat">⚡ Buy Now</string>
+    <string name="btn_view_product_chat">View Details</string>
+    <string name="track_order_chat">Track Order →</string>
+    <string name="chat_with_buyer">Chat with Buyer</string>
+    <string name="order_card_title">Order #%1$s</string>
 
     <!-- Bottom Sheet Chat Wallpaper -->
     <string name="chat_wallpaper_title">Chat Wallpaper &amp; Theme</string>

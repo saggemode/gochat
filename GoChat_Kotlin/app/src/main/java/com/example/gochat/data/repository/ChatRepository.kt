@@ -88,6 +88,8 @@ class ChatRepository @Inject constructor(
 
     suspend fun getConversationById(id: String): Conversation? = dao.getConversationById(id)
 
+    suspend fun insertConversationLocally(conv: Conversation) = dao.insertConversation(conv)
+
     suspend fun fetchConversation(convId: String): Result<Conversation> {
         return try {
             val response = api.getConversation(convId)
@@ -311,6 +313,34 @@ class ChatRepository @Inject constructor(
                 val uploaded = uploadMedia(cachedMediaBytes, mimeType, cachedMediaUri.lastPathSegment ?: "media.jpg")
                 if (!uploaded.isNullOrBlank()) {
                     finalMediaUrl = uploaded
+                } else if (localMsg.type == MessageType.IMAGE) {
+                    // Critical fallback: If CDN/storage is unconfigured, offline, or returns error (e.g. Render no-storage),
+                    // fallback to standard Base64 Data URI so recipient immediately renders the real photo,
+                    // rather than failing on an unreachable local device path.
+                    val b64 = android.util.Base64.encodeToString(cachedMediaBytes, android.util.Base64.NO_WRAP)
+                    finalMediaUrl = "data:$mimeType;base64,$b64"
+                }
+            }
+
+            // CRITICAL SANITIZATION: Ensure the mediaUrl sent across the wire is NEVER a local device path (/data/..., /storage/..., file://)
+            var networkMediaUrl: String? = finalMediaUrl
+            if (networkMediaUrl != null && !networkMediaUrl.startsWith("http://") && !networkMediaUrl.startsWith("https://") && !networkMediaUrl.startsWith("data:")) {
+                if (cachedMediaBytes != null && localMsg.type == MessageType.IMAGE) {
+                    val b64 = android.util.Base64.encodeToString(cachedMediaBytes, android.util.Base64.NO_WRAP)
+                    networkMediaUrl = "data:image/jpeg;base64,$b64"
+                } else {
+                    try {
+                        val file = java.io.File(networkMediaUrl.removePrefix("file://"))
+                        if (file.exists() && localMsg.type == MessageType.IMAGE) {
+                            val fileBytes = file.readBytes()
+                            val b64 = android.util.Base64.encodeToString(fileBytes, android.util.Base64.NO_WRAP)
+                            networkMediaUrl = "data:image/jpeg;base64,$b64"
+                        } else {
+                            networkMediaUrl = null
+                        }
+                    } catch (_: Exception) {
+                        networkMediaUrl = null
+                    }
                 }
             }
 
@@ -319,7 +349,7 @@ class ChatRepository @Inject constructor(
                 put("content", encryptedContent)
                 put("type", type)
 
-                finalMediaUrl?.let { put("media_url", it) }
+                networkMediaUrl?.let { put("media_url", it) }
                 blurHash?.let { put("blur_hash", it) }
                 telegramFileId?.let { put("telegram_file_id", it) }
 
@@ -740,12 +770,18 @@ class ChatRepository @Inject constructor(
             val response = api.uploadMedia(part)
             if (response.isSuccessful) {
                 val json = response.body()
-                val rawUrl = (json?.get("url") ?: json?.get("Url") ?: json?.get("URL") ?: json?.get("media_url"))?.jsonPrimitive?.contentOrNull
+                val mediaObj = json?.get("media")?.jsonObject ?: json?.get("data")?.jsonObject ?: json
+                var rawUrl = (mediaObj?.get("url") ?: mediaObj?.get("Url") ?: mediaObj?.get("URL") ?: mediaObj?.get("media_url"))?.jsonPrimitive?.contentOrNull
+                val fileId = (mediaObj?.get("file_id") ?: mediaObj?.get("object_key") ?: mediaObj?.get("fileId"))?.jsonPrimitive?.contentOrNull
+                if (rawUrl.isNullOrBlank() && !fileId.isNullOrBlank()) {
+                    rawUrl = "/api/v1/media/download/$fileId"
+                }
                 if (!rawUrl.isNullOrBlank()) {
-                    if (rawUrl.startsWith("/")) {
-                        "${ApiConstants.BASE_URL.removeSuffix("/")}$rawUrl"
-                    } else {
-                        rawUrl
+                    when {
+                        rawUrl.startsWith("http://") || rawUrl.startsWith("https://") || rawUrl.startsWith("data:") -> rawUrl
+                        rawUrl.startsWith("/") -> "${ApiConstants.BASE_URL.removeSuffix("/")}$rawUrl"
+                        rawUrl.startsWith("api/") -> "${ApiConstants.BASE_URL.removeSuffix("/")}/$rawUrl"
+                        else -> "${ApiConstants.BASE_URL.removeSuffix("/")}/$rawUrl"
                     }
                 } else null
             } else {

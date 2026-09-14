@@ -124,8 +124,20 @@ class StoriesViewModel @Inject constructor(
                     // Retain any local stories that haven't expired or were recently added
                     val existingLocalStories = _myStories.value?.stories.orEmpty()
                     val mergedStories = (existingLocalStories.filter { local -> !myStoryList.stories.any { it.id == local.id } } + myStoryList.stories)
+
+                    val enrichedStories = withContext(Dispatchers.IO) {
+                        mergedStories.map { item ->
+                            try {
+                                val viewers = repository.getStoryViewers(item.id).getOrNull() ?: item.viewers
+                                item.copy(viewCount = viewers.size, viewers = viewers)
+                            } catch (_: Exception) {
+                                item
+                            }
+                        }
+                    }
+
                     _myStories.value = myStoryList.copy(
-                        stories = if (mergedStories.isNotEmpty()) mergedStories else myStoryList.stories,
+                        stories = if (enrichedStories.isNotEmpty()) enrichedStories else myStoryList.stories,
                         isMe = true
                     )
                 } else {

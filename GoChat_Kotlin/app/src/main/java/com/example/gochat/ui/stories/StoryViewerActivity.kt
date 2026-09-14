@@ -146,17 +146,31 @@ class StoryViewerActivity : AppCompatActivity() {
     @SuppressLint("ClickableViewAccessibility")
     private fun setupTouchZones() {
         var downTime = 0L
+        var downY = 0f
+        var downX = 0f
 
         val touchListener = View.OnTouchListener { view, event ->
+            val user = userStories
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     downTime = System.currentTimeMillis()
+                    downY = event.rawY
+                    downX = event.rawX
                     pauseStory()
                     true
                 }
                 MotionEvent.ACTION_UP -> {
                     val duration = System.currentTimeMillis() - downTime
-                    if (duration < 300) {
+                    val deltaY = downY - event.rawY
+                    val deltaX = Math.abs(event.rawX - downX)
+
+                    if (deltaY > 120 && deltaY > deltaX && user?.isMe == true) {
+                        // Swipe up gesture on own story -> reveal viewers list
+                        val stories = user.stories
+                        if (currentIndex in stories.indices) {
+                            showStoryViewers(stories[currentIndex])
+                        }
+                    } else if (duration < 300) {
                         // Quick tap navigation
                         if (view.id == R.id.touchZonePrevious) {
                             showPreviousStory()
@@ -248,7 +262,7 @@ class StoryViewerActivity : AppCompatActivity() {
                 Color.parseColor("#00A884")
             }
             binding.layoutTextStory.setBackgroundColor(color)
-            binding.tvTextStoryContent.text = story.caption.ifBlank { story.mediaUrl }
+            binding.tvTextStoryContent.text = story.displayCaption.ifBlank { story.mediaUrl }
         } else {
             binding.layoutTextStory.visibility = View.GONE
             binding.ivMediaStory.visibility = View.VISIBLE
@@ -261,17 +275,52 @@ class StoryViewerActivity : AppCompatActivity() {
                 errorRes = R.drawable.ic_tab_status
             )
 
-            if (story.caption.isNotBlank()) {
+            if (story.displayCaption.isNotBlank()) {
                 binding.tvImageStoryCaption.visibility = View.VISIBLE
-                binding.tvImageStoryCaption.text = story.caption
+                binding.tvImageStoryCaption.text = story.displayCaption
             } else {
                 binding.tvImageStoryCaption.visibility = View.GONE
             }
         }
 
+        // Floating product pill for product statuses
+        if (story.isProductStory) {
+            binding.layoutProductPill.visibility = View.VISIBLE
+            binding.layoutProductPill.setOnClickListener {
+                pauseStory()
+                val prodId = story.extractedProductId
+                if (!prodId.isNullOrBlank()) {
+                    val intent = Intent(this@StoryViewerActivity, com.example.gochat.ui.marketplace.ProductDetailsActivity::class.java).apply {
+                        putExtra("product_id", prodId)
+                    }
+                    startActivity(intent)
+                } else {
+                    val intent = Intent(this@StoryViewerActivity, com.example.gochat.MainActivity::class.java).apply {
+                        putExtra("navigate_to", "marketplace")
+                    }
+                    startActivity(intent)
+                }
+            }
+        } else {
+            binding.layoutProductPill.visibility = View.GONE
+        }
+
         if (user.isMe) {
             val count = story.viewCount.coerceAtLeast(story.viewers.size)
             binding.tvOwnStoryViewCount.text = if (count == 1) "1 view" else "$count views"
+
+            // Live fetch viewer count from backend
+            lifecycleScope.launch {
+                val result = withContext(Dispatchers.IO) {
+                    storyRepository.getStoryViewers(story.id)
+                }
+                result.onSuccess { viewers ->
+                    if (!isFinishing && !isDestroyed) {
+                        val liveCount = viewers.size
+                        binding.tvOwnStoryViewCount.text = if (liveCount == 1) "1 view" else "$liveCount views"
+                    }
+                }
+            }
         } else {
             lifecycleScope.launch(Dispatchers.IO) {
                 storyRepository.viewStory(story.id)
@@ -347,6 +396,9 @@ class StoryViewerActivity : AppCompatActivity() {
             val viewers = viewersResult.getOrNull() ?: story.viewers
 
             if (!isFinishing && !isDestroyed) {
+                val count = viewers.size
+                binding.tvOwnStoryViewCount.text = if (count == 1) "1 view" else "$count views"
+
                 val sheet = StoryViewersBottomSheet.newInstance(viewers) {
                     isShowingBottomSheet = false
                     resumeStory()

@@ -153,6 +153,65 @@
             </LinearLayout>
         </androidx.appcompat.widget.Toolbar>
 
+        <!-- Linked Order Sticky Header Banner -->
+        <LinearLayout
+            android:id="@+id/layoutLinkedOrder"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#2500A884"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="7dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_orders"
+                app:tint="@color/gochat_emerald_light"
+                android:contentDescription="Order" />
+
+            <TextView
+                android:id="@+id/tvLinkedOrderText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:textColor="@color/gochat_text_primary"
+                android:textSize="12.5sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end"
+                tools:text="Linked Order: #ORD-849201 • $1,199.00" />
+
+            <TextView
+                android:id="@+id/btnViewLinkedOrder"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_pill"
+                android:backgroundTint="@color/whatsapp_teal_light"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="3dp"
+                android:text="Track"
+                android:textColor="@color/white"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:id="@+id/btnCloseLinkedOrder"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_marginStart="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Dismiss"
+                android:padding="5dp"
+                android:src="@drawable/ic_close"
+                app:tint="@color/gochat_text_secondary" />
+        </LinearLayout>
+
         <!-- Message List -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvMessages"

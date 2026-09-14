@@ -56,6 +56,7 @@ class MessageAdapter(
     private val linkFetching = mutableSetOf<String>()
 
     var onImageClicked: ((String) -> Unit)? = null
+    var onBuyNowClicked: ((productId: String, productName: String, price: Double, image: String) -> Unit)? = null
     private var accentColor: Int = 0xFF00A884.toInt() // Default emerald
     private var bubbleShape: BubbleShape = BubbleShape.CLASSIC
 
@@ -179,7 +180,8 @@ class MessageAdapter(
                               !message.isDeleted && !message.mediaUrl.isNullOrBlank()
                 val isVoice = (message.type == MessageType.VOICE || message.type == MessageType.AUDIO || message.content.contains("Voice Note", ignoreCase = true)) && 
                               !message.isDeleted
-                val isProduct = message.type == MessageType.PRODUCT && !message.isDeleted
+                val isProduct = (message.type == MessageType.PRODUCT || (message.content.contains("\"product\"") && message.content.contains("\"price\""))) && !message.isDeleted
+                val isOrder = (message.type == MessageType.ORDER || message.content.contains("\"order_number\"") || message.content.contains("\"type\":\"order\"")) && !message.isDeleted
 
                 // Content text
                 if (message.isDeleted) {
@@ -204,8 +206,8 @@ class MessageAdapter(
                     tvMessageContent.setTypeface(null, Typeface.NORMAL)
                     tvMessageContent.setOnClickListener(null)
                     
-                    // Link Preview logic (disabled for media)
-                    if (!isVoice && !isImage && !isProduct) {
+                    // Link Preview logic (disabled for media, products, and orders)
+                    if (!isVoice && !isImage && !isProduct && !isOrder) {
                         handleLinkPreview(message.content, binding)
                     } else {
                         updateLinkPreviewVisibility(binding, null)
@@ -217,13 +219,15 @@ class MessageAdapter(
                     layoutProductCard.visibility = View.VISIBLE
                     try {
                         val productObj = Json.decodeFromString<JsonObject>(message.content)
-                        val prodData = productObj["product"]?.jsonObject
+                        val prodData = productObj["product"]?.jsonObject ?: productObj
                         val inquiry = productObj["inquiry"]?.jsonPrimitive?.contentOrNull ?: ""
                         
-                        val prodName = prodData?.get("name")?.jsonPrimitive?.contentOrNull ?: "Product"
-                        val prodPrice = prodData?.get("price")?.jsonPrimitive?.doubleOrNull ?: 0.0
-                        val prodImage = prodData?.get("image")?.jsonPrimitive?.contentOrNull
-                        val prodId = prodData?.get("id")?.jsonPrimitive?.contentOrNull
+                        val prodName = prodData["name"]?.jsonPrimitive?.contentOrNull
+                            ?: prodData["title"]?.jsonPrimitive?.contentOrNull ?: "Product"
+                        val prodPrice = prodData["price"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+                        val prodImage = prodData["image"]?.jsonPrimitive?.contentOrNull
+                            ?: prodData["imageUrl"]?.jsonPrimitive?.contentOrNull
+                        val prodId = prodData["id"]?.jsonPrimitive?.contentOrNull
 
                         tvProductCardTitle.text = prodName
                         tvProductCardPrice.text = String.format(Locale.US, "$%.2f", prodPrice)
@@ -245,11 +249,58 @@ class MessageAdapter(
                                 root.context.startActivity(intent)
                             }
                         }
+
+                        btnBuyNowProductCard.setOnClickListener {
+                            prodId?.let { id ->
+                                onBuyNowClicked?.invoke(id, prodName, prodPrice, prodImage.orEmpty()) ?: run {
+                                    val intent = Intent(root.context, ProductDetailsActivity::class.java).apply {
+                                        putExtra("product_id", id)
+                                        putExtra("auto_buy", true)
+                                    }
+                                    root.context.startActivity(intent)
+                                }
+                            }
+                        }
                     } catch (e: Exception) {
                         layoutProductCard.visibility = View.GONE
                     }
                 } else {
                     layoutProductCard.visibility = View.GONE
+                }
+
+                // Order Card Row
+                if (isOrder) {
+                    layoutOrderCard.visibility = View.VISIBLE
+                    try {
+                        val orderObj = Json.decodeFromString<JsonObject>(message.content)
+                        val orderData = orderObj["order"]?.jsonObject ?: orderObj
+
+                        val orderNum = orderData["order_number"]?.jsonPrimitive?.contentOrNull ?: "ORD"
+                        val orderStatus = orderData["status"]?.jsonPrimitive?.contentOrNull ?: "PAID"
+                        val storeName = orderData["store_name"]?.jsonPrimitive?.contentOrNull ?: "Official Store"
+                        val summary = orderData["items_summary"]?.jsonPrimitive?.contentOrNull ?: "Marketplace Order"
+                        val totalAmount = orderData["total_amount"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+                        val orderId = orderData["id"]?.jsonPrimitive?.contentOrNull ?: ""
+
+                        tvOrderCardNumber.text = "#$orderNum"
+                        tvOrderCardStatus.text = orderStatus.uppercase(Locale.ROOT)
+                        tvOrderCardStore.text = storeName
+                        tvOrderCardSummary.text = summary
+                        tvOrderCardTotal.text = String.format(Locale.US, "$%.2f", totalAmount)
+
+                        btnViewOrderCard.setOnClickListener {
+                            val intent = Intent(root.context, com.example.gochat.ui.marketplace.OrdersActivity::class.java).apply {
+                                putExtra("highlight_order_id", orderId)
+                            }
+                            root.context.startActivity(intent)
+                        }
+
+                        tvMessageContent.visibility = View.GONE
+                    } catch (e: Exception) {
+                        layoutOrderCard.visibility = View.GONE
+                    }
+                } else {
+                    layoutOrderCard.visibility = View.GONE
                 }
 
                 // Hide the text label if it's purely a media label
@@ -424,7 +475,8 @@ class MessageAdapter(
                               !message.isDeleted && !message.mediaUrl.isNullOrBlank()
                 val isVoice = (message.type == MessageType.VOICE || message.type == MessageType.AUDIO || message.content.contains("Voice Note", ignoreCase = true)) && 
                               !message.isDeleted
-                val isProduct = message.type == MessageType.PRODUCT && !message.isDeleted
+                val isProduct = (message.type == MessageType.PRODUCT || (message.content.contains("\"product\"") && message.content.contains("\"price\""))) && !message.isDeleted
+                val isOrder = (message.type == MessageType.ORDER || message.content.contains("\"order_number\"") || message.content.contains("\"type\":\"order\"")) && !message.isDeleted
 
                 // Sender name
                 if (message.senderName.isNotBlank()) {
@@ -458,7 +510,7 @@ class MessageAdapter(
                     tvMessageContent.setOnClickListener(null)
                     
                     // Link Preview logic
-                    if (!isVoice && !isImage && !isProduct) {
+                    if (!isVoice && !isImage && !isProduct && !isOrder) {
                         handleLinkPreview(message.content, binding)
                     } else {
                         updateLinkPreviewVisibility(binding, null)
@@ -470,13 +522,15 @@ class MessageAdapter(
                     layoutProductCard.visibility = View.VISIBLE
                     try {
                         val productObj = Json.decodeFromString<JsonObject>(message.content)
-                        val prodData = productObj["product"]?.jsonObject
+                        val prodData = productObj["product"]?.jsonObject ?: productObj
                         val inquiry = productObj["inquiry"]?.jsonPrimitive?.contentOrNull ?: ""
                         
-                        val prodName = prodData?.get("name")?.jsonPrimitive?.contentOrNull ?: "Product"
-                        val prodPrice = prodData?.get("price")?.jsonPrimitive?.doubleOrNull ?: 0.0
-                        val prodImage = prodData?.get("image")?.jsonPrimitive?.contentOrNull
-                        val prodId = prodData?.get("id")?.jsonPrimitive?.contentOrNull
+                        val prodName = prodData["name"]?.jsonPrimitive?.contentOrNull
+                            ?: prodData["title"]?.jsonPrimitive?.contentOrNull ?: "Product"
+                        val prodPrice = prodData["price"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+                        val prodImage = prodData["image"]?.jsonPrimitive?.contentOrNull
+                            ?: prodData["imageUrl"]?.jsonPrimitive?.contentOrNull
+                        val prodId = prodData["id"]?.jsonPrimitive?.contentOrNull
 
                         tvProductCardTitle.text = prodName
                         tvProductCardPrice.text = String.format(Locale.US, "$%.2f", prodPrice)
@@ -498,11 +552,58 @@ class MessageAdapter(
                                 root.context.startActivity(intent)
                             }
                         }
+
+                        btnBuyNowProductCard.setOnClickListener {
+                            prodId?.let { id ->
+                                onBuyNowClicked?.invoke(id, prodName, prodPrice, prodImage.orEmpty()) ?: run {
+                                    val intent = Intent(root.context, ProductDetailsActivity::class.java).apply {
+                                        putExtra("product_id", id)
+                                        putExtra("auto_buy", true)
+                                    }
+                                    root.context.startActivity(intent)
+                                }
+                            }
+                        }
                     } catch (e: Exception) {
                         layoutProductCard.visibility = View.GONE
                     }
                 } else {
                     layoutProductCard.visibility = View.GONE
+                }
+
+                // Order Card Row
+                if (isOrder) {
+                    layoutOrderCard.visibility = View.VISIBLE
+                    try {
+                        val orderObj = Json.decodeFromString<JsonObject>(message.content)
+                        val orderData = orderObj["order"]?.jsonObject ?: orderObj
+
+                        val orderNum = orderData["order_number"]?.jsonPrimitive?.contentOrNull ?: "ORD"
+                        val orderStatus = orderData["status"]?.jsonPrimitive?.contentOrNull ?: "PAID"
+                        val storeName = orderData["store_name"]?.jsonPrimitive?.contentOrNull ?: "Official Store"
+                        val summary = orderData["items_summary"]?.jsonPrimitive?.contentOrNull ?: "Marketplace Order"
+                        val totalAmount = orderData["total_amount"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+                        val orderId = orderData["id"]?.jsonPrimitive?.contentOrNull ?: ""
+
+                        tvOrderCardNumber.text = "#$orderNum"
+                        tvOrderCardStatus.text = orderStatus.uppercase(Locale.ROOT)
+                        tvOrderCardStore.text = storeName
+                        tvOrderCardSummary.text = summary
+                        tvOrderCardTotal.text = String.format(Locale.US, "$%.2f", totalAmount)
+
+                        btnViewOrderCard.setOnClickListener {
+                            val intent = Intent(root.context, com.example.gochat.ui.marketplace.OrdersActivity::class.java).apply {
+                                putExtra("highlight_order_id", orderId)
+                            }
+                            root.context.startActivity(intent)
+                        }
+
+                        tvMessageContent.visibility = View.GONE
+                    } catch (e: Exception) {
+                        layoutOrderCard.visibility = View.GONE
+                    }
+                } else {
+                    layoutOrderCard.visibility = View.GONE
                 }
 
                 val isOnlyMediaLabel = message.content.isBlank() || 

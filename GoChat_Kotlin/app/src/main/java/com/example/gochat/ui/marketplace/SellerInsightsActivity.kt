@@ -155,9 +155,18 @@ class SellerInsightsActivity : AppCompatActivity() {
 
     private fun setupMostViewed(products: List<Product>) {
         val adapter = StoreProductAdapter(
-            onClick = { /* Navigate to details */ },
+            onClick = { product ->
+                val intent = android.content.Intent(this, ProductDetailsActivity::class.java).apply {
+                    putExtra("product_id", product.id)
+                }
+                startActivity(intent)
+            },
             onEdit = { /* Navigate to edit */ },
-            onDelete = { /* Confirm delete */ }
+            onDelete = { /* Confirm delete */ },
+            onShare = { product ->
+                val shareSheet = com.example.gochat.ui.chat.ShareToChatBottomSheet(product)
+                shareSheet.show(supportFragmentManager, "ShareToChat")
+            }
         )
         binding.rvMostViewed.layoutManager = LinearLayoutManager(this)
         binding.rvMostViewed.adapter = adapter
