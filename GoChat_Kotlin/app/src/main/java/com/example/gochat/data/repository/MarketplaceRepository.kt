@@ -66,7 +66,9 @@ class MarketplaceRepository @Inject constructor(
     ): Result<List<Product>> {
         return try {
             val response = api.getProducts(
-                categoryId = if (categoryId == "all" || categoryId.isNullOrBlank()) null else categoryId,
+                categoryId = if (categoryId == "all" || categoryId.isNullOrBlank()) null else {
+                    if (isValidUuid(categoryId)) categoryId else resolveCategoryId(categoryId)
+                },
                 search = search?.ifBlank { null },
                 sortBy = sortBy,
                 page = 1,
@@ -90,17 +92,75 @@ class MarketplaceRepository @Inject constructor(
 
 
 
-    // Seed data for categories
+    // Seed data for categories with canonical UUIDs matching Postgres DB
     companion object {
         val defaultCategories = listOf(
             Category("all", "All", iconName = "grid"),
-            Category("electronics", "Electronics", iconName = "devices"),
-            Category("phones", "Phones", iconName = "smartphone"),
-            Category("fashion", "Fashion", iconName = "checkroom"),
-            Category("gaming", "Gaming", iconName = "sports_esports"),
-            Category("home", "Home", iconName = "weekend"),
-            Category("services", "Services", iconName = "handyman")
+            Category("7acb1bee-6bd7-4b42-ae24-8d1e4a49cdf3", "Electronics", iconName = "devices"),
+            Category("a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d", "Phones", iconName = "smartphone"),
+            Category("b2c3d4e5-f6a7-4b6c-9d0e-1f2a3b4c5d6e", "Fashion", iconName = "checkroom"),
+            Category("c3d4e5f6-a7b8-4c7d-0e1f-2a3b4c5d6e7f", "Gaming", iconName = "sports_esports"),
+            Category("d4e5f6a7-b8c9-4d8e-1f2a-3b4c5d6e7f8a", "Home", iconName = "weekend"),
+            Category("e5f6a7b8-c9d0-4e9f-2a3b-4c5d6e7f8a9b", "Services", iconName = "handyman"),
+            Category("f6a7b8c9-d0e1-4f0a-3b4c-5d6e7f8a9b0c", "Beauty", iconName = "spa"),
+            Category("0a1b2c3d-4e5f-4a0b-8c9d-1e2f3a4b5c6d", "Sports", iconName = "fitness_center"),
+            Category("1b2c3d4e-5f6a-4b1c-9d0e-2f3a4b5c6d7e", "Food", iconName = "restaurant"),
+            Category("2c3d4e5f-6a7b-4c2d-0e1f-3a4b5c6d7e8f", "General", iconName = "category")
         )
+
+        private val UUID_REGEX = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+        fun isValidUuid(str: String?): Boolean {
+            if (str.isNullOrBlank()) return false
+            return UUID_REGEX.matches(str.trim())
+        }
+
+        fun resolveCategoryId(rawId: String?, rawName: String? = null): String {
+            if (!rawId.isNullOrBlank() && isValidUuid(rawId)) {
+                return rawId.trim().lowercase()
+            }
+            val query = (rawName?.takeIf { it.isNotBlank() } ?: rawId).orEmpty().trim().lowercase()
+            return when {
+                query.contains("elect") || query.contains("gadget") || query.contains("tech") || query.contains("laptop") || query.contains("pc") || query.contains("tv") ->
+                    "7acb1bee-6bd7-4b42-ae24-8d1e4a49cdf3"
+                query.contains("phone") || query.contains("mobile") || query.contains("smart") || query.contains("cell") || query.contains("iphone") || query.contains("android") ->
+                    "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d"
+                query.contains("fash") || query.contains("cloth") || query.contains("wear") || query.contains("shoe") || query.contains("dress") || query.contains("shirt") ->
+                    "b2c3d4e5-f6a7-4b6c-9d0e-1f2a3b4c5d6e"
+                query.contains("gam") || query.contains("playstation") || query.contains("xbox") || query.contains("nintendo") || query.contains("ps5") ->
+                    "c3d4e5f6-a7b8-4c7d-0e1f-2a3b4c5d6e7f"
+                query.contains("home") || query.contains("furn") || query.contains("decor") || query.contains("bed") || query.contains("kitchen") ->
+                    "d4e5f6a7-b8c9-4d8e-1f2a-3b4c5d6e7f8a"
+                query.contains("serv") || query.contains("handy") || query.contains("repair") || query.contains("plumb") || query.contains("electrician") ->
+                    "e5f6a7b8-c9d0-4e9f-2a3b-4c5d6e7f8a9b"
+                query.contains("beaut") || query.contains("cosmet") || query.contains("skin") || query.contains("hair") || query.contains("perfume") || query.contains("makeup") ->
+                    "f6a7b8c9-d0e1-4f0a-3b4c-5d6e7f8a9b0c"
+                query.contains("sport") || query.contains("fit") || query.contains("gym") || query.contains("athlet") || query.contains("ball") ->
+                    "0a1b2c3d-4e5f-4a0b-8c9d-1e2f3a4b5c6d"
+                query.contains("food") || query.contains("groc") || query.contains("drink") || query.contains("snack") || query.contains("eat") || query.contains("meal") ->
+                    "1b2c3d4e-5f6a-4b1c-9d0e-2f3a4b5c6d7e"
+                else ->
+                    "2c3d4e5f-6a7b-4c2d-0e1f-3a4b5c6d7e8f" // General
+            }
+        }
+
+        fun resolveCategoryName(rawId: String?, rawName: String? = null): String {
+            if (!rawName.isNullOrBlank() && rawName.lowercase() != "all" && !isValidUuid(rawName)) {
+                return rawName.trim().replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+            }
+            return when (rawId?.lowercase()?.trim()) {
+                "7acb1bee-6bd7-4b42-ae24-8d1e4a49cdf3" -> "Electronics"
+                "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d" -> "Phones"
+                "b2c3d4e5-f6a7-4b6c-9d0e-1f2a3b4c5d6e" -> "Fashion"
+                "c3d4e5f6-a7b8-4c7d-0e1f-2a3b4c5d6e7f" -> "Gaming"
+                "d4e5f6a7-b8c9-4d8e-1f2a-3b4c5d6e7f8a" -> "Home"
+                "e5f6a7b8-c9d0-4e9f-2a3b-4c5d6e7f8a9b" -> "Services"
+                "f6a7b8c9-d0e1-4f0a-3b4c-5d6e7f8a9b0c" -> "Beauty"
+                "0a1b2c3d-4e5f-4a0b-8c9d-1e2f3a4b5c6d" -> "Sports"
+                "1b2c3d4e-5f6a-4b1c-9d0e-2f3a4b5c6d7e" -> "Food"
+                else -> "General"
+            }
+        }
     }
 
     suspend fun getProducts(
@@ -114,7 +174,9 @@ class MarketplaceRepository @Inject constructor(
 
         return try {
             val response = api.getProducts(
-                categoryId = if (categoryId == "all" || categoryId.isNullOrBlank()) null else categoryId,
+                categoryId = if (categoryId == "all" || categoryId.isNullOrBlank()) null else {
+                    if (isValidUuid(categoryId)) categoryId else resolveCategoryId(categoryId)
+                },
                 search = search?.ifBlank { null },
                 sortBy = sortBy
             )
@@ -151,8 +213,10 @@ class MarketplaceRepository @Inject constructor(
     ): List<Product> {
         var result = list
         if (!categoryId.isNullOrBlank() && categoryId != "all") {
+            val resolvedId = resolveCategoryId(categoryId)
             result = result.filter {
                 it.categoryId.equals(categoryId, ignoreCase = true) ||
+                it.categoryId.equals(resolvedId, ignoreCase = true) ||
                 it.category.equals(categoryId, ignoreCase = true)
             }
         }
@@ -250,7 +314,9 @@ class MarketplaceRepository @Inject constructor(
                 val sellerLoc = (element["seller_location"] ?: element["sellerLocation"] ?: element["location"] ?: element["address"])?.jsonPrimitive?.contentOrNull ?: "Lagos, Nigeria"
 
                 val catId = (element["category_id"] ?: element["categoryId"])?.jsonPrimitive?.contentOrNull
-                val cat = (element["category"] ?: element["category_name"] ?: element["categoryName"])?.jsonPrimitive?.contentOrNull ?: "General"
+                val rawCat = (element["category"] ?: element["category_name"] ?: element["categoryName"])?.jsonPrimitive?.contentOrNull
+                val resolvedCatId = resolveCategoryId(catId, rawCat)
+                val resolvedCat = resolveCategoryName(resolvedCatId, rawCat)
 
                 val stock = (element["stock"] ?: element["quantity"])?.jsonPrimitive?.intOrNull ?: 10
                 val inStock = (element["in_stock"] ?: element["inStock"])?.jsonPrimitive?.booleanOrNull ?: (stock > 0)
@@ -290,8 +356,8 @@ class MarketplaceRepository @Inject constructor(
                     sellerId = sellerId,
                     sellerPin = sellerPin,
                     sellerLocation = sellerLoc,
-                    categoryId = catId,
-                    category = cat,
+                    categoryId = resolvedCatId,
+                    category = resolvedCat,
                     stock = stock,
                     inStock = inStock,
                     isVerifiedSeller = isVerified,
@@ -341,23 +407,42 @@ class MarketplaceRepository @Inject constructor(
         }
     }
 
+    fun parseCategoryJson(element: JsonElement): Category? {
+        return try {
+            if (element is JsonObject) {
+                val id = element["id"]?.jsonPrimitive?.contentOrNull ?: return null
+                val name = element["name"]?.jsonPrimitive?.contentOrNull ?: "Category"
+                val icon = (element["icon"] ?: element["icon_name"] ?: element["iconName"])?.jsonPrimitive?.contentOrNull ?: "grid"
+                val iconUrl = (element["icon_url"] ?: element["iconUrl"])?.jsonPrimitive?.contentOrNull
+                Category(id = id, name = name, iconUrl = iconUrl, iconName = icon)
+            } else {
+                json.decodeFromJsonElement<Category>(element)
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     suspend fun getCategories(): Result<List<Category>> {
         return try {
             val response = api.getCategories()
             if (response.isSuccessful) {
                 val data = response.body()
                 val list = when (data) {
-                    is JsonArray -> data.mapNotNull {
-                        try { json.decodeFromJsonElement<Category>(it) } catch (_: Exception) { null }
-                    }
+                    is JsonArray -> data.mapNotNull { parseCategoryJson(it) }
                     is JsonObject -> {
-                        data["categories"]?.jsonArray?.mapNotNull {
-                            try { json.decodeFromJsonElement<Category>(it) } catch (_: Exception) { null }
-                        } ?: emptyList()
+                        val arr = data["categories"]?.jsonArray ?: data["data"]?.jsonArray
+                        arr?.mapNotNull { parseCategoryJson(it) } ?: emptyList()
                     }
                     else -> emptyList()
                 }
-                if (list.isNotEmpty()) Result.success(list) else Result.success(defaultCategories)
+                if (list.isNotEmpty()) {
+                    val hasAll = list.any { it.id.equals("all", ignoreCase = true) }
+                    val fullList = if (!hasAll) listOf(Category("all", "All", iconName = "grid")) + list else list
+                    Result.success(fullList)
+                } else {
+                    Result.success(defaultCategories)
+                }
             } else {
                 Result.success(defaultCategories)
             }
@@ -693,8 +778,14 @@ class MarketplaceRepository @Inject constructor(
         }
     }
 
+    suspend fun insertProductLocally(product: Product) {
+        marketplaceDao.insertProduct(product)
+    }
+
     suspend fun createProduct(product: Product): Result<Product> {
         return try {
+            val resolvedCategoryId = resolveCategoryId(product.categoryId, product.category)
+            val resolvedCategoryName = resolveCategoryName(resolvedCategoryId, product.category)
             val body = buildJsonObject {
                 put("name", product.name)
                 put("title", product.name)
@@ -706,8 +797,8 @@ class MarketplaceRepository @Inject constructor(
                 } else 0.0
                 put("discount_percent", disc)
                 put("currency", product.currency)
-                put("category", product.category)
-                put("category_id", product.categoryId ?: product.category)
+                put("category", resolvedCategoryName)
+                put("category_id", resolvedCategoryId)
                 put("stock", product.stock)
                 put("quantity", product.stock)
                 put("image_url", product.primaryImage)
@@ -727,7 +818,7 @@ class MarketplaceRepository @Inject constructor(
                     }
                     parsed
                 } else {
-                    product
+                    product.copy(categoryId = resolvedCategoryId, category = resolvedCategoryName)
                 }
                 marketplaceDao.insertProduct(created)
                 Result.success(created)
@@ -742,6 +833,8 @@ class MarketplaceRepository @Inject constructor(
 
     suspend fun updateProduct(product: Product): Result<Product> {
         return try {
+            val resolvedCategoryId = resolveCategoryId(product.categoryId, product.category)
+            val resolvedCategoryName = resolveCategoryName(resolvedCategoryId, product.category)
             val body = buildJsonObject {
                 put("name", product.name)
                 put("title", product.name)
@@ -753,8 +846,8 @@ class MarketplaceRepository @Inject constructor(
                 } else 0.0
                 put("discount_percent", disc)
                 put("currency", product.currency)
-                put("category", product.category)
-                put("category_id", product.categoryId ?: product.category)
+                put("category", resolvedCategoryName)
+                put("category_id", resolvedCategoryId)
                 put("stock", product.stock)
                 put("quantity", product.stock)
                 put("image_url", product.primaryImage)
@@ -767,7 +860,7 @@ class MarketplaceRepository @Inject constructor(
                     is JsonObject -> data["product"]?.jsonObject ?: data
                     else -> null
                 }
-                val updated = parseSingleProductJson(targetObj) ?: product
+                val updated = parseSingleProductJson(targetObj) ?: product.copy(categoryId = resolvedCategoryId, category = resolvedCategoryName)
                 marketplaceDao.insertProduct(updated)
                 Result.success(updated)
             } else {

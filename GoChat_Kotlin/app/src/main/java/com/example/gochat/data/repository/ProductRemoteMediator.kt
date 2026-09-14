@@ -54,7 +54,9 @@ class ProductRemoteMediator(
                 api.getFollowedProducts(page = page, limit = state.config.pageSize)
             } else {
                 api.getProducts(
-                    categoryId = if (categoryId == "all" || categoryId.isNullOrBlank()) null else categoryId,
+                    categoryId = if (categoryId == "all" || categoryId.isNullOrBlank()) null else {
+                        if (MarketplaceRepository.isValidUuid(categoryId)) categoryId else MarketplaceRepository.resolveCategoryId(categoryId)
+                    },
                     search = search?.ifBlank { null },
                     sortBy = sortBy,
                     page = page,

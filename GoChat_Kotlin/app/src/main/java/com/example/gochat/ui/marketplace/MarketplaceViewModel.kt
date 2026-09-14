@@ -386,6 +386,8 @@ class MarketplaceViewModel @Inject constructor(
             }
 
             val primaryImage = uploadedUrls.firstOrNull().orEmpty()
+            val catUuid = MarketplaceRepository.resolveCategoryId(null, category.ifBlank { "Electronics" })
+            val catName = MarketplaceRepository.resolveCategoryName(catUuid, category.ifBlank { "Electronics" })
             val newProduct = Product(
                 id = java.util.UUID.randomUUID().toString(),
                 sellerId = repository.userId ?: "",
@@ -393,8 +395,8 @@ class MarketplaceViewModel @Inject constructor(
                 description = description,
                 price = price,
                 originalPrice = if (originalPrice > price) originalPrice else 0.0,
-                category = category.ifBlank { "Electronics" },
-                categoryId = category.lowercase(),
+                category = catName,
+                categoryId = catUuid,
                 stock = stock,
                 imageUrls = uploadedUrls,
                 imageUrl = primaryImage,
@@ -421,7 +423,9 @@ class MarketplaceViewModel @Inject constructor(
                 _isLoading.value = false
                 onSuccess()
             } else {
-                // Offline fallback: optimistic insert and queue background sync
+                // Offline fallback: optimistically insert into Room DB so the user sees it immediately
+                repository.insertProductLocally(newProduct)
+
                 _products.value = listOf(newProduct) + _products.value.filter { it.id != newProduct.id }
                 _myProducts.value = listOf(newProduct) + _myProducts.value.filter { it.id != newProduct.id }
 
@@ -517,13 +521,15 @@ class MarketplaceViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             val primaryImage = imageUrls.firstOrNull() ?: product.primaryImage
+            val catUuid = MarketplaceRepository.resolveCategoryId(product.categoryId, category.ifBlank { product.category })
+            val catName = MarketplaceRepository.resolveCategoryName(catUuid, category.ifBlank { product.category })
             val updated = product.copy(
                 name = name,
                 description = description,
                 price = price,
                 originalPrice = if (originalPrice > price) originalPrice else 0.0,
-                category = category.ifBlank { product.category },
-                categoryId = category.lowercase(),
+                category = catName,
+                categoryId = catUuid,
                 stock = stock,
                 imageUrls = if (imageUrls.isNotEmpty()) imageUrls else product.imageUrls,
                 imageUrl = primaryImage,
@@ -539,6 +545,7 @@ class MarketplaceViewModel @Inject constructor(
                 val finalProd = result.getOrNull() ?: updated
                 _products.value = _products.value.map { if (it.id == product.id) finalProd else it }
                 _myProducts.value = _myProducts.value.map { if (it.id == product.id) finalProd else it }
+                _refreshEvent.tryEmit(Unit)
                 onSuccess()
             } else {
                 onError(result.exceptionOrNull()?.message ?: "Failed to update product")

@@ -30,8 +30,14 @@ interface MarketplaceDao {
 
     @Query("""
         SELECT * FROM products 
-        WHERE (:categoryId IS NULL OR :categoryId = '' OR :categoryId = 'all' OR categoryId = :categoryId OR category = :categoryId)
-          AND (:search IS NULL OR :search = '' OR name LIKE '%' || :search || '%' OR description LIKE '%' || :search || '%' OR storeName LIKE '%' || :search || '%')
+        WHERE (:categoryId IS NULL OR :categoryId = '' OR LOWER(:categoryId) = 'all' 
+               OR categoryId = :categoryId 
+               OR LOWER(categoryId) = LOWER(:categoryId)
+               OR LOWER(category) = LOWER(:categoryId))
+          AND (:search IS NULL OR :search = '' 
+               OR LOWER(name) LIKE '%' || LOWER(:search) || '%' 
+               OR LOWER(description) LIKE '%' || LOWER(:search) || '%' 
+               OR LOWER(storeName) LIKE '%' || LOWER(:search) || '%')
         ORDER BY createdAt DESC
     """)
     fun getProductsPagedFiltered(categoryId: String?, search: String?): PagingSource<Int, Product>
@@ -43,7 +49,7 @@ interface MarketplaceDao {
     suspend fun getAllProducts(): List<Product>
 
 
-    @Query("SELECT * FROM products WHERE categoryId = :categoryId OR category = :categoryId")
+    @Query("SELECT * FROM products WHERE categoryId = :categoryId OR LOWER(categoryId) = LOWER(:categoryId) OR LOWER(category) = LOWER(:categoryId)")
     suspend fun getProductsByCategory(categoryId: String): List<Product>
 
     @Query("SELECT * FROM products WHERE storeId = :storeId")
