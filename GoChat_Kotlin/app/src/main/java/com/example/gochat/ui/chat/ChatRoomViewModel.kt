@@ -143,6 +143,7 @@ class ChatRoomViewModel @Inject constructor(
             val currentUserId = tokenManager.userId ?: ""
             if (conv != null) {
                 _screenshotNotificationsEnabled.value = conv.screenshotNotificationsEnabled
+                _disappearingDuration.value = conv.disappearingMessagesDuration
                 if (conv.isDirect) {
                     val partner = conv.memberIds.find { it != currentUserId }
                     if (!partner.isNullOrEmpty()) {
@@ -168,6 +169,7 @@ class ChatRoomViewModel @Inject constructor(
                 val remoteResult = chatRepository.fetchConversation(convId)
                 remoteResult.getOrNull()?.let { remoteConv ->
                     _isPartnerOnline.value = remoteConv.isOnline
+                    _disappearingDuration.value = remoteConv.disappearingMessagesDuration
                     if (remoteConv.lastSeen != null && remoteConv.lastSeen > 0L) {
                         _partnerLastSeen.value = remoteConv.lastSeen
                     }
@@ -510,6 +512,20 @@ class ChatRoomViewModel @Inject constructor(
 
     fun setDisappearingMessages(durationSeconds: Int) {
         _disappearingDuration.value = durationSeconds
+        val convId = _conversationId.value
+        if (convId.isNotEmpty()) {
+            viewModelScope.launch {
+                chatRepository.setConversationDisappearingMessages(convId, durationSeconds)
+                val payload = buildJsonObject {
+                    put("type", "disappearing_messages_changed")
+                    put("conversation_id", convId)
+                    put("duration", durationSeconds)
+                    put("sender_id", tokenManager.userId ?: "")
+                    currentPartnerId?.let { put("target_user_id", it) }
+                }
+                webSocket.send(payload)
+            }
+        }
     }
 
     fun toggleScreenshotNotifications(enabled: Boolean) {
@@ -602,6 +618,14 @@ class ChatRoomViewModel @Inject constructor(
                 // Optionally update local DB if we want settings to sync across devices via WS
                 viewModelScope.launch {
                     chatRepository.toggleScreenshotNotifications(convId, enabled)
+                }
+            }
+            type == "disappearing_messages_changed" || type == "disappearing_duration_changed" -> {
+                val duration = (event["duration"] ?: event["disappearing_messages_duration"] ?: event["disappearing_duration"])
+                    ?.jsonPrimitive?.intOrNull ?: 0
+                _disappearingDuration.value = duration
+                viewModelScope.launch {
+                    chatRepository.updateConversationDisappearingDurationLocally(convId, duration)
                 }
             }
             type == "screenshot_taken" -> {

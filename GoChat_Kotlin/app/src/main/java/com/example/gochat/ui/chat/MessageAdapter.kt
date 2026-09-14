@@ -75,6 +75,57 @@ class MessageAdapter(
         }
     }
 
+    private fun bindDisappearingBadge(
+        message: Message,
+        layoutBadge: View,
+        tvCountdown: TextView
+    ) {
+        val remainingMs = if (message.expiresAt != null && message.expiresAt > 0) {
+            message.expiresAt - System.currentTimeMillis()
+        } else if (message.disappearingDurationSeconds != null && message.disappearingDurationSeconds > 0) {
+            (message.createdAt + (message.disappearingDurationSeconds * 1000L)) - System.currentTimeMillis()
+        } else null
+
+        if (remainingMs != null && !message.isDeleted) {
+            layoutBadge.visibility = View.VISIBLE
+            tvCountdown.text = formatRemainingTime(remainingMs)
+            layoutBadge.setOnClickListener {
+                val detail = formatRemainingTimeDetail(remainingMs)
+                android.widget.Toast.makeText(layoutBadge.context, "⏱️ Message disappears in $detail", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            layoutBadge.visibility = View.GONE
+            layoutBadge.setOnClickListener(null)
+        }
+    }
+
+    private fun formatRemainingTime(remainingMs: Long): String {
+        return when {
+            remainingMs <= 0 -> "<1m"
+            remainingMs < 60_000L -> "<1m"
+            remainingMs < 3_600_000L -> "${remainingMs / 60_000L}m"
+            remainingMs < 86_400_000L -> "${remainingMs / 3_600_000L}h"
+            else -> "${remainingMs / 86_400_000L}d"
+        }
+    }
+
+    private fun formatRemainingTimeDetail(remainingMs: Long): String {
+        return when {
+            remainingMs <= 0 -> "less than a minute"
+            remainingMs < 3_600_000L -> "${(remainingMs / 60_000L).coerceAtLeast(1)} minute(s)"
+            remainingMs < 86_400_000L -> {
+                val hours = remainingMs / 3_600_000L
+                val mins = (remainingMs % 3_600_000L) / 60_000L
+                if (mins > 0) "$hours hour(s) and $mins min" else "$hours hour(s)"
+            }
+            else -> {
+                val days = remainingMs / 86_400_000L
+                val hours = (remainingMs % 86_400_000L) / 3_600_000L
+                if (hours > 0) "$days day(s) and $hours hr(s)" else "$days day(s)"
+            }
+        }
+    }
+
     private val mentionPattern = Pattern.compile("@[\\w]+")
 
     private fun highlightMentions(text: String, color: Int): CharSequence {
@@ -330,6 +381,9 @@ class MessageAdapter(
                 } else {
                     layoutReactions.visibility = View.GONE
                 }
+
+                // Disappearing Countdown Badge
+                bindDisappearingBadge(message, layoutDisappearingTimer, tvDisappearingCountdown)
 
                 // Timestamp
                 tvMessageTime.text = formatTime(message.createdAt)
@@ -632,6 +686,9 @@ class MessageAdapter(
                 } else {
                     layoutReactions.visibility = View.GONE
                 }
+
+                // Disappearing Countdown Badge
+                bindDisappearingBadge(message, layoutDisappearingTimer, tvDisappearingCountdown)
 
                 // Timestamp
                 tvMessageTime.text = formatTime(message.createdAt)

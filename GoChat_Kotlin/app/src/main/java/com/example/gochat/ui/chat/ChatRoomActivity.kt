@@ -899,6 +899,15 @@ class ChatRoomActivity : AppCompatActivity() {
                         }
                     }
                 }
+
+                launch {
+                    viewModel.disappearingDuration.collect { duration ->
+                        binding.ivHeaderDisappearingBadge.visibility = if (duration > 0) View.VISIBLE else View.GONE
+                        binding.ivHeaderDisappearingBadge.setOnClickListener {
+                            showDisappearingMessagesDialog()
+                        }
+                    }
+                }
             }
         }
     }

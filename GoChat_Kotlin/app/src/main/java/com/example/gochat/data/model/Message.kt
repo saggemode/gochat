@@ -91,6 +91,9 @@ data class Message(
     @SerialName("is_forwarded") val isForwarded: Boolean = false,
     @SerialName("original_sender_name") val originalSenderName: String? = null
 ) {
+    val isDisappearing: Boolean
+        get() = (disappearingDurationSeconds != null && disappearingDurationSeconds > 0) || (expiresAt != null && expiresAt > 0)
+
     companion object {
         fun fromJson(json: JsonObject, currentUserId: String = ""): Message {
             val id = (json["id"] ?: json["Id"] ?: json["message_id"] ?: json["messageId"])
@@ -179,10 +182,10 @@ data class Message(
             val isViewed = (json["is_viewed"] ?: json["isViewed"])
                 ?.jsonPrimitive?.booleanOrNull ?: false
 
-            val disappearingDuration = (json["disappearing_duration_seconds"] ?: json["disappearing_duration"])
+            val disappearingDuration = (json["disappearing_messages_duration"] ?: json["disappearing_duration_seconds"] ?: json["disappearing_duration"])
                 ?.jsonPrimitive?.intOrNull
 
-            val expiresAt = parseTimestamp(json["expires_at"] ?: json["expiresAt"])
+            val rawExpiresAt = parseOptionalTimestamp(json["expires_at"] ?: json["expiresAt"])
 
             val replyToId = (json["reply_to_id"] ?: json["replyToId"] ?: json["parent_id"] ?: json["ParentId"])
                 ?.jsonPrimitive?.contentOrNull
@@ -215,6 +218,8 @@ data class Message(
                     json["forwarded_from_sender_name"]?.jsonPrimitive?.contentOrNull ?: "Someone"
 
             val createdAt = parseTimestamp(json["created_at"] ?: json["createdAt"] ?: json["send_at"] ?: json["SendAt"])
+
+            val expiresAt = rawExpiresAt ?: (if (disappearingDuration != null && disappearingDuration > 0) createdAt + (disappearingDuration * 1000L) else null)
 
             val isMe = currentUserId.isNotBlank() && senderId == currentUserId
 
@@ -252,17 +257,21 @@ data class Message(
             )
         }
 
-        private fun parseTimestamp(element: JsonElement?): Long {
-            if (element == null || element is JsonNull) return System.currentTimeMillis()
+        private fun parseOptionalTimestamp(element: JsonElement?): Long? {
+            if (element == null || element is JsonNull) return null
             val prim = element.jsonPrimitive
             prim.longOrNull?.let { return if (it < 100_000_000_000L) it * 1000L else it }
-            val str = prim.contentOrNull ?: return System.currentTimeMillis()
+            val str = prim.contentOrNull ?: return null
             str.toLongOrNull()?.let { return if (it < 100_000_000_000L) it * 1000L else it }
             return try {
                 java.time.Instant.parse(str).toEpochMilli()
             } catch (_: Exception) {
-                System.currentTimeMillis()
+                null
             }
+        }
+
+        private fun parseTimestamp(element: JsonElement?): Long {
+            return parseOptionalTimestamp(element) ?: System.currentTimeMillis()
         }
     }
 }

@@ -16,7 +16,11 @@ import com.example.gochat.databinding.ActivityContactProfileBinding
 import com.example.gochat.ui.calls.CallActivity
 import com.example.gochat.ui.contacts.SelectContactActivity
 import com.example.gochat.ui.security.SecurityVerificationActivity
+import androidx.lifecycle.lifecycleScope
+import com.example.gochat.data.repository.ChatRepository
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -24,6 +28,9 @@ import java.util.Locale
 
 @AndroidEntryPoint
 class ContactProfileActivity : AppCompatActivity() {
+
+    @Inject
+    lateinit var chatRepository: ChatRepository
 
     companion object {
         const val EXTRA_CONVERSATION_ID = "extra_conversation_id"
@@ -64,6 +71,7 @@ class ContactProfileActivity : AppCompatActivity() {
         setupProfileInfo(userName, userPhone, userAvatar, userPin, isOnline, lastSeen)
         setupActionButtons(targetUserId)
         setupSettingsRows(userName, convId)
+        loadDisappearingStatus(convId)
     }
 
     private fun setupToolbar(name: String) {
@@ -164,7 +172,7 @@ class ContactProfileActivity : AppCompatActivity() {
 
         // 3. Disappearing messages
         binding.layoutDisappearingMessages.setOnClickListener {
-            showDisappearingMessagesDialog()
+            showDisappearingMessagesDialog(convId)
         }
 
         // 4. Chat lock
@@ -248,16 +256,40 @@ class ContactProfileActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showDisappearingMessagesDialog() {
+    private fun loadDisappearingStatus(convId: String) {
+        if (convId.isBlank()) return
+        lifecycleScope.launch {
+            val conv = chatRepository.getConversationById(convId)
+            if (conv != null) {
+                val label = when (conv.disappearingMessagesDuration) {
+                    86400 -> "24 hours"
+                    604800 -> "7 days"
+                    7776000 -> "90 days"
+                    else -> if (conv.disappearingMessagesDuration > 0) "${conv.disappearingMessagesDuration / 3600} hours" else "Off"
+                }
+                disappearingOption = label
+                binding.tvDisappearingStatus.text = label
+            }
+        }
+    }
+
+    private fun showDisappearingMessagesDialog(convId: String) {
         val options = arrayOf("Off", "24 hours", "7 days", "90 days")
+        val values = intArrayOf(0, 86400, 604800, 7776000)
         val currentIndex = options.indexOf(disappearingOption).let { if (it >= 0) it else 0 }
 
         AlertDialog.Builder(this)
             .setTitle("Disappearing messages")
             .setMessage("For more privacy and storage, new messages will disappear from this chat for everyone after the selected duration.")
             .setSingleChoiceItems(options, currentIndex) { dialog, which ->
+                val selectedDuration = values[which]
                 disappearingOption = options[which]
                 binding.tvDisappearingStatus.text = disappearingOption
+                if (convId.isNotBlank()) {
+                    lifecycleScope.launch {
+                        chatRepository.setConversationDisappearingMessages(convId, selectedDuration)
+                    }
+                }
                 Toast.makeText(this, "Disappearing messages set to $disappearingOption", Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
             }

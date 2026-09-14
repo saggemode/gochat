@@ -198,6 +198,7 @@ class ChatRepository @Inject constructor(
 
     suspend fun refreshMessages(convId: String): Result<List<Message>> {
         return try {
+            dao.deleteExpiredMessages(System.currentTimeMillis())
             val response = api.getMessages(convId)
             if (response.isSuccessful) {
                 val body = response.body()
@@ -292,10 +293,18 @@ class ChatRepository @Inject constructor(
 
 
         
-        if (disappearingDurationSeconds != null && disappearingDurationSeconds > 0) {
+        val effectiveDisappearingDuration = if (disappearingDurationSeconds != null && disappearingDurationSeconds > 0) {
+            disappearingDurationSeconds
+        } else if (conv != null && conv.disappearingMessagesDuration > 0) {
+            conv.disappearingMessagesDuration
+        } else {
+            null
+        }
+
+        if (effectiveDisappearingDuration != null && effectiveDisappearingDuration > 0) {
             localMsg = localMsg.copy(
-                disappearingDurationSeconds = disappearingDurationSeconds,
-                expiresAt = System.currentTimeMillis() + (disappearingDurationSeconds * 1000L)
+                disappearingDurationSeconds = effectiveDisappearingDuration,
+                expiresAt = System.currentTimeMillis() + (effectiveDisappearingDuration * 1000L)
             )
         }
         dao.insertMessage(localMsg)
@@ -358,6 +367,10 @@ class ChatRepository @Inject constructor(
                 if (mentionedUserIds.isNotEmpty()) {
                     put("mentioned_user_ids", JsonArray(mentionedUserIds.map { JsonPrimitive(it) }))
                 }
+                if (localMsg.disappearingDurationSeconds != null && localMsg.disappearingDurationSeconds > 0) {
+                    put("disappearing_messages_duration", localMsg.disappearingDurationSeconds)
+                    put("disappearing_duration_seconds", localMsg.disappearingDurationSeconds)
+                }
                 if (localMsg.expiresAt != null && localMsg.expiresAt > 0) {
                     put("expires_at", localMsg.expiresAt / 1000L)
                 }
@@ -373,7 +386,9 @@ class ChatRepository @Inject constructor(
                     content = content, // Preserve local plaintext
                     mediaUrl = if (!parsed.mediaUrl.isNullOrBlank()) parsed.mediaUrl else finalMediaUrl,
                     blurHash = if (!parsed.blurHash.isNullOrBlank()) parsed.blurHash else blurHash,
-                    status = MessageStatus.SENT
+                    status = MessageStatus.SENT,
+                    disappearingDurationSeconds = parsed.disappearingDurationSeconds ?: localMsg.disappearingDurationSeconds,
+                    expiresAt = parsed.expiresAt ?: localMsg.expiresAt
                 )
 
 
@@ -790,6 +805,44 @@ class ChatRepository @Inject constructor(
         } catch (_: Exception) {
             null
         }
+    }
+
+    suspend fun setConversationDisappearingMessages(convId: String, durationSeconds: Int): Result<Unit> {
+        return try {
+            dao.updateDisappearingMessagesDuration(convId, durationSeconds)
+
+            val noticeText = when (durationSeconds) {
+                86400 -> "You set messages to disappear after 24 hours"
+                604800 -> "You set messages to disappear after 7 days"
+                7776000 -> "You set messages to disappear after 90 days"
+                0 -> "You turned off disappearing messages"
+                else -> if (durationSeconds > 0) "You set messages to disappear after ${durationSeconds / 3600} hours" else "You turned off disappearing messages"
+            }
+
+            val noticeMsg = Message(
+                id = "notice_${System.currentTimeMillis()}",
+                conversationId = convId,
+                senderId = tokenManager.userId ?: "u_me",
+                senderName = tokenManager.userDisplayName ?: "Me",
+                content = noticeText,
+                type = MessageType.TEXT,
+                status = MessageStatus.SENT,
+                isMe = true,
+                createdAt = System.currentTimeMillis()
+            )
+            dao.insertMessage(noticeMsg)
+            dao.updateLastMessage(convId, noticeText, noticeMsg.createdAt, System.currentTimeMillis())
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateConversationDisappearingDurationLocally(convId: String, durationSeconds: Int) {
+        try {
+            dao.updateDisappearingMessagesDuration(convId, durationSeconds)
+        } catch (_: Exception) {}
     }
 
     private fun createOptimisticMessage(

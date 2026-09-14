@@ -453,6 +453,38 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
+            <!-- Disappearing Timer Countdown Badge -->
+            <LinearLayout
+                android:id="@+id/layoutDisappearingTimer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <ImageView
+                    android:id="@+id/ivDisappearingClock"
+                    android:layout_width="11dp"
+                    android:layout_height="11dp"
+                    android:alpha="0.85"
+                    android:contentDescription="Disappearing timer"
+                    android:src="@drawable/ic_timer"
+                    app:tint="#B3FFFFFF" />
+
+                <TextView
+                    android:id="@+id/tvDisappearingCountdown"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="2.5dp"
+                    android:alpha="0.9"
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="9.5sp"
+                    android:textStyle="bold"
+                    tools:text="23h" />
+            </LinearLayout>
+
             <ImageView
                 android:id="@+id/ivStarred"
                 android:layout_width="12dp"
