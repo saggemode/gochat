@@ -12,7 +12,9 @@ import com.example.gochat.data.model.LinkedDevice
 import com.example.gochat.data.websocket.GoChatWebSocket
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
 import kotlinx.serialization.json.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -534,8 +536,25 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    private suspend fun syncPushTokenIfAvailable() {
-        val pushToken = tokenManager.fcmToken
+    suspend fun syncPushTokenIfAvailable() {
+        var pushToken = tokenManager.fcmToken
+        if (pushToken.isNullOrBlank()) {
+            try {
+                pushToken = suspendCancellableCoroutine { cont ->
+                    com.google.firebase.messaging.FirebaseMessaging.getInstance().token
+                        .addOnCompleteListener { task ->
+                            if (task.isSuccessful && !task.result.isNullOrBlank()) {
+                                if (cont.isActive) cont.resume(task.result)
+                            } else {
+                                if (cont.isActive) cont.resume(null)
+                            }
+                        }
+                }
+                if (!pushToken.isNullOrBlank()) {
+                    tokenManager.fcmToken = pushToken
+                }
+            } catch (_: Exception) {}
+        }
         if (!pushToken.isNullOrBlank()) {
             try {
                 subscribePush(pushToken, "android")

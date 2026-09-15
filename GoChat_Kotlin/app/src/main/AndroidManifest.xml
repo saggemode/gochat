@@ -205,10 +205,16 @@
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="gochat_channel_messages_v2" />
 
-        <!-- Enable FCM V1 Registration -->
-        <meta-data
-            android:name="firebase_messaging_installation_id_enabled"
-            android:value="true" />
+        <!-- Notification Action Receiver for Direct Reply and Mark as Read -->
+        <receiver
+            android:name=".core.notification.NotificationActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.example.gochat.ACTION_DIRECT_REPLY" />
+                <action android:name="com.example.gochat.ACTION_MARK_AS_READ" />
+                <action android:name="com.example.gochat.ACTION_DISMISS_CALL" />
+            </intent-filter>
+        </receiver>
 
         <!-- FileProvider for camera and media sharing -->
         <provider

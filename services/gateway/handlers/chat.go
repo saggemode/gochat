@@ -1285,9 +1285,38 @@ func (h *ChatHandler) fanOutEvent(eventType string, messageID string, convID str
 		// Dispatch high-priority FCM Push Notification for new messages
 		if eventType == "new_message" && convResp != nil && convResp.Conversation != nil {
 			senderTitle := "New Message"
-			if convResp.Conversation.Name != "" {
+			senderAvatar := ""
+			isGroup := convResp.Conversation.Type == chatpb.ConversationType_GROUP || len(convResp.Conversation.MemberIds) > 2
+
+			// 1. Resolve sender user profile from Auth service
+			if h.authClient != nil && userID != "" {
+				uResp, err := h.authClient.GetUser(bgCtx, &authpb.GetUserRequest{UserId: userID})
+				if err == nil && uResp != nil && uResp.User != nil {
+					name := uResp.User.DisplayName
+					if name == "" {
+						name = uResp.User.Email
+					}
+					if name == "" {
+						name = uResp.User.Phone
+					}
+					if name != "" {
+						senderTitle = name
+					}
+					senderAvatar = uResp.User.AvatarUrl
+				}
+			}
+
+			// 2. Format senderTitle for group or fallback
+			if isGroup && convResp.Conversation.Name != "" {
+				if senderTitle != "New Message" && senderTitle != "" {
+					senderTitle = fmt.Sprintf("%s (%s)", senderTitle, convResp.Conversation.Name)
+				} else {
+					senderTitle = convResp.Conversation.Name
+				}
+			} else if !isGroup && senderTitle == "New Message" && convResp.Conversation.Name != "" {
 				senderTitle = convResp.Conversation.Name
 			}
+
 			contentBody := "You received a new message"
 			mediaURL := ""
 
@@ -1305,9 +1334,13 @@ func (h *ChatHandler) fanOutEvent(eventType string, messageID string, convID str
 					contentBody = "🎵 Voice Note"
 				} else if strings.Contains(strings.ToUpper(typeStr), "VIDEO") {
 					contentBody = "🎥 Video"
+				} else if strings.Contains(strings.ToUpper(typeStr), "FILE") {
+					contentBody = "📁 File"
 				} else if strings.Contains(strings.ToUpper(typeStr), "PING") || strings.Contains(contentBody, "PING") {
 					contentBody = "💥 PING!!!"
-					senderTitle = "💥 PING Alert!"
+					if !isGroup {
+						senderTitle = "💥 PING Alert!"
+					}
 				}
 			}
 
@@ -1320,12 +1353,17 @@ func (h *ChatHandler) fanOutEvent(eventType string, messageID string, convID str
 
 						pushData := map[string]string{
 							"type":            "chat_message",
+							"event_type":      "chat_message",
 							"conversation_id": convID,
 							"sender_id":       userID,
 							"sender_name":     senderTitle,
+							"sender_avatar":   senderAvatar,
+							"is_group":        fmt.Sprintf("%v", isGroup),
 							"message_id":      messageID,
 							"content":         contentBody,
 							"media_url":       mediaURL,
+							"title":           senderTitle,
+							"body":            contentBody,
 						}
 
 						_ = fcm.SendToUser(pushCtx, targetID, senderTitle, contentBody, pushData)

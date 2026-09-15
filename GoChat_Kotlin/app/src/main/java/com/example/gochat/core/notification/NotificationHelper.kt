@@ -7,6 +7,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
@@ -14,19 +16,35 @@ import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.Person
+import androidx.core.app.RemoteInput
+import androidx.core.app.TaskStackBuilder
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.IconCompat
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.transform.CircleCropTransformation
 import com.example.gochat.R
+import com.example.gochat.ui.calls.CallActivity
 import com.example.gochat.ui.chat.ChatRoomActivity
 
 /**
  * Universal notification helper managing high-priority notification channels,
- * rich heads-up alerts, and deep-linking to ChatRoomActivity.
+ * rich heads-up alerts with direct reply, mark as read, circular avatars, and deep-linking.
  */
 object NotificationHelper {
 
     const val CHANNEL_MESSAGES = "gochat_channel_messages_v2"
     const val CHANNEL_GROUPS = "gochat_channel_groups_v2"
     const val CHANNEL_CALLS = "gochat_channel_calls_v2"
+
+    const val KEY_TEXT_REPLY = "key_text_reply"
+    const val EXTRA_CONVERSATION_ID = "extra_conversation_id"
+    const val EXTRA_NOTIFICATION_ID = "extra_notification_id"
+
+    const val ACTION_DIRECT_REPLY = "com.example.gochat.ACTION_DIRECT_REPLY"
+    const val ACTION_MARK_AS_READ = "com.example.gochat.ACTION_MARK_AS_READ"
+    const val ACTION_DISMISS_CALL = "com.example.gochat.ACTION_DISMISS_CALL"
 
     fun createNotificationChannels(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -84,59 +102,250 @@ object NotificationHelper {
         }
     }
 
+    suspend fun loadCircularBitmap(context: Context, url: String): Bitmap? {
+        if (url.isBlank()) return null
+        return try {
+            val request = ImageRequest.Builder(context)
+                .data(url)
+                .allowHardware(false)
+                .transformations(CircleCropTransformation())
+                .build()
+            val result = context.imageLoader.execute(request)
+            (result.drawable as? BitmapDrawable)?.bitmap
+        } catch (e: Exception) {
+            Log.w("NotificationHelper", "Could not load circular avatar: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun showChatNotificationAsync(
+        context: Context,
+        conversationId: String,
+        title: String,
+        body: String,
+        senderAvatar: String = "",
+        isGroup: Boolean = false,
+        isMuted: Boolean = false
+    ) {
+        val bitmap = if (senderAvatar.isNotBlank()) loadCircularBitmap(context, senderAvatar) else null
+        showChatNotification(context, conversationId, title, body, senderAvatar, isGroup, isMuted, bitmap)
+    }
+
     fun showChatNotification(
         context: Context,
         conversationId: String,
         title: String,
         body: String,
         senderAvatar: String = "",
-        isGroup: Boolean = false
+        isGroup: Boolean = false,
+        isMuted: Boolean = false,
+        avatarBitmap: Bitmap? = null
     ) {
         val channelId = if (isGroup) CHANNEL_GROUPS else CHANNEL_MESSAGES
+        val notificationId = conversationId.hashCode()
 
-        // Intent to launch ChatRoomActivity on tap
-        val intent = Intent(context, ChatRoomActivity::class.java).apply {
+        // 1. PendingIntent for notification tap with parent back stack to MainActivity
+        val tapIntent = Intent(context, ChatRoomActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, conversationId)
             putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, title)
             putExtra(ChatRoomActivity.EXTRA_CONVERSATION_AVATAR, senderAvatar)
         }
 
-        val pendingIntent = PendingIntent.getActivity(
+        val tapPendingIntent = TaskStackBuilder.create(context).run {
+            addNextIntentWithParentStack(tapIntent)
+            getPendingIntent(
+                notificationId,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+
+        // 2. Direct Reply action with RemoteInput
+        val remoteInput = RemoteInput.Builder(KEY_TEXT_REPLY)
+            .setLabel("Reply")
+            .build()
+
+        val replyIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+            action = ACTION_DIRECT_REPLY
+            putExtra(EXTRA_CONVERSATION_ID, conversationId)
+            putExtra(EXTRA_NOTIFICATION_ID, notificationId)
+        }
+
+        // RemoteInput requires FLAG_MUTABLE on API 31+
+        val replyPendingIntent = PendingIntent.getBroadcast(
             context,
-            conversationId.hashCode(),
-            intent,
+            notificationId + 1,
+            replyIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+        )
+
+        val replyAction = NotificationCompat.Action.Builder(
+            R.drawable.ic_send,
+            "Reply",
+            replyPendingIntent
+        ).addRemoteInput(remoteInput)
+            .setAllowGeneratedReplies(true)
+            .build()
+
+        // 3. Mark as Read action
+        val markReadIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+            action = ACTION_MARK_AS_READ
+            putExtra(EXTRA_CONVERSATION_ID, conversationId)
+            putExtra(EXTRA_NOTIFICATION_ID, notificationId)
+        }
+
+        val markReadPendingIntent = PendingIntent.getBroadcast(
+            context,
+            notificationId + 2,
+            markReadIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(context, channelId)
+        val markReadAction = NotificationCompat.Action.Builder(
+            0,
+            "Mark as Read",
+            markReadPendingIntent
+        ).build()
+
+        // 4. Build Person & MessagingStyle
+        val userPerson = Person.Builder().setName("Me").build()
+        val senderPersonBuilder = Person.Builder().setName(title)
+        if (avatarBitmap != null) {
+            senderPersonBuilder.setIcon(IconCompat.createWithBitmap(avatarBitmap))
+        }
+        val senderPerson = senderPersonBuilder.build()
+
+        val messagingStyle = NotificationCompat.MessagingStyle(userPerson)
+            .setConversationTitle(if (isGroup) title else null)
+            .setGroupConversation(isGroup)
+            .addMessage(body, System.currentTimeMillis(), senderPerson)
+
+        val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_chat_bubble_rounded)
             .setColor(ContextCompat.getColor(context, R.color.gochat_accent))
             .setContentTitle(title)
             .setContentText(body)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setStyle(messagingStyle)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
-            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setContentIntent(tapPendingIntent)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .build()
+            .addAction(replyAction)
+            .addAction(markReadAction)
+
+        if (avatarBitmap != null) {
+            builder.setLargeIcon(avatarBitmap)
+        }
+
+        if (isMuted) {
+            builder.setSilent(true)
+            builder.setDefaults(0)
+        } else {
+            builder.setDefaults(NotificationCompat.DEFAULT_ALL)
+        }
 
         try {
             val notificationManager = NotificationManagerCompat.from(context)
-            
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                     Log.w("NotificationHelper", "Missing POST_NOTIFICATIONS permission")
                     return
                 }
             }
-            
-            notificationManager.notify(conversationId.hashCode(), notification)
-            Log.d("NotificationHelper", "Notification shown for $conversationId: $title - $body")
+            notificationManager.notify(notificationId, builder.build())
+            Log.d("NotificationHelper", "Notification shown for $conversationId: $title")
         } catch (e: Exception) {
             Log.e("NotificationHelper", "Failed to show notification", e)
+        }
+    }
+
+    suspend fun showCallNotificationAsync(
+        context: Context,
+        callId: String,
+        callerId: String,
+        callerName: String,
+        callType: String = "voice",
+        callerAvatar: String = ""
+    ) {
+        val bitmap = if (callerAvatar.isNotBlank()) loadCircularBitmap(context, callerAvatar) else null
+        showCallNotification(context, callId, callerId, callerName, callType, callerAvatar, bitmap)
+    }
+
+    fun showCallNotification(
+        context: Context,
+        callId: String,
+        callerId: String,
+        callerName: String,
+        callType: String = "voice",
+        callerAvatar: String = "",
+        avatarBitmap: Bitmap? = null
+    ) {
+        val notificationId = ("call_$callId").hashCode()
+
+        // 1. Answer Intent -> Opens CallActivity
+        val answerIntent = Intent(context, CallActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(CallActivity.EXTRA_CALL_ID, callId)
+            putExtra(CallActivity.EXTRA_TARGET_USER_ID, callerId)
+            putExtra(CallActivity.EXTRA_IS_OUTGOING, false)
+            putExtra(CallActivity.EXTRA_CALL_TYPE, callType)
+        }
+
+        val answerPendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId + 1,
+            answerIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // 2. Decline Intent -> NotificationActionReceiver
+        val declineIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+            action = ACTION_DISMISS_CALL
+            putExtra(EXTRA_NOTIFICATION_ID, notificationId)
+            putExtra(CallActivity.EXTRA_CALL_ID, callId)
+        }
+
+        val declinePendingIntent = PendingIntent.getBroadcast(
+            context,
+            notificationId + 2,
+            declineIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val callSubtitle = if (callType == "video") "Incoming Video Call" else "Incoming Voice Call"
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_CALLS)
+            .setSmallIcon(R.drawable.ic_call)
+            .setColor(ContextCompat.getColor(context, R.color.gochat_accent))
+            .setContentTitle(callerName.ifBlank { "GoChat Contact" })
+            .setContentText(callSubtitle)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setOngoing(true)
+            .setAutoCancel(true)
+            .setContentIntent(answerPendingIntent)
+            .setFullScreenIntent(answerPendingIntent, true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .addAction(R.drawable.ic_close, "Decline", declinePendingIntent)
+            .addAction(R.drawable.ic_call, "Answer", answerPendingIntent)
+
+        if (avatarBitmap != null) {
+            builder.setLargeIcon(avatarBitmap)
+        }
+
+        try {
+            val notificationManager = NotificationManagerCompat.from(context)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    Log.w("NotificationHelper", "Missing POST_NOTIFICATIONS permission for call")
+                    return
+                }
+            }
+            notificationManager.notify(notificationId, builder.build())
+            Log.d("NotificationHelper", "Call notification shown for $callId from $callerName")
+        } catch (e: Exception) {
+            Log.e("NotificationHelper", "Failed to show call notification", e)
         }
     }
 }

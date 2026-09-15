@@ -24,21 +24,7 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        handleRegistration(token, "onNewToken")
-    }
-
-    override fun onRegistered(installationId: String) {
-        super.onRegistered(installationId)
-        handleRegistration(installationId, "onRegistered")
-    }
-
-    override fun onUnregistered(installationId: String) {
-        super.onUnregistered(installationId)
-        Log.d(TAG, "FCM Unregistered: $installationId")
-    }
-
-    private fun handleRegistration(token: String, source: String) {
-        Log.d(TAG, "FCM Token received ($source): $token")
+        Log.d(TAG, "FCM onNewToken received: $token")
 
         serviceScope.launch {
             tokenManager.fcmToken = token
@@ -46,33 +32,53 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
             if (tokenManager.isLoggedIn) {
                 try {
                     authRepository.subscribePush(token, "android")
-                    Log.d(TAG, "Token from $source registered with backend successfully.")
+                    Log.d(TAG, "FCM registration token synced with backend successfully.")
                 } catch (e: Exception) {
-                    Log.e(TAG, "Failed to register token from $source with backend", e)
+                    Log.e(TAG, "Failed to register FCM token with backend", e)
                 }
             }
         }
     }
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
-        // No need to call super.onMessageReceived()
         Log.d(TAG, "FCM message received from=${remoteMessage.from}")
         Log.d(TAG, "FCM Message Data: ${remoteMessage.data}")
-        Log.d(TAG, "FCM Message Notification: ${remoteMessage.notification?.body}")
 
         val data = remoteMessage.data
-        
-        // Priority 1: Data payload (for custom handling and deep-linking)
+
+        // Priority 1: Data payload
         var title = data["title"] ?: data["sender_name"] ?: data["senderName"]
         var body = data["body"] ?: data["content"] ?: data["message"] ?: data["text"]
-        
+
         // Priority 2: Fallback to system notification payload if data is missing
         if (title == null) title = remoteMessage.notification?.title
         if (body == null) body = remoteMessage.notification?.body
-        
-        // Defaults if all else fails
+
         if (title == null) title = "GoChat Message"
         if (body == null) body = "You received a new message"
+
+        val eventType = data["type"] ?: data["event_type"] ?: ""
+
+        // Handle Incoming Call notifications
+        if (eventType == "incoming_call" || eventType == "call" || eventType == "call_incoming") {
+            val callId = data["call_id"] ?: data["id"] ?: "call_${System.currentTimeMillis()}"
+            val callerId = data["caller_id"] ?: data["sender_id"] ?: ""
+            val callerName = title
+            val callType = data["call_type"] ?: "voice"
+            val callerAvatar = data["caller_avatar"] ?: data["sender_avatar"] ?: ""
+
+            serviceScope.launch {
+                NotificationHelper.showCallNotificationAsync(
+                    context = applicationContext,
+                    callId = callId,
+                    callerId = callerId,
+                    callerName = callerName,
+                    callType = callType,
+                    callerAvatar = callerAvatar
+                )
+            }
+            return
+        }
 
         val conversationId = data["conversation_id"]
             ?: data["conv_id"]
@@ -84,51 +90,48 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
             ?: data["avatarUrl"]
             ?: ""
 
-        val isGroup = data["is_group"]?.toBoolean() 
-            ?: data["isGroup"]?.toBoolean() 
+        val isGroup = data["is_group"]?.toBoolean()
+            ?: data["isGroup"]?.toBoolean()
             ?: false
 
-        val eventType = data["type"] ?: data["event_type"] ?: ""
         if (eventType.startsWith("order_") || eventType == "low_stock") {
             val orderId = data["order_id"] ?: ""
             val productId = data["product_id"] ?: ""
-            
-            NotificationHelper.showChatNotification(
-                context = applicationContext,
-                conversationId = if (orderId.isNotEmpty()) "order_$orderId" else "product_$productId",
-                title = title,
-                body = body,
-                senderAvatar = "",
-                isGroup = false
-            )
+
+            serviceScope.launch {
+                NotificationHelper.showChatNotificationAsync(
+                    context = applicationContext,
+                    conversationId = if (orderId.isNotEmpty()) "order_$orderId" else "product_$productId",
+                    title = title,
+                    body = body,
+                    senderAvatar = "",
+                    isGroup = false
+                )
+            }
             return
         }
 
-
         // 1. WhatsApp-Style Background Ingestion: Persist message into Room DB immediately
-        // so that even if the app was closed, the message is already saved and available offline.
         val isChatMessage = eventType == "chat_message" ||
                 eventType == "new_message" ||
                 eventType == "message" ||
                 conversationId.isNotEmpty()
 
-        if (isChatMessage && conversationId.isNotEmpty()) {
-            val messageId = data["message_id"] ?: data["id"] ?: "msg_${System.currentTimeMillis()}"
-            val senderId = data["sender_id"] ?: data["senderId"] ?: ""
-            val senderName = title
-            val content = body
-            val mediaUrl = data["media_url"] ?: data["mediaUrl"]
-            val rawType = data["message_type"] ?: data["type_int"]
-            val msgTypeInt = rawType?.toIntOrNull() ?: 0
+        val messageId = data["message_id"] ?: data["id"] ?: "msg_${System.currentTimeMillis()}"
+        val senderId = data["sender_id"] ?: data["senderId"] ?: ""
+        val mediaUrl = data["media_url"] ?: data["mediaUrl"]
+        val rawType = data["message_type"] ?: data["type_int"]
+        val msgTypeInt = rawType?.toIntOrNull() ?: 0
 
-            serviceScope.launch {
+        serviceScope.launch {
+            if (isChatMessage && conversationId.isNotEmpty()) {
                 try {
                     chatRepository.ingestIncomingPushMessage(
                         messageId = messageId,
                         conversationId = conversationId,
                         senderId = senderId,
-                        senderName = senderName,
-                        content = content,
+                        senderName = title,
+                        content = body,
                         mediaUrl = mediaUrl,
                         type = msgTypeInt
                     )
@@ -137,23 +140,29 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
                     Log.e(TAG, "Failed to ingest push message into Room DB: ${e.message}", e)
                 }
             }
-        }
 
-        // 2. Suppression check: If user is currently actively viewing this conversation, suppress the notification banner
-        val activeConv = ChatRepository.activeConversationIdStatic
-        if (conversationId.isNotEmpty() && activeConv == conversationId) {
-            Log.d(TAG, "Suppressing notification: user is active in conversation $conversationId")
-            return
-        }
+            // 2. Active Chat Suppression check
+            val activeConv = ChatRepository.activeConversationIdStatic
+            if (conversationId.isNotEmpty() && activeConv == conversationId) {
+                Log.d(TAG, "Suppressing notification: user is active in conversation $conversationId")
+                return@launch
+            }
 
-        NotificationHelper.showChatNotification(
-            context = applicationContext,
-            conversationId = conversationId,
-            title = title,
-            body = body,
-            senderAvatar = senderAvatar,
-            isGroup = isGroup
-        )
+            // 3. Mute check
+            val conv = if (conversationId.isNotEmpty()) chatRepository.getConversationById(conversationId) else null
+            val isMuted = conv?.isMuted ?: false
+
+            // 4. Show rich notification
+            NotificationHelper.showChatNotificationAsync(
+                context = applicationContext,
+                conversationId = conversationId,
+                title = title,
+                body = body,
+                senderAvatar = senderAvatar,
+                isGroup = isGroup,
+                isMuted = isMuted
+            )
+        }
     }
 
     companion object {

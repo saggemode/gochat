@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -10,6 +12,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	callpb "gochat/gen/call"
+	"gochat/pkg/fcm"
 )
 
 type CallHandler struct {
@@ -55,6 +58,30 @@ func (h *CallHandler) StartCall(c *gin.Context) {
 		h.handleGrpcError(c, err, "failed to initiate call")
 		return
 	}
+
+	// Dispatch high-priority incoming call notification to receiver
+	go func() {
+		pushCtx, pCancel := context.WithTimeout(context.Background(), 8*time.Second)
+		defer pCancel()
+
+		callTitle := "Incoming Voice Call"
+		if req.Type == "video" {
+			callTitle = "Incoming Video Call"
+		}
+		callID := ""
+		if resp != nil && resp.Call != nil {
+			callID = resp.Call.Id
+		}
+		pushData := map[string]string{
+			"type":        "incoming_call",
+			"call_id":     callID,
+			"caller_id":   userID,
+			"call_type":   req.Type,
+			"title":       callTitle,
+			"body":        "Incoming call on GoChat",
+		}
+		_ = fcm.SendToUser(pushCtx, req.ReceiverId, callTitle, "Incoming call", pushData)
+	}()
 
 	c.JSON(http.StatusCreated, resp.Call)
 }

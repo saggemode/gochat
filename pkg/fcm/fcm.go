@@ -208,24 +208,34 @@ func (c *Client) SendNotification(ctx context.Context, pushToken, title, body st
 
 	fcmURL := fmt.Sprintf("https://fcm.googleapis.com/v1/projects/%s/messages:send", c.projectID)
 
+	dataPayload := make(map[string]string)
+	for k, v := range data {
+		dataPayload[k] = v
+	}
+	if dataPayload["title"] == "" {
+		dataPayload["title"] = title
+	}
+	if dataPayload["body"] == "" {
+		dataPayload["body"] = body
+	}
+
+	// High-priority data message ensures onMessageReceived is invoked in all Android states
+	// (foreground, background, terminated), enabling offline Room DB caching, custom circular avatars,
+	// active-chat suppression, and Direct Reply RemoteInput actions.
 	messageMap := map[string]interface{}{
 		"token": pushToken,
-		"notification": map[string]string{
-			"title": title,
-			"body":  body,
-		},
+		"data":  dataPayload,
 		"android": map[string]interface{}{
 			"priority": "high",
-			"notification": map[string]interface{}{
-				"channel_id":              "gochat_channel_messages",
-				"sound":                   "default",
-				"default_vibrate_timings": true,
-			},
 		},
 	}
 
-	if len(data) > 0 {
-		messageMap["data"] = data
+	// For iOS / Web platforms, include the notification block for native system tray rendering
+	if p := strings.ToLower(dataPayload["platform"]); p == "ios" || p == "web" || p == "apns" {
+		messageMap["notification"] = map[string]string{
+			"title": title,
+			"body":  body,
+		}
 	}
 
 	payload := map[string]interface{}{
