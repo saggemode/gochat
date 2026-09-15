@@ -50,6 +50,25 @@ class ContactSyncManager @Inject constructor(
         }
     }
 
+    /**
+     * Resolves a user's address book or display name from cached synced contacts.
+     * Returns null if not found or if the contact only has a generic placeholder name.
+     */
+    fun getContactName(userId: String): String? {
+        if (userId.isBlank()) return null
+        val contact = getCachedContacts().firstOrNull { it.id == userId || it.userId == userId } ?: return null
+        val name = contact.phonebookName.ifBlank { contact.gochatName.orEmpty() }.trim()
+        return if (name.isNotBlank() &&
+            !name.equals("User", ignoreCase = true) &&
+            !name.equals("GoChat User", ignoreCase = true) &&
+            !name.equals("Chat", ignoreCase = true)
+        ) {
+            name
+        } else {
+            contact.phone.ifBlank { null }
+        }
+    }
+
     suspend fun scanAndSyncContacts(force: Boolean = false): List<SyncedContact> = withContext(Dispatchers.IO) {
         if (!hasPermission()) {
             return@withContext getCachedContacts()

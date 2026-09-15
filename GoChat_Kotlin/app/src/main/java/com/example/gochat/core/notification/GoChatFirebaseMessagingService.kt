@@ -22,6 +22,15 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    override fun onCreate() {
+        super.onCreate()
+        try {
+            if (com.google.firebase.FirebaseApp.getApps(this).isEmpty()) {
+                com.google.firebase.FirebaseApp.initializeApp(this)
+            }
+        } catch (_: Exception) {}
+    }
+
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         Log.d(TAG, "FCM onNewToken received: $token")
@@ -63,16 +72,22 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
         if (eventType == "incoming_call" || eventType == "call" || eventType == "call_incoming") {
             val callId = data["call_id"] ?: data["id"] ?: "call_${System.currentTimeMillis()}"
             val callerId = data["caller_id"] ?: data["sender_id"] ?: ""
-            val callerName = title
+            val rawCallerName = title
             val callType = data["call_type"] ?: "voice"
             val callerAvatar = data["caller_avatar"] ?: data["sender_avatar"] ?: ""
 
             serviceScope.launch {
+                val resolvedCallerName = chatRepository.resolveSenderTitle(
+                    conversationId = "",
+                    senderId = callerId,
+                    candidateName = rawCallerName,
+                    isGroup = false
+                )
                 NotificationHelper.showCallNotificationAsync(
                     context = applicationContext,
                     callId = callId,
                     callerId = callerId,
-                    callerName = callerName,
+                    callerName = resolvedCallerName,
                     callType = callType,
                     callerAvatar = callerAvatar
                 )
@@ -124,13 +139,21 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
         val msgTypeInt = rawType?.toIntOrNull() ?: 0
 
         serviceScope.launch {
+            // Resolve actual user display name / contact name (never "User" placeholder)
+            val resolvedTitle = chatRepository.resolveSenderTitle(
+                conversationId = conversationId,
+                senderId = senderId,
+                candidateName = title,
+                isGroup = isGroup
+            )
+
             if (isChatMessage && conversationId.isNotEmpty()) {
                 try {
                     chatRepository.ingestIncomingPushMessage(
                         messageId = messageId,
                         conversationId = conversationId,
                         senderId = senderId,
-                        senderName = title,
+                        senderName = resolvedTitle,
                         content = body,
                         mediaUrl = mediaUrl,
                         type = msgTypeInt
@@ -152,11 +175,11 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
             val conv = if (conversationId.isNotEmpty()) chatRepository.getConversationById(conversationId) else null
             val isMuted = conv?.isMuted ?: false
 
-            // 4. Show rich notification
+            // 4. Show rich notification with actual peer name / contact name
             NotificationHelper.showChatNotificationAsync(
                 context = applicationContext,
                 conversationId = conversationId,
-                title = title,
+                title = resolvedTitle,
                 body = body,
                 senderAvatar = senderAvatar,
                 isGroup = isGroup,

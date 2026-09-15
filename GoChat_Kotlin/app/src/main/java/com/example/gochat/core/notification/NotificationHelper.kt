@@ -1,6 +1,7 @@
 package com.example.gochat.core.notification
 
 import android.Manifest
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -27,6 +28,7 @@ import coil.transform.CircleCropTransformation
 import com.example.gochat.R
 import com.example.gochat.ui.calls.CallActivity
 import com.example.gochat.ui.chat.ChatRoomActivity
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Universal notification helper managing high-priority notification channels,
@@ -45,6 +47,22 @@ object NotificationHelper {
     const val ACTION_DIRECT_REPLY = "com.example.gochat.ACTION_DIRECT_REPLY"
     const val ACTION_MARK_AS_READ = "com.example.gochat.ACTION_MARK_AS_READ"
     const val ACTION_DISMISS_CALL = "com.example.gochat.ACTION_DISMISS_CALL"
+
+    fun getNotificationIdForConversation(conversationId: String): Int {
+        return if (conversationId.isNotBlank()) (conversationId.hashCode() and 0x7FFFFFFF) else 1001
+    }
+
+    fun dismissNotification(context: Context, conversationId: String) {
+        if (conversationId.isBlank()) return
+        try {
+            val notificationManager = NotificationManagerCompat.from(context)
+            val notifId = getNotificationIdForConversation(conversationId)
+            notificationManager.cancel(notifId)
+            Log.d("NotificationHelper", "Dismissed notification for conversation $conversationId (id=$notifId)")
+        } catch (e: Exception) {
+            Log.e("NotificationHelper", "Failed to dismiss notification for $conversationId", e)
+        }
+    }
 
     fun createNotificationChannels(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -68,6 +86,8 @@ object NotificationHelper {
                 enableVibration(true)
                 vibrationPattern = longArrayOf(0, 250, 150, 250)
                 setSound(soundUri, audioAttributes)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                setShowBadge(true)
             }
 
             // 2. Group messages channel
@@ -82,6 +102,8 @@ object NotificationHelper {
                 enableVibration(true)
                 vibrationPattern = longArrayOf(0, 200, 100, 200)
                 setSound(soundUri, audioAttributes)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                setShowBadge(true)
             }
 
             // 3. VoIP Calls channel
@@ -96,6 +118,8 @@ object NotificationHelper {
                 vibrationPattern = longArrayOf(0, 500, 500, 500)
                 val callSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
                 setSound(callSound, audioAttributes)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                setShowBadge(true)
             }
 
             notificationManager.createNotificationChannels(listOf(messageChannel, groupChannel, callsChannel))
@@ -105,13 +129,15 @@ object NotificationHelper {
     suspend fun loadCircularBitmap(context: Context, url: String): Bitmap? {
         if (url.isBlank()) return null
         return try {
-            val request = ImageRequest.Builder(context)
-                .data(url)
-                .allowHardware(false)
-                .transformations(CircleCropTransformation())
-                .build()
-            val result = context.imageLoader.execute(request)
-            (result.drawable as? BitmapDrawable)?.bitmap
+            withTimeoutOrNull(2000L) {
+                val request = ImageRequest.Builder(context)
+                    .data(url)
+                    .allowHardware(false)
+                    .transformations(CircleCropTransformation())
+                    .build()
+                val result = context.imageLoader.execute(request)
+                (result.drawable as? BitmapDrawable)?.bitmap
+            }
         } catch (e: Exception) {
             Log.w("NotificationHelper", "Could not load circular avatar: ${e.message}")
             null
@@ -141,21 +167,39 @@ object NotificationHelper {
         isMuted: Boolean = false,
         avatarBitmap: Bitmap? = null
     ) {
+        createNotificationChannels(context)
+
         val channelId = if (isGroup) CHANNEL_GROUPS else CHANNEL_MESSAGES
-        val notificationId = conversationId.hashCode()
+        val notificationId = getNotificationIdForConversation(conversationId)
+        val displayTitle = if (title.isBlank() || title.equals("User", ignoreCase = true) || title.equals("Chat", ignoreCase = true)) {
+            "GoChat Contact"
+        } else {
+            title
+        }
+        val displayBody = body.ifBlank { "New message" }
 
         // 1. PendingIntent for notification tap with parent back stack to MainActivity
         val tapIntent = Intent(context, ChatRoomActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, conversationId)
-            putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, title)
+            putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, displayTitle)
             putExtra(ChatRoomActivity.EXTRA_CONVERSATION_AVATAR, senderAvatar)
         }
 
-        val tapPendingIntent = TaskStackBuilder.create(context).run {
-            addNextIntentWithParentStack(tapIntent)
-            getPendingIntent(
+        val tapPendingIntent = try {
+            TaskStackBuilder.create(context).run {
+                addNextIntentWithParentStack(tapIntent)
+                getPendingIntent(
+                    notificationId,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+            }
+        } catch (e: Exception) {
+            Log.w("NotificationHelper", "TaskStackBuilder failed, using direct PendingIntent", e)
+            PendingIntent.getActivity(
+                context,
                 notificationId,
+                tapIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
         }
@@ -209,22 +253,22 @@ object NotificationHelper {
 
         // 4. Build Person & MessagingStyle
         val userPerson = Person.Builder().setName("Me").build()
-        val senderPersonBuilder = Person.Builder().setName(title)
+        val senderPersonBuilder = Person.Builder().setName(displayTitle)
         if (avatarBitmap != null) {
             senderPersonBuilder.setIcon(IconCompat.createWithBitmap(avatarBitmap))
         }
         val senderPerson = senderPersonBuilder.build()
 
         val messagingStyle = NotificationCompat.MessagingStyle(userPerson)
-            .setConversationTitle(if (isGroup) title else null)
+            .setConversationTitle(if (isGroup) displayTitle else null)
             .setGroupConversation(isGroup)
-            .addMessage(body, System.currentTimeMillis(), senderPerson)
+            .addMessage(displayBody, System.currentTimeMillis(), senderPerson)
 
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_chat_bubble_rounded)
             .setColor(ContextCompat.getColor(context, R.color.gochat_accent))
-            .setContentTitle(title)
-            .setContentText(body)
+            .setContentTitle(displayTitle)
+            .setContentText(displayBody)
             .setStyle(messagingStyle)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
@@ -247,6 +291,11 @@ object NotificationHelper {
 
         try {
             val notificationManager = NotificationManagerCompat.from(context)
+            if (!notificationManager.areNotificationsEnabled()) {
+                Log.w("NotificationHelper", "Notifications are completely disabled for this app by user in OS settings!")
+                return
+            }
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                     Log.w("NotificationHelper", "Missing POST_NOTIFICATIONS permission")
@@ -254,7 +303,7 @@ object NotificationHelper {
                 }
             }
             notificationManager.notify(notificationId, builder.build())
-            Log.d("NotificationHelper", "Notification shown for $conversationId: $title")
+            Log.d("NotificationHelper", "Notification shown for $conversationId: $displayTitle (id=$notificationId)")
         } catch (e: Exception) {
             Log.e("NotificationHelper", "Failed to show notification", e)
         }
@@ -314,11 +363,16 @@ object NotificationHelper {
         )
 
         val callSubtitle = if (callType == "video") "Incoming Video Call" else "Incoming Voice Call"
+        val displayCallerName = if (callerName.isBlank() || callerName.equals("User", ignoreCase = true) || callerName.equals("Chat", ignoreCase = true)) {
+            "GoChat Contact"
+        } else {
+            callerName
+        }
 
         val builder = NotificationCompat.Builder(context, CHANNEL_CALLS)
             .setSmallIcon(R.drawable.ic_call)
             .setColor(ContextCompat.getColor(context, R.color.gochat_accent))
-            .setContentTitle(callerName.ifBlank { "GoChat Contact" })
+            .setContentTitle(displayCallerName)
             .setContentText(callSubtitle)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_CALL)

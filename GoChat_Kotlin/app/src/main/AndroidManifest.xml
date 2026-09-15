@@ -78,6 +78,7 @@
         <activity
             android:name=".ui.chat.ChatRoomActivity"
             android:exported="false"
+            android:parentActivityName=".MainActivity"
             android:theme="@style/Theme.GoChat"
             android:windowSoftInputMode="adjustResize" />
 

@@ -15,6 +15,8 @@ import com.example.gochat.data.api.NetworkModule
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.repository.AuthRepository
 import com.example.gochat.core.sync.DisappearingMessageWorker
+import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseOptions
 import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -39,19 +41,56 @@ class GoChatApp : Application(), Configuration.Provider, ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
 
-        // 1. Initialize Adaptive DayNight Theme
+        // 1. Initialize FirebaseApp explicitly (prevents IllegalStateException in all processes)
+        initFirebase()
+
+        // 2. Initialize Adaptive DayNight Theme
         ThemeManager.init(this)
 
-        // 2. Register Notification Channels for Android 8.0+
+        // 3. Register Notification Channels for Android 8.0+
         NotificationHelper.createNotificationChannels(this)
 
-        // 3. Initialize Firebase Cloud Messaging & sync Push Token
+        // 4. Initialize Firebase Cloud Messaging & sync Push Token
         appScope.launch {
             initFcm()
         }
 
-        // 4. Schedule Disappearing Messages Cleanup
+        // 5. Schedule Disappearing Messages Cleanup
         scheduleCleanupWorker()
+    }
+
+    /**
+     * Initializes FirebaseApp safely, with explicit fallback FirebaseOptions
+     * if the auto-init provider is delayed or not ready in this process.
+     */
+    private fun initFirebase() {
+        try {
+            if (FirebaseApp.getApps(this).isEmpty()) {
+                val options = FirebaseOptions.fromResource(this)
+                if (options != null) {
+                    FirebaseApp.initializeApp(this, options)
+                    Log.d(TAG, "FirebaseApp initialized from resource options successfully.")
+                } else {
+                    FirebaseApp.initializeApp(this)
+                    Log.d(TAG, "FirebaseApp initialized from default context successfully.")
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Default FirebaseApp initialization attempt failed, applying fallback FirebaseOptions: ${e.message}")
+            try {
+                val fallbackOptions = FirebaseOptions.Builder()
+                    .setApplicationId("1:652426130187:android:bec3e8dac5e1b315d6680e")
+                    .setApiKey("AIzaSyCfyIsDyIm1hm-1LI0x02esZeznm2BOEZk")
+                    .setProjectId("gochat-cdba1")
+                    .setGcmSenderId("652426130187")
+                    .setStorageBucket("gochat-cdba1.firebasestorage.app")
+                    .build()
+                FirebaseApp.initializeApp(this, fallbackOptions)
+                Log.d(TAG, "FirebaseApp fallback initialization successful.")
+            } catch (ex: Exception) {
+                Log.e(TAG, "Fatal: Unable to initialize FirebaseApp: ${ex.message}", ex)
+            }
+        }
     }
 
     /**
@@ -80,31 +119,39 @@ class GoChatApp : Application(), Configuration.Provider, ImageLoaderFactory {
     @Inject lateinit var tokenManager: TokenManager
 
     private fun initFcm() {
-        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-            if (!task.isSuccessful) {
-                Log.w(TAG, "Fetching FCM registration token failed", task.exception)
-                return@addOnCompleteListener
+        try {
+            if (FirebaseApp.getApps(this).isEmpty()) {
+                initFirebase()
             }
 
-            val token = task.result
-            if (token.isNullOrBlank()) {
-                Log.w(TAG, "FCM registration token is null or blank")
-                return@addOnCompleteListener
-            }
+            FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                if (!task.isSuccessful) {
+                    Log.w(TAG, "Fetching FCM registration token failed", task.exception)
+                    return@addOnCompleteListener
+                }
 
-            Log.d(TAG, "Current FCM Token: $token")
-            tokenManager.fcmToken = token
+                val token = task.result
+                if (token.isNullOrBlank()) {
+                    Log.w(TAG, "FCM registration token is null or blank")
+                    return@addOnCompleteListener
+                }
 
-            if (tokenManager.isLoggedIn) {
-                appScope.launch {
-                    try {
-                        authRepository.subscribePush(token, "android")
-                        Log.d(TAG, "FCM push token registered with GoChat gateway backend.")
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Failed to register FCM token with backend: ${e.message}")
+                Log.d(TAG, "Current FCM Token: $token")
+                tokenManager.fcmToken = token
+
+                if (tokenManager.isLoggedIn) {
+                    appScope.launch {
+                        try {
+                            authRepository.subscribePush(token, "android")
+                            Log.d(TAG, "FCM push token registered with GoChat gateway backend.")
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Failed to register FCM token with backend: ${e.message}")
+                        }
                     }
                 }
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing FCM messaging: ${e.message}", e)
         }
     }
 

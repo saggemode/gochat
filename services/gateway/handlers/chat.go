@@ -1239,27 +1239,69 @@ func (h *ChatHandler) fanOutEvent(eventType string, messageID string, convID str
 		return
 	}
 	go func() {
-		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		bgCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
+
+		senderDisplayName := ""
+		senderAvatar := ""
+
+		// 1. Resolve sender user profile from Auth service FIRST
+		if h.authClient != nil && userID != "" {
+			uResp, err := h.authClient.GetUser(bgCtx, &authpb.GetUserRequest{UserId: userID})
+			if err == nil && uResp != nil && uResp.User != nil {
+				name := uResp.User.DisplayName
+				if name == "" {
+					name = uResp.User.Email
+				}
+				if name == "" {
+					name = uResp.User.Phone
+				}
+				senderDisplayName = name
+				senderAvatar = uResp.User.AvatarUrl
+			}
+		}
+
+		convResp, cErr := h.client.GetConversation(bgCtx, &chatpb.GetConversationRequest{
+			ConversationId: convID,
+			UserId:         userID,
+		})
+		isGroup := false
+		groupName := ""
+		if cErr == nil && convResp != nil && convResp.Conversation != nil {
+			isGroup = convResp.Conversation.Type == chatpb.ConversationType_GROUP || len(convResp.Conversation.MemberIds) > 2
+			groupName = convResp.Conversation.Name
+		}
 
 		payloadMap := map[string]interface{}{
 			"type":            eventType,
 			"event_type":      eventType,
 			"conversation_id": convID,
 			"sender_id":       userID,
+			"sender_name":     senderDisplayName,
+			"sender_avatar":   senderAvatar,
 			"msg_id":          messageID,
 		}
 		for k, v := range extra {
 			payloadMap[k] = v
 		}
 
+		// Inject sender_name and sender_avatar into nested message map
+		if msgMap, ok := payloadMap["message"].(map[string]interface{}); ok {
+			if sName, ok := msgMap["sender_name"].(string); !ok || sName == "" || strings.EqualFold(sName, "User") {
+				if senderDisplayName != "" {
+					msgMap["sender_name"] = senderDisplayName
+				}
+			}
+			if sAv, ok := msgMap["sender_avatar"].(string); !ok || sAv == "" {
+				if senderAvatar != "" {
+					msgMap["sender_avatar"] = senderAvatar
+				}
+			}
+		}
+
 		data, _ := json.Marshal(payloadMap)
 
 		delivered := false
-		convResp, cErr := h.client.GetConversation(bgCtx, &chatpb.GetConversationRequest{
-			ConversationId: convID,
-			UserId:         userID,
-		})
 		if cErr == nil && convResp != nil && convResp.Conversation != nil {
 			for _, memberID := range convResp.Conversation.MemberIds {
 				if memberID != userID && memberID != "" {
@@ -1284,37 +1326,20 @@ func (h *ChatHandler) fanOutEvent(eventType string, messageID string, convID str
 
 		// Dispatch high-priority FCM Push Notification for new messages
 		if eventType == "new_message" && convResp != nil && convResp.Conversation != nil {
-			senderTitle := "New Message"
-			senderAvatar := ""
-			isGroup := convResp.Conversation.Type == chatpb.ConversationType_GROUP || len(convResp.Conversation.MemberIds) > 2
-
-			// 1. Resolve sender user profile from Auth service
-			if h.authClient != nil && userID != "" {
-				uResp, err := h.authClient.GetUser(bgCtx, &authpb.GetUserRequest{UserId: userID})
-				if err == nil && uResp != nil && uResp.User != nil {
-					name := uResp.User.DisplayName
-					if name == "" {
-						name = uResp.User.Email
-					}
-					if name == "" {
-						name = uResp.User.Phone
-					}
-					if name != "" {
-						senderTitle = name
-					}
-					senderAvatar = uResp.User.AvatarUrl
-				}
+			pushTitle := senderDisplayName
+			if pushTitle == "" {
+				pushTitle = "New Message"
 			}
 
-			// 2. Format senderTitle for group or fallback
-			if isGroup && convResp.Conversation.Name != "" {
-				if senderTitle != "New Message" && senderTitle != "" {
-					senderTitle = fmt.Sprintf("%s (%s)", senderTitle, convResp.Conversation.Name)
+			// Format pushTitle for group or fallback
+			if isGroup && groupName != "" {
+				if pushTitle != "" && pushTitle != "New Message" {
+					pushTitle = fmt.Sprintf("%s (%s)", pushTitle, groupName)
 				} else {
-					senderTitle = convResp.Conversation.Name
+					pushTitle = groupName
 				}
-			} else if !isGroup && senderTitle == "New Message" && convResp.Conversation.Name != "" {
-				senderTitle = convResp.Conversation.Name
+			} else if !isGroup && (pushTitle == "New Message" || pushTitle == "") && groupName != "" {
+				pushTitle = groupName
 			}
 
 			contentBody := "You received a new message"
@@ -1339,7 +1364,7 @@ func (h *ChatHandler) fanOutEvent(eventType string, messageID string, convID str
 				} else if strings.Contains(strings.ToUpper(typeStr), "PING") || strings.Contains(contentBody, "PING") {
 					contentBody = "💥 PING!!!"
 					if !isGroup {
-						senderTitle = "💥 PING Alert!"
+						pushTitle = "💥 PING Alert!"
 					}
 				}
 			}
@@ -1356,17 +1381,17 @@ func (h *ChatHandler) fanOutEvent(eventType string, messageID string, convID str
 							"event_type":      "chat_message",
 							"conversation_id": convID,
 							"sender_id":       userID,
-							"sender_name":     senderTitle,
+							"sender_name":     senderDisplayName,
 							"sender_avatar":   senderAvatar,
 							"is_group":        fmt.Sprintf("%v", isGroup),
 							"message_id":      messageID,
 							"content":         contentBody,
 							"media_url":       mediaURL,
-							"title":           senderTitle,
+							"title":           pushTitle,
 							"body":            contentBody,
 						}
 
-						_ = fcm.SendToUser(pushCtx, targetID, senderTitle, contentBody, pushData)
+						_ = fcm.SendToUser(pushCtx, targetID, pushTitle, contentBody, pushData)
 					}()
 				}
 			}

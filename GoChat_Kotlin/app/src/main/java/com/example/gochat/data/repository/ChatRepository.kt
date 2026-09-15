@@ -13,6 +13,7 @@ import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.db.AppDatabase
 import com.example.gochat.data.db.ChatDao
 import com.example.gochat.data.model.*
+import com.example.gochat.core.contacts.ContactSyncManager
 import com.example.gochat.core.crypto.EncryptionManager
 import com.example.gochat.core.notification.NotificationHelper
 import com.example.gochat.data.api.ApiConstants
@@ -44,7 +45,8 @@ class ChatRepository @Inject constructor(
     private val dao: ChatDao,
     private val tokenManager: TokenManager,
     private val encryptionManager: EncryptionManager,
-    private val workManager: WorkManager
+    private val workManager: WorkManager,
+    private val contactSyncManager: ContactSyncManager
 ) {
 
     fun getMessagesPaged(convId: String): Flow<PagingData<Message>> {
@@ -526,11 +528,120 @@ class ChatRepository @Inject constructor(
                         lastTime = msg.createdAt,
                         updatedAt = System.currentTimeMillis()
                     )
+
+                    if (!msg.isMe) {
+                        val conv = dao.getConversationById(msg.conversationId)
+                        val isGroup = conv?.isGroup ?: false
+                        val displayTitle = resolveSenderTitle(
+                            conversationId = msg.conversationId,
+                            senderId = msg.senderId,
+                            candidateName = msg.senderName,
+                            isGroup = isGroup
+                        )
+                        val avatarUrl = conv?.avatarUrl.orEmpty()
+                        val isMuted = conv?.isMuted ?: false
+
+                        NotificationHelper.showChatNotification(
+                            context = context,
+                            conversationId = msg.conversationId,
+                            title = displayTitle,
+                            body = msg.content.ifBlank { "New message" },
+                            senderAvatar = avatarUrl,
+                            isGroup = isGroup,
+                            isMuted = isMuted
+                        )
+                    }
                 }
                 return msg
             }
         }
         return null
+    }
+
+    /**
+     * Resolves the human-readable peer or sender display name for a conversation.
+     * Prioritizes phonebook contact names, local conversation titles, and verified usernames.
+     * Guaranteed never to return a placeholder like "User".
+     */
+    suspend fun resolveSenderTitle(
+        conversationId: String,
+        senderId: String,
+        candidateName: String = "",
+        isGroup: Boolean = false
+    ): String {
+        val cleanCandidate = candidateName.trim()
+        val isValidCandidate = cleanCandidate.isNotBlank() &&
+                !cleanCandidate.equals("User", ignoreCase = true) &&
+                !cleanCandidate.equals("GoChat Message", ignoreCase = true) &&
+                !cleanCandidate.equals("New Message", ignoreCase = true) &&
+                !cleanCandidate.equals("Chat", ignoreCase = true)
+
+        // 1. If conversation exists in local Room DB, check its title
+        val conv = if (conversationId.isNotBlank()) dao.getConversationById(conversationId) else null
+        val effectiveIsGroup = isGroup || (conv?.isGroup == true)
+
+        // 2. Check phonebook / synced contacts for the sender
+        val contactName = if (senderId.isNotBlank()) contactSyncManager.getContactName(senderId) else null
+
+        if (effectiveIsGroup) {
+            val groupTitle = conv?.title?.takeIf {
+                it.isNotBlank() &&
+                        !it.equals("Chat", ignoreCase = true) &&
+                        !it.equals("User", ignoreCase = true)
+            } ?: "Group Chat"
+
+            val memberName = contactName
+                ?: (if (isValidCandidate) cleanCandidate else null)
+                ?: "GoChat Member"
+
+            return "$memberName ($groupTitle)"
+        }
+
+        // 3. For 1-on-1 chats:
+        // Priority A: Phonebook contact name (what the user saved the peer as in their phone)
+        if (!contactName.isNullOrBlank()) {
+            return contactName
+        }
+
+        // Priority B: Local conversation title if already established
+        val convTitle = conv?.title?.trim()
+        if (!convTitle.isNullOrBlank() &&
+            !convTitle.equals("Chat", ignoreCase = true) &&
+            !convTitle.equals("User", ignoreCase = true) &&
+            !convTitle.equals("GoChat Message", ignoreCase = true)
+        ) {
+            return convTitle
+        }
+
+        // Priority C: Candidate name sent in payload (e.g. sender's display_name or username from backend)
+        if (isValidCandidate) {
+            return cleanCandidate
+        }
+
+        // Priority D: If conversation exists but has generic title, fetch latest conversation from API
+        if (conversationId.isNotBlank()) {
+            try {
+                val apiResult = api.getConversation(conversationId)
+                if (apiResult.isSuccessful) {
+                    val body = apiResult.body()
+                    val convObj = body?.get("conversation")?.jsonObject ?: body
+                    val remoteTitle = (convObj?.get("name") ?: convObj?.get("title") ?: convObj?.get("display_name"))
+                        ?.jsonPrimitive?.contentOrNull?.trim()
+                    if (!remoteTitle.isNullOrBlank() &&
+                        !remoteTitle.equals("Chat", ignoreCase = true) &&
+                        !remoteTitle.equals("User", ignoreCase = true)
+                    ) {
+                        if (conv != null) {
+                            dao.insertConversation(conv.copy(title = remoteTitle))
+                        }
+                        return remoteTitle
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+
+        // Priority E: Fallback
+        return "GoChat Contact"
     }
 
     /**
@@ -601,6 +712,20 @@ class ChatRepository @Inject constructor(
         val existingConv = dao.getConversationById(conversationId)
         val now = System.currentTimeMillis()
         if (existingConv != null) {
+            if (existingConv.title.isBlank() ||
+                existingConv.title.equals("Chat", ignoreCase = true) ||
+                existingConv.title.equals("User", ignoreCase = true)
+            ) {
+                val resolvedTitle = resolveSenderTitle(
+                    conversationId = conversationId,
+                    senderId = senderId,
+                    candidateName = senderName,
+                    isGroup = existingConv.isGroup
+                )
+                if (resolvedTitle.isNotBlank() && !resolvedTitle.equals("GoChat Contact", ignoreCase = true)) {
+                    dao.insertConversation(existingConv.copy(title = resolvedTitle))
+                }
+            }
             if (isViewing) {
                 dao.updateLastMessage(
                     convId = conversationId,
@@ -619,9 +744,15 @@ class ChatRepository @Inject constructor(
         } else {
             // First time seeing this conversation - insert minimal conversation so it appears in chat list
             val memberIds = listOf(senderId, currentUserId).filter { it.isNotBlank() }.distinct()
+            val resolvedTitle = resolveSenderTitle(
+                conversationId = conversationId,
+                senderId = senderId,
+                candidateName = senderName,
+                isGroup = false
+            )
             val newConv = Conversation(
                 id = conversationId,
-                title = senderName.ifBlank { "Chat" },
+                title = resolvedTitle,
                 avatarUrl = "",
                 type = ConversationType.DIRECT,
                 unreadCount = if (isViewing) 0 else 1,
@@ -646,13 +777,25 @@ class ChatRepository @Inject constructor(
         // If the message is from another user and the recipient is not currently looking at this conversation,
         // show the notification banner in the notification bar
         if (!finalMsg.isMe && activeConversationId != finalMsg.conversationId) {
+            val conv = if (finalMsg.conversationId.isNotEmpty()) dao.getConversationById(finalMsg.conversationId) else null
+            val isGroup = conv?.isGroup ?: false
+            val displayTitle = resolveSenderTitle(
+                conversationId = finalMsg.conversationId,
+                senderId = finalMsg.senderId,
+                candidateName = finalMsg.senderName,
+                isGroup = isGroup
+            )
+            val avatarUrl = conv?.avatarUrl.orEmpty()
+            val isMuted = conv?.isMuted ?: false
+
             NotificationHelper.showChatNotification(
                 context = context,
                 conversationId = finalMsg.conversationId,
-                title = finalMsg.senderName.ifBlank { "GoChat Message" },
+                title = displayTitle,
                 body = finalMsg.content.ifBlank { "New message" },
-                senderAvatar = finalMsg.mediaThumbnail.orEmpty(),
-                isGroup = false
+                senderAvatar = avatarUrl,
+                isGroup = isGroup,
+                isMuted = isMuted
             )
         }
     }

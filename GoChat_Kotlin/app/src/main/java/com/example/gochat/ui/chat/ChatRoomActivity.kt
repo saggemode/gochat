@@ -213,8 +213,27 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     } else null
 
+    private val requestNotificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (!isGranted) {
+            android.util.Log.w("ChatRoomActivity", "POST_NOTIFICATIONS permission not granted by user")
+        }
+    }
+
+    private fun checkNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        checkNotificationPermission()
         WindowCompat.setDecorFitsSystemWindows(window, false)
         binding = ActivityChatRoomBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -1155,8 +1174,18 @@ class ChatRoomActivity : AppCompatActivity() {
         return getString(R.string.status_last_seen_date, dateFormat.format(Date(lastSeenMs)), timeStr)
     }
 
+    override fun onResume() {
+        super.onResume()
+        val convId = intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty()
+        if (convId.isNotEmpty()) {
+            viewModel.onScreenResumed(convId)
+            com.example.gochat.core.notification.NotificationHelper.dismissNotification(this, convId)
+        }
+    }
+
     override fun onPause() {
         super.onPause()
+        viewModel.onScreenPaused()
         if (isCurrentlyTypingSent) {
             isCurrentlyTypingSent = false
             stopTypingHandler.removeCallbacks(stopTypingRunnable)
@@ -1180,6 +1209,7 @@ class ChatRoomActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
+        viewModel.onScreenPaused()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             screenCaptureCallback?.let {
                 unregisterScreenCaptureCallback(it)
@@ -1188,6 +1218,7 @@ class ChatRoomActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        viewModel.onScreenPaused()
         recordingHandler.removeCallbacks(recordingTimerRunnable)
         stopTypingHandler.removeCallbacks(stopTypingRunnable)
         stopTypingAnimation()

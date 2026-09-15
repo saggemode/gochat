@@ -134,9 +134,30 @@ class ChatRoomViewModel @Inject constructor(
         }
     }
 
+    @Volatile
+    private var isScreenResumed: Boolean = false
+
+    fun onScreenResumed(convId: String) {
+        isScreenResumed = true
+        _conversationId.value = convId
+        chatRepository.activeConversationId = convId
+        viewModelScope.launch {
+            if (convId.isNotEmpty()) {
+                chatRepository.markConversationAsRead(convId)
+                sendReadReceipt(convId)
+            }
+        }
+    }
+
+    fun onScreenPaused() {
+        isScreenResumed = false
+        chatRepository.activeConversationId = null
+    }
+
     fun initConversation(convId: String) {
         _conversationId.value = convId
         chatRepository.activeConversationId = convId
+        isScreenResumed = true
 
         viewModelScope.launch {
             val conv = chatRepository.getConversationById(convId)
@@ -698,15 +719,17 @@ class ChatRoomViewModel @Inject constructor(
                         if (currentPartnerId.isNullOrEmpty()) {
                             currentPartnerId = msg.senderId
                         }
-                        soundManager.playReceivedSound()
-                        // If we are active, mark as read immediately
-                        if (convId == _conversationId.value) {
-                            sendReadReceipt(convId)
+                        if (isScreenResumed) {
+                            soundManager.playReceivedSound()
+                            // If we are active, mark as read immediately
+                            if (convId == _conversationId.value) {
+                                sendReadReceipt(convId)
+                            }
                         }
                     }
                     viewModelScope.launch {
                         chatRepository.insertWebSocketMessage(msg)
-                        if (convId.isNotEmpty()) {
+                        if (isScreenResumed && convId.isNotEmpty()) {
                             chatRepository.markConversationAsRead(convId)
                         }
                     }
@@ -731,6 +754,7 @@ class ChatRoomViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
+        isScreenResumed = false
         chatRepository.activeConversationId = null
     }
 }

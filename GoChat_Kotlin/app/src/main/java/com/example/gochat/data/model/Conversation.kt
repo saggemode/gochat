@@ -54,9 +54,9 @@ data class Conversation(
                 ?.jsonPrimitive?.contentOrNull.orEmpty()
 
             var title = (json["name"] ?: json["Name"] ?: json["title"] ?: json["Title"] ?: json["display_name"])
-                ?.jsonPrimitive?.contentOrNull.orEmpty()
-            if (title.isBlank()) {
-                title = "Chat"
+                ?.jsonPrimitive?.contentOrNull.orEmpty().trim()
+            if (title.isBlank() || title.equals("User", ignoreCase = true)) {
+                title = ""
             }
             if (title.contains("BBM", ignoreCase = true)) {
                 title = title.replace("BBM", "GoChat", ignoreCase = true)

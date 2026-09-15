@@ -105,8 +105,16 @@ data class Message(
             val senderId = (json["sender_id"] ?: json["senderId"] ?: json["SenderId"] ?: json["actor_id"])
                 ?.jsonPrimitive?.contentOrNull.orEmpty()
 
-            val senderName = (json["sender_name"] ?: json["senderName"] ?: json["SenderName"])
-                ?.jsonPrimitive?.contentOrNull ?: if (currentUserId.isNotBlank() && senderId == currentUserId) "Me" else "User"
+            val rawSenderName = (json["sender_name"] ?: json["senderName"] ?: json["SenderName"])
+                ?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
+
+            val senderName = when {
+                currentUserId.isNotBlank() && senderId == currentUserId -> "Me"
+                rawSenderName.isNotBlank() &&
+                        !rawSenderName.equals("User", ignoreCase = true) &&
+                        !rawSenderName.equals("Chat", ignoreCase = true) -> rawSenderName
+                else -> ""
+            }
 
             val content = (json["content"] ?: json["text"] ?: json["Content"])
                 ?.jsonPrimitive?.contentOrNull.orEmpty()
