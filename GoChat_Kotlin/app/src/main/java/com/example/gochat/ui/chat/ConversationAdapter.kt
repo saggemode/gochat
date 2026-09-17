@@ -37,11 +37,19 @@ class ConversationAdapter(
             // Title / Name
             tvConversationTitle.text = conversation.title.ifBlank { "GoChat Contact" }
 
+            val isLocked = com.example.gochat.core.security.ChatLockManager.isLocked(root.context, conversation.id)
+            ivLockIndicator.visibility = if (isLocked) View.VISIBLE else View.GONE
+            ivDisappearingIndicator.visibility = if (conversation.disappearingMessagesDuration > 0) View.VISIBLE else View.GONE
+
             // Last message preview & invitation status
-            val preview = when (conversation.invitationStatus) {
-                InvitationStatus.PENDING_INCOMING -> "🤝 Incoming invitation · Tap to accept"
-                InvitationStatus.PENDING_OUTGOING -> "⏳ Invitation sent · Waiting for acceptance"
-                else -> conversation.lastMessageText?.ifBlank { "No messages yet" } ?: "No messages yet"
+            val preview = if (isLocked && !com.example.gochat.core.security.ChatLockManager.isSessionUnlocked(conversation.id)) {
+                "🔒 Locked chat · Tap to unlock"
+            } else {
+                when (conversation.invitationStatus) {
+                    InvitationStatus.PENDING_INCOMING -> "🤝 Incoming invitation · Tap to accept"
+                    InvitationStatus.PENDING_OUTGOING -> "⏳ Invitation sent · Waiting for acceptance"
+                    else -> conversation.lastMessageText?.ifBlank { "No messages yet" } ?: "No messages yet"
+                }
             }
             tvLastMessage.text = preview
 

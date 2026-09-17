@@ -10,6 +10,7 @@ import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.model.Conversation
 import com.example.gochat.data.model.ConversationType
 import com.example.gochat.data.model.InvitationStatus
+import com.example.gochat.data.model.Message
 import com.example.gochat.data.model.User
 import com.example.gochat.data.model.UserStories
 import com.example.gochat.data.repository.AuthRepository
@@ -104,6 +105,17 @@ class ChatListViewModel @Inject constructor(
 
         result
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(kotlinx.coroutines.FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val globalMessageSearchResults: StateFlow<List<Message>> = searchQuery
+        .debounce(300)
+        .flatMapLatest { q ->
+            if (q.isBlank()) flowOf(emptyList())
+            else flow {
+                emit(chatRepository.searchAllMessages(q.trim()))
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Count of pending incoming contact invitations
     val pendingInvitationsCount: StateFlow<Int> = allConversations.map { list ->

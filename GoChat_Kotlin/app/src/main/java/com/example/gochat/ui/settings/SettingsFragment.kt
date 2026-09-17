@@ -195,7 +195,7 @@ class SettingsFragment : Fragment() {
 
             // Storage
             tileStorage.setOnClickListener {
-                showStorageDialog()
+                startActivity(Intent(requireContext(), com.example.gochat.ui.storage.StorageManagementActivity::class.java))
             }
 
             // Logout

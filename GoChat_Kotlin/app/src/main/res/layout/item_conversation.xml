@@ -77,6 +77,28 @@
                 android:textStyle="bold"
                 tools:text="Alex Smith" />
 
+            <ImageView
+                android:id="@+id/ivLockIndicator"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:layout_marginStart="4dp"
+                android:contentDescription="Locked"
+                android:src="@drawable/ic_lock"
+                app:tint="@color/gochat_emerald_light"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <ImageView
+                android:id="@+id/ivDisappearingIndicator"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:layout_marginStart="4dp"
+                android:contentDescription="Disappearing"
+                android:src="@drawable/ic_timer"
+                app:tint="@color/gochat_text_muted"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
             <TextView
                 android:id="@+id/tvTimestamp"
                 android:layout_width="wrap_content"

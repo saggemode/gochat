@@ -42,6 +42,8 @@
     <color name="whatsapp_chat_bg_start">#EFEAE2</color>
     <color name="whatsapp_chat_bg_end">#EAE5DC</color>
     <color name="whatsapp_toolbar_dark">#FFFFFF</color>
+    <color name="whatsapp_bg_dark">#121B22</color>
+    <color name="whatsapp_surface_dark">#1F2C34</color>
     <color name="whatsapp_doodle_tint">#111B21</color>
     <color name="whatsapp_emerald">#00A884</color>
     <color name="whatsapp_teal_light">#128C7E</color>

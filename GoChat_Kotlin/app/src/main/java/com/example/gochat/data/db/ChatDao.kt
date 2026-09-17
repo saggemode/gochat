@@ -112,6 +112,15 @@ interface ChatDao {
     @Query("DELETE FROM messages WHERE expiresAt IS NOT NULL AND expiresAt < :currentTime")
     suspend fun deleteExpiredMessages(currentTime: Long): Int
 
+    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND content LIKE '%' || :query || '%' ORDER BY createdAt ASC")
+    suspend fun searchMessagesInConversation(convId: String, query: String): List<Message>
+
+    @Query("SELECT * FROM messages WHERE isDeleted = 0 AND content LIKE '%' || :query || '%' ORDER BY createdAt DESC LIMIT 100")
+    suspend fun searchAllMessages(query: String): List<Message>
+
+    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND ((mediaUrl IS NOT NULL AND mediaUrl != '') OR content LIKE '%http%') ORDER BY createdAt DESC")
+    fun getMediaMessagesForConversation(convId: String): Flow<List<Message>>
+
     // ── Calls ──────────────────────────────────────────────────
     @Query("SELECT * FROM calls ORDER BY timestamp DESC")
     fun getAllCalls(): Flow<List<CallRecord>>

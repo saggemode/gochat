@@ -198,6 +198,20 @@ class ChatRepository @Inject constructor(
     fun observeMessages(convId: String): Flow<List<Message>> =
         dao.getMessagesForConversation(convId)
 
+    suspend fun searchMessagesInConversation(convId: String, query: String): List<Message> {
+        if (convId.isBlank() || query.isBlank()) return emptyList()
+        return dao.searchMessagesInConversation(convId, query.trim())
+    }
+
+    suspend fun searchAllMessages(query: String): List<Message> {
+        if (query.isBlank()) return emptyList()
+        return dao.searchAllMessages(query.trim())
+    }
+
+    fun observeSharedMedia(convId: String): Flow<List<Message>> {
+        return dao.getMediaMessagesForConversation(convId)
+    }
+
     suspend fun refreshMessages(convId: String): Result<List<Message>> {
         return try {
             dao.deleteExpiredMessages(System.currentTimeMillis())

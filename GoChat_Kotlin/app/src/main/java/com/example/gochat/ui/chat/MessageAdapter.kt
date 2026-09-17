@@ -126,14 +126,22 @@ class MessageAdapter(
         }
     }
 
+    var searchQuery: String = ""
+        set(value) {
+            if (field != value) {
+                field = value
+                notifyDataSetChanged()
+            }
+        }
+
     private val mentionPattern = Pattern.compile("@[\\w]+")
 
-    private fun highlightMentions(text: String, color: Int): CharSequence {
+    private fun highlightQueryAndMentions(text: String, mentionColor: Int, query: String): CharSequence {
         val spannable = SpannableString(text)
         val matcher = mentionPattern.matcher(text)
         while (matcher.find()) {
             spannable.setSpan(
-                ForegroundColorSpan(color),
+                ForegroundColorSpan(mentionColor),
                 matcher.start(),
                 matcher.end(),
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
@@ -145,7 +153,30 @@ class MessageAdapter(
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
         }
+        if (query.isNotBlank()) {
+            var startIndex = text.indexOf(query, ignoreCase = true)
+            while (startIndex >= 0) {
+                val endIndex = startIndex + query.length
+                spannable.setSpan(
+                    android.text.style.BackgroundColorSpan(0x66FFEB3B.toInt()),
+                    startIndex,
+                    endIndex,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                spannable.setSpan(
+                    StyleSpan(Typeface.BOLD),
+                    startIndex,
+                    endIndex,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                startIndex = text.indexOf(query, endIndex, ignoreCase = true)
+            }
+        }
         return spannable
+    }
+
+    private fun highlightMentions(text: String, color: Int): CharSequence {
+        return highlightQueryAndMentions(text, color, searchQuery)
     }
 
     private var recyclerView: RecyclerView? = null
@@ -467,6 +498,18 @@ class MessageAdapter(
                         waveformVoice.setProgress(0f)
                     }
 
+                    waveformVoice.onSeekListener = { progress ->
+                        val audioUrl = message.mediaUrl.orEmpty()
+                        if (AudioPlayerManager.currentPlayingMessageId != message.id) {
+                            if (audioUrl.isNotBlank()) {
+                                AudioPlayerManager.playOrPause(root.context, message.id, audioUrl)
+                                AudioPlayerManager.seekToFraction(progress)
+                            }
+                        } else {
+                            AudioPlayerManager.seekToFraction(progress)
+                        }
+                    }
+
                     btnPlayPauseVoice.setOnClickListener {
                         val audioUrl = message.mediaUrl.orEmpty()
                         if (audioUrl.isNotBlank()) {
@@ -476,17 +519,16 @@ class MessageAdapter(
                         }
                     }
 
-                    btnVoiceSpeed.text = if (isPlayingThis) "${AudioPlayerManager.playbackSpeed}x" else "1.0x"
+                    btnVoiceSpeed.text = "${AudioPlayerManager.playbackSpeed}x"
                     btnVoiceSpeed.setOnClickListener {
-                        if (isPlayingThis) {
-                            val nextSpeed = when (AudioPlayerManager.playbackSpeed) {
-                                1.0f -> 1.5f
-                                1.5f -> 2.0f
-                                else -> 1.0f
-                            }
-                            AudioPlayerManager.setSpeed(nextSpeed)
-                            btnVoiceSpeed.text = "${nextSpeed}x"
+                        val nextSpeed = when (AudioPlayerManager.playbackSpeed) {
+                            1.0f -> 1.5f
+                            1.5f -> 2.0f
+                            else -> 1.0f
                         }
+                        AudioPlayerManager.setSpeed(nextSpeed)
+                        btnVoiceSpeed.text = "${nextSpeed}x"
+                        notifyDataSetChanged()
                     }
                 } else {
                     layoutVoiceNote.visibility = View.GONE
@@ -762,6 +804,18 @@ class MessageAdapter(
                         waveformVoice.setProgress(0f)
                     }
 
+                    waveformVoice.onSeekListener = { progress ->
+                        val audioUrl = message.mediaUrl.orEmpty()
+                        if (AudioPlayerManager.currentPlayingMessageId != message.id) {
+                            if (audioUrl.isNotBlank()) {
+                                AudioPlayerManager.playOrPause(root.context, message.id, audioUrl)
+                                AudioPlayerManager.seekToFraction(progress)
+                            }
+                        } else {
+                            AudioPlayerManager.seekToFraction(progress)
+                        }
+                    }
+
                     btnPlayPauseVoice.setOnClickListener {
                         val audioUrl = message.mediaUrl.orEmpty()
                         if (audioUrl.isNotBlank()) {
@@ -771,17 +825,16 @@ class MessageAdapter(
                         }
                     }
 
-                    btnVoiceSpeed.text = if (isPlayingThis) "${AudioPlayerManager.playbackSpeed}x" else "1.0x"
+                    btnVoiceSpeed.text = "${AudioPlayerManager.playbackSpeed}x"
                     btnVoiceSpeed.setOnClickListener {
-                        if (isPlayingThis) {
-                            val nextSpeed = when (AudioPlayerManager.playbackSpeed) {
-                                1.0f -> 1.5f
-                                1.5f -> 2.0f
-                                else -> 1.0f
-                            }
-                            AudioPlayerManager.setSpeed(nextSpeed)
-                            btnVoiceSpeed.text = "${nextSpeed}x"
+                        val nextSpeed = when (AudioPlayerManager.playbackSpeed) {
+                            1.0f -> 1.5f
+                            1.5f -> 2.0f
+                            else -> 1.0f
                         }
+                        AudioPlayerManager.setSpeed(nextSpeed)
+                        btnVoiceSpeed.text = "${nextSpeed}x"
+                        notifyDataSetChanged()
                     }
                 } else {
                     layoutVoiceNote.visibility = View.GONE

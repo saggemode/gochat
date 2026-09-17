@@ -30,9 +30,9 @@ timeline
   - Android Room: Add FTS4/FTS5 virtual table on `messages` table for instant local indexed search.
   - Backend: Optional elastic/PostgreSQL `tsvector` query on `chat.messages` for searching messages beyond locally cached history.
 - **Checklist**:
-  - [ ] Add FTS query in `ChatDao.kt` (`searchMessages(query: String): List<Message>`)
-  - [ ] Add search toolbar state and highlight animator in `ChatRoomActivity.kt`
-  - [ ] Add search input filter in `ChatListFragment.kt` with message snippets
+  - [x] Add search queries in `ChatDao.kt` (`searchMessagesInConversation`, `searchAllMessages`)
+  - [x] Add search toolbar overlay, match counter, and keyword highlighting in `ChatRoomActivity.kt` & `MessageAdapter.kt`
+  - [x] Add global debounced message search in `ChatListViewModel.kt`
 
 ---
 
@@ -42,15 +42,15 @@ timeline
   - Tapping any photo/video bubble opens `MediaViewerActivity` with a sleek black backdrop.
   - Supports smooth pinch-to-zoom, double-tap zoom, swipe-down gesture to dismiss back to chat.
   - Top action bar: Share, Save to device gallery, and View message in chat.
-  - "Shared Media, Links & Docs" screen accessible from `ContactProfileActivity` with tabs: *Media*, *Docs*, *Links*.
+  - "Shared Media, Links & Docs" screen accessible from chat options menu with tabs: *Media*, *Docs*, *Links*.
 - **Technical Architecture**:
-  - Image handling via Coil / PhotoView / custom transformation Matrix.
-  - Video player using ExoPlayer (`androidx.media3.exoplayer`).
-  - Cache files locally in App external media storage using scoped storage.
+  - Image handling via custom `ZoomableImageView` and Coil safe loading.
+  - Video player using Media3 ExoPlayer (`androidx.media3.exoplayer`).
+  - Cache and download files locally in device gallery using `MediaStore` scoped storage and `FileProvider` sharing.
 - **Checklist**:
-  - [ ] Create `MediaViewerActivity.kt` with Coil / ExoPlayer integration
-  - [ ] Add click listeners on image/video containers in `MessageAdapter.kt`
-  - [ ] Add "Shared Media" grid layout in `ContactProfileActivity.kt`
+  - [x] Create `MediaViewerActivity.kt` and `ZoomableImageView.kt` with Coil / ExoPlayer integration
+  - [x] Add click listeners on image/video containers in `MessageAdapter.kt`
+  - [x] Add "Shared Media" 3-tab screen in `SharedMediaActivity.kt`
 
 ---
 
@@ -64,9 +64,9 @@ timeline
   - Android `MediaPlayer.setPlaybackParams(PlaybackParams().setSpeed(speed))` (API 23+).
   - Update `WaveformView.kt` with touch event listener (`ACTION_DOWN`, `ACTION_MOVE`) for interactive seeking.
 - **Checklist**:
-  - [ ] Add speed toggle button to voice note layout in `item_message_sent.xml` & `item_message_received.xml`
-  - [ ] Implement seek-touch gesture in `WaveformView.kt`
-  - [ ] Bind speed parameter in `AudioPlayerManager.kt`
+  - [x] Add speed toggle button to voice note layout with cycling speeds in `MessageAdapter.kt`
+  - [x] Implement seek-touch gesture in `WaveformView.kt`
+  - [x] Bind fractional seeking parameter in `AudioPlayerManager.kt`
 
 ---
 
@@ -139,9 +139,9 @@ timeline
   - `androidx.biometric:biometric:1.2.0-alpha05`.
   - Room DB flag `is_locked` on `conversations` table.
 - **Checklist**:
-  - [ ] Add `isLocked` flag to `Conversation.kt` and `ChatDao.kt`
-  - [ ] Integrate `BiometricPrompt` in `ChatListFragment.kt`
-  - [ ] Mask notification body for locked conversations in `NotificationHelper.kt`
+  - [x] Add `ChatLockManager` with `androidx.biometric:biometric:1.2.0-alpha05` and encrypted preferences
+  - [x] Integrate `BiometricPrompt` in `ChatListFragment.kt` and `ChatRoomActivity.kt`
+  - [x] Mask last message preview and show lock indicators in `ConversationAdapter.kt`
 
 ---
 
@@ -156,9 +156,9 @@ timeline
   - Query local cached files in `context.cacheDir` and `context.getExternalFilesDir()`.
   - Coroutine worker calculating storage usage grouped by `conversation_id`.
 - **Checklist**:
-  - [ ] Create `StorageManagerActivity.kt` and ViewModel
-  - [ ] Build breakdown chart and chat size ranking
-  - [ ] Implement batch file deletion utility
+  - [x] Create `StorageManagementActivity.kt` and `StorageManagerHelper.kt`
+  - [x] Build segmented breakdown chart and chat size ranking (`activity_storage_management.xml`, `item_storage_chat.xml`)
+  - [x] Implement batch file deletion utility and wire from Settings
 
 ---
 
@@ -172,8 +172,8 @@ timeline
   - Already have `DisappearingMessageWorker` and `disappearing_messages_duration` in Room DB.
   - Add UI picker dialog in `ChatRoomActivity.kt` and sync setting to backend `PATCH /chat/conversations/:id`.
 - **Checklist**:
-  - [ ] Create duration selection bottom sheet in `ChatRoomActivity.kt`
-  - [ ] Wire duration sync API in `ChatRepository.kt`
+  - [x] Create duration selection preset dialog and badge in `ChatRoomActivity.kt`
+  - [x] Wire duration indicators in `ConversationAdapter.kt` and sync in `ChatRoomViewModel.kt`
 
 ---
 

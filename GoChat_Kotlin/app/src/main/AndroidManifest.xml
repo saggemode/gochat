@@ -82,6 +82,24 @@
             android:theme="@style/Theme.GoChat"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- Full-Screen Media Viewer Activity -->
+        <activity
+            android:name=".ui.chat.MediaViewerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+
+        <!-- Shared Media, Links and Docs Activity -->
+        <activity
+            android:name=".ui.chat.SharedMediaActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+
+        <!-- Storage Management Activity -->
+        <activity
+            android:name=".ui.storage.StorageManagementActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+
         <!-- Group Info Activity -->
         <activity
             android:name=".ui.chat.GroupInfoActivity"

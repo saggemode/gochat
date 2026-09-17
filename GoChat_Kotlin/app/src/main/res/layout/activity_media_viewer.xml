@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mediaViewerRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <!-- Zoomable Image View -->
+    <com.example.gochat.ui.custom.ZoomableImageView
+        android:id="@+id/ivZoomableMedia"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="Media Viewer"
+        android:visibility="visible" />
+
+    <!-- Video Player View -->
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/playerView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        app:use_controller="true" />
+
+    <!-- Progress loading bar -->
+    <ProgressBar
+        android:id="@+id/pbMediaLoading"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center"
+        android:indeterminateTint="@color/gochat_emerald_primary"
+        android:visibility="gone" />
+
+    <!-- Top Overlay App Bar -->
+    <LinearLayout
+        android:id="@+id/layoutTopBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:background="#80000000"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="10dp">
+
+        <ImageView
+            android:id="@+id/btnBackViewer"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:contentDescription="Back"
+            android:focusable="true"
+            android:padding="8dp"
+            android:src="@drawable/ic_back"
+            app:tint="#FFFFFF" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvMediaTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                tools:text="Media" />
+
+            <TextView
+                android:id="@+id/tvMediaSubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#AAAAAA"
+                android:textSize="12sp"
+                tools:text="Photo" />
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/btnDownloadMedia"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:contentDescription="Save to Gallery"
+            android:focusable="true"
+            android:padding="8dp"
+            android:src="@drawable/ic_download"
+            app:tint="#FFFFFF" />
+
+        <ImageView
+            android:id="@+id/btnShareMedia"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:contentDescription="Share"
+            android:focusable="true"
+            android:padding="8dp"
+            android:src="@drawable/ic_share"
+            app:tint="#FFFFFF" />
+    </LinearLayout>
+
+    <!-- Bottom Caption Overlay (Optional) -->
+    <TextView
+        android:id="@+id/tvMediaCaption"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="#80000000"
+        android:padding="16dp"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:visibility="gone"
+        tools:text="Sunset photo from holiday"
+        tools:visibility="visible" />
+
+</FrameLayout>

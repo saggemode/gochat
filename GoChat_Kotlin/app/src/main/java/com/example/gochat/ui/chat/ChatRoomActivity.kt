@@ -88,6 +88,7 @@ class ChatRoomActivity : AppCompatActivity() {
         const val EXTRA_ORDER_ID = "extra_order_id"
         const val EXTRA_ORDER_NUMBER = "extra_order_number"
         const val EXTRA_ORDER_TOTAL = "extra_order_total"
+        const val EXTRA_TARGET_MESSAGE_ID = "extra_target_message_id"
     }
 
     private lateinit var binding: ActivityChatRoomBinding
@@ -255,9 +256,40 @@ class ChatRoomActivity : AppCompatActivity() {
         setupReplyPreview()
         setupVoiceRecordingControls()
         setupWindowInsets()
+        setupInChatSearch()
         observeState()
 
+        val targetMsgId = intent.getStringExtra(EXTRA_TARGET_MESSAGE_ID)
+        if (!targetMsgId.isNullOrEmpty()) {
+            lifecycleScope.launch {
+                viewModel.messages.collect { list ->
+                    val idx = list.indexOfFirst { it.id == targetMsgId }
+                    if (idx != -1) {
+                        binding.rvMessages.post {
+                            binding.rvMessages.scrollToPosition(idx)
+                        }
+                    }
+                }
+            }
+        }
+
         if (convId.isNotEmpty()) {
+            val isChatLocked = com.example.gochat.core.security.ChatLockManager.isLocked(this, convId)
+            val isSessionUnlocked = com.example.gochat.core.security.ChatLockManager.isSessionUnlocked(convId)
+            if (isChatLocked && !isSessionUnlocked) {
+                com.example.gochat.core.security.ChatLockManager.authenticate(
+                    activity = this,
+                    title = "Unlock $title",
+                    subtitle = "Confirm authentication to access chat",
+                    onSuccess = {
+                        com.example.gochat.core.security.ChatLockManager.unlockForSession(convId)
+                    },
+                    onError = {
+                        Toast.makeText(this, "Authentication required", Toast.LENGTH_SHORT).show()
+                        finish()
+                    }
+                )
+            }
             viewModel.initConversation(convId)
         }
 
@@ -791,28 +823,11 @@ class ChatRoomActivity : AppCompatActivity() {
     }
 
     private fun showFullScreenImage(mediaUrl: String) {
-        val dialog = Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-
-        val dialogBinding = DialogImagePreviewBinding.inflate(layoutInflater)
-        dialog.setContentView(dialogBinding.root)
-
-        dialogBinding.etImageCaption.visibility = View.GONE
-        dialogBinding.fabSendImage.visibility = View.GONE
-
-        MediaImageHelper.loadSafeImage(
-            imageView = dialogBinding.ivPreviewImage,
-            url = mediaUrl,
-            isCircle = false,
-            placeholderRes = R.drawable.ic_gallery,
-            errorRes = R.drawable.ic_gallery
-        )
-
-        dialogBinding.btnCloseImagePreview.setOnClickListener {
-            dialog.dismiss()
+        val intent = Intent(this, MediaViewerActivity::class.java).apply {
+            putExtra(MediaViewerActivity.EXTRA_MEDIA_URL, mediaUrl)
+            putExtra(MediaViewerActivity.EXTRA_TITLE, binding.tvChatTitle.text.toString())
         }
-
-        dialog.show()
+        startActivity(intent)
     }
 
     private fun handleSelectedAudioFile(uri: Uri) {
@@ -853,6 +868,28 @@ class ChatRoomActivity : AppCompatActivity() {
                 launch {
                     viewModel.messagesPaged.collectLatest { pagingData ->
                         messageAdapter.submitData(pagingData)
+                    }
+                }
+
+                launch {
+                    combine(viewModel.searchResults, viewModel.currentSearchIndex) { results, index ->
+                        Pair(results, index)
+                    }.collect { (results, index) ->
+                        if (results.isEmpty()) {
+                            binding.tvSearchMatchCount.text = if (viewModel.searchQuery.value.isBlank()) "" else "0 of 0"
+                        } else {
+                            val currentNum = (index + 1).coerceAtLeast(1)
+                            binding.tvSearchMatchCount.text = "$currentNum of ${results.size}"
+                            val targetMsg = results.getOrNull(index)
+                            if (targetMsg != null) {
+                                val pos = (0 until messageAdapter.itemCount).indexOfFirst {
+                                    messageAdapter.peek(it)?.id == targetMsg.id
+                                }
+                                if (pos != -1) {
+                                    binding.rvMessages.scrollToPosition(pos)
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -998,7 +1035,14 @@ class ChatRoomActivity : AppCompatActivity() {
     }
 
     private fun showMoreMenu() {
+        val convId = viewModel.conversationId.value.ifBlank { intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty() }
+        val isLocked = com.example.gochat.core.security.ChatLockManager.isLocked(this, convId)
+        val lockOption = if (isLocked) "Unlock Chat (Remove Lock)" else "Lock Chat (Require Biometric)"
+
         val items = arrayOf(
+            "Search",
+            "Media, links, and docs",
+            lockOption,
             getString(R.string.option_wallpaper_theme),
             getString(R.string.option_disappearing_messages),
             if (viewModel.screenshotNotificationsEnabled.value) "Disable Screenshot Alerts" else "Enable Screenshot Alerts",
@@ -1009,8 +1053,28 @@ class ChatRoomActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setItems(items) { _, which ->
                 when (which) {
-                    0 -> {
-                        val convId = viewModel.conversationId.value ?: intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty()
+                    0 -> openInChatSearch()
+                    1 -> {
+                        val title = intent.getStringExtra(EXTRA_CONVERSATION_TITLE) ?: getString(R.string.message_hint)
+                        val intent = Intent(this, SharedMediaActivity::class.java).apply {
+                            putExtra(SharedMediaActivity.EXTRA_CONVERSATION_ID, convId)
+                            putExtra(SharedMediaActivity.EXTRA_CONVERSATION_TITLE, title)
+                        }
+                        startActivity(intent)
+                    }
+                    2 -> {
+                        com.example.gochat.core.security.ChatLockManager.authenticate(
+                            activity = this,
+                            title = if (isLocked) "Unlock Chat" else "Lock Chat",
+                            subtitle = "Confirm biometric or device credential to modify chat lock",
+                            onSuccess = {
+                                com.example.gochat.core.security.ChatLockManager.setLocked(this, convId, !isLocked)
+                                val status = if (!isLocked) "locked" else "unlocked"
+                                Toast.makeText(this, "Chat $status", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                    3 -> {
                         val title = intent.getStringExtra(EXTRA_CONVERSATION_TITLE) ?: getString(R.string.message_hint)
                         val sheet = ChatWallpaperBottomSheet(
                             conversationId = convId,
@@ -1021,10 +1085,10 @@ class ChatRoomActivity : AppCompatActivity() {
                         )
                         sheet.show(supportFragmentManager, ChatWallpaperBottomSheet.TAG)
                     }
-                    1 -> {
+                    4 -> {
                         showDisappearingMessagesDialog()
                     }
-                    2 -> {
+                    5 -> {
                         val current = viewModel.screenshotNotificationsEnabled.value
                         viewModel.toggleScreenshotNotifications(!current)
                         val status = if (!current) "enabled" else "disabled"
@@ -1215,6 +1279,51 @@ class ChatRoomActivity : AppCompatActivity() {
                 unregisterScreenCaptureCallback(it)
             }
         }
+    }
+
+    private fun setupInChatSearch() {
+        binding.btnCloseSearch.setOnClickListener {
+            closeInChatSearch()
+        }
+
+        binding.etSearchQuery.doAfterTextChanged { text ->
+            val q = text?.toString().orEmpty()
+            viewModel.setSearchQuery(q)
+            messageAdapter.searchQuery = q
+        }
+
+        binding.btnSearchNext.setOnClickListener {
+            viewModel.nextSearchResult()
+        }
+
+        binding.btnSearchPrev.setOnClickListener {
+            viewModel.prevSearchResult()
+        }
+    }
+
+    private fun openInChatSearch() {
+        binding.layoutInChatSearch.visibility = View.VISIBLE
+        binding.etSearchQuery.requestFocus()
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+        imm?.showSoftInput(binding.etSearchQuery, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+    }
+
+    private fun closeInChatSearch() {
+        binding.layoutInChatSearch.visibility = View.GONE
+        binding.etSearchQuery.setText("")
+        viewModel.clearSearch()
+        messageAdapter.searchQuery = ""
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+        imm?.hideSoftInputFromWindow(binding.etSearchQuery.windowToken, 0)
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        if (binding.layoutInChatSearch.visibility == View.VISIBLE) {
+            closeInChatSearch()
+            return
+        }
+        super.onBackPressed()
     }
 
     override fun onDestroy() {

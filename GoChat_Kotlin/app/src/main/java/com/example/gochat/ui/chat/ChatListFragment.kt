@@ -76,8 +76,27 @@ class ChatListFragment : Fragment() {
         // Conversations List
         conversationAdapter = ConversationAdapter(
             onConversationClicked = { conversation ->
-                viewModel.markAsRead(conversation.id)
-                openChatRoom(conversation)
+                val isLocked = com.example.gochat.core.security.ChatLockManager.isLocked(requireContext(), conversation.id)
+                val isUnlockedSession = com.example.gochat.core.security.ChatLockManager.isSessionUnlocked(conversation.id)
+                if (isLocked && !isUnlockedSession) {
+                    com.example.gochat.core.security.ChatLockManager.authenticate(
+                        activity = requireActivity(),
+                        title = "Unlock ${conversation.title}",
+                        subtitle = "Confirm biometric or device credential to view chat",
+                        onSuccess = {
+                            com.example.gochat.core.security.ChatLockManager.unlockForSession(conversation.id)
+                            conversationAdapter.notifyDataSetChanged()
+                            viewModel.markAsRead(conversation.id)
+                            openChatRoom(conversation)
+                        },
+                        onError = { errMsg ->
+                            Toast.makeText(requireContext(), "Unlock failed: $errMsg", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                } else {
+                    viewModel.markAsRead(conversation.id)
+                    openChatRoom(conversation)
+                }
             },
             onConversationLongClicked = { conversation ->
                 showConversationOptionsDialog(conversation)
@@ -389,9 +408,12 @@ class ChatListFragment : Fragment() {
     }
 
     private fun showConversationOptionsDialog(conversation: Conversation) {
+        val isLocked = com.example.gochat.core.security.ChatLockManager.isLocked(requireContext(), conversation.id)
+        val lockOption = if (isLocked) "Unlock Chat (Remove Lock)" else "Lock Chat (Require Biometric)"
         val options = arrayOf(
             getString(R.string.option_mark_as_read),
             getString(R.string.option_pin_conversation),
+            lockOption,
             getString(R.string.option_mute_notifications),
             getString(R.string.option_delete_conversation)
         )
@@ -401,8 +423,21 @@ class ChatListFragment : Fragment() {
                 when (which) {
                     0 -> viewModel.markAsRead(conversation.id)
                     1 -> Toast.makeText(requireContext(), getString(R.string.toast_conversation_pinned), Toast.LENGTH_SHORT).show()
-                    2 -> Toast.makeText(requireContext(), getString(R.string.toast_notifications_muted), Toast.LENGTH_SHORT).show()
-                    3 -> Toast.makeText(requireContext(), getString(R.string.toast_conversation_deleted), Toast.LENGTH_SHORT).show()
+                    2 -> {
+                        com.example.gochat.core.security.ChatLockManager.authenticate(
+                            activity = requireActivity(),
+                            title = if (isLocked) "Unlock ${conversation.title}" else "Lock ${conversation.title}",
+                            subtitle = "Confirm authentication to modify chat lock",
+                            onSuccess = {
+                                com.example.gochat.core.security.ChatLockManager.setLocked(requireContext(), conversation.id, !isLocked)
+                                conversationAdapter.notifyDataSetChanged()
+                                val status = if (!isLocked) "locked" else "unlocked"
+                                Toast.makeText(requireContext(), "Chat $status", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                    3 -> Toast.makeText(requireContext(), getString(R.string.toast_notifications_muted), Toast.LENGTH_SHORT).show()
+                    4 -> Toast.makeText(requireContext(), getString(R.string.toast_conversation_deleted), Toast.LENGTH_SHORT).show()
                 }
             }
             .show()

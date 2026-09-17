@@ -113,6 +113,49 @@ class ChatRoomViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _searchResults = MutableStateFlow<List<Message>>(emptyList())
+    val searchResults: StateFlow<List<Message>> = _searchResults.asStateFlow()
+
+    private val _currentSearchIndex = MutableStateFlow(0)
+    val currentSearchIndex: StateFlow<Int> = _currentSearchIndex.asStateFlow()
+
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+        if (query.isBlank()) {
+            _searchResults.value = emptyList()
+            _currentSearchIndex.value = 0
+            return
+        }
+        viewModelScope.launch {
+            val results = chatRepository.searchMessagesInConversation(_conversationId.value, query)
+            _searchResults.value = results
+            _currentSearchIndex.value = if (results.isNotEmpty()) 0 else -1
+        }
+    }
+
+    fun nextSearchResult() {
+        val list = _searchResults.value
+        if (list.isEmpty()) return
+        val next = (_currentSearchIndex.value + 1) % list.size
+        _currentSearchIndex.value = next
+    }
+
+    fun prevSearchResult() {
+        val list = _searchResults.value
+        if (list.isEmpty()) return
+        val prev = if (_currentSearchIndex.value - 1 < 0) list.size - 1 else _currentSearchIndex.value - 1
+        _currentSearchIndex.value = prev
+    }
+
+    fun clearSearch() {
+        _searchQuery.value = ""
+        _searchResults.value = emptyList()
+        _currentSearchIndex.value = 0
+    }
+
     init {
         // Collect incoming WebSocket events
         viewModelScope.launch {

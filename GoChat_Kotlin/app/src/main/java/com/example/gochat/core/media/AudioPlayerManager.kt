@@ -126,6 +126,17 @@ object AudioPlayerManager {
         } catch (_: Exception) {}
     }
 
+    fun seekToFraction(fraction: Float) {
+        try {
+            val player = mediaPlayer ?: return
+            val duration = player.duration
+            if (duration > 0) {
+                val targetMs = (duration * fraction.coerceIn(0f, 1f)).toInt()
+                player.seekTo(targetMs)
+            }
+        } catch (_: Exception) {}
+    }
+
     fun stop() {
         handler.removeCallbacks(progressRunnable)
         currentPlayingMessageId?.let { id ->

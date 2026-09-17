@@ -50,6 +50,9 @@ class WaveformView @JvmOverloads constructor(
         invalidate()
     }
 
+    var onSeekListener: ((progress: Float) -> Unit)? = null
+    var isInteractive: Boolean = true
+
     fun setProgress(p: Float) {
         progress = p.coerceIn(0f, 1f)
         invalidate()
@@ -58,6 +61,30 @@ class WaveformView @JvmOverloads constructor(
     fun clear() {
         bars.clear()
         invalidate()
+    }
+
+    override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
+        if (!isInteractive || width == 0) return super.onTouchEvent(event)
+
+        when (event.action) {
+            android.view.MotionEvent.ACTION_DOWN,
+            android.view.MotionEvent.ACTION_MOVE -> {
+                parent?.requestDisallowInterceptTouchEvent(true)
+                val p = (event.x / width.toFloat()).coerceIn(0f, 1f)
+                setProgress(p)
+                onSeekListener?.invoke(p)
+                return true
+            }
+            android.view.MotionEvent.ACTION_UP,
+            android.view.MotionEvent.ACTION_CANCEL -> {
+                parent?.requestDisallowInterceptTouchEvent(false)
+                val p = (event.x / width.toFloat()).coerceIn(0f, 1f)
+                setProgress(p)
+                onSeekListener?.invoke(p)
+                return true
+            }
+        }
+        return super.onTouchEvent(event)
     }
 
     override fun onDraw(canvas: Canvas) {
