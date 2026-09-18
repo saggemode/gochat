@@ -18,7 +18,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class CallAdapter(
-    private val onCallAction: (CallRecord) -> Unit
+    private val onCallAction: (CallRecord) -> Unit,
+    private val onItemClick: ((CallRecord) -> Unit)? = null
 ) : ListAdapter<CallRecord, CallAdapter.CallViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CallViewHolder {
@@ -85,6 +86,10 @@ class CallAdapter(
 
                 btnCallAction.setOnClickListener {
                     onCallAction(record)
+                }
+
+                root.setOnClickListener {
+                    onItemClick?.invoke(record)
                 }
             }
         }

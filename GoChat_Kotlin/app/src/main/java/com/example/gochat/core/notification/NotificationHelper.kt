@@ -331,12 +331,19 @@ object NotificationHelper {
         avatarBitmap: Bitmap? = null
     ) {
         val notificationId = ("call_$callId").hashCode()
+        val displayCallerName = if (callerName.isBlank() || callerName.equals("User", ignoreCase = true) || callerName.equals("Chat", ignoreCase = true)) {
+            "GoChat Contact"
+        } else {
+            callerName
+        }
 
         // 1. Answer Intent -> Opens CallActivity
         val answerIntent = Intent(context, CallActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(CallActivity.EXTRA_CALL_ID, callId)
             putExtra(CallActivity.EXTRA_TARGET_USER_ID, callerId)
+            putExtra(CallActivity.EXTRA_PEER_NAME, displayCallerName)
+            putExtra(CallActivity.EXTRA_PEER_AVATAR, callerAvatar)
             putExtra(CallActivity.EXTRA_IS_OUTGOING, false)
             putExtra(CallActivity.EXTRA_CALL_TYPE, callType)
         }
@@ -363,11 +370,6 @@ object NotificationHelper {
         )
 
         val callSubtitle = if (callType == "video") "Incoming Video Call" else "Incoming Voice Call"
-        val displayCallerName = if (callerName.isBlank() || callerName.equals("User", ignoreCase = true) || callerName.equals("Chat", ignoreCase = true)) {
-            "GoChat Contact"
-        } else {
-            callerName
-        }
 
         val builder = NotificationCompat.Builder(context, CHANNEL_CALLS)
             .setSmallIcon(R.drawable.ic_call)

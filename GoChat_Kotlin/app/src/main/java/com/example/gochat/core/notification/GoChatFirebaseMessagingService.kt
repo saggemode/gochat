@@ -19,6 +19,7 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
     @Inject lateinit var tokenManager: TokenManager
     @Inject lateinit var authRepository: AuthRepository
     @Inject lateinit var chatRepository: ChatRepository
+    @Inject lateinit var callRepository: com.example.gochat.data.repository.CallRepository
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -83,6 +84,20 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
                     candidateName = rawCallerName,
                     isGroup = false
                 )
+
+                // Persist incoming call record in local Room DB
+                val record = com.example.gochat.data.model.CallRecord(
+                    id = callId,
+                    peerId = callerId,
+                    peerName = resolvedCallerName,
+                    peerAvatar = callerAvatar,
+                    type = if (callType == "video") com.example.gochat.data.model.CallType.VIDEO else com.example.gochat.data.model.CallType.AUDIO,
+                    status = com.example.gochat.data.model.CallStatus.INCOMING,
+                    durationSeconds = 0,
+                    timestamp = System.currentTimeMillis()
+                )
+                callRepository.recordCall(record)
+
                 NotificationHelper.showCallNotificationAsync(
                     context = applicationContext,
                     callId = callId,

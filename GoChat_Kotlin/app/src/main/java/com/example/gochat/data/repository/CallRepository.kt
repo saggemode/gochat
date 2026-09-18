@@ -24,6 +24,24 @@ class CallRepository @Inject constructor(
     /** Room Flow for the calls history list. */
     fun observeCalls(): Flow<List<CallRecord>> = dao.getAllCalls()
 
+    /** Room Flow for missed calls only. */
+    fun observeMissedCalls(): Flow<List<CallRecord>> = dao.getMissedCalls()
+
+    /** Room Flow for missed calls count (for badges). */
+    fun observeMissedCallsCount(): Flow<Int> = dao.getMissedCallsCount()
+
+    suspend fun recordCall(call: CallRecord) {
+        dao.insertCall(call)
+    }
+
+    suspend fun updateCallStatus(callId: String, status: CallStatus, durationSeconds: Int = 0) {
+        dao.updateCallStatus(callId, status, durationSeconds)
+    }
+
+    suspend fun deleteCall(callId: String) {
+        dao.deleteCall(callId)
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // ── Call Actions ─────────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════

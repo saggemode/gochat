@@ -69,7 +69,7 @@ class ContactProfileActivity : AppCompatActivity() {
 
         setupToolbar(userName)
         setupProfileInfo(userName, userPhone, userAvatar, userPin, isOnline, lastSeen)
-        setupActionButtons(targetUserId)
+        setupActionButtons(targetUserId, userName, userAvatar)
         setupSettingsRows(userName, convId)
         loadDisappearingStatus(convId)
     }
@@ -129,12 +129,14 @@ class ContactProfileActivity : AppCompatActivity() {
         binding.tvCreateGroupWith.text = getString(R.string.create_group_with_format, name)
     }
 
-    private fun setupActionButtons(targetUserId: String) {
+    private fun setupActionButtons(targetUserId: String, userName: String, userAvatar: String) {
         // 1. Voice Call
         binding.btnActionVoice.setOnClickListener {
             val intent = Intent(this, CallActivity::class.java).apply {
                 putExtra(CallActivity.EXTRA_CALL_ID, "call_${System.currentTimeMillis()}")
                 putExtra(CallActivity.EXTRA_TARGET_USER_ID, targetUserId)
+                putExtra(CallActivity.EXTRA_PEER_NAME, userName)
+                putExtra(CallActivity.EXTRA_PEER_AVATAR, userAvatar)
                 putExtra(CallActivity.EXTRA_IS_OUTGOING, true)
                 putExtra(CallActivity.EXTRA_CALL_TYPE, "voice")
             }
@@ -146,6 +148,8 @@ class ContactProfileActivity : AppCompatActivity() {
             val intent = Intent(this, CallActivity::class.java).apply {
                 putExtra(CallActivity.EXTRA_CALL_ID, "call_${System.currentTimeMillis()}")
                 putExtra(CallActivity.EXTRA_TARGET_USER_ID, targetUserId)
+                putExtra(CallActivity.EXTRA_PEER_NAME, userName)
+                putExtra(CallActivity.EXTRA_PEER_AVATAR, userAvatar)
                 putExtra(CallActivity.EXTRA_IS_OUTGOING, true)
                 putExtra(CallActivity.EXTRA_CALL_TYPE, "video")
             }

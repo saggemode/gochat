@@ -44,6 +44,9 @@ class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var tokenManager: TokenManager
 
+    @Inject
+    lateinit var callRepository: com.example.gochat.data.repository.CallRepository
+
     companion object {
         private const val KEY_ACTIVE_TAB = "key_active_tab"
         private const val TAG_CHATS = "tab_chats"
@@ -103,6 +106,7 @@ class MainActivity : AppCompatActivity() {
 
         setupBottomNavigation()
         observeUnreadBadge()
+        observeCallsBadge()
 
         // Initialize E2EE Keys
         lifecycleScope.launch {
@@ -272,6 +276,26 @@ class MainActivity : AppCompatActivity() {
                         badge.number = unread
                     } else {
                         badge.isVisible = false
+                    }
+                }
+            }
+        }
+    }
+
+    private fun observeCallsBadge() {
+        val callsBadge = binding.bottomNav.getOrCreateBadge(R.id.nav_calls).apply {
+            backgroundColor = ContextCompat.getColor(this@MainActivity, R.color.gochat_error)
+            badgeTextColor = ContextCompat.getColor(this@MainActivity, R.color.white)
+        }
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                callRepository.observeMissedCallsCount().collect { missedCount ->
+                    if (missedCount > 0) {
+                        callsBadge.isVisible = true
+                        callsBadge.number = missedCount
+                    } else {
+                        callsBadge.isVisible = false
                     }
                 }
             }

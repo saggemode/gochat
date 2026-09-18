@@ -25,6 +25,9 @@ class NotificationActionReceiver : BroadcastReceiver() {
     @Inject
     lateinit var chatRepository: ChatRepository
 
+    @Inject
+    lateinit var callRepository: com.example.gochat.data.repository.CallRepository
+
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
         val conversationId = intent.getStringExtra(NotificationHelper.EXTRA_CONVERSATION_ID) ?: ""
@@ -82,9 +85,24 @@ class NotificationActionReceiver : BroadcastReceiver() {
             }
 
             NotificationHelper.ACTION_DISMISS_CALL -> {
+                val callId = intent.getStringExtra(com.example.gochat.ui.calls.CallActivity.EXTRA_CALL_ID) ?: ""
                 val notificationManager = NotificationManagerCompat.from(context)
                 notificationManager.cancel(notificationId)
-                pendingResult.finish()
+
+                if (callId.isNotBlank()) {
+                    scope.launch {
+                        try {
+                            callRepository.rejectCall(callId)
+                            callRepository.updateCallStatus(callId, com.example.gochat.data.model.CallStatus.MISSED, 0)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to decline call $callId", e)
+                        } finally {
+                            pendingResult.finish()
+                        }
+                    }
+                } else {
+                    pendingResult.finish()
+                }
             }
 
             else -> {

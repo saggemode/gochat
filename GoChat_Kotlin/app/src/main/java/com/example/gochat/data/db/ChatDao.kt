@@ -125,8 +125,20 @@ interface ChatDao {
     @Query("SELECT * FROM calls ORDER BY timestamp DESC")
     fun getAllCalls(): Flow<List<CallRecord>>
 
+    @Query("SELECT * FROM calls WHERE status = 'MISSED' ORDER BY timestamp DESC")
+    fun getMissedCalls(): Flow<List<CallRecord>>
+
+    @Query("SELECT COUNT(*) FROM calls WHERE status = 'MISSED'")
+    fun getMissedCallsCount(): Flow<Int>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCall(call: CallRecord)
+
+    @Query("UPDATE calls SET status = :status, duration_seconds = :durationSeconds WHERE id = :id")
+    suspend fun updateCallStatus(id: String, status: CallStatus, durationSeconds: Int): Int
+
+    @Query("DELETE FROM calls WHERE id = :id")
+    suspend fun deleteCall(id: String): Int
 
     @Query("DELETE FROM calls")
     suspend fun clearAllCalls(): Int

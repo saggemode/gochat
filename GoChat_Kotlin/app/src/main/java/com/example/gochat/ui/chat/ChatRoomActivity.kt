@@ -411,6 +411,8 @@ class ChatRoomActivity : AppCompatActivity() {
                 val intent = Intent(this@ChatRoomActivity, CallActivity::class.java).apply {
                     putExtra(CallActivity.EXTRA_CALL_ID, "call_${System.currentTimeMillis()}")
                     putExtra(CallActivity.EXTRA_TARGET_USER_ID, viewModel.conversationId.value)
+                    putExtra(CallActivity.EXTRA_PEER_NAME, title)
+                    putExtra(CallActivity.EXTRA_PEER_AVATAR, avatarUrl)
                     putExtra(CallActivity.EXTRA_IS_OUTGOING, true)
                     putExtra(CallActivity.EXTRA_CALL_TYPE, "voice")
                 }
