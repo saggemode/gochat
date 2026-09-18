@@ -128,3 +128,11 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }
+
+// Automatically clean stale KSP caches before any KSP task executes to prevent
+// "Storage for ... is already registered" IllegalStateException in Android Studio / daemons.
+tasks.matching { it.name.startsWith("ksp") }.configureEach {
+    doFirst {
+        file("${layout.buildDirectory.get().asFile}/kspCaches").deleteRecursively()
+    }
+}

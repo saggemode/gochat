@@ -189,9 +189,9 @@ timeline
   - Local Room DB table `calls` (`id`, `caller_id`, `receiver_id`, `type`, `status`, `duration_seconds`, `created_at`).
   - Ingest call events from WebSocket and FCM incoming call events.
 - **Checklist**:
-  - [ ] Create `CallRecord` Room entity and DAO
-  - [ ] Create `CallsFragment.kt` and `CallAdapter.kt`
-  - [ ] Add Calls tab in bottom navigation view
+  - [x] Create `CallRecord` Room entity and DAO
+  - [x] Create `CallsFragment.kt` and `CallAdapter.kt`
+  - [x] Add Calls tab in bottom navigation view
 
 ---
 

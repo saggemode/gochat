@@ -28,7 +28,11 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
+import javax.inject.Provider
 import javax.inject.Singleton
+
+import com.example.gochat.data.api.TokenAuthenticator
+import com.example.gochat.data.repository.AuthRepository
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -55,7 +59,8 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(
         @ApplicationContext context: Context,
-        tokenManager: TokenManager
+        tokenManager: TokenManager,
+        tokenAuthenticator: TokenAuthenticator
     ): OkHttpClient {
         val authInterceptor = AuthInterceptor(tokenManager)
         val loggingInterceptor = HttpLoggingInterceptor().apply {
@@ -64,9 +69,10 @@ object NetworkModule {
 
         return OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
+            .authenticator(tokenAuthenticator)
             .addInterceptor(loggingInterceptor)
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(45, TimeUnit.SECONDS)
+            .readTimeout(45, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
             .build()
@@ -114,8 +120,16 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideGoChatWebSocket(ktorClient: HttpClient, json: Json): GoChatWebSocket {
-        return GoChatWebSocket(ktorClient, json)
+    fun provideGoChatWebSocket(
+        ktorClient: HttpClient,
+        json: Json,
+        authRepositoryProvider: Provider<AuthRepository>
+    ): GoChatWebSocket {
+        return GoChatWebSocket(ktorClient, json).apply {
+            tokenProvider = {
+                authRepositoryProvider.get().ensureValidToken()
+            }
+        }
     }
 }
 

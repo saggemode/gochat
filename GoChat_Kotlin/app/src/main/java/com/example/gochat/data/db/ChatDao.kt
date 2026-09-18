@@ -3,6 +3,7 @@ package com.example.gochat.data.db
 import androidx.paging.PagingSource
 import androidx.room.*
 import com.example.gochat.data.model.CallRecord
+import com.example.gochat.data.model.CallStatus
 import com.example.gochat.data.model.Conversation
 import com.example.gochat.data.model.Message
 import com.example.gochat.data.model.MessageStatus
@@ -134,7 +135,7 @@ interface ChatDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCall(call: CallRecord)
 
-    @Query("UPDATE calls SET status = :status, duration_seconds = :durationSeconds WHERE id = :id")
+    @Query("UPDATE calls SET status = :status, durationSeconds = :durationSeconds WHERE id = :id")
     suspend fun updateCallStatus(id: String, status: CallStatus, durationSeconds: Int): Int
 
     @Query("DELETE FROM calls WHERE id = :id")

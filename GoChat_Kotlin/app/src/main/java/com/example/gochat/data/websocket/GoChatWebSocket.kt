@@ -32,6 +32,12 @@ class GoChatWebSocket(
     private val _isConnected = MutableStateFlow(false)
     val isConnected = _isConnected.asStateFlow()
 
+    /**
+     * Dynamic token provider lambda, allowing WebSocket reconnection to always
+     * query a valid/refreshed token from AuthRepository.
+     */
+    var tokenProvider: (suspend () -> String?)? = null
+
     private var session: DefaultClientWebSocketSession? = null
     private var reconnectJob: Job? = null
     private var connectionJob: Job? = null
@@ -41,19 +47,41 @@ class GoChatWebSocket(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /**
-     * Open a WebSocket connection with the given JWT token.
+     * Open a WebSocket connection. If token is null or expired, resolves via [tokenProvider].
+     * If [force] is true, cancels any existing connection job/reconnect and immediately connects.
      */
-    fun connect(token: String) {
-        if (_isConnected.value || connectionJob?.isActive == true) return
-        manuallyDisconnected = false
-        currentToken = token
+    fun connect(token: String? = null, force: Boolean = false) {
+        if (force) {
+            reconnectJob?.cancel()
+            reconnectJob = null
+            connectionJob?.cancel()
+            connectionJob = null
+            reconnectAttempts = 0
+            manuallyDisconnected = false
+        } else if (_isConnected.value || connectionJob?.isActive == true) {
+            return
+        }
 
-        val wsUrl = ApiConstants.WS_URL
-        val fullUrl = "$wsUrl?token=$token"
-        Log.d(TAG, "Connecting to $fullUrl")
+        manuallyDisconnected = false
+        if (!token.isNullOrBlank()) {
+            currentToken = token
+        }
 
         connectionJob = scope.launch {
             try {
+                // Ensure we have a fresh, valid token
+                val activeToken = tokenProvider?.invoke() ?: currentToken
+                if (activeToken.isNullOrBlank()) {
+                    Log.w(TAG, "Cannot connect WebSocket: No valid token available")
+                    _isConnected.value = false
+                    return@launch
+                }
+                currentToken = activeToken
+
+                val wsUrl = ApiConstants.WS_URL
+                val fullUrl = "$wsUrl?token=$activeToken"
+                Log.d(TAG, "Connecting to $fullUrl")
+
                 client.webSocket(urlString = fullUrl) {
                     session = this
                     _isConnected.value = true
@@ -71,14 +99,20 @@ class GoChatWebSocket(
                             }
                         }
                     }
-                    
+
                     // incoming loop finished
                     Log.d(TAG, "WebSocket session closed")
                     handleDisconnect()
                 }
             } catch (e: Exception) {
                 if (!manuallyDisconnected) {
+                    val msg = e.message.orEmpty().lowercase()
                     Log.e(TAG, "WebSocket error: ${e.message}")
+                    // If auth error / 401, clear cached token so reconnect attempts fresh token refresh
+                    if (msg.contains("401") || msg.contains("unauthorized") || msg.contains("handshake")) {
+                        Log.w(TAG, "WebSocket auth failed; invalidating cached token for next reconnect")
+                        currentToken = null
+                    }
                     handleDisconnect()
                 }
             }
@@ -94,7 +128,7 @@ class GoChatWebSocket(
         reconnectJob = null
         connectionJob?.cancel()
         connectionJob = null
-        
+
         scope.launch {
             try {
                 session?.close(CloseReason(CloseReason.Codes.NORMAL, "User logged out"))
@@ -115,7 +149,7 @@ class GoChatWebSocket(
             Log.w(TAG, "Cannot send — not connected")
             return false
         }
-        
+
         return try {
             val text = json.encodeToString(JsonObject.serializer(), payload)
             scope.launch {
@@ -148,9 +182,11 @@ class GoChatWebSocket(
 
         reconnectJob = scope.launch {
             delay(delayMs)
-            val token = currentToken
-            if (token != null) {
+            val token = tokenProvider?.invoke() ?: currentToken
+            if (!token.isNullOrBlank()) {
                 connect(token)
+            } else {
+                Log.w(TAG, "Reconnect postponed: No token obtained")
             }
         }
     }
@@ -158,6 +194,13 @@ class GoChatWebSocket(
     fun reconnectWithToken(newToken: String) {
         disconnect()
         manuallyDisconnected = false
-        connect(newToken)
+        connect(newToken, force = true)
+    }
+
+    /**
+     * Force immediate reconnection with fresh token verification.
+     */
+    fun reconnect(force: Boolean = true) {
+        connect(force = force)
     }
 }

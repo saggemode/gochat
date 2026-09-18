@@ -248,7 +248,6 @@
     <string name="call_voice">Voice</string>
     <string name="call_video">Video</string>
     <string name="action_message">Message</string>
-    <string name="action_delete">Delete</string>
     <string name="filter_missed">Missed</string>
     <string name="clear_call_log">Clear call log</string>
     <string name="clear_call_log_confirm">Do you want to clear your entire call log history?</string>

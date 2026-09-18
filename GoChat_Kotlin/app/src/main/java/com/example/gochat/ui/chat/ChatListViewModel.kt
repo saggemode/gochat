@@ -144,6 +144,11 @@ class ChatListViewModel @Inject constructor(
     )
 
     init {
+        // Dynamic token provider: WebSocket reconnects will automatically query a fresh/renewed JWT
+        webSocket.tokenProvider = {
+            authRepository.ensureValidToken()
+        }
+
         connectWebSocket()
         refreshData()
 
@@ -151,7 +156,7 @@ class ChatListViewModel @Inject constructor(
         viewModelScope.launch {
             networkMonitor.isOnline.collect { isOnline ->
                 if (isOnline) {
-                    connectWebSocket()
+                    connectWebSocket(force = true)
                     refreshData()
                 }
             }
@@ -175,10 +180,14 @@ class ChatListViewModel @Inject constructor(
         }
     }
 
-    fun connectWebSocket() {
-        val token = tokenManager.getToken()
-        if (!token.isNullOrBlank() && tokenManager.isValidJwt(token)) {
-            webSocket.connect(token)
+    fun connectWebSocket(force: Boolean = false) {
+        viewModelScope.launch {
+            val token = authRepository.ensureValidToken()
+            if (!token.isNullOrBlank()) {
+                webSocket.connect(token, force = force)
+            } else {
+                android.util.Log.w("ChatListViewModel", "No valid token available to connect WebSocket")
+            }
         }
     }
 
@@ -200,6 +209,7 @@ class ChatListViewModel @Inject constructor(
         viewModelScope.launch {
             isRefreshing.value = true
             try {
+                authRepository.ensureValidToken()
                 chatRepository.refreshConversations()
                 val storyResult = storyRepository.getStories()
                 if (storyResult.isSuccess) {

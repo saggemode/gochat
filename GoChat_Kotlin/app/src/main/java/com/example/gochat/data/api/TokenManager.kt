@@ -3,9 +3,14 @@ package com.example.gochat.data.api
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Build
+import android.util.Base64
 import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import java.io.File
 import java.security.KeyStore
 
@@ -19,6 +24,7 @@ class TokenManager private constructor(context: Context) {
         private const val PREFS_FILE = "gochat_secure_prefs"
         private const val PREFS_FALLBACK_FILE = "gochat_prefs_compat"
         private const val KEY_TOKEN = "jwt_token"
+        private const val KEY_REFRESH_TOKEN = "jwt_refresh_token"
         private const val KEY_USER_ID = "user_id"
         private const val KEY_USER_PIN = "user_pin"
         private const val KEY_USER_PHONE = "user_phone"
@@ -112,12 +118,26 @@ class TokenManager private constructor(context: Context) {
 
     fun getToken(): String? = prefs.getString(KEY_TOKEN, null)
 
+    fun getRefreshToken(): String? = prefs.getString(KEY_REFRESH_TOKEN, null)
+
     fun saveToken(token: String) {
         prefs.edit().putString(KEY_TOKEN, token).apply()
     }
 
+    fun saveRefreshToken(token: String) {
+        prefs.edit().putString(KEY_REFRESH_TOKEN, token).apply()
+    }
+
+    fun saveTokenPair(accessToken: String, refreshToken: String?) {
+        val editor = prefs.edit().putString(KEY_TOKEN, accessToken)
+        if (!refreshToken.isNullOrBlank()) {
+            editor.putString(KEY_REFRESH_TOKEN, refreshToken)
+        }
+        editor.apply()
+    }
+
     fun clearToken() {
-        prefs.edit().remove(KEY_TOKEN).apply()
+        prefs.edit().remove(KEY_TOKEN).remove(KEY_REFRESH_TOKEN).apply()
     }
 
     /**
@@ -127,6 +147,31 @@ class TokenManager private constructor(context: Context) {
         if (token.isNullOrBlank()) return false
         if (token.startsWith("gochat_session_")) return false
         return token.split(".").size == 3
+    }
+
+    /**
+     * Decodes the JWT payload to inspect the `exp` (expiration) timestamp claim.
+     * Returns true if the token is null, blank, structurally invalid, or expired
+     * (or within bufferSeconds of expiring, default 120s).
+     */
+    fun isTokenExpired(token: String? = getToken(), bufferSeconds: Long = 120): Boolean {
+        if (token.isNullOrBlank()) return true
+        val parts = token.split(".")
+        if (parts.size != 3) return true
+        return try {
+            val payloadBytes = Base64.decode(
+                parts[1],
+                Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
+            )
+            val payloadJson = String(payloadBytes, Charsets.UTF_8)
+            val json = Json { ignoreUnknownKeys = true }.parseToJsonElement(payloadJson).jsonObject
+            val exp = json["exp"]?.jsonPrimitive?.longOrNull ?: return false
+            val nowSeconds = System.currentTimeMillis() / 1000L
+            nowSeconds >= (exp - bufferSeconds)
+        } catch (e: Exception) {
+            Log.w("TokenManager", "Failed to parse JWT exp claim: ${e.message}")
+            true
+        }
     }
 
     // ── User Fields ──────────────────────────────────────────────
@@ -166,7 +211,13 @@ class TokenManager private constructor(context: Context) {
     // ── Session Helpers ──────────────────────────────────────────
 
     val isLoggedIn: Boolean
-        get() = isValidJwt(getToken())
+        get() {
+            val token = getToken()
+            if (token.isNullOrBlank()) return false
+            if (!isValidJwt(token)) return false
+            // User is logged in if access token is not expired OR we have a refresh token OR user phone for auto-renewal
+            return !isTokenExpired(token) || !getRefreshToken().isNullOrBlank() || !userPhone.isNullOrBlank()
+        }
 
     fun clearAll() {
         prefs.edit().clear().apply()

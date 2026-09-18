@@ -110,8 +110,20 @@ class ChatListFragment : Fragment() {
             ContextCompat.getColor(requireContext(), R.color.gochat_accent)
         )
         binding.swipeRefresh.setOnRefreshListener {
+            viewModel.connectWebSocket(force = true)
             viewModel.refreshData()
         }
+
+        // Tapping the connecting / network banner triggers an immediate reconnect attempt
+        binding.layoutNetworkStatusBanner.setOnClickListener {
+            viewModel.connectWebSocket(force = true)
+            viewModel.refreshData()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.connectWebSocket(force = false)
     }
 
     private fun setupSearch() {

@@ -13,6 +13,8 @@ import com.example.gochat.data.websocket.GoChatWebSocket
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 import kotlinx.serialization.json.*
@@ -495,28 +497,99 @@ class AuthRepository @Inject constructor(
         } catch (_: Exception) {}
     }
 
+    private val tokenRefreshMutex = Mutex()
+
     /**
-     * Re-authenticate silently using stored credentials to refresh an expired JWT.
+     * Attempts to rotate the expired access token using the stored refresh token.
+     * Returns the fresh access token on success.
+     */
+    suspend fun refreshAccessToken(): Result<String> {
+        val refreshToken = tokenManager.getRefreshToken()
+        if (refreshToken.isNullOrBlank()) {
+            return Result.failure(Exception("No refresh token stored"))
+        }
+
+        return try {
+            val body = buildJsonObject {
+                put("refresh_token", refreshToken)
+            }
+            val response = api.refreshToken(body)
+            if (response.isSuccessful) {
+                val data = response.body() ?: buildJsonObject {}
+                val newAccessToken = (data["access_token"] ?: data["accessToken"] ?: data["token"])
+                    ?.jsonPrimitive?.contentOrNull
+                val newRefreshToken = (data["refresh_token"] ?: data["refreshToken"])
+                    ?.jsonPrimitive?.contentOrNull ?: refreshToken
+
+                if (!newAccessToken.isNullOrBlank() && tokenManager.isValidJwt(newAccessToken)) {
+                    tokenManager.saveTokenPair(newAccessToken, newRefreshToken)
+                    Result.success(newAccessToken)
+                } else {
+                    Result.failure(Exception("Invalid token returned in refresh response"))
+                }
+            } else {
+                val errorBody = response.errorBody()?.string().orEmpty()
+                Result.failure(Exception("Token refresh failed (${response.code()}): $errorBody"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Verifies that the current JWT token is valid and unexpired.
+     * If expired, transparently rotates using the refresh token or auto-logs in.
      */
     suspend fun ensureValidToken(): String? {
         val current = tokenManager.getToken()
-        if (tokenManager.isValidJwt(current)) return current
-
-        val phone = tokenManager.userPhone
-        if (!phone.isNullOrBlank()) {
-            val result = login(phone)
-            if (result.isSuccess) return tokenManager.getToken()
+        if (!current.isNullOrBlank() && tokenManager.isValidJwt(current) && !tokenManager.isTokenExpired(current)) {
+            return current
         }
-        return null
+
+        return tokenRefreshMutex.withLock {
+            val recheck = tokenManager.getToken()
+            if (!recheck.isNullOrBlank() && tokenManager.isValidJwt(recheck) && !tokenManager.isTokenExpired(recheck)) {
+                return@withLock recheck
+            }
+
+            // Step 1: Attempt OAuth2 / JWT refresh token rotation
+            val refreshResult = refreshAccessToken()
+            if (refreshResult.isSuccess) {
+                val newToken = refreshResult.getOrNull()
+                if (!newToken.isNullOrBlank()) {
+                    return@withLock newToken
+                }
+            }
+
+            // Step 2: Fallback to passwordless phone auto-renewal
+            val phone = tokenManager.userPhone
+            if (!phone.isNullOrBlank()) {
+                val loginResult = login(phone)
+                if (loginResult.isSuccess) {
+                    val newToken = tokenManager.getToken()
+                    if (!newToken.isNullOrBlank() && !tokenManager.isTokenExpired(newToken)) {
+                        return@withLock newToken
+                    }
+                }
+            }
+
+            // Step 3: Return stored token as last resort
+            tokenManager.getToken()
+        }
     }
 
     // ── Private Helpers ──────────────────────────────────────────
 
     private fun extractAndSaveToken(data: JsonObject) {
-        val token = (data["access_token"] ?: data["token"])
+        val accessToken = (data["access_token"] ?: data["accessToken"] ?: data["token"])
             ?.jsonPrimitive?.contentOrNull
-        if (token != null && tokenManager.isValidJwt(token)) {
-            tokenManager.saveToken(token)
+        val refreshToken = (data["refresh_token"] ?: data["refreshToken"])
+            ?.jsonPrimitive?.contentOrNull
+
+        if (accessToken != null && tokenManager.isValidJwt(accessToken)) {
+            tokenManager.saveTokenPair(accessToken, refreshToken)
+        } else if (refreshToken != null) {
+            tokenManager.saveRefreshToken(refreshToken)
         }
     }
 

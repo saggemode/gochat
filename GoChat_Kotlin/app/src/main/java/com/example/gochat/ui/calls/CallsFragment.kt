@@ -234,7 +234,7 @@ class CallsFragment : Fragment() {
     }
 
     private fun showClearCallLogDialog() {
-        AlertDialog.Builder(requireContext(), R.style.Theme_GoChat_Dialog)
+        AlertDialog.Builder(requireContext())
             .setTitle(R.string.clear_call_log)
             .setMessage(R.string.clear_call_log_confirm)
             .setPositiveButton(R.string.action_delete) { _, _ ->
