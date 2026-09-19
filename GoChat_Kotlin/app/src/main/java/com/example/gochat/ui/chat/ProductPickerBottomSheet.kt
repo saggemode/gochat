@@ -72,22 +72,17 @@ class ProductPickerBottomSheet(
     private fun loadProducts() {
         lifecycleScope.launch {
             binding.progressBarPicker.visibility = View.VISIBLE
-            // Load products from local DB (or fallback)
-            val local = repository.getLocalProducts()
+            // Only load the current user's own products — never show other merchants' products
+            val myResult = repository.getMyProducts()
+            val myProducts = myResult.getOrNull().orEmpty()
             binding.progressBarPicker.visibility = View.GONE
 
-            if (local.isNotEmpty()) {
-                allProducts = local
-                adapter.submitList(local)
-                binding.tvEmptyProducts.visibility = View.GONE
-            } else {
-                // If local DB is empty, fetch fresh from server
-                val result = repository.refreshProducts()
-                val refreshed = repository.getLocalProducts()
-                allProducts = refreshed
-                adapter.submitList(refreshed)
-                binding.tvEmptyProducts.visibility = if (refreshed.isEmpty()) View.VISIBLE else View.GONE
+            allProducts = myProducts
+            adapter.submitList(myProducts)
+            if (myProducts.isEmpty()) {
+                binding.tvEmptyProducts.text = "You don't have any products yet.\nAdd products to your store first."
             }
+            binding.tvEmptyProducts.visibility = if (myProducts.isEmpty()) View.VISIBLE else View.GONE
         }
     }
 

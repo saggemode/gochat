@@ -101,6 +101,9 @@ interface ChatDao {
     @Query("UPDATE messages SET isPinned = :isPinned WHERE id = :messageId")
     suspend fun updateMessagePinned(messageId: String, isPinned: Boolean): Int
 
+    @Query("UPDATE messages SET isViewed = 1 WHERE id = :messageId")
+    suspend fun markMessageAsViewed(messageId: String): Int
+
     @Query("SELECT * FROM messages WHERE conversationId = :convId AND isPinned = 1 ORDER BY createdAt DESC")
     fun getPinnedMessagesForConversation(convId: String): Flow<List<Message>>
 

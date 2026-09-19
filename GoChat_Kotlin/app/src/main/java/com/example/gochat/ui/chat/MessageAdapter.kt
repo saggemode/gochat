@@ -62,6 +62,7 @@ class MessageAdapter(
     private val linkFetching = mutableSetOf<String>()
 
     var onImageClicked: ((String) -> Unit)? = null
+    var onMediaClick: ((Message) -> Unit)? = null
     var onBuyNowClicked: ((productId: String, productName: String, price: Double, image: String) -> Unit)? = null
     var onPayInvoiceClicked: ((message: Message, invoiceData: InvoiceData) -> Unit)? = null
     var onMarkShippedClicked: ((message: Message, invoiceData: InvoiceData) -> Unit)? = null
@@ -772,11 +773,18 @@ class MessageAdapter(
                     }
                     
                     // Interaction
-                    layoutImageContainer.setOnClickListener {
-                        message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
-                    }
-                    ivMessageImage.setOnClickListener {
-                        message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
+                    if (message.isViewOnce && message.isViewed) {
+                        layoutImageContainer.setOnClickListener(null)
+                        ivMessageImage.setOnClickListener(null)
+                    } else {
+                        layoutImageContainer.setOnClickListener {
+                            if (onMediaClick != null) onMediaClick?.invoke(message)
+                            else message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
+                        }
+                        ivMessageImage.setOnClickListener {
+                            if (onMediaClick != null) onMediaClick?.invoke(message)
+                            else message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
+                        }
                     }
                 } else {
                     layoutImageContainer.visibility = View.GONE
@@ -1104,11 +1112,18 @@ class MessageAdapter(
                     }
                     
                     // Interaction
-                    layoutImageContainer.setOnClickListener {
-                        message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
-                    }
-                    ivMessageImage.setOnClickListener {
-                        message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
+                    if (message.isViewOnce && message.isViewed) {
+                        layoutImageContainer.setOnClickListener(null)
+                        ivMessageImage.setOnClickListener(null)
+                    } else {
+                        layoutImageContainer.setOnClickListener {
+                            if (onMediaClick != null) onMediaClick?.invoke(message)
+                            else message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
+                        }
+                        ivMessageImage.setOnClickListener {
+                            if (onMediaClick != null) onMediaClick?.invoke(message)
+                            else message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
+                        }
                     }
                 } else {
                     layoutImageContainer.visibility = View.GONE

@@ -33,6 +33,7 @@ class TokenManager private constructor(context: Context) {
         private const val KEY_USER_STATUS = "user_status_text"
         private const val KEY_FCM_TOKEN = "fcm_token"
         private const val KEY_BIOMETRIC_LOCK = "biometric_lock_enabled"
+        private const val KEY_DEVICE_ID = "device_id"
 
         @Volatile
         private var INSTANCE: TokenManager? = null
@@ -218,6 +219,15 @@ class TokenManager private constructor(context: Context) {
             // User is logged in if access token is not expired OR we have a refresh token OR user phone for auto-renewal
             return !isTokenExpired(token) || !getRefreshToken().isNullOrBlank() || !userPhone.isNullOrBlank()
         }
+
+    fun getDeviceId(): String {
+        var devId = prefs.getString(KEY_DEVICE_ID, null)
+        if (devId.isNullOrBlank()) {
+            devId = "dev_" + java.util.UUID.randomUUID().toString().replace("-", "").take(16)
+            prefs.edit().putString(KEY_DEVICE_ID, devId).apply()
+        }
+        return devId
+    }
 
     fun clearAll() {
         prefs.edit().clear().apply()

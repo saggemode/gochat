@@ -37,6 +37,7 @@ class AuthInterceptor(private val tokenManager: TokenManager) : Interceptor {
 
         val authedRequest = originalRequest.newBuilder()
             .header("Authorization", "Bearer $token")
+            .header("X-Device-Id", tokenManager.getDeviceId())
             .build()
 
         return chain.proceed(authedRequest)

@@ -265,7 +265,8 @@ class ChatRepository @Inject constructor(
         replyToText: String? = null,
         replyToSenderName: String? = null,
         mentionedUserIds: List<String> = emptyList(),
-        disappearingDurationSeconds: Int? = null
+        disappearingDurationSeconds: Int? = null,
+        isViewOnce: Boolean = false
     ): Result<Message> {
         val conv = dao.getConversationById(conversationId)
         val currentUserId = tokenManager.userId ?: ""
@@ -305,8 +306,7 @@ class ChatRepository @Inject constructor(
         var localMsg = createOptimisticMessage(
             conversationId, content, type, mediaUrl,
             replyToId, replyToText, replyToSenderName
-        ).copy(status = MessageStatus.SENDING, blurHash = blurHash)
-
+        ).copy(status = MessageStatus.SENDING, blurHash = blurHash, isViewOnce = isViewOnce)
 
         
         val effectiveDisappearingDuration = if (disappearingDurationSeconds != null && disappearingDurationSeconds > 0) {
@@ -373,6 +373,9 @@ class ChatRepository @Inject constructor(
             val body = buildJsonObject {
                 put("content", encryptedContent)
                 put("type", type)
+                if (isViewOnce) {
+                    put("is_view_once", true)
+                }
 
                 networkMediaUrl?.let { put("media_url", it) }
                 blurHash?.let { put("blur_hash", it) }
@@ -403,6 +406,7 @@ class ChatRepository @Inject constructor(
                     mediaUrl = if (!parsed.mediaUrl.isNullOrBlank()) parsed.mediaUrl else finalMediaUrl,
                     blurHash = if (!parsed.blurHash.isNullOrBlank()) parsed.blurHash else blurHash,
                     status = MessageStatus.SENT,
+                    isViewOnce = isViewOnce || parsed.isViewOnce,
                     disappearingDurationSeconds = parsed.disappearingDurationSeconds ?: localMsg.disappearingDurationSeconds,
                     expiresAt = parsed.expiresAt ?: localMsg.expiresAt
                 )
@@ -878,6 +882,10 @@ class ChatRepository @Inject constructor(
 
     suspend fun deleteMessageLocally(messageId: String) {
         dao.markMessageAsDeleted(messageId)
+    }
+
+    suspend fun markMessageAsViewed(messageId: String) {
+        dao.markMessageAsViewed(messageId)
     }
 
     suspend fun editMessageLocally(messageId: String, newContent: String) {

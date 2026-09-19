@@ -55,6 +55,9 @@ class LinkedDevicesActivity : AppCompatActivity() {
         binding.btnLinkDevice.setOnClickListener {
             showLinkDeviceDialog()
         }
+        binding.btnLogOutAllOther.setOnClickListener {
+            confirmUnlinkAllOther()
+        }
     }
 
     private fun loadDevices() {
@@ -71,9 +74,12 @@ class LinkedDevicesActivity : AppCompatActivity() {
             result.onSuccess { devices ->
                 devicesAdapter.submitList(devices)
                 binding.tvNoDevices.visibility = if (devices.isEmpty()) View.VISIBLE else View.GONE
+                val hasOtherDevices = devices.any { !it.isCurrent }
+                binding.btnLogOutAllOther.visibility = if (hasOtherDevices) View.VISIBLE else View.GONE
             }.onFailure { err ->
                 Toast.makeText(this@LinkedDevicesActivity, err.message ?: "Failed to load devices", Toast.LENGTH_SHORT).show()
                 binding.tvNoDevices.visibility = View.VISIBLE
+                binding.btnLogOutAllOther.visibility = View.GONE
             }
         }
     }
@@ -104,10 +110,35 @@ class LinkedDevicesActivity : AppCompatActivity() {
             val result = authRepo.unlinkDevice(deviceId)
             binding.pbLoading.visibility = View.GONE
             result.onSuccess {
-                Toast.makeText(this@LinkedDevicesActivity, "Device logged out", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@LinkedDevicesActivity, "Device logged out and session revoked", Toast.LENGTH_SHORT).show()
                 loadDevices()
             }.onFailure { err ->
                 Toast.makeText(this@LinkedDevicesActivity, err.message ?: "Failed to log out device", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun confirmUnlinkAllOther() {
+        AlertDialog.Builder(this)
+            .setTitle("Log out all other devices?")
+            .setMessage("Are you sure you want to log out all other linked devices? Active JWT sessions on all other browsers and devices will be revoked on the server.")
+            .setPositiveButton("Log out all") { _, _ ->
+                performUnlinkAllOther()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun performUnlinkAllOther() {
+        binding.pbLoading.visibility = View.VISIBLE
+        lifecycleScope.launch {
+            val result = authRepo.unlinkAllOtherDevices()
+            binding.pbLoading.visibility = View.GONE
+            result.onSuccess {
+                Toast.makeText(this@LinkedDevicesActivity, "All other devices logged out", Toast.LENGTH_SHORT).show()
+                loadDevices()
+            }.onFailure { err ->
+                Toast.makeText(this@LinkedDevicesActivity, err.message ?: "Failed to log out other devices", Toast.LENGTH_SHORT).show()
             }
         }
     }

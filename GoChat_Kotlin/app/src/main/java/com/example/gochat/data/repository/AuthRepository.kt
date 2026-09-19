@@ -317,10 +317,7 @@ class AuthRepository @Inject constructor(
     ): Result<Unit> {
         return try {
             val devId = deviceId.ifBlank {
-                android.provider.Settings.Secure.getString(
-                    context.contentResolver,
-                    android.provider.Settings.Secure.ANDROID_ID
-                ) ?: "dev_android"
+                tokenManager.getDeviceId()
             }
             val devName = deviceName.ifBlank {
                 "${android.os.Build.MANUFACTURER.replaceFirstChar { it.uppercase() }} ${android.os.Build.MODEL}"
@@ -347,6 +344,16 @@ class AuthRepository @Inject constructor(
             val response = api.unlinkDevice(deviceId)
             if (response.isSuccessful) Result.success(Unit)
             else Result.failure(Exception("Failed to unlink device (${response.code()})"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun unlinkAllOtherDevices(): Result<Unit> {
+        return try {
+            val response = api.unlinkAllOtherDevices()
+            if (response.isSuccessful) Result.success(Unit)
+            else Result.failure(Exception("Failed to unlink other devices (${response.code()})"))
         } catch (e: Exception) {
             Result.failure(e)
         }

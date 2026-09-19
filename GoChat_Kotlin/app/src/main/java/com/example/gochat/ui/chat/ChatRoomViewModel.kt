@@ -628,7 +628,8 @@ class ChatRoomViewModel @Inject constructor(
     fun sendImageMessage(
         bytes: ByteArray,
         dataUriFallback: String,
-        caption: String = ""
+        caption: String = "",
+        isViewOnce: Boolean = false
     ) {
         val convId = _conversationId.value
         if (convId.isEmpty()) return
@@ -651,15 +652,22 @@ class ChatRoomViewModel @Inject constructor(
             // 2. Send immediately with the local path
             chatRepository.sendMessage(
                 conversationId = convId,
-                content = caption.ifBlank { "Photo" },
+                content = caption.ifBlank { if (isViewOnce) "① Photo" else "Photo" },
                 type = 1, // Image
                 mediaUrl = finalMediaUrl,
                 replyToId = reply?.id,
                 replyToText = reply?.content,
                 replyToSenderName = reply?.senderName,
-                disappearingDurationSeconds = _disappearingDuration.value
+                disappearingDurationSeconds = _disappearingDuration.value,
+                isViewOnce = isViewOnce
             )
             clearReply()
+        }
+    }
+
+    fun markMessageAsViewed(messageId: String) {
+        viewModelScope.launch {
+            chatRepository.markMessageAsViewed(messageId)
         }
     }
 

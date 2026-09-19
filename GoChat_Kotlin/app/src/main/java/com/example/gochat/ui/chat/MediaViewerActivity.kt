@@ -11,6 +11,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.util.Base64
 import android.view.View
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
@@ -40,16 +41,29 @@ class MediaViewerActivity : AppCompatActivity() {
         const val EXTRA_TITLE = "extra_title"
         const val EXTRA_SUBTITLE = "extra_subtitle"
         const val EXTRA_IS_VIDEO = "extra_is_video"
+        const val EXTRA_IS_VIEW_ONCE = "extra_is_view_once"
     }
 
     private lateinit var binding: ActivityMediaViewerBinding
     private var exoPlayer: ExoPlayer? = null
     private var mediaUrl: String = ""
     private var isVideo: Boolean = false
+    private var isViewOnce: Boolean = false
     private var isOverlayVisible = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        isViewOnce = intent.getBooleanExtra(EXTRA_IS_VIEW_ONCE, false)
+        if (isViewOnce) {
+            // Strict View Once screenshot & screen recording blocking:
+            // Prevents screenshots, video captures, and system recents previews at the OS level
+            window.setFlags(
+                WindowManager.LayoutParams.FLAG_SECURE,
+                WindowManager.LayoutParams.FLAG_SECURE
+            )
+        }
+
         WindowCompat.setDecorFitsSystemWindows(window, false)
         binding = ActivityMediaViewerBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -63,17 +77,27 @@ class MediaViewerActivity : AppCompatActivity() {
         isVideo = intent.getBooleanExtra(EXTRA_IS_VIDEO, false) || mediaUrl.contains(".mp4") || mediaUrl.startsWith("data:video")
 
         binding.tvMediaTitle.text = title
-        binding.tvMediaSubtitle.text = subtitle ?: if (isVideo) "Video" else "Photo"
+        binding.tvMediaSubtitle.text = when {
+            isViewOnce -> if (isVideo) "① View Once Video" else "① View Once Photo"
+            subtitle != null -> subtitle
+            isVideo -> "Video"
+            else -> "Photo"
+        }
+
+        if (isViewOnce) {
+            // Strict privacy: View Once media cannot be exported, shared, or saved to gallery
+            binding.btnShareMedia.visibility = View.GONE
+            binding.btnDownloadMedia.visibility = View.GONE
+        } else {
+            binding.btnShareMedia.setOnClickListener {
+                shareMedia()
+            }
+            binding.btnDownloadMedia.setOnClickListener {
+                saveMediaToGallery()
+            }
+        }
 
         binding.btnBackViewer.setOnClickListener { finish() }
-
-        binding.btnShareMedia.setOnClickListener {
-            shareMedia()
-        }
-
-        binding.btnDownloadMedia.setOnClickListener {
-            saveMediaToGallery()
-        }
 
         binding.ivZoomableMedia.setOnClickListener {
             toggleOverlays()

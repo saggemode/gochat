@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -29,6 +30,29 @@ type DeviceSession struct {
 	IPAddress    string    `json:"ip_address"`
 	LastActiveAt time.Time `json:"last_active_at"`
 	IsCurrent    bool      `json:"is_current"`
+	TokenHash    string    `json:"token_hash,omitempty"`
+}
+
+func hashToken(token string) string {
+	if token == "" {
+		return ""
+	}
+	h := sha256.Sum256([]byte(token))
+	return fmt.Sprintf("%x", h[:])
+}
+
+func extractTokenFromRequest(c *gin.Context) string {
+	authHeader := c.GetHeader("Authorization")
+	if authHeader != "" {
+		parts := strings.Split(authHeader, " ")
+		if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
+			return parts[1]
+		}
+	}
+	if cookieToken, err := c.Cookie(accessCookieName); err == nil && cookieToken != "" {
+		return cookieToken
+	}
+	return c.Query("token")
 }
 
 // AuthHandler wraps the Auth Service gRPC client.
@@ -293,6 +317,9 @@ func (h *AuthHandler) RegisterDevice(c *gin.Context) {
 		req.Browser = "GoChat App"
 	}
 
+	token := extractTokenFromRequest(c)
+	tokenHash := hashToken(token)
+
 	sess := DeviceSession{
 		ID:           req.DeviceID,
 		DeviceName:   req.DeviceName,
@@ -302,11 +329,14 @@ func (h *AuthHandler) RegisterDevice(c *gin.Context) {
 		IPAddress:    c.ClientIP(),
 		LastActiveAt: time.Now(),
 		IsCurrent:    true,
+		TokenHash:    tokenHash,
 	}
 
 	if h.redis != nil {
 		data, _ := json.Marshal(sess)
 		_ = h.redis.HSet(c.Request.Context(), "user:devices:"+userID, req.DeviceID, data).Err()
+		// Clear any past revocation for this specific device if it logs in fresh
+		_ = h.redis.Del(c.Request.Context(), "device:revoked:"+userID+":"+req.DeviceID).Err()
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -388,7 +418,7 @@ func (h *AuthHandler) GetActiveSessions(c *gin.Context) {
 	})
 }
 
-// TerminateSession revokes a specific session or unlinks a device by ID.
+// TerminateSession revokes a specific session or unlinks a device by ID and invalidates its JWT token.
 func (h *AuthHandler) TerminateSession(c *gin.Context) {
 	userID := getUserID(c)
 	sessionID := c.Param("id")
@@ -401,39 +431,60 @@ func (h *AuthHandler) TerminateSession(c *gin.Context) {
 	}
 
 	if h.redis != nil && userID != "" {
-		_ = h.redis.HDel(c.Request.Context(), "user:devices:"+userID, sessionID).Err()
+		ctx := c.Request.Context()
+		// 1. Retrieve session to extract token hash for immediate token blacklisting
+		raw, err := h.redis.HGet(ctx, "user:devices:"+userID, sessionID).Result()
+		if err == nil && raw != "" {
+			var sess DeviceSession
+			if json.Unmarshal([]byte(raw), &sess) == nil && sess.TokenHash != "" {
+				// Invalidate the JWT token on the server for 24h
+				_ = h.redis.Set(ctx, "jwt:revoked:"+sess.TokenHash, "revoked", 24*time.Hour).Err()
+			}
+		}
+
+		// 2. Blacklist the device session on the server for 7 days
+		_ = h.redis.Set(ctx, "device:revoked:"+userID+":"+sessionID, "revoked", 7*24*time.Hour).Err()
+
+		// 3. Delete from active devices list
+		_ = h.redis.HDel(ctx, "user:devices:"+userID, sessionID).Err()
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success":       true,
 		"terminated_id": sessionID,
 		"device_id":     sessionID,
+		"message":       "Session and token invalidated on server",
 	})
 }
 
-// TerminateAllOtherSessions logs out all other active devices.
+// TerminateAllOtherSessions logs out all other active devices and invalidates their JWT tokens.
 func (h *AuthHandler) TerminateAllOtherSessions(c *gin.Context) {
 	userID := getUserID(c)
 	currentDeviceID := c.GetHeader("X-Device-Id")
 
 	if h.redis != nil && userID != "" {
-		if currentDeviceID != "" {
-			vals, err := h.redis.HGetAll(c.Request.Context(), "user:devices:"+userID).Result()
-			if err == nil {
-				for devID := range vals {
-					if devID != currentDeviceID {
-						_ = h.redis.HDel(c.Request.Context(), "user:devices:"+userID, devID).Err()
+		ctx := c.Request.Context()
+		vals, err := h.redis.HGetAll(ctx, "user:devices:"+userID).Result()
+		if err == nil {
+			for devID, raw := range vals {
+				if devID != currentDeviceID {
+					var sess DeviceSession
+					if json.Unmarshal([]byte(raw), &sess) == nil && sess.TokenHash != "" {
+						// Blacklist token on server for 24h
+						_ = h.redis.Set(ctx, "jwt:revoked:"+sess.TokenHash, "revoked", 24*time.Hour).Err()
 					}
+					// Blacklist device for 7 days
+					_ = h.redis.Set(ctx, "device:revoked:"+userID+":"+devID, "revoked", 7*24*time.Hour).Err()
+					// Delete from active devices list
+					_ = h.redis.HDel(ctx, "user:devices:"+userID, devID).Err()
 				}
 			}
-		} else {
-			_ = h.redis.Del(c.Request.Context(), "user:devices:"+userID).Err()
 		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "All other active sessions terminated",
+		"message": "All other active sessions and tokens terminated",
 	})
 }
 

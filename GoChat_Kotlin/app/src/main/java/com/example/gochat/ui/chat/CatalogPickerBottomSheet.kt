@@ -90,28 +90,26 @@ class CatalogPickerBottomSheet(
     private fun loadProducts() {
         lifecycleScope.launch {
             binding.progressBarCatalog.visibility = View.VISIBLE
-            val local = repository.getLocalProducts()
+            // Only load the current user's own products — never show other merchants' products
+            val myResult = repository.getMyProducts()
+            val myProducts = myResult.getOrNull().orEmpty()
             binding.progressBarCatalog.visibility = View.GONE
 
-            if (local.isNotEmpty()) {
-                allProducts = local
-                displayedProducts = local
+            if (myProducts.isNotEmpty()) {
+                allProducts = myProducts
+                displayedProducts = myProducts
                 // Auto-select first 4-6 by default for instant convenience
-                local.take(6).forEach { selectedProductIds.add(it.id) }
+                myProducts.take(6).forEach { selectedProductIds.add(it.id) }
                 adapter.notifyDataSetChanged()
                 updateSendButton()
                 binding.tvEmptyCatalog.visibility = View.GONE
             } else {
-                binding.progressBarCatalog.visibility = View.VISIBLE
-                repository.refreshProducts()
-                val refreshed = repository.getLocalProducts()
-                binding.progressBarCatalog.visibility = View.GONE
-                allProducts = refreshed
-                displayedProducts = refreshed
-                refreshed.take(6).forEach { selectedProductIds.add(it.id) }
+                allProducts = emptyList()
+                displayedProducts = emptyList()
                 adapter.notifyDataSetChanged()
                 updateSendButton()
-                binding.tvEmptyCatalog.visibility = if (refreshed.isEmpty()) View.VISIBLE else View.GONE
+                binding.tvEmptyCatalog.text = "You don't have any products yet.\nAdd products to your store first."
+                binding.tvEmptyCatalog.visibility = View.VISIBLE
             }
         }
     }

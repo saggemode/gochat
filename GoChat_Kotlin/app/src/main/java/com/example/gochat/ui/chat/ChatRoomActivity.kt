@@ -495,6 +495,18 @@ class ChatRoomActivity : AppCompatActivity() {
                 }
             }
         ).apply {
+            onMediaClick = { message ->
+                message.mediaUrl?.let { url ->
+                    showFullScreenImage(
+                        mediaUrl = url,
+                        isViewOnce = message.isViewOnce,
+                        isVideo = message.type == com.example.gochat.data.model.MessageType.VIDEO
+                    )
+                    if (message.isViewOnce && !message.isMe && !message.isViewed) {
+                        viewModel.markMessageAsViewed(message.id)
+                    }
+                }
+            }
             onImageClicked = { imageUrl ->
                 showFullScreenImage(imageUrl)
             }
@@ -1029,6 +1041,18 @@ class ChatRoomActivity : AppCompatActivity() {
             dialog.dismiss()
         }
 
+        var isViewOnce = false
+        dialogBinding.btnViewOnceToggle.setOnClickListener {
+            isViewOnce = !isViewOnce
+            if (isViewOnce) {
+                dialogBinding.btnViewOnceToggle.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.gochat_emerald))
+                Toast.makeText(this, "Photo set to view once", Toast.LENGTH_SHORT).show()
+            } else {
+                dialogBinding.btnViewOnceToggle.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.gochat_text_secondary))
+                Toast.makeText(this, "View once disabled", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         dialogBinding.fabSendImage.setOnClickListener {
             val caption = dialogBinding.etImageCaption.text?.toString()?.trim().orEmpty()
             dialogBinding.fabSendImage.isEnabled = false
@@ -1048,7 +1072,8 @@ class ChatRoomActivity : AppCompatActivity() {
                     viewModel.sendImageMessage(
                         bytes = compressed.bytes,
                         dataUriFallback = compressed.dataUri,
-                        caption = caption.ifBlank { getString(R.string.caption_photo) }
+                        caption = caption.ifBlank { if (isViewOnce) "① Photo" else getString(R.string.caption_photo) },
+                        isViewOnce = isViewOnce
                     )
                     HapticEngine.playMessageSent(this@ChatRoomActivity)
                     dialog.dismiss()
@@ -1063,10 +1088,12 @@ class ChatRoomActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private fun showFullScreenImage(mediaUrl: String) {
+    private fun showFullScreenImage(mediaUrl: String, isViewOnce: Boolean = false, isVideo: Boolean = false) {
         val intent = Intent(this, MediaViewerActivity::class.java).apply {
             putExtra(MediaViewerActivity.EXTRA_MEDIA_URL, mediaUrl)
             putExtra(MediaViewerActivity.EXTRA_TITLE, binding.tvChatTitle.text.toString())
+            putExtra(MediaViewerActivity.EXTRA_IS_VIEW_ONCE, isViewOnce)
+            putExtra(MediaViewerActivity.EXTRA_IS_VIDEO, isVideo)
         }
         startActivity(intent)
     }
