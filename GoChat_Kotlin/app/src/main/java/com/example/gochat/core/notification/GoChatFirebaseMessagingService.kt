@@ -1,5 +1,7 @@
 package com.example.gochat.core.notification
 
+import android.content.Context
+import android.os.PowerManager
 import android.util.Log
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.repository.AuthRepository
@@ -69,6 +71,8 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
 
         val eventType = data["type"] ?: data["event_type"] ?: ""
 
+        val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
+
         // Handle Incoming Call notifications
         if (eventType == "incoming_call" || eventType == "call" || eventType == "call_incoming") {
             val callId = data["call_id"] ?: data["id"] ?: "call_${System.currentTimeMillis()}"
@@ -77,35 +81,45 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
             val callType = data["call_type"] ?: "voice"
             val callerAvatar = data["caller_avatar"] ?: data["sender_avatar"] ?: ""
 
+            val callWakeLock = powerManager?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "GoChat:FCMCallWakeLock")?.apply {
+                try { acquire(30000L) } catch (_: Exception) {}
+            }
+
             serviceScope.launch {
-                val resolvedCallerName = chatRepository.resolveSenderTitle(
-                    conversationId = "",
-                    senderId = callerId,
-                    candidateName = rawCallerName,
-                    isGroup = false
-                )
+                try {
+                    val resolvedCallerName = chatRepository.resolveSenderTitle(
+                        conversationId = "",
+                        senderId = callerId,
+                        candidateName = rawCallerName,
+                        isGroup = false
+                    )
 
-                // Persist incoming call record in local Room DB
-                val record = com.example.gochat.data.model.CallRecord(
-                    id = callId,
-                    peerId = callerId,
-                    peerName = resolvedCallerName,
-                    peerAvatar = callerAvatar,
-                    type = if (callType == "video") com.example.gochat.data.model.CallType.VIDEO else com.example.gochat.data.model.CallType.AUDIO,
-                    status = com.example.gochat.data.model.CallStatus.INCOMING,
-                    durationSeconds = 0,
-                    timestamp = System.currentTimeMillis()
-                )
-                callRepository.recordCall(record)
+                    // Persist incoming call record in local Room DB
+                    val record = com.example.gochat.data.model.CallRecord(
+                        id = callId,
+                        peerId = callerId,
+                        peerName = resolvedCallerName,
+                        peerAvatar = callerAvatar,
+                        type = if (callType == "video") com.example.gochat.data.model.CallType.VIDEO else com.example.gochat.data.model.CallType.AUDIO,
+                        status = com.example.gochat.data.model.CallStatus.INCOMING,
+                        durationSeconds = 0,
+                        timestamp = System.currentTimeMillis()
+                    )
+                    callRepository.recordCall(record)
 
-                NotificationHelper.showCallNotificationAsync(
-                    context = applicationContext,
-                    callId = callId,
-                    callerId = callerId,
-                    callerName = resolvedCallerName,
-                    callType = callType,
-                    callerAvatar = callerAvatar
-                )
+                    NotificationHelper.showCallNotificationAsync(
+                        context = applicationContext,
+                        callId = callId,
+                        callerId = callerId,
+                        callerName = resolvedCallerName,
+                        callType = callType,
+                        callerAvatar = callerAvatar
+                    )
+                } finally {
+                    try {
+                        if (callWakeLock?.isHeld == true) callWakeLock.release()
+                    } catch (_: Exception) {}
+                }
             }
             return
         }
@@ -128,15 +142,25 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
             val orderId = data["order_id"] ?: ""
             val productId = data["product_id"] ?: ""
 
+            val orderWakeLock = powerManager?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "GoChat:FCMOrderWakeLock")?.apply {
+                try { acquire(15000L) } catch (_: Exception) {}
+            }
+
             serviceScope.launch {
-                NotificationHelper.showChatNotificationAsync(
-                    context = applicationContext,
-                    conversationId = if (orderId.isNotEmpty()) "order_$orderId" else "product_$productId",
-                    title = title,
-                    body = body,
-                    senderAvatar = "",
-                    isGroup = false
-                )
+                try {
+                    NotificationHelper.showChatNotificationAsync(
+                        context = applicationContext,
+                        conversationId = if (orderId.isNotEmpty()) "order_$orderId" else "product_$productId",
+                        title = title,
+                        body = body,
+                        senderAvatar = "",
+                        isGroup = false
+                    )
+                } finally {
+                    try {
+                        if (orderWakeLock?.isHeld == true) orderWakeLock.release()
+                    } catch (_: Exception) {}
+                }
             }
             return
         }
@@ -153,53 +177,63 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
         val rawType = data["message_type"] ?: data["type_int"]
         val msgTypeInt = rawType?.toIntOrNull() ?: 0
 
+        val messageWakeLock = powerManager?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "GoChat:FCMMessageWakeLock")?.apply {
+            try { acquire(15000L) } catch (_: Exception) {}
+        }
+
         serviceScope.launch {
-            // Resolve actual user display name / contact name (never "User" placeholder)
-            val resolvedTitle = chatRepository.resolveSenderTitle(
-                conversationId = conversationId,
-                senderId = senderId,
-                candidateName = title,
-                isGroup = isGroup
-            )
+            try {
+                // Resolve actual user display name / contact name (never "User" placeholder)
+                val resolvedTitle = chatRepository.resolveSenderTitle(
+                    conversationId = conversationId,
+                    senderId = senderId,
+                    candidateName = title,
+                    isGroup = isGroup
+                )
 
-            if (isChatMessage && conversationId.isNotEmpty()) {
-                try {
-                    chatRepository.ingestIncomingPushMessage(
-                        messageId = messageId,
-                        conversationId = conversationId,
-                        senderId = senderId,
-                        senderName = resolvedTitle,
-                        content = body,
-                        mediaUrl = mediaUrl,
-                        type = msgTypeInt
-                    )
-                    Log.d(TAG, "Ingested push message $messageId into Room DB for conversation $conversationId")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to ingest push message into Room DB: ${e.message}", e)
+                if (isChatMessage && conversationId.isNotEmpty()) {
+                    try {
+                        chatRepository.ingestIncomingPushMessage(
+                            messageId = messageId,
+                            conversationId = conversationId,
+                            senderId = senderId,
+                            senderName = resolvedTitle,
+                            content = body,
+                            mediaUrl = mediaUrl,
+                            type = msgTypeInt
+                        )
+                        Log.d(TAG, "Ingested push message $messageId into Room DB for conversation $conversationId")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to ingest push message into Room DB: ${e.message}", e)
+                    }
                 }
+
+                // 2. Active Chat Suppression check
+                val activeConv = ChatRepository.activeConversationIdStatic
+                if (conversationId.isNotEmpty() && activeConv == conversationId) {
+                    Log.d(TAG, "Suppressing notification: user is active in conversation $conversationId")
+                    return@launch
+                }
+
+                // 3. Mute check
+                val conv = if (conversationId.isNotEmpty()) chatRepository.getConversationById(conversationId) else null
+                val isMuted = conv?.isMuted ?: false
+
+                // 4. Show rich notification with actual peer name / contact name
+                NotificationHelper.showChatNotificationAsync(
+                    context = applicationContext,
+                    conversationId = conversationId,
+                    title = resolvedTitle,
+                    body = body,
+                    senderAvatar = senderAvatar,
+                    isGroup = isGroup,
+                    isMuted = isMuted
+                )
+            } finally {
+                try {
+                    if (messageWakeLock?.isHeld == true) messageWakeLock.release()
+                } catch (_: Exception) {}
             }
-
-            // 2. Active Chat Suppression check
-            val activeConv = ChatRepository.activeConversationIdStatic
-            if (conversationId.isNotEmpty() && activeConv == conversationId) {
-                Log.d(TAG, "Suppressing notification: user is active in conversation $conversationId")
-                return@launch
-            }
-
-            // 3. Mute check
-            val conv = if (conversationId.isNotEmpty()) chatRepository.getConversationById(conversationId) else null
-            val isMuted = conv?.isMuted ?: false
-
-            // 4. Show rich notification with actual peer name / contact name
-            NotificationHelper.showChatNotificationAsync(
-                context = applicationContext,
-                conversationId = conversationId,
-                title = resolvedTitle,
-                body = body,
-                senderAvatar = senderAvatar,
-                isGroup = isGroup,
-                isMuted = isMuted
-            )
         }
     }
 
