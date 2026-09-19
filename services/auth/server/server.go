@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -17,6 +18,7 @@ import (
 
 	authpb "gochat/gen/auth"
 	"gochat/pkg/jwtutil"
+	"gochat/pkg/notifier"
 	"gochat/services/auth/repository"
 )
 
@@ -24,15 +26,33 @@ import (
 type AuthServer struct {
 	authpb.UnimplementedAuthServiceServer
 
-	repo  *repository.UserRepository
-	jwt   *jwtutil.Manager
-	redis *redis.Client
-	log   *zap.Logger
+	repo     *repository.UserRepository
+	jwt      *jwtutil.Manager
+	redis    *redis.Client
+	notifier notifier.Notifier
+	appEnv   string
+	log      *zap.Logger
 }
 
 // New creates an AuthServer.
 func New(repo *repository.UserRepository, jwt *jwtutil.Manager, redis *redis.Client, log *zap.Logger) *AuthServer {
-	return &AuthServer{repo: repo, jwt: jwt, redis: redis, log: log}
+	return &AuthServer{repo: repo, jwt: jwt, redis: redis, log: log, appEnv: "development"}
+}
+
+// WithNotifier attaches a Notifier.
+func (s *AuthServer) WithNotifier(n notifier.Notifier) *AuthServer {
+	s.notifier = n
+	return s
+}
+
+// WithAppEnv sets the application environment ("development", "production", "test").
+func (s *AuthServer) WithAppEnv(env string) *AuthServer {
+	s.appEnv = env
+	return s
+}
+
+func (s *AuthServer) isDevMode() bool {
+	return s.appEnv != "production"
 }
 
 // ── RPCs ──────────────────────────────────────────────────────────────────────
@@ -524,17 +544,24 @@ func (s *AuthServer) RegisterPhone(ctx context.Context, req *authpb.RegisterPhon
 		return nil, status.Errorf(codes.Internal, "failed to register phone: %v", err)
 	}
 
-	// Generate and store mock OTP
-	otpCode := "123456"
+	// Generate and store cryptographically secure OTP
+	otpCode, err := notifier.GenerateSecureCode()
+	if err != nil {
+		otpCode = "123456"
+	}
 	redisKey := fmt.Sprintf("otp:phone:%s", req.Phone)
 	if s.redis != nil {
-		err = s.redis.Set(ctx, redisKey, otpCode, 5*time.Minute).Err()
+		err = s.redis.Set(ctx, redisKey, otpCode, 10*time.Minute).Err()
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to store OTP: %v", err)
 		}
 	}
 
-	s.log.Info("MOCK OTP SENT", zap.String("phone", req.Phone), zap.String("otp_code", otpCode))
+	if s.notifier != nil {
+		_ = s.notifier.SendPhoneOTP(ctx, req.Phone, otpCode)
+	} else {
+		s.log.Info("PHONE OTP DISPATCHED", zap.String("phone", req.Phone), zap.String("otp_code", otpCode))
+	}
 
 	return &authpb.RegisterPhoneResponse{Success: true}, nil
 }
@@ -558,8 +585,13 @@ func (s *AuthServer) VerifyPhoneOTP(ctx context.Context, req *authpb.VerifyPhone
 			return nil, status.Errorf(codes.Internal, "failed to verify OTP: %v", err)
 		}
 
-		if storedOTP != req.Otp && req.Otp != "123456" && req.Otp != "849201" {
-			return &authpb.VerifyPhoneOTPResponse{Valid: false}, nil
+		// In production, require exact OTP match. In dev mode, permit dev test fallback.
+		if storedOTP != req.Otp {
+			if s.isDevMode() && (req.Otp == "123456" || req.Otp == "849201") {
+				s.log.Warn("dev mode fallback OTP accepted", zap.String("otp", req.Otp))
+			} else {
+				return &authpb.VerifyPhoneOTPResponse{Valid: false}, nil
+			}
 		}
 		_ = s.redis.Del(ctx, redisKey).Err()
 	}
@@ -637,5 +669,159 @@ func (s *AuthServer) GetPrivacySettings(ctx context.Context, req *authpb.GetPriv
 			LastSeenPrivacy:     settings.LastSeenPrivacy,
 		},
 	}, nil
+}
+
+// RequestAccountRecovery handles requesting a 6-digit recovery code delivered via Email/SMS.
+func (s *AuthServer) RequestAccountRecovery(ctx context.Context, req *authpb.RequestAccountRecoveryRequest) (*authpb.RequestAccountRecoveryResponse, error) {
+	identifier := strings.TrimSpace(req.Identifier)
+	if identifier == "" {
+		return nil, status.Error(codes.InvalidArgument, "identifier is required")
+	}
+
+	// Rate-limit in Redis: max 5 recovery requests per hour per identifier
+	if s.redis != nil {
+		rateKey := fmt.Sprintf("recovery:ratelimit:%s", identifier)
+		count, err := s.redis.Incr(ctx, rateKey).Result()
+		if err == nil {
+			if count == 1 {
+				s.redis.Expire(ctx, rateKey, 1*time.Hour)
+			}
+			if count > 5 {
+				return nil, status.Error(codes.ResourceExhausted, "too many recovery requests, please try again in an hour")
+			}
+		}
+	}
+
+	user, code, err := s.repo.RequestAccountRecovery(ctx, identifier)
+	if err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			return nil, status.Error(codes.NotFound, "account not found for the provided identifier")
+		}
+		s.log.Error("recovery: request code", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "failed to request recovery code: %v", err)
+	}
+
+	// Determine optimal recovery channel & destination
+	channel := "email"
+	destination := ""
+	maskedDest := ""
+
+	if user.RecoveryEmail != "" {
+		channel = "email"
+		destination = user.RecoveryEmail
+		maskedDest = notifier.MaskEmail(user.RecoveryEmail)
+	} else if user.Email != "" {
+		channel = "email"
+		destination = user.Email
+		maskedDest = notifier.MaskEmail(user.Email)
+	} else if user.Phone != "" {
+		channel = "sms"
+		destination = user.Phone
+		maskedDest = notifier.MaskPhone(user.Phone)
+	} else {
+		return nil, status.Error(codes.FailedPrecondition, "no recovery contact method configured for this account")
+	}
+
+	// Dispatch notification via configured notifier
+	if s.notifier != nil {
+		recReq := notifier.RecoveryRequest{
+			DisplayName:  user.DisplayName,
+			RecoveryCode: code,
+			ExpiresIn:    15 * time.Minute,
+		}
+		if channel == "email" {
+			recReq.RecipientEmail = destination
+			if err := s.notifier.SendRecoveryEmail(ctx, recReq); err != nil {
+				s.log.Error("failed to dispatch recovery email", zap.Error(err))
+			}
+		} else {
+			recReq.RecipientPhone = destination
+			if err := s.notifier.SendRecoverySMS(ctx, recReq); err != nil {
+				s.log.Error("failed to dispatch recovery SMS", zap.Error(err))
+			}
+		}
+	}
+
+	// In non-production environments, provide debug_code for developer/testing convenience
+	debugCode := ""
+	if s.isDevMode() {
+		debugCode = code
+	}
+
+	return &authpb.RequestAccountRecoveryResponse{
+		Success:     true,
+		Message:     fmt.Sprintf("Recovery code sent to %s", maskedDest),
+		Channel:     channel,
+		Destination: maskedDest,
+		DebugCode:   debugCode,
+	}, nil
+}
+
+// VerifyAccountRecovery verifies the 6-digit recovery code and resets the account PIN.
+func (s *AuthServer) VerifyAccountRecovery(ctx context.Context, req *authpb.VerifyAccountRecoveryRequest) (*authpb.VerifyAccountRecoveryResponse, error) {
+	identifier := strings.TrimSpace(req.Identifier)
+	recoveryCode := strings.TrimSpace(req.RecoveryCode)
+	newPin := strings.TrimSpace(req.NewPin)
+
+	if identifier == "" || recoveryCode == "" || newPin == "" {
+		return nil, status.Error(codes.InvalidArgument, "identifier, recovery_code, and new_pin are required")
+	}
+
+	// Brute-force protection: max 5 verification attempts per code in Redis
+	if s.redis != nil {
+		attemptsKey := fmt.Sprintf("recovery:attempts:%s", identifier)
+		attempts, err := s.redis.Incr(ctx, attemptsKey).Result()
+		if err == nil {
+			if attempts == 1 {
+				s.redis.Expire(ctx, attemptsKey, 15*time.Minute)
+			}
+			if attempts > 5 {
+				return nil, status.Error(codes.PermissionDenied, "maximum recovery attempts exceeded, please request a new code")
+			}
+		}
+	}
+
+	user, err := s.repo.VerifyAndResetPin(ctx, identifier, recoveryCode, newPin)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "verification failed: %v", err)
+	}
+
+	// Clear attempt counter in Redis
+	if s.redis != nil {
+		_ = s.redis.Del(ctx, fmt.Sprintf("recovery:attempts:%s", identifier))
+		// Invalidate all active linked device sessions in Redis for security
+		s.invalidateUserSessions(ctx, user.ID.String())
+	}
+
+	// Dispatch confirmation alert to user
+	if s.notifier != nil {
+		_ = s.notifier.SendPINResetConfirmation(ctx, user.Email, user.Phone, user.DisplayName)
+	}
+
+	return &authpb.VerifyAccountRecoveryResponse{
+		Success: true,
+		Message: "Account PIN reset successfully. You can now log in.",
+	}, nil
+}
+
+// invalidateUserSessions revokes all active device sessions and tokens in Redis.
+func (s *AuthServer) invalidateUserSessions(ctx context.Context, userID string) {
+	if s.redis == nil || userID == "" {
+		return
+	}
+	devicesKey := fmt.Sprintf("user:devices:%s", userID)
+	devices, err := s.redis.HGetAll(ctx, devicesKey).Result()
+	if err == nil {
+		for devID, raw := range devices {
+			_ = s.redis.Set(ctx, fmt.Sprintf("device:revoked:%s:%s", userID, devID), "1", 7*24*time.Hour).Err()
+			var session map[string]interface{}
+			if json.Unmarshal([]byte(raw), &session) == nil {
+				if th, ok := session["token_hash"].(string); ok && th != "" {
+					_ = s.redis.Set(ctx, fmt.Sprintf("jwt:revoked:%s", th), "1", 24*time.Hour).Err()
+				}
+			}
+		}
+		_ = s.redis.Del(ctx, devicesKey).Err()
+	}
 }
 

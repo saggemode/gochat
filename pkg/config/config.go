@@ -71,6 +71,23 @@ type Config struct {
 	// CORS
 	CORSOrigins string
 
+	// Application environment
+	AppEnv string // "development", "production", "test"
+
+	// Email / SMTP Notification
+	SMTPHost       string
+	SMTPPort       int
+	SMTPUser       string
+	SMTPPassword   string
+	SMTPFrom       string
+	SMTPSkipVerify bool
+
+	// SMS / Twilio Notification
+	TwilioAccountSID string
+	TwilioAuthToken  string
+	TwilioFromNumber string
+	SMSProviderURL   string
+
 	// gRPC client TLS (used by gateway)
 	GRPCUseTLS        bool
 	GRPCTLSCACertFile string // path to CA cert used to verify server certs
@@ -133,6 +150,20 @@ func Load() *Config {
 		E2EEKeyEncryptionKey: getEnv("E2EE_KEY_ENCRYPTION_KEY", ""),
 
 		CORSOrigins: getEnv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000"),
+
+		AppEnv: getEnv("APP_ENV", "development"),
+
+		SMTPHost:       getEnv("SMTP_HOST", ""),
+		SMTPPort:       getEnvInt("SMTP_PORT", 587),
+		SMTPUser:       getEnv("SMTP_USER", getEnv("SMTP_USERNAME", "")),
+		SMTPPassword:   getEnv("SMTP_PASSWORD", getEnv("SMTP_PASS", "")),
+		SMTPFrom:       getEnv("SMTP_FROM", "GoChat Security <security@gochat.app>"),
+		SMTPSkipVerify: getEnvBool("SMTP_SKIP_VERIFY", false),
+
+		TwilioAccountSID: getEnv("TWILIO_ACCOUNT_SID", ""),
+		TwilioAuthToken:  getEnv("TWILIO_AUTH_TOKEN", ""),
+		TwilioFromNumber: getEnv("TWILIO_FROM_NUMBER", ""),
+		SMSProviderURL:   getEnv("SMS_PROVIDER_URL", ""),
 
 		GRPCUseTLS:        getEnvBool("GRPC_USE_TLS", false),
 		GRPCTLSCACertFile: getEnv("GRPC_TLS_CA_CERT", ""),

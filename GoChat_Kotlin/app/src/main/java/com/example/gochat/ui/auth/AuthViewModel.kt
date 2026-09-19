@@ -10,6 +10,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -159,7 +160,7 @@ class AuthViewModel @Inject constructor(
 
     // ── Sign-in Flow ─────────────────────────────────────────────
 
-    fun submitLogin() {
+    fun submitLogin(password: String = "") {
         val identifier = _uiState.value.identifierInput.trim()
 
         if (identifier.isEmpty()) {
@@ -170,7 +171,7 @@ class AuthViewModel @Inject constructor(
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
         viewModelScope.launch {
-            val result = authRepository.login(identifier = identifier, password = "")
+            val result = authRepository.login(identifier = identifier, password = password)
 
             result.fold(
                 onSuccess = { responseJson ->
@@ -215,19 +216,32 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    // ── Account Recovery ─────────────────────────────────────────
+
+    suspend fun requestAccountRecovery(identifier: String): Result<JsonObject> {
+        return authRepository.requestAccountRecovery(identifier)
+    }
+
+    suspend fun verifyAccountRecovery(
+        identifier: String,
+        recoveryCode: String,
+        newPin: String
+    ): Result<JsonObject> {
+        return authRepository.verifyAccountRecovery(identifier, recoveryCode, newPin)
+    }
+
     // ── Simulated Auto-OTP Flow (mirrors Flutter implementation) ──
 
     private fun startAutoOtpSimulation() {
         autoOtpJob?.cancel()
         autoOtpJob = viewModelScope.launch {
-            delay(700)
+            delay(500)
             _uiState.update {
                 it.copy(
-                    otpCode = "849201",
                     isOtpVerified = true
                 )
             }
-            delay(600)
+            delay(500)
             triggerNavigation()
         }
     }

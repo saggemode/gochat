@@ -10,6 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	authpb "gochat/gen/auth"
 )
@@ -119,4 +121,64 @@ func (s *stubAuthServiceClient) GetPrivacySettings(context.Context, *authpb.GetP
 }
 func (s *stubAuthServiceClient) UpdatePrivacySettings(context.Context, *authpb.UpdatePrivacySettingsRequest, ...grpc.CallOption) (*authpb.UpdatePrivacySettingsResponse, error) {
 	panic("not implemented")
+}
+func (s *stubAuthServiceClient) RequestAccountRecovery(context.Context, *authpb.RequestAccountRecoveryRequest, ...grpc.CallOption) (*authpb.RequestAccountRecoveryResponse, error) {
+	return &authpb.RequestAccountRecoveryResponse{
+		Success:     true,
+		Message:     "Recovery code sent to t***t@example.com",
+		Channel:     "email",
+		Destination: "t***t@example.com",
+		DebugCode:   "654321",
+	}, nil
+}
+func (s *stubAuthServiceClient) VerifyAccountRecovery(_ context.Context, in *authpb.VerifyAccountRecoveryRequest, _ ...grpc.CallOption) (*authpb.VerifyAccountRecoveryResponse, error) {
+	if in.RecoveryCode != "654321" {
+		return nil, status.Error(codes.InvalidArgument, "invalid recovery code")
+	}
+	return &authpb.VerifyAccountRecoveryResponse{
+		Success: true,
+		Message: "Account PIN reset successfully. You can now log in.",
+	}, nil
+}
+
+func TestAuthHandler_AccountRecovery(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	h := NewAuthHandler(&stubAuthServiceClient{}, zap.NewNop())
+
+	r := gin.New()
+	r.POST("/recovery/request", h.RequestAccountRecovery)
+	r.POST("/recovery/verify", h.VerifyAccountRecovery)
+
+	// 1. Request recovery code
+	reqBody := `{"identifier":"test@example.com"}`
+	req := httptest.NewRequest(http.MethodPost, "/recovery/request", strings.NewReader(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK for recovery request, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// 2. Verify with correct code
+	verifyBody := `{"identifier":"test@example.com","recovery_code":"654321","new_pin":"112233"}`
+	req2 := httptest.NewRequest(http.MethodPost, "/recovery/verify", strings.NewReader(verifyBody))
+	req2.Header.Set("Content-Type", "application/json")
+	w2 := httptest.NewRecorder()
+	r.ServeHTTP(w2, req2)
+
+	if w2.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK for recovery verify, got %d: %s", w2.Code, w2.Body.String())
+	}
+
+	// 3. Verify with wrong code
+	wrongVerifyBody := `{"identifier":"test@example.com","recovery_code":"000000","new_pin":"112233"}`
+	req3 := httptest.NewRequest(http.MethodPost, "/recovery/verify", strings.NewReader(wrongVerifyBody))
+	req3.Header.Set("Content-Type", "application/json")
+	w3 := httptest.NewRecorder()
+	r.ServeHTTP(w3, req3)
+
+	if w3.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 Bad Request for wrong recovery code, got %d: %s", w3.Code, w3.Body.String())
+	}
 }

@@ -162,6 +162,48 @@ class AuthRepository @Inject constructor(
         }
     }
 
+    // ── Account Recovery ─────────────────────────────────────────
+
+    suspend fun requestAccountRecovery(identifier: String): Result<JsonObject> {
+        return try {
+            val body = buildJsonObject {
+                put("identifier", identifier.trim())
+            }
+            val response = api.requestAccountRecovery(body)
+            if (response.isSuccessful) {
+                Result.success(response.body() ?: buildJsonObject {})
+            } else {
+                val errorBody = response.errorBody()?.string().orEmpty()
+                Result.failure(Exception(parseError(errorBody, response.code())))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun verifyAccountRecovery(
+        identifier: String,
+        recoveryCode: String,
+        newPin: String
+    ): Result<JsonObject> {
+        return try {
+            val body = buildJsonObject {
+                put("identifier", identifier.trim())
+                put("recovery_code", recoveryCode.trim())
+                put("new_pin", newPin.trim())
+            }
+            val response = api.verifyAccountRecovery(body)
+            if (response.isSuccessful) {
+                Result.success(response.body() ?: buildJsonObject {})
+            } else {
+                val errorBody = response.errorBody()?.string().orEmpty()
+                Result.failure(Exception(parseError(errorBody, response.code())))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     // ── Profile ──────────────────────────────────────────────────
 
     suspend fun updateProfile(

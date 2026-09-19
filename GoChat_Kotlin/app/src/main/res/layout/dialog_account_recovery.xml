@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_bottom_sheet_dark"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <!-- Header -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:contentDescription="Recovery"
+                android:src="@drawable/ic_vpn_key"
+                app:tint="@color/gochat_accent" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:text="Account Recovery"
+                android:textColor="@color/gochat_text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/btnCloseRecovery"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_alignParentEnd="true"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Close"
+            android:padding="4dp"
+            android:src="@drawable/ic_close"
+            app:tint="@color/gochat_text_muted" />
+    </RelativeLayout>
+
+    <TextView
+        android:id="@+id/tvRecoverySubtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="Reset your security PIN via your registered email or phone SMS."
+        android:textColor="@color/gochat_text_muted"
+        android:textSize="13sp" />
+
+    <!-- Error Banner -->
+    <LinearLayout
+        android:id="@+id/layoutRecoveryError"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_error_banner"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="10dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <ImageView
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:contentDescription="Error"
+            android:src="@drawable/ic_error"
+            app:tint="#EF4444" />
+
+        <TextView
+            android:id="@+id/tvRecoveryError"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:textColor="#EF4444"
+            android:textSize="12sp"
+            tools:text="Account not found for this identifier" />
+    </LinearLayout>
+
+    <!-- Info / Masked Destination Banner -->
+    <LinearLayout
+        android:id="@+id/layoutRecoveryInfo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_otp_banner"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="10dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <ImageView
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:contentDescription="Sent"
+            android:src="@drawable/ic_email_verify"
+            app:tint="@color/gochat_accent" />
+
+        <TextView
+            android:id="@+id/tvRecoveryInfo"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:textColor="@color/gochat_accent"
+            android:textSize="12.5sp"
+            tools:text="Recovery code sent to j***e@example.com" />
+    </LinearLayout>
+
+    <!-- ════════════ STEP 1: Request Code ════════════ -->
+    <LinearLayout
+        android:id="@+id/layoutRecoveryStep1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:letterSpacing="0.08"
+            android:text="PHONE, EMAIL, OR USERNAME PIN"
+            android:textColor="@color/gochat_text_secondary"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/etRecoveryIdentifier"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_input_field"
+            android:drawableStart="@drawable/ic_account"
+            android:drawablePadding="10dp"
+            android:hint="e.g. +2348012345678 or user@gochat.app"
+            android:imeOptions="actionDone"
+            android:importantForAutofill="no"
+            android:inputType="textEmailAddress"
+            android:paddingHorizontal="14dp"
+            android:textColor="@color/gochat_text_primary"
+            android:textColorHint="@color/gochat_text_muted"
+            android:textSize="14sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnRequestRecoveryCode"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="16dp"
+            android:backgroundTint="@color/gochat_accent"
+            android:text="Send Recovery Code"
+            android:textAllCaps="false"
+            android:textColor="@color/black"
+            android:textSize="14.5sp"
+            android:textStyle="bold"
+            app:cornerRadius="12dp" />
+    </LinearLayout>
+
+    <!-- ════════════ STEP 2: Verify & Reset ════════════ -->
+    <LinearLayout
+        android:id="@+id/layoutRecoveryStep2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:orientation="vertical"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:letterSpacing="0.08"
+            android:text="6-DIGIT RECOVERY CODE"
+            android:textColor="@color/gochat_text_secondary"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/etRecoveryCode"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_input_field"
+            android:gravity="center"
+            android:hint="Enter 6-digit code"
+            android:imeOptions="actionNext"
+            android:importantForAutofill="no"
+            android:inputType="number"
+            android:letterSpacing="0.2"
+            android:maxLength="6"
+            android:paddingHorizontal="14dp"
+            android:textColor="@color/gochat_accent"
+            android:textColorHint="@color/gochat_text_muted"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:letterSpacing="0.08"
+            android:text="NEW 6-DIGIT SECURITY PIN"
+            android:textColor="@color/gochat_text_secondary"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/etRecoveryNewPin"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_input_field"
+            android:gravity="center"
+            android:hint="••••••"
+            android:imeOptions="actionDone"
+            android:importantForAutofill="no"
+            android:inputType="numberPassword"
+            android:letterSpacing="0.3"
+            android:maxLength="6"
+            android:paddingHorizontal="14dp"
+            android:textColor="@color/gochat_text_primary"
+            android:textColorHint="@color/gochat_text_muted"
+            android:textSize="20sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnVerifyAndReset"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="18dp"
+            android:backgroundTint="@color/gochat_accent"
+            android:text="Reset PIN &amp; Sign In"
+            android:textAllCaps="false"
+            android:textColor="@color/black"
+            android:textSize="14.5sp"
+            android:textStyle="bold"
+            app:cornerRadius="12dp" />
+    </LinearLayout>
+
+    <!-- Loading Spinner -->
+    <ProgressBar
+        android:id="@+id/pbRecoveryLoading"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="12dp"
+        android:indeterminateTint="@color/gochat_accent"
+        android:visibility="gone" />
+
+</LinearLayout>

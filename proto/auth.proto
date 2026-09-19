@@ -60,6 +60,10 @@ service AuthService {
   // Granular Privacy Settings
   rpc UpdatePrivacySettings(UpdatePrivacySettingsRequest) returns (UpdatePrivacySettingsResponse);
   rpc GetPrivacySettings(GetPrivacySettingsRequest) returns (GetPrivacySettingsResponse);
+
+  // Account Recovery
+  rpc RequestAccountRecovery(RequestAccountRecoveryRequest) returns (RequestAccountRecoveryResponse);
+  rpc VerifyAccountRecovery(VerifyAccountRecoveryRequest) returns (VerifyAccountRecoveryResponse);
 }
 
 // ── Messages ─────────────────────────────────────────────────────────────────
@@ -303,4 +307,27 @@ message SubscribePushRequest {
 
 message SubscribePushResponse {
   bool success = 1;
+}
+
+message RequestAccountRecoveryRequest {
+  string identifier = 1;
+}
+
+message RequestAccountRecoveryResponse {
+  bool   success     = 1;
+  string message     = 2;
+  string channel     = 3; // "email" or "sms"
+  string destination = 4; // masked destination
+  string debug_code  = 5; // populated in dev/test mode only
+}
+
+message VerifyAccountRecoveryRequest {
+  string identifier    = 1;
+  string recovery_code = 2;
+  string new_pin       = 3;
+}
+
+message VerifyAccountRecoveryResponse {
+  bool   success = 1;
+  string message = 2;
 }

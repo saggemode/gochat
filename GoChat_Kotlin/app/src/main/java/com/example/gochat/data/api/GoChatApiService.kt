@@ -42,6 +42,16 @@ interface GoChatApiService {
         @Body body: JsonObject
     ): Response<JsonObject>
 
+    @POST(ApiConstants.RECOVERY_REQUEST)
+    suspend fun requestAccountRecovery(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @POST(ApiConstants.RECOVERY_VERIFY)
+    suspend fun verifyAccountRecovery(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
     @GET("api/v1/users/{pin}")
     suspend fun lookupUserByPin(
         @Path("pin") pin: String

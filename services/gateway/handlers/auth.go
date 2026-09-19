@@ -556,11 +556,25 @@ func (h *AuthHandler) RequestAccountRecovery(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Recovery code sent to registered backup contact.",
-		"code":    "849201",
+	resp, err := h.client.RequestAccountRecovery(c.Request.Context(), &authpb.RequestAccountRecoveryRequest{
+		Identifier: req.Identifier,
 	})
+	if err != nil {
+		h.handleGrpcError(c, err, "failed to request recovery code")
+		return
+	}
+
+	res := gin.H{
+		"success":     resp.GetSuccess(),
+		"message":     resp.GetMessage(),
+		"channel":     resp.GetChannel(),
+		"destination": resp.GetDestination(),
+	}
+	if resp.GetDebugCode() != "" {
+		res["code"] = resp.GetDebugCode()
+	}
+
+	c.JSON(http.StatusOK, res)
 }
 
 // VerifyAccountRecovery verifies recovery code and resets PIN.
@@ -576,14 +590,19 @@ func (h *AuthHandler) VerifyAccountRecovery(c *gin.Context) {
 		return
 	}
 
-	if req.RecoveryCode != "849201" && len(req.RecoveryCode) != 6 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid recovery code"})
+	resp, err := h.client.VerifyAccountRecovery(c.Request.Context(), &authpb.VerifyAccountRecoveryRequest{
+		Identifier:   req.Identifier,
+		RecoveryCode: req.RecoveryCode,
+		NewPin:       req.NewPIN,
+	})
+	if err != nil {
+		h.handleGrpcError(c, err, "failed to verify recovery code")
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Account PIN reset successfully. You can now log in.",
+		"success": resp.GetSuccess(),
+		"message": resp.GetMessage(),
 	})
 }
 

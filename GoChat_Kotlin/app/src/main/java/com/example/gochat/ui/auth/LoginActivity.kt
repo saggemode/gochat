@@ -21,8 +21,13 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.gochat.MainActivity
 import com.example.gochat.R
 import com.example.gochat.databinding.ActivityLoginBinding
+import com.example.gochat.databinding.DialogAccountRecoveryBinding
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 
 @AndroidEntryPoint
 class LoginActivity : AppCompatActivity() {
@@ -98,6 +103,11 @@ class LoginActivity : AppCompatActivity() {
             btnSendCode.setOnClickListener {
                 hideKeyboard()
                 viewModel.submitLogin()
+            }
+
+            // Forgot PIN / Recover Account link
+            tvForgotPin.setOnClickListener {
+                showAccountRecoveryDialog()
             }
 
             // Start Messaging Now button (OTP View)
@@ -277,5 +287,101 @@ class LoginActivity : AppCompatActivity() {
         }
         startActivity(intent)
         finish()
+    }
+
+    private fun showAccountRecoveryDialog() {
+        val dialog = BottomSheetDialog(this)
+        val dialogBinding = DialogAccountRecoveryBinding.inflate(layoutInflater)
+        dialog.setContentView(dialogBinding.root)
+
+        val initialIdentifier = binding.etIdentifier.text?.toString().orEmpty().trim()
+        if (initialIdentifier.isNotBlank()) {
+            dialogBinding.etRecoveryIdentifier.setText(initialIdentifier)
+        }
+
+        var recoveryIdentifier = ""
+
+        dialogBinding.btnCloseRecovery.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        // Step 1: Request Recovery Code
+        dialogBinding.btnRequestRecoveryCode.setOnClickListener {
+            val idInput = dialogBinding.etRecoveryIdentifier.text?.toString()?.trim().orEmpty()
+            if (idInput.isEmpty()) {
+                dialogBinding.layoutRecoveryError.visibility = View.VISIBLE
+                dialogBinding.tvRecoveryError.text = "Please enter your phone number, email, or PIN"
+                return@setOnClickListener
+            }
+
+            dialogBinding.layoutRecoveryError.visibility = View.GONE
+            dialogBinding.pbRecoveryLoading.visibility = View.VISIBLE
+            dialogBinding.btnRequestRecoveryCode.isEnabled = false
+
+            lifecycleScope.launch {
+                val result = viewModel.requestAccountRecovery(idInput)
+                dialogBinding.pbRecoveryLoading.visibility = View.GONE
+                dialogBinding.btnRequestRecoveryCode.isEnabled = true
+
+                result.fold(
+                    onSuccess = { res: JsonObject ->
+                        recoveryIdentifier = idInput
+                        val message = res["message"]?.jsonPrimitive?.contentOrNull
+                            ?: "Recovery code sent to your registered contact"
+                        dialogBinding.layoutRecoveryInfo.visibility = View.VISIBLE
+                        dialogBinding.tvRecoveryInfo.text = message
+                        dialogBinding.layoutRecoveryStep1.visibility = View.GONE
+                        dialogBinding.layoutRecoveryStep2.visibility = View.VISIBLE
+                        dialogBinding.etRecoveryCode.requestFocus()
+                    },
+                    onFailure = { error: Throwable ->
+                        dialogBinding.layoutRecoveryError.visibility = View.VISIBLE
+                        dialogBinding.tvRecoveryError.text = error.message?.replaceFirst("Exception: ", "") ?: "Account recovery request failed"
+                    }
+                )
+            }
+        }
+
+        // Step 2: Verify Code and Reset PIN
+        dialogBinding.btnVerifyAndReset.setOnClickListener {
+            val code = dialogBinding.etRecoveryCode.text?.toString()?.trim().orEmpty()
+            val newPin = dialogBinding.etRecoveryNewPin.text?.toString()?.trim().orEmpty()
+
+            if (code.length != 6) {
+                dialogBinding.layoutRecoveryError.visibility = View.VISIBLE
+                dialogBinding.tvRecoveryError.text = "Please enter the 6-digit recovery code"
+                return@setOnClickListener
+            }
+            if (newPin.length != 6) {
+                dialogBinding.layoutRecoveryError.visibility = View.VISIBLE
+                dialogBinding.tvRecoveryError.text = "New PIN must be exactly 6 characters"
+                return@setOnClickListener
+            }
+
+            dialogBinding.layoutRecoveryError.visibility = View.GONE
+            dialogBinding.pbRecoveryLoading.visibility = View.VISIBLE
+            dialogBinding.btnVerifyAndReset.isEnabled = false
+
+            lifecycleScope.launch {
+                val result = viewModel.verifyAccountRecovery(recoveryIdentifier, code, newPin)
+                dialogBinding.pbRecoveryLoading.visibility = View.GONE
+                dialogBinding.btnVerifyAndReset.isEnabled = true
+
+                result.fold(
+                    onSuccess = { _: JsonObject ->
+                        dialog.dismiss()
+                        binding.etIdentifier.setText(recoveryIdentifier)
+                        viewModel.setIdentifierInput(recoveryIdentifier)
+                        viewModel.submitLogin(newPin)
+                    },
+                    onFailure = { error: Throwable ->
+                        dialogBinding.layoutRecoveryError.visibility = View.VISIBLE
+                        dialogBinding.tvRecoveryError.text = error.message?.replaceFirst("Exception: ", "") ?: "Recovery verification failed"
+                    }
+                )
+            }
+        }
+
+        dialog.show()
     }
 }

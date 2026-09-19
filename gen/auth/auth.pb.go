@@ -2513,6 +2513,238 @@ func (x *SubscribePushResponse) GetSuccess() bool {
 	return false
 }
 
+type RequestAccountRecoveryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Identifier    string                 `protobuf:"bytes,1,opt,name=identifier,proto3" json:"identifier,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RequestAccountRecoveryRequest) Reset() {
+	*x = RequestAccountRecoveryRequest{}
+	mi := &file_proto_auth_proto_msgTypes[47]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestAccountRecoveryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestAccountRecoveryRequest) ProtoMessage() {}
+
+func (x *RequestAccountRecoveryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_auth_proto_msgTypes[47]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestAccountRecoveryRequest.ProtoReflect.Descriptor instead.
+func (*RequestAccountRecoveryRequest) Descriptor() ([]byte, []int) {
+	return file_proto_auth_proto_rawDescGZIP(), []int{47}
+}
+
+func (x *RequestAccountRecoveryRequest) GetIdentifier() string {
+	if x != nil {
+		return x.Identifier
+	}
+	return ""
+}
+
+type RequestAccountRecoveryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	Channel       string                 `protobuf:"bytes,3,opt,name=channel,proto3" json:"channel,omitempty"`                      // "email" or "sms"
+	Destination   string                 `protobuf:"bytes,4,opt,name=destination,proto3" json:"destination,omitempty"`              // masked destination
+	DebugCode     string                 `protobuf:"bytes,5,opt,name=debug_code,json=debugCode,proto3" json:"debug_code,omitempty"` // populated in dev/test mode only
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RequestAccountRecoveryResponse) Reset() {
+	*x = RequestAccountRecoveryResponse{}
+	mi := &file_proto_auth_proto_msgTypes[48]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RequestAccountRecoveryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RequestAccountRecoveryResponse) ProtoMessage() {}
+
+func (x *RequestAccountRecoveryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_auth_proto_msgTypes[48]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RequestAccountRecoveryResponse.ProtoReflect.Descriptor instead.
+func (*RequestAccountRecoveryResponse) Descriptor() ([]byte, []int) {
+	return file_proto_auth_proto_rawDescGZIP(), []int{48}
+}
+
+func (x *RequestAccountRecoveryResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *RequestAccountRecoveryResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *RequestAccountRecoveryResponse) GetChannel() string {
+	if x != nil {
+		return x.Channel
+	}
+	return ""
+}
+
+func (x *RequestAccountRecoveryResponse) GetDestination() string {
+	if x != nil {
+		return x.Destination
+	}
+	return ""
+}
+
+func (x *RequestAccountRecoveryResponse) GetDebugCode() string {
+	if x != nil {
+		return x.DebugCode
+	}
+	return ""
+}
+
+type VerifyAccountRecoveryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Identifier    string                 `protobuf:"bytes,1,opt,name=identifier,proto3" json:"identifier,omitempty"`
+	RecoveryCode  string                 `protobuf:"bytes,2,opt,name=recovery_code,json=recoveryCode,proto3" json:"recovery_code,omitempty"`
+	NewPin        string                 `protobuf:"bytes,3,opt,name=new_pin,json=newPin,proto3" json:"new_pin,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VerifyAccountRecoveryRequest) Reset() {
+	*x = VerifyAccountRecoveryRequest{}
+	mi := &file_proto_auth_proto_msgTypes[49]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VerifyAccountRecoveryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VerifyAccountRecoveryRequest) ProtoMessage() {}
+
+func (x *VerifyAccountRecoveryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_auth_proto_msgTypes[49]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VerifyAccountRecoveryRequest.ProtoReflect.Descriptor instead.
+func (*VerifyAccountRecoveryRequest) Descriptor() ([]byte, []int) {
+	return file_proto_auth_proto_rawDescGZIP(), []int{49}
+}
+
+func (x *VerifyAccountRecoveryRequest) GetIdentifier() string {
+	if x != nil {
+		return x.Identifier
+	}
+	return ""
+}
+
+func (x *VerifyAccountRecoveryRequest) GetRecoveryCode() string {
+	if x != nil {
+		return x.RecoveryCode
+	}
+	return ""
+}
+
+func (x *VerifyAccountRecoveryRequest) GetNewPin() string {
+	if x != nil {
+		return x.NewPin
+	}
+	return ""
+}
+
+type VerifyAccountRecoveryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VerifyAccountRecoveryResponse) Reset() {
+	*x = VerifyAccountRecoveryResponse{}
+	mi := &file_proto_auth_proto_msgTypes[50]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VerifyAccountRecoveryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VerifyAccountRecoveryResponse) ProtoMessage() {}
+
+func (x *VerifyAccountRecoveryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_auth_proto_msgTypes[50]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VerifyAccountRecoveryResponse.ProtoReflect.Descriptor instead.
+func (*VerifyAccountRecoveryResponse) Descriptor() ([]byte, []int) {
+	return file_proto_auth_proto_rawDescGZIP(), []int{50}
+}
+
+func (x *VerifyAccountRecoveryResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *VerifyAccountRecoveryResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 var File_proto_auth_proto protoreflect.FileDescriptor
 
 const file_proto_auth_proto_rawDesc = "" +
@@ -2678,7 +2910,27 @@ const file_proto_auth_proto_rawDesc = "" +
 	"push_token\x18\x02 \x01(\tR\tpushToken\x12\x1a\n" +
 	"\bplatform\x18\x03 \x01(\tR\bplatform\"1\n" +
 	"\x15SubscribePushResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess2\x95\f\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"?\n" +
+	"\x1dRequestAccountRecoveryRequest\x12\x1e\n" +
+	"\n" +
+	"identifier\x18\x01 \x01(\tR\n" +
+	"identifier\"\xaf\x01\n" +
+	"\x1eRequestAccountRecoveryResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12\x18\n" +
+	"\achannel\x18\x03 \x01(\tR\achannel\x12 \n" +
+	"\vdestination\x18\x04 \x01(\tR\vdestination\x12\x1d\n" +
+	"\n" +
+	"debug_code\x18\x05 \x01(\tR\tdebugCode\"|\n" +
+	"\x1cVerifyAccountRecoveryRequest\x12\x1e\n" +
+	"\n" +
+	"identifier\x18\x01 \x01(\tR\n" +
+	"identifier\x12#\n" +
+	"\rrecovery_code\x18\x02 \x01(\tR\frecoveryCode\x12\x17\n" +
+	"\anew_pin\x18\x03 \x01(\tR\x06newPin\"S\n" +
+	"\x1dVerifyAccountRecoveryResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage2\xdc\r\n" +
 	"\vAuthService\x129\n" +
 	"\bRegister\x12\x15.auth.RegisterRequest\x1a\x16.auth.RegisterResponse\x120\n" +
 	"\x05Login\x12\x12.auth.LoginRequest\x1a\x13.auth.LoginResponse\x12E\n" +
@@ -2703,7 +2955,9 @@ const file_proto_auth_proto_rawDesc = "" +
 	"\x0eVerifyPhoneOTP\x12\x1b.auth.VerifyPhoneOTPRequest\x1a\x1c.auth.VerifyPhoneOTPResponse\x12H\n" +
 	"\rSubscribePush\x12\x1a.auth.SubscribePushRequest\x1a\x1b.auth.SubscribePushResponse\x12`\n" +
 	"\x15UpdatePrivacySettings\x12\".auth.UpdatePrivacySettingsRequest\x1a#.auth.UpdatePrivacySettingsResponse\x12W\n" +
-	"\x12GetPrivacySettings\x12\x1f.auth.GetPrivacySettingsRequest\x1a .auth.GetPrivacySettingsResponseB\x11Z\x0fgochat/gen/authb\x06proto3"
+	"\x12GetPrivacySettings\x12\x1f.auth.GetPrivacySettingsRequest\x1a .auth.GetPrivacySettingsResponse\x12c\n" +
+	"\x16RequestAccountRecovery\x12#.auth.RequestAccountRecoveryRequest\x1a$.auth.RequestAccountRecoveryResponse\x12`\n" +
+	"\x15VerifyAccountRecovery\x12\".auth.VerifyAccountRecoveryRequest\x1a#.auth.VerifyAccountRecoveryResponseB\x11Z\x0fgochat/gen/authb\x06proto3"
 
 var (
 	file_proto_auth_proto_rawDescOnce sync.Once
@@ -2717,55 +2971,59 @@ func file_proto_auth_proto_rawDescGZIP() []byte {
 	return file_proto_auth_proto_rawDescData
 }
 
-var file_proto_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 47)
+var file_proto_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 51)
 var file_proto_auth_proto_goTypes = []any{
-	(*User)(nil),                          // 0: auth.User
-	(*PrivacySettings)(nil),               // 1: auth.PrivacySettings
-	(*UpdatePrivacySettingsRequest)(nil),  // 2: auth.UpdatePrivacySettingsRequest
-	(*UpdatePrivacySettingsResponse)(nil), // 3: auth.UpdatePrivacySettingsResponse
-	(*GetPrivacySettingsRequest)(nil),     // 4: auth.GetPrivacySettingsRequest
-	(*GetPrivacySettingsResponse)(nil),    // 5: auth.GetPrivacySettingsResponse
-	(*RegisterRequest)(nil),               // 6: auth.RegisterRequest
-	(*RegisterResponse)(nil),              // 7: auth.RegisterResponse
-	(*LoginRequest)(nil),                  // 8: auth.LoginRequest
-	(*LoginResponse)(nil),                 // 9: auth.LoginResponse
-	(*RefreshTokenRequest)(nil),           // 10: auth.RefreshTokenRequest
-	(*RefreshTokenResponse)(nil),          // 11: auth.RefreshTokenResponse
-	(*ValidateTokenRequest)(nil),          // 12: auth.ValidateTokenRequest
-	(*ValidateTokenResponse)(nil),         // 13: auth.ValidateTokenResponse
-	(*GetUserRequest)(nil),                // 14: auth.GetUserRequest
-	(*GetUserResponse)(nil),               // 15: auth.GetUserResponse
-	(*GetUsersRequest)(nil),               // 16: auth.GetUsersRequest
-	(*GetUsersResponse)(nil),              // 17: auth.GetUsersResponse
-	(*UpdateUserRequest)(nil),             // 18: auth.UpdateUserRequest
-	(*UpdateUserResponse)(nil),            // 19: auth.UpdateUserResponse
-	(*DeleteUserRequest)(nil),             // 20: auth.DeleteUserRequest
-	(*DeleteUserResponse)(nil),            // 21: auth.DeleteUserResponse
-	(*LogoutRequest)(nil),                 // 22: auth.LogoutRequest
-	(*LogoutResponse)(nil),                // 23: auth.LogoutResponse
-	(*SetPresenceRequest)(nil),            // 24: auth.SetPresenceRequest
-	(*SetPresenceResponse)(nil),           // 25: auth.SetPresenceResponse
-	(*SetTwoStepPINRequest)(nil),          // 26: auth.SetTwoStepPINRequest
-	(*SetTwoStepPINResponse)(nil),         // 27: auth.SetTwoStepPINResponse
-	(*VerifyTwoStepPINRequest)(nil),       // 28: auth.VerifyTwoStepPINRequest
-	(*VerifyTwoStepPINResponse)(nil),      // 29: auth.VerifyTwoStepPINResponse
-	(*EphemeralPreKey)(nil),               // 30: auth.EphemeralPreKey
-	(*UploadE2EEKeysRequest)(nil),         // 31: auth.UploadE2EEKeysRequest
-	(*UploadE2EEKeysResponse)(nil),        // 32: auth.UploadE2EEKeysResponse
-	(*GetE2EEKeysRequest)(nil),            // 33: auth.GetE2EEKeysRequest
-	(*GetE2EEKeysResponse)(nil),           // 34: auth.GetE2EEKeysResponse
-	(*BlockUserRequest)(nil),              // 35: auth.BlockUserRequest
-	(*BlockUserResponse)(nil),             // 36: auth.BlockUserResponse
-	(*UnblockUserRequest)(nil),            // 37: auth.UnblockUserRequest
-	(*UnblockUserResponse)(nil),           // 38: auth.UnblockUserResponse
-	(*GetBlockedUsersRequest)(nil),        // 39: auth.GetBlockedUsersRequest
-	(*GetBlockedUsersResponse)(nil),       // 40: auth.GetBlockedUsersResponse
-	(*RegisterPhoneRequest)(nil),          // 41: auth.RegisterPhoneRequest
-	(*RegisterPhoneResponse)(nil),         // 42: auth.RegisterPhoneResponse
-	(*VerifyPhoneOTPRequest)(nil),         // 43: auth.VerifyPhoneOTPRequest
-	(*VerifyPhoneOTPResponse)(nil),        // 44: auth.VerifyPhoneOTPResponse
-	(*SubscribePushRequest)(nil),          // 45: auth.SubscribePushRequest
-	(*SubscribePushResponse)(nil),         // 46: auth.SubscribePushResponse
+	(*User)(nil),                           // 0: auth.User
+	(*PrivacySettings)(nil),                // 1: auth.PrivacySettings
+	(*UpdatePrivacySettingsRequest)(nil),   // 2: auth.UpdatePrivacySettingsRequest
+	(*UpdatePrivacySettingsResponse)(nil),  // 3: auth.UpdatePrivacySettingsResponse
+	(*GetPrivacySettingsRequest)(nil),      // 4: auth.GetPrivacySettingsRequest
+	(*GetPrivacySettingsResponse)(nil),     // 5: auth.GetPrivacySettingsResponse
+	(*RegisterRequest)(nil),                // 6: auth.RegisterRequest
+	(*RegisterResponse)(nil),               // 7: auth.RegisterResponse
+	(*LoginRequest)(nil),                   // 8: auth.LoginRequest
+	(*LoginResponse)(nil),                  // 9: auth.LoginResponse
+	(*RefreshTokenRequest)(nil),            // 10: auth.RefreshTokenRequest
+	(*RefreshTokenResponse)(nil),           // 11: auth.RefreshTokenResponse
+	(*ValidateTokenRequest)(nil),           // 12: auth.ValidateTokenRequest
+	(*ValidateTokenResponse)(nil),          // 13: auth.ValidateTokenResponse
+	(*GetUserRequest)(nil),                 // 14: auth.GetUserRequest
+	(*GetUserResponse)(nil),                // 15: auth.GetUserResponse
+	(*GetUsersRequest)(nil),                // 16: auth.GetUsersRequest
+	(*GetUsersResponse)(nil),               // 17: auth.GetUsersResponse
+	(*UpdateUserRequest)(nil),              // 18: auth.UpdateUserRequest
+	(*UpdateUserResponse)(nil),             // 19: auth.UpdateUserResponse
+	(*DeleteUserRequest)(nil),              // 20: auth.DeleteUserRequest
+	(*DeleteUserResponse)(nil),             // 21: auth.DeleteUserResponse
+	(*LogoutRequest)(nil),                  // 22: auth.LogoutRequest
+	(*LogoutResponse)(nil),                 // 23: auth.LogoutResponse
+	(*SetPresenceRequest)(nil),             // 24: auth.SetPresenceRequest
+	(*SetPresenceResponse)(nil),            // 25: auth.SetPresenceResponse
+	(*SetTwoStepPINRequest)(nil),           // 26: auth.SetTwoStepPINRequest
+	(*SetTwoStepPINResponse)(nil),          // 27: auth.SetTwoStepPINResponse
+	(*VerifyTwoStepPINRequest)(nil),        // 28: auth.VerifyTwoStepPINRequest
+	(*VerifyTwoStepPINResponse)(nil),       // 29: auth.VerifyTwoStepPINResponse
+	(*EphemeralPreKey)(nil),                // 30: auth.EphemeralPreKey
+	(*UploadE2EEKeysRequest)(nil),          // 31: auth.UploadE2EEKeysRequest
+	(*UploadE2EEKeysResponse)(nil),         // 32: auth.UploadE2EEKeysResponse
+	(*GetE2EEKeysRequest)(nil),             // 33: auth.GetE2EEKeysRequest
+	(*GetE2EEKeysResponse)(nil),            // 34: auth.GetE2EEKeysResponse
+	(*BlockUserRequest)(nil),               // 35: auth.BlockUserRequest
+	(*BlockUserResponse)(nil),              // 36: auth.BlockUserResponse
+	(*UnblockUserRequest)(nil),             // 37: auth.UnblockUserRequest
+	(*UnblockUserResponse)(nil),            // 38: auth.UnblockUserResponse
+	(*GetBlockedUsersRequest)(nil),         // 39: auth.GetBlockedUsersRequest
+	(*GetBlockedUsersResponse)(nil),        // 40: auth.GetBlockedUsersResponse
+	(*RegisterPhoneRequest)(nil),           // 41: auth.RegisterPhoneRequest
+	(*RegisterPhoneResponse)(nil),          // 42: auth.RegisterPhoneResponse
+	(*VerifyPhoneOTPRequest)(nil),          // 43: auth.VerifyPhoneOTPRequest
+	(*VerifyPhoneOTPResponse)(nil),         // 44: auth.VerifyPhoneOTPResponse
+	(*SubscribePushRequest)(nil),           // 45: auth.SubscribePushRequest
+	(*SubscribePushResponse)(nil),          // 46: auth.SubscribePushResponse
+	(*RequestAccountRecoveryRequest)(nil),  // 47: auth.RequestAccountRecoveryRequest
+	(*RequestAccountRecoveryResponse)(nil), // 48: auth.RequestAccountRecoveryResponse
+	(*VerifyAccountRecoveryRequest)(nil),   // 49: auth.VerifyAccountRecoveryRequest
+	(*VerifyAccountRecoveryResponse)(nil),  // 50: auth.VerifyAccountRecoveryResponse
 }
 var file_proto_auth_proto_depIdxs = []int32{
 	1,  // 0: auth.UpdatePrivacySettingsRequest.settings:type_name -> auth.PrivacySettings
@@ -2799,30 +3057,34 @@ var file_proto_auth_proto_depIdxs = []int32{
 	45, // 28: auth.AuthService.SubscribePush:input_type -> auth.SubscribePushRequest
 	2,  // 29: auth.AuthService.UpdatePrivacySettings:input_type -> auth.UpdatePrivacySettingsRequest
 	4,  // 30: auth.AuthService.GetPrivacySettings:input_type -> auth.GetPrivacySettingsRequest
-	7,  // 31: auth.AuthService.Register:output_type -> auth.RegisterResponse
-	9,  // 32: auth.AuthService.Login:output_type -> auth.LoginResponse
-	11, // 33: auth.AuthService.RefreshToken:output_type -> auth.RefreshTokenResponse
-	13, // 34: auth.AuthService.ValidateToken:output_type -> auth.ValidateTokenResponse
-	15, // 35: auth.AuthService.GetUser:output_type -> auth.GetUserResponse
-	19, // 36: auth.AuthService.UpdateUser:output_type -> auth.UpdateUserResponse
-	21, // 37: auth.AuthService.DeleteUser:output_type -> auth.DeleteUserResponse
-	23, // 38: auth.AuthService.Logout:output_type -> auth.LogoutResponse
-	17, // 39: auth.AuthService.GetUsers:output_type -> auth.GetUsersResponse
-	25, // 40: auth.AuthService.SetPresence:output_type -> auth.SetPresenceResponse
-	27, // 41: auth.AuthService.SetTwoStepPIN:output_type -> auth.SetTwoStepPINResponse
-	29, // 42: auth.AuthService.VerifyTwoStepPIN:output_type -> auth.VerifyTwoStepPINResponse
-	32, // 43: auth.AuthService.UploadE2EEKeys:output_type -> auth.UploadE2EEKeysResponse
-	34, // 44: auth.AuthService.GetE2EEKeys:output_type -> auth.GetE2EEKeysResponse
-	36, // 45: auth.AuthService.BlockUser:output_type -> auth.BlockUserResponse
-	38, // 46: auth.AuthService.UnblockUser:output_type -> auth.UnblockUserResponse
-	40, // 47: auth.AuthService.GetBlockedUsers:output_type -> auth.GetBlockedUsersResponse
-	42, // 48: auth.AuthService.RegisterPhone:output_type -> auth.RegisterPhoneResponse
-	44, // 49: auth.AuthService.VerifyPhoneOTP:output_type -> auth.VerifyPhoneOTPResponse
-	46, // 50: auth.AuthService.SubscribePush:output_type -> auth.SubscribePushResponse
-	3,  // 51: auth.AuthService.UpdatePrivacySettings:output_type -> auth.UpdatePrivacySettingsResponse
-	5,  // 52: auth.AuthService.GetPrivacySettings:output_type -> auth.GetPrivacySettingsResponse
-	31, // [31:53] is the sub-list for method output_type
-	9,  // [9:31] is the sub-list for method input_type
+	47, // 31: auth.AuthService.RequestAccountRecovery:input_type -> auth.RequestAccountRecoveryRequest
+	49, // 32: auth.AuthService.VerifyAccountRecovery:input_type -> auth.VerifyAccountRecoveryRequest
+	7,  // 33: auth.AuthService.Register:output_type -> auth.RegisterResponse
+	9,  // 34: auth.AuthService.Login:output_type -> auth.LoginResponse
+	11, // 35: auth.AuthService.RefreshToken:output_type -> auth.RefreshTokenResponse
+	13, // 36: auth.AuthService.ValidateToken:output_type -> auth.ValidateTokenResponse
+	15, // 37: auth.AuthService.GetUser:output_type -> auth.GetUserResponse
+	19, // 38: auth.AuthService.UpdateUser:output_type -> auth.UpdateUserResponse
+	21, // 39: auth.AuthService.DeleteUser:output_type -> auth.DeleteUserResponse
+	23, // 40: auth.AuthService.Logout:output_type -> auth.LogoutResponse
+	17, // 41: auth.AuthService.GetUsers:output_type -> auth.GetUsersResponse
+	25, // 42: auth.AuthService.SetPresence:output_type -> auth.SetPresenceResponse
+	27, // 43: auth.AuthService.SetTwoStepPIN:output_type -> auth.SetTwoStepPINResponse
+	29, // 44: auth.AuthService.VerifyTwoStepPIN:output_type -> auth.VerifyTwoStepPINResponse
+	32, // 45: auth.AuthService.UploadE2EEKeys:output_type -> auth.UploadE2EEKeysResponse
+	34, // 46: auth.AuthService.GetE2EEKeys:output_type -> auth.GetE2EEKeysResponse
+	36, // 47: auth.AuthService.BlockUser:output_type -> auth.BlockUserResponse
+	38, // 48: auth.AuthService.UnblockUser:output_type -> auth.UnblockUserResponse
+	40, // 49: auth.AuthService.GetBlockedUsers:output_type -> auth.GetBlockedUsersResponse
+	42, // 50: auth.AuthService.RegisterPhone:output_type -> auth.RegisterPhoneResponse
+	44, // 51: auth.AuthService.VerifyPhoneOTP:output_type -> auth.VerifyPhoneOTPResponse
+	46, // 52: auth.AuthService.SubscribePush:output_type -> auth.SubscribePushResponse
+	3,  // 53: auth.AuthService.UpdatePrivacySettings:output_type -> auth.UpdatePrivacySettingsResponse
+	5,  // 54: auth.AuthService.GetPrivacySettings:output_type -> auth.GetPrivacySettingsResponse
+	48, // 55: auth.AuthService.RequestAccountRecovery:output_type -> auth.RequestAccountRecoveryResponse
+	50, // 56: auth.AuthService.VerifyAccountRecovery:output_type -> auth.VerifyAccountRecoveryResponse
+	33, // [33:57] is the sub-list for method output_type
+	9,  // [9:33] is the sub-list for method input_type
 	9,  // [9:9] is the sub-list for extension type_name
 	9,  // [9:9] is the sub-list for extension extendee
 	0,  // [0:9] is the sub-list for field type_name
@@ -2839,7 +3101,7 @@ func file_proto_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_auth_proto_rawDesc), len(file_proto_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   47,
+			NumMessages:   51,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

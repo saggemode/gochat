@@ -192,3 +192,9 @@ func (m *mockAuthClient) GetPrivacySettings(_ context.Context, _ *authpb.GetPriv
 func (m *mockAuthClient) UpdatePrivacySettings(_ context.Context, _ *authpb.UpdatePrivacySettingsRequest, _ ...grpc.CallOption) (*authpb.UpdatePrivacySettingsResponse, error) {
 	panic("not used in middleware tests")
 }
+func (m *mockAuthClient) RequestAccountRecovery(_ context.Context, _ *authpb.RequestAccountRecoveryRequest, _ ...grpc.CallOption) (*authpb.RequestAccountRecoveryResponse, error) {
+	panic("not used in middleware tests")
+}
+func (m *mockAuthClient) VerifyAccountRecovery(_ context.Context, _ *authpb.VerifyAccountRecoveryRequest, _ ...grpc.CallOption) (*authpb.VerifyAccountRecoveryResponse, error) {
+	panic("not used in middleware tests")
+}

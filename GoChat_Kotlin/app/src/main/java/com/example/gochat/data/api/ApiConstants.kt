@@ -23,6 +23,8 @@ object ApiConstants {
     const val SYNC_CONTACTS = "api/v1/users/sync"
     const val USER_PROFILE = "api/v1/users/me"
     const val SUBSCRIBE_PUSH = "api/v1/auth/push/subscribe"
+    const val RECOVERY_REQUEST = "api/v1/auth/recovery/request"
+    const val RECOVERY_VERIFY = "api/v1/auth/recovery/verify"
 
     // ── Conversations & Messages ─────────────────────────────────
     const val CONVERSATIONS = "api/v1/chat/conversations"

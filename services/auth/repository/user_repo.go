@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"gochat/pkg/crypto"
+	"gochat/pkg/notifier"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -35,6 +36,7 @@ type User struct {
 	PhoneVerified bool
 	PIN           string
 	CountryCode   string
+	RecoveryEmail string
 }
 
 // RefreshToken represents a stored refresh token JTI.
@@ -208,7 +210,8 @@ func (r *UserRepository) GetUserByIdentifier(ctx context.Context, identifier str
 	user := &User{}
 	err := r.db.QueryRow(ctx, `
 		SELECT id, COALESCE(email, ''), COALESCE(password_hash, ''), COALESCE(display_name, 'GoChat User'), COALESCE(avatar_url, ''), COALESCE(status_text, ''),
-		       COALESCE(is_online, false), COALESCE(last_seen, created_at, NOW()), COALESCE(created_at, NOW()), COALESCE(updated_at, NOW()), COALESCE(phone, ''), COALESCE(phone_verified, false), COALESCE(pin, '8492A1'), COALESCE(country_code, 'NG')
+		       COALESCE(is_online, false), COALESCE(last_seen, created_at, NOW()), COALESCE(created_at, NOW()), COALESCE(updated_at, NOW()), COALESCE(phone, ''), COALESCE(phone_verified, false), COALESCE(pin, '8492A1'), COALESCE(country_code, 'NG'),
+		       COALESCE(recovery_email, '')
 		FROM users 
 		WHERE LOWER(email) = LOWER($1) 
 		   OR phone = $1 
@@ -222,6 +225,7 @@ func (r *UserRepository) GetUserByIdentifier(ctx context.Context, identifier str
 		&user.ID, &user.Email, &user.PasswordHash, &user.DisplayName,
 		&user.AvatarURL, &user.StatusText, &user.IsOnline,
 		&user.LastSeen, &user.CreatedAt, &user.UpdatedAt, &user.Phone, &user.PhoneVerified, &user.PIN, &user.CountryCode,
+		&user.RecoveryEmail,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrUserNotFound
@@ -237,12 +241,14 @@ func (r *UserRepository) GetUserByID(ctx context.Context, id uuid.UUID) (*User, 
 	user := &User{}
 	err := r.db.QueryRow(ctx, `
 		SELECT id, COALESCE(email, ''), COALESCE(password_hash, ''), COALESCE(display_name, 'GoChat User'), COALESCE(avatar_url, ''), COALESCE(status_text, ''),
-		       COALESCE(is_online, false), COALESCE(last_seen, created_at, NOW()), COALESCE(created_at, NOW()), COALESCE(updated_at, NOW()), COALESCE(phone, ''), COALESCE(phone_verified, false), COALESCE(pin, '8492A1'), COALESCE(country_code, 'NG')
+		       COALESCE(is_online, false), COALESCE(last_seen, created_at, NOW()), COALESCE(created_at, NOW()), COALESCE(updated_at, NOW()), COALESCE(phone, ''), COALESCE(phone_verified, false), COALESCE(pin, '8492A1'), COALESCE(country_code, 'NG'),
+		       COALESCE(recovery_email, '')
 		FROM users WHERE id = $1
 	`, id).Scan(
 		&user.ID, &user.Email, &user.PasswordHash, &user.DisplayName,
 		&user.AvatarURL, &user.StatusText, &user.IsOnline,
 		&user.LastSeen, &user.CreatedAt, &user.UpdatedAt, &user.Phone, &user.PhoneVerified, &user.PIN, &user.CountryCode,
+		&user.RecoveryEmail,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrUserNotFound
@@ -876,20 +882,20 @@ func (r *UserRepository) SetRecoveryEmail(ctx context.Context, userID uuid.UUID,
 	return err
 }
 
-func (r *UserRepository) RequestAccountRecovery(ctx context.Context, identifier string) (string, error) {
+func (r *UserRepository) RequestAccountRecovery(ctx context.Context, identifier string) (*User, string, error) {
 	user, err := r.GetUserByIdentifier(ctx, identifier)
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 
-	// Generate 6-digit recovery code
-	b := make([]byte, 3)
-	_, _ = rand.Read(b)
-	recoveryCode := fmt.Sprintf("%06d", int(b[0])%1000000)
+	recoveryCode, err := notifier.GenerateSecureCode()
+	if err != nil {
+		return nil, "", fmt.Errorf("generating recovery code: %w", err)
+	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(recoveryCode), bcrypt.DefaultCost)
 	if err != nil {
-		return "", err
+		return nil, "", fmt.Errorf("hashing recovery code: %w", err)
 	}
 
 	expiresAt := time.Now().Add(15 * time.Minute)
@@ -901,16 +907,16 @@ func (r *UserRepository) RequestAccountRecovery(ctx context.Context, identifier 
 	`, user.ID, string(hash), expiresAt)
 
 	if err != nil {
-		return "", err
+		return nil, "", fmt.Errorf("saving recovery code: %w", err)
 	}
 
-	return recoveryCode, nil
+	return user, recoveryCode, nil
 }
 
-func (r *UserRepository) VerifyAndResetPin(ctx context.Context, identifier, recoveryCode, newPin string) error {
+func (r *UserRepository) VerifyAndResetPin(ctx context.Context, identifier, recoveryCode, newPin string) (*User, error) {
 	user, err := r.GetUserByIdentifier(ctx, identifier)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var hash string
@@ -920,25 +926,36 @@ func (r *UserRepository) VerifyAndResetPin(ctx context.Context, identifier, reco
 		FROM users WHERE id = $1
 	`, user.ID).Scan(&hash, &expiresAt)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if hash == "" || !expiresAt.Valid || time.Now().After(expiresAt.Time) {
-		return errors.New("recovery code expired or not requested")
+		return nil, errors.New("recovery code expired or not requested")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(recoveryCode)); err != nil {
-		return errors.New("invalid recovery code")
+		return nil, errors.New("invalid recovery code")
 	}
 
-	// Code verified — update PIN and clear recovery code
+	// Code verified — hash new PIN for two_factor_pin_hash, update pin, and clear recovery code
+	pinHash, err := bcrypt.GenerateFromPassword([]byte(newPin), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("hashing new pin: %w", err)
+	}
+
 	_, err = r.db.Exec(ctx, `
 		UPDATE users 
-		SET pin = $2, recovery_code_hash = '', recovery_expires_at = NULL 
+		SET pin = $2, two_factor_pin_hash = $3, recovery_code_hash = '', recovery_expires_at = NULL 
 		WHERE id = $1
-	`, user.ID, newPin)
+	`, user.ID, newPin, string(pinHash))
+	if err != nil {
+		return nil, fmt.Errorf("updating pin: %w", err)
+	}
 
-	return err
+	// Invalidate all active refresh tokens for this user for security
+	_, _ = r.db.Exec(ctx, `UPDATE refresh_tokens SET revoked = true WHERE user_id = $1`, user.ID)
+
+	return user, nil
 }
 
 // ── Granular Privacy Settings Methods ───────────────────────────────────────

@@ -21,6 +21,7 @@ import (
 	"gochat/pkg/health"
 	"gochat/pkg/jwtutil"
 	"gochat/pkg/logger"
+	"gochat/pkg/notifier"
 	"gochat/services/auth/repository"
 	"gochat/services/auth/server"
 )
@@ -80,6 +81,9 @@ func main() {
 	// ── Repository ────────────────────────────────────────────────────────────
 	repo := repository.NewUserRepositoryWithEncryptor(db, enc)
 
+	// ── Notifier ──────────────────────────────────────────────────────────────
+	notif := notifier.New(cfg, log)
+
 	// ── gRPC Server ───────────────────────────────────────────────────────────
 	grpcServer := grpc.NewServer(
 		grpc.KeepaliveParams(keepalive.ServerParameters{
@@ -93,7 +97,8 @@ func main() {
 		),
 	)
 
-	authpb.RegisterAuthServiceServer(grpcServer, server.New(repo, jwtMgr, redisClient, log))
+	authServer := server.New(repo, jwtMgr, redisClient, log).WithNotifier(notif).WithAppEnv(cfg.AppEnv)
+	authpb.RegisterAuthServiceServer(grpcServer, authServer)
 	reflection.Register(grpcServer) // enables grpcurl for debugging
 
 	// ── Token cleanup goroutine ───────────────────────────────────────────────

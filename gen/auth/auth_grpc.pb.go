@@ -19,28 +19,30 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthService_Register_FullMethodName              = "/auth.AuthService/Register"
-	AuthService_Login_FullMethodName                 = "/auth.AuthService/Login"
-	AuthService_RefreshToken_FullMethodName          = "/auth.AuthService/RefreshToken"
-	AuthService_ValidateToken_FullMethodName         = "/auth.AuthService/ValidateToken"
-	AuthService_GetUser_FullMethodName               = "/auth.AuthService/GetUser"
-	AuthService_UpdateUser_FullMethodName            = "/auth.AuthService/UpdateUser"
-	AuthService_DeleteUser_FullMethodName            = "/auth.AuthService/DeleteUser"
-	AuthService_Logout_FullMethodName                = "/auth.AuthService/Logout"
-	AuthService_GetUsers_FullMethodName              = "/auth.AuthService/GetUsers"
-	AuthService_SetPresence_FullMethodName           = "/auth.AuthService/SetPresence"
-	AuthService_SetTwoStepPIN_FullMethodName         = "/auth.AuthService/SetTwoStepPIN"
-	AuthService_VerifyTwoStepPIN_FullMethodName      = "/auth.AuthService/VerifyTwoStepPIN"
-	AuthService_UploadE2EEKeys_FullMethodName        = "/auth.AuthService/UploadE2EEKeys"
-	AuthService_GetE2EEKeys_FullMethodName           = "/auth.AuthService/GetE2EEKeys"
-	AuthService_BlockUser_FullMethodName             = "/auth.AuthService/BlockUser"
-	AuthService_UnblockUser_FullMethodName           = "/auth.AuthService/UnblockUser"
-	AuthService_GetBlockedUsers_FullMethodName       = "/auth.AuthService/GetBlockedUsers"
-	AuthService_RegisterPhone_FullMethodName         = "/auth.AuthService/RegisterPhone"
-	AuthService_VerifyPhoneOTP_FullMethodName        = "/auth.AuthService/VerifyPhoneOTP"
-	AuthService_SubscribePush_FullMethodName         = "/auth.AuthService/SubscribePush"
-	AuthService_UpdatePrivacySettings_FullMethodName = "/auth.AuthService/UpdatePrivacySettings"
-	AuthService_GetPrivacySettings_FullMethodName    = "/auth.AuthService/GetPrivacySettings"
+	AuthService_Register_FullMethodName               = "/auth.AuthService/Register"
+	AuthService_Login_FullMethodName                  = "/auth.AuthService/Login"
+	AuthService_RefreshToken_FullMethodName           = "/auth.AuthService/RefreshToken"
+	AuthService_ValidateToken_FullMethodName          = "/auth.AuthService/ValidateToken"
+	AuthService_GetUser_FullMethodName                = "/auth.AuthService/GetUser"
+	AuthService_UpdateUser_FullMethodName             = "/auth.AuthService/UpdateUser"
+	AuthService_DeleteUser_FullMethodName             = "/auth.AuthService/DeleteUser"
+	AuthService_Logout_FullMethodName                 = "/auth.AuthService/Logout"
+	AuthService_GetUsers_FullMethodName               = "/auth.AuthService/GetUsers"
+	AuthService_SetPresence_FullMethodName            = "/auth.AuthService/SetPresence"
+	AuthService_SetTwoStepPIN_FullMethodName          = "/auth.AuthService/SetTwoStepPIN"
+	AuthService_VerifyTwoStepPIN_FullMethodName       = "/auth.AuthService/VerifyTwoStepPIN"
+	AuthService_UploadE2EEKeys_FullMethodName         = "/auth.AuthService/UploadE2EEKeys"
+	AuthService_GetE2EEKeys_FullMethodName            = "/auth.AuthService/GetE2EEKeys"
+	AuthService_BlockUser_FullMethodName              = "/auth.AuthService/BlockUser"
+	AuthService_UnblockUser_FullMethodName            = "/auth.AuthService/UnblockUser"
+	AuthService_GetBlockedUsers_FullMethodName        = "/auth.AuthService/GetBlockedUsers"
+	AuthService_RegisterPhone_FullMethodName          = "/auth.AuthService/RegisterPhone"
+	AuthService_VerifyPhoneOTP_FullMethodName         = "/auth.AuthService/VerifyPhoneOTP"
+	AuthService_SubscribePush_FullMethodName          = "/auth.AuthService/SubscribePush"
+	AuthService_UpdatePrivacySettings_FullMethodName  = "/auth.AuthService/UpdatePrivacySettings"
+	AuthService_GetPrivacySettings_FullMethodName     = "/auth.AuthService/GetPrivacySettings"
+	AuthService_RequestAccountRecovery_FullMethodName = "/auth.AuthService/RequestAccountRecovery"
+	AuthService_VerifyAccountRecovery_FullMethodName  = "/auth.AuthService/VerifyAccountRecovery"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -85,6 +87,9 @@ type AuthServiceClient interface {
 	// Granular Privacy Settings
 	UpdatePrivacySettings(ctx context.Context, in *UpdatePrivacySettingsRequest, opts ...grpc.CallOption) (*UpdatePrivacySettingsResponse, error)
 	GetPrivacySettings(ctx context.Context, in *GetPrivacySettingsRequest, opts ...grpc.CallOption) (*GetPrivacySettingsResponse, error)
+	// Account Recovery
+	RequestAccountRecovery(ctx context.Context, in *RequestAccountRecoveryRequest, opts ...grpc.CallOption) (*RequestAccountRecoveryResponse, error)
+	VerifyAccountRecovery(ctx context.Context, in *VerifyAccountRecoveryRequest, opts ...grpc.CallOption) (*VerifyAccountRecoveryResponse, error)
 }
 
 type authServiceClient struct {
@@ -315,6 +320,26 @@ func (c *authServiceClient) GetPrivacySettings(ctx context.Context, in *GetPriva
 	return out, nil
 }
 
+func (c *authServiceClient) RequestAccountRecovery(ctx context.Context, in *RequestAccountRecoveryRequest, opts ...grpc.CallOption) (*RequestAccountRecoveryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RequestAccountRecoveryResponse)
+	err := c.cc.Invoke(ctx, AuthService_RequestAccountRecovery_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) VerifyAccountRecovery(ctx context.Context, in *VerifyAccountRecoveryRequest, opts ...grpc.CallOption) (*VerifyAccountRecoveryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(VerifyAccountRecoveryResponse)
+	err := c.cc.Invoke(ctx, AuthService_VerifyAccountRecovery_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthServiceServer is the server API for AuthService service.
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
@@ -357,6 +382,9 @@ type AuthServiceServer interface {
 	// Granular Privacy Settings
 	UpdatePrivacySettings(context.Context, *UpdatePrivacySettingsRequest) (*UpdatePrivacySettingsResponse, error)
 	GetPrivacySettings(context.Context, *GetPrivacySettingsRequest) (*GetPrivacySettingsResponse, error)
+	// Account Recovery
+	RequestAccountRecovery(context.Context, *RequestAccountRecoveryRequest) (*RequestAccountRecoveryResponse, error)
+	VerifyAccountRecovery(context.Context, *VerifyAccountRecoveryRequest) (*VerifyAccountRecoveryResponse, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -432,6 +460,12 @@ func (UnimplementedAuthServiceServer) UpdatePrivacySettings(context.Context, *Up
 }
 func (UnimplementedAuthServiceServer) GetPrivacySettings(context.Context, *GetPrivacySettingsRequest) (*GetPrivacySettingsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPrivacySettings not implemented")
+}
+func (UnimplementedAuthServiceServer) RequestAccountRecovery(context.Context, *RequestAccountRecoveryRequest) (*RequestAccountRecoveryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RequestAccountRecovery not implemented")
+}
+func (UnimplementedAuthServiceServer) VerifyAccountRecovery(context.Context, *VerifyAccountRecoveryRequest) (*VerifyAccountRecoveryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method VerifyAccountRecovery not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
@@ -850,6 +884,42 @@ func _AuthService_GetPrivacySettings_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_RequestAccountRecovery_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestAccountRecoveryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).RequestAccountRecovery(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_RequestAccountRecovery_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).RequestAccountRecovery(ctx, req.(*RequestAccountRecoveryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_VerifyAccountRecovery_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VerifyAccountRecoveryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).VerifyAccountRecovery(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_VerifyAccountRecovery_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).VerifyAccountRecovery(ctx, req.(*VerifyAccountRecoveryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -944,6 +1014,14 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetPrivacySettings",
 			Handler:    _AuthService_GetPrivacySettings_Handler,
+		},
+		{
+			MethodName: "RequestAccountRecovery",
+			Handler:    _AuthService_RequestAccountRecovery_Handler,
+		},
+		{
+			MethodName: "VerifyAccountRecovery",
+			Handler:    _AuthService_VerifyAccountRecovery_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
