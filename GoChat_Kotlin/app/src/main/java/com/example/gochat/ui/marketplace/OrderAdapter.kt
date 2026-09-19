@@ -59,6 +59,10 @@ class OrderAdapter(
                     binding.tvOrderStatus.setBackgroundColor(Color.parseColor("#8B5CF6")) // Purple
                     binding.tvOrderStatus.setTextColor(Color.WHITE)
                 }
+                OrderStatus.OUT_FOR_DELIVERY -> {
+                    binding.tvOrderStatus.setBackgroundColor(Color.parseColor("#EC4899")) // Pink
+                    binding.tvOrderStatus.setTextColor(Color.WHITE)
+                }
                 OrderStatus.DELIVERED -> {
                     binding.tvOrderStatus.setBackgroundColor(Color.parseColor("#00A884")) // Teal
                     binding.tvOrderStatus.setTextColor(Color.BLACK)

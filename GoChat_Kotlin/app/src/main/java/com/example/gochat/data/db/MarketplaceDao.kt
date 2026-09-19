@@ -104,6 +104,9 @@ interface MarketplaceDao {
     @Query("SELECT * FROM marketplace_orders WHERE buyerId = :buyerId ORDER BY createdAt DESC")
     suspend fun getBuyerOrders(buyerId: String): List<Order>
 
+    @Query("SELECT * FROM marketplace_orders WHERE id = :orderId LIMIT 1")
+    suspend fun getOrderById(orderId: String): Order?
+
     @Query("SELECT * FROM marketplace_orders WHERE storeId = :storeId ORDER BY createdAt DESC")
     suspend fun getSellerOrders(storeId: String): List<Order>
 }

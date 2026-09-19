@@ -1,26 +1,47 @@
 package com.example.gochat.ui.marketplace
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import com.example.gochat.R
 import com.example.gochat.data.model.Order
-
 import com.example.gochat.data.model.OrderStatus
+import com.example.gochat.data.model.OrderStatusHistoryItem
+import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.databinding.ActivityOrderDetailsBinding
-import com.example.gochat.databinding.LayoutTimelineStepBinding
+import com.example.gochat.databinding.ItemOrderStatusHistoryBinding
+import com.example.gochat.ui.chat.ChatRoomActivity
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class OrderDetailsActivity : AppCompatActivity() {
 
+    @Inject
+    lateinit var marketplaceRepository: MarketplaceRepository
+
     private lateinit var binding: ActivityOrderDetailsBinding
     private val dateFormat = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
+    private val shortDateFormat = SimpleDateFormat("MMM dd", Locale.getDefault())
+
+    private val colorCompleted = Color.parseColor("#00A884") // GoChat Emerald / Teal
+    private val colorInactive = Color.parseColor("#374151")  // Muted gray
+    private val colorIconInactive = Color.parseColor("#6B7280")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,102 +49,277 @@ class OrderDetailsActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val orderJson = intent.getStringExtra("order_json") ?: return finish()
-        val order = try {
+        var currentOrder = try {
             Json.decodeFromString<Order>(orderJson)
         } catch (e: Exception) {
             return finish()
         }
 
         setupToolbar()
-        displayOrderDetails(order)
-        setupTimeline(order.status)
+        renderOrder(currentOrder)
+        loadLiveUpdates(currentOrder.id)
     }
 
     private fun setupToolbar() {
         binding.toolbar.setNavigationOnClickListener { finish() }
     }
 
-    private fun displayOrderDetails(order: Order) {
-        val orderNum = order.orderNumber.ifBlank { "ORD-${order.id.takeLast(6)}" }
+    private fun renderOrder(order: Order) {
+        val orderNum = order.orderNumber.ifBlank { "ORD-${order.id.takeLast(6).uppercase()}" }
         binding.tvOrderNumber.text = "Order #$orderNum"
         binding.tvOrderDate.text = "Placed on ${dateFormat.format(Date(order.createdAt))}"
         binding.tvStoreName.text = order.storeName.ifBlank { "Official Store" }
         binding.tvTotalAmount.text = String.format(Locale.US, "Total: $%.2f", order.totalAmount)
-        binding.tvShippingAddress.text = order.shippingAddress?.ifBlank { "Lagos, Nigeria" } ?: "Lagos, Nigeria"
 
+        // Status Badge
+        binding.tvOrderStatusBadge.text = when (order.status) {
+            OrderStatus.PENDING -> "PENDING"
+            OrderStatus.PAID -> "PAID"
+            OrderStatus.PROCESSING -> "PROCESSING"
+            OrderStatus.SHIPPED -> "SHIPPED"
+            OrderStatus.OUT_FOR_DELIVERY -> "OUT FOR DELIVERY"
+            OrderStatus.DELIVERED -> "DELIVERED"
+            OrderStatus.CANCELLED -> "CANCELLED"
+            OrderStatus.REFUNDED -> "REFUNDED"
+        }
+
+        val badgeColor = when (order.status) {
+            OrderStatus.PENDING -> Color.parseColor("#F59E0B")
+            OrderStatus.PAID -> Color.parseColor("#3B82F6")
+            OrderStatus.PROCESSING -> Color.parseColor("#6366F1")
+            OrderStatus.SHIPPED -> Color.parseColor("#8B5CF6")
+            OrderStatus.OUT_FOR_DELIVERY -> Color.parseColor("#EC4899")
+            OrderStatus.DELIVERED -> Color.parseColor("#00A884")
+            OrderStatus.CANCELLED -> Color.parseColor("#EF4444")
+            OrderStatus.REFUNDED -> Color.parseColor("#6B7280")
+        }
+        binding.tvOrderStatusBadge.backgroundTintList = ColorStateList.valueOf(badgeColor)
+
+        // Destination info
+        binding.tvRecipientName.text = order.buyerName.ifBlank { "Valued Customer" }
+        binding.tvRecipientPhone.text = order.shippingPhone?.ifBlank { "" } ?: ""
+        binding.tvShippingAddress.text = order.shippingAddress?.ifBlank { "Victoria Island, Lagos, Nigeria" } ?: "Victoria Island, Lagos, Nigeria"
+
+        // Chat with Seller
         binding.btnChatWithParty.text = "💬 Chat with ${order.storeName.ifBlank { "Seller" }}"
         binding.btnChatWithParty.setOnClickListener {
             val convId = "conv_store_${order.storeId.ifBlank { "official" }}"
-            val intent = android.content.Intent(this, com.example.gochat.ui.chat.ChatRoomActivity::class.java).apply {
-                putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_CONVERSATION_ID, convId)
-                putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_CONVERSATION_TITLE, order.storeName.ifBlank { "Seller" })
-                putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_ORDER_ID, order.id)
-                putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_ORDER_NUMBER, order.orderNumber)
-                putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_ORDER_TOTAL, order.totalAmount)
+            val intent = Intent(this, ChatRoomActivity::class.java).apply {
+                putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, convId)
+                putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, order.storeName.ifBlank { "Seller" })
+                putExtra(ChatRoomActivity.EXTRA_ORDER_ID, order.id)
+                putExtra(ChatRoomActivity.EXTRA_ORDER_NUMBER, order.orderNumber)
+                putExtra(ChatRoomActivity.EXTRA_ORDER_TOTAL, order.totalAmount)
             }
             startActivity(intent)
         }
+
+        // Setup Live Courier Tracking Card & Stepper
+        setupLiveTrackingCard(order)
+        setupHorizontalTimeline(order)
     }
 
-    private fun setupTimeline(status: OrderStatus) {
-        // Step 1: Pending
+    private fun setupLiveTrackingCard(order: Order) {
+        val hasCourier = !order.trackingNumber.isNullOrBlank() ||
+                order.status == OrderStatus.SHIPPED ||
+                order.status == OrderStatus.OUT_FOR_DELIVERY ||
+                order.status == OrderStatus.DELIVERED
 
-        bindStep(
-            binding.stepPending,
-            "Order Placed",
-            "Your order has been received and is waiting for payment.",
-            true
-        )
+        if (!hasCourier) {
+            binding.cardLiveTracking.visibility = View.GONE
+            return
+        }
 
-        // Step 2: Paid
-        bindStep(
-            binding.stepPaid,
-            "Payment Confirmed",
-            "Payment successfully received. Seller is preparing your items.",
-            status.ordinal >= OrderStatus.PAID.ordinal
-        )
+        binding.cardLiveTracking.visibility = View.VISIBLE
 
-        // Step 3: Shipped
-        bindStep(
-            binding.stepShipped,
-            "Shipped",
-            "Your order has been handed over to the courier.",
-            status.ordinal >= OrderStatus.SHIPPED.ordinal
-        )
+        val carrier = order.trackingCarrier?.ifBlank { "GoChat Logistics Partner" } ?: "GoChat Logistics Partner"
+        binding.tvCarrierName.text = carrier
+
+        val trkNumber = order.trackingNumber?.ifBlank {
+            "GC-${order.id.takeLast(8).uppercase()}"
+        } ?: "GC-${order.id.takeLast(8).uppercase()}"
+        binding.tvTrackingNumber.text = trkNumber
+
+        // Estimated Delivery
+        if (!order.estimatedDeliveryDate.isNullOrBlank()) {
+            binding.tvEstimatedDelivery.visibility = View.VISIBLE
+            binding.tvEstimatedDelivery.text = "Est: ${order.estimatedDeliveryDate}"
+        } else {
+            binding.tvEstimatedDelivery.visibility = View.VISIBLE
+            binding.tvEstimatedDelivery.text = when (order.status) {
+                OrderStatus.DELIVERED -> "Delivered"
+                OrderStatus.OUT_FOR_DELIVERY -> "Arriving Today"
+                else -> "In Transit"
+            }
+        }
+
+        // Delivery Notes / Live scan
+        val notes = order.deliveryNotes?.ifBlank {
+            when (order.status) {
+                OrderStatus.OUT_FOR_DELIVERY -> "Courier rider is en route to delivery destination."
+                OrderStatus.DELIVERED -> "Package successfully received and confirmed."
+                OrderStatus.SHIPPED -> "Package in transit through local sorting facility."
+                else -> "Awaiting carrier pickup and first dispatch scan."
+            }
+        } ?: "Courier is processing shipment."
+        binding.tvDeliveryNotes.text = notes
+
+        // 1-Click Copy Tracking Number
+        binding.btnCopyTracking.setOnClickListener {
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("Tracking Number", trkNumber)
+            clipboard.setPrimaryClip(clip)
+            Toast.makeText(this, "Tracking number copied to clipboard! 📋", Toast.LENGTH_SHORT).show()
+        }
+
+        // Web Tracking Button
+        binding.btnTrackPackage.setOnClickListener {
+            val trackingUrl = order.trackingUrl
+            if (!trackingUrl.isNullOrBlank() && (trackingUrl.startsWith("http://") || trackingUrl.startsWith("https://"))) {
+                try {
+                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(trackingUrl))
+                    startActivity(browserIntent)
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Could not open tracking page", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                // Open web search for tracking number as helpful fallback
+                val searchUrl = "https://www.google.com/search?q=${Uri.encode("$carrier tracking $trkNumber")}"
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(searchUrl)))
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Tracking: $trkNumber via $carrier", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun setupHorizontalTimeline(order: Order) {
+        // Step indices:
+        // 1: Payment Confirmed (PAID, PROCESSING, SHIPPED, OUT_FOR_DELIVERY, DELIVERED)
+        // 2: Shipped (SHIPPED, OUT_FOR_DELIVERY, DELIVERED)
+        // 3: Out for Delivery (OUT_FOR_DELIVERY, DELIVERED)
+        // 4: Delivered (DELIVERED)
+        val stepLevel = when (order.status) {
+            OrderStatus.PENDING, OrderStatus.CANCELLED -> 0
+            OrderStatus.PAID, OrderStatus.PROCESSING -> 1
+            OrderStatus.SHIPPED -> 2
+            OrderStatus.OUT_FOR_DELIVERY -> 3
+            OrderStatus.DELIVERED -> 4
+            OrderStatus.REFUNDED -> 1
+        }
+
+        // Step 1: Payment Confirmed
+        val step1Active = stepLevel >= 1
+        binding.dotStep1.backgroundTintList = ColorStateList.valueOf(if (step1Active) colorCompleted else colorInactive)
+        binding.iconStep1.imageTintList = ColorStateList.valueOf(if (step1Active) Color.WHITE else colorIconInactive)
+        binding.tvStep1Label.setTextColor(if (step1Active) Color.WHITE else colorIconInactive)
+        binding.tvStep1Time.text = shortDateFormat.format(Date(order.createdAt))
+
+        // Line 1 -> 2
+        val line1to2Active = stepLevel >= 2
+        binding.lineStep1to2.setBackgroundColor(if (line1to2Active) colorCompleted else colorInactive)
+
+        // Step 2: Shipped
+        val step2Active = stepLevel >= 2
+        binding.dotStep2.backgroundTintList = ColorStateList.valueOf(if (step2Active) colorCompleted else colorInactive)
+        binding.iconStep2.imageTintList = ColorStateList.valueOf(if (step2Active) Color.WHITE else colorIconInactive)
+        binding.tvStep2Label.setTextColor(if (step2Active) Color.WHITE else colorIconInactive)
+        binding.tvStep2Time.text = if (step2Active) "Shipped" else "Pending"
+
+        // Line 2 -> 3
+        val line2to3Active = stepLevel >= 3
+        binding.lineStep2to3.setBackgroundColor(if (line2to3Active) colorCompleted else colorInactive)
+
+        // Step 3: Out for Delivery
+        val step3Active = stepLevel >= 3
+        binding.dotStep3.backgroundTintList = ColorStateList.valueOf(if (step3Active) colorCompleted else colorInactive)
+        binding.iconStep3.imageTintList = ColorStateList.valueOf(if (step3Active) Color.WHITE else colorIconInactive)
+        binding.tvStep3Label.setTextColor(if (step3Active) Color.WHITE else colorIconInactive)
+        binding.tvStep3Time.text = if (step3Active) "On the way" else "Pending"
+
+        // Line 3 -> 4
+        val line3to4Active = stepLevel >= 4
+        binding.lineStep3to4.setBackgroundColor(if (line3to4Active) colorCompleted else colorInactive)
 
         // Step 4: Delivered
-        bindStep(
-            binding.stepDelivered,
-            "Delivered",
-            "Order successfully delivered to your address.",
-            status.ordinal >= OrderStatus.DELIVERED.ordinal,
-            isLast = true
-        )
+        val step4Active = stepLevel >= 4
+        binding.dotStep4.backgroundTintList = ColorStateList.valueOf(if (step4Active) colorCompleted else colorInactive)
+        binding.iconStep4.imageTintList = ColorStateList.valueOf(if (step4Active) Color.WHITE else colorIconInactive)
+        binding.tvStep4Label.setTextColor(if (step4Active) Color.WHITE else colorIconInactive)
+        binding.tvStep4Time.text = if (step4Active) "Delivered" else "Pending"
     }
 
-    private fun bindStep(
-        stepBinding: LayoutTimelineStepBinding,
-        title: String,
-        description: String,
-        isActive: Boolean,
-        isLast: Boolean = false
-    ) {
-        val activeColor = Color.parseColor("#00A884")
-        val mutedColor = Color.parseColor("#374151")
+    private fun loadLiveUpdates(orderId: String) {
+        lifecycleScope.launch {
+            // 1. Fetch fresh order details from server (in case webhook updated status)
+            val orderResult = marketplaceRepository.getOrderById(orderId)
+            orderResult.onSuccess { updatedOrder ->
+                renderOrder(updatedOrder)
+            }
 
-        stepBinding.tvTitle.text = title
-        stepBinding.tvDescription.text = description
-        
-        stepBinding.dot.backgroundTintList = ColorStateList.valueOf(if (isActive) activeColor else mutedColor)
-        stepBinding.line.backgroundTintList = ColorStateList.valueOf(if (isActive) activeColor else mutedColor)
-        stepBinding.line.visibility = if (isLast) View.GONE else View.VISIBLE
-        
-        if (isActive) {
-            stepBinding.tvTitle.setTextColor(Color.WHITE)
-            stepBinding.tvDescription.setTextColor(Color.parseColor("#B0BEC5"))
-        } else {
-            stepBinding.tvTitle.setTextColor(mutedColor)
-            stepBinding.tvDescription.setTextColor(mutedColor)
+            // 2. Fetch status history
+            val historyResult = marketplaceRepository.getOrderStatusHistory(orderId)
+            historyResult.onSuccess { historyList ->
+                displayHistoryList(historyList)
+            }.onFailure {
+                binding.tvHistoryEmpty.visibility = View.VISIBLE
+                binding.layoutHistoryList.visibility = View.GONE
+            }
+        }
+    }
+
+    private fun displayHistoryList(history: List<OrderStatusHistoryItem>) {
+        if (history.isEmpty()) {
+            binding.tvHistoryEmpty.visibility = View.VISIBLE
+            binding.layoutHistoryList.visibility = View.GONE
+            return
+        }
+
+        binding.tvHistoryEmpty.visibility = View.GONE
+        binding.layoutHistoryList.visibility = View.VISIBLE
+        binding.layoutHistoryList.removeAllViews()
+
+        val inflater = LayoutInflater.from(this)
+        // Show in reverse chronological order (newest first)
+        val sortedList = history.reversed()
+
+        sortedList.forEachIndexed { index, item ->
+            val itemBinding = ItemOrderStatusHistoryBinding.inflate(inflater, binding.layoutHistoryList, false)
+
+            val statusText = when (item.toStatus.lowercase()) {
+                "out_for_delivery" -> "🚚 Out for Delivery"
+                "shipped" -> "📦 Shipped & In Transit"
+                "delivered" -> "✅ Order Delivered"
+                "paid" -> "💳 Payment Confirmed"
+                "processing" -> "⚙️ Processing by Seller"
+                "cancelled" -> "❌ Order Cancelled"
+                "refunded" -> "💰 Order Refunded"
+                else -> item.toStatus.replace('_', ' ').replaceFirstChar { it.uppercase() }
+            }
+            itemBinding.tvHistoryStatus.text = statusText
+            itemBinding.tvHistoryReason.text = item.changeReason?.ifBlank { "Status changed to ${item.toStatus}" } ?: "Status changed"
+            itemBinding.tvHistoryTime.text = formatHistoryTimestamp(item.createdAt)
+
+            // Last item hides connector line
+            if (index == sortedList.lastIndex) {
+                itemBinding.historyLine.visibility = View.GONE
+            } else {
+                itemBinding.historyLine.visibility = View.VISIBLE
+            }
+
+            binding.layoutHistoryList.addView(itemBinding.root)
+        }
+    }
+
+    private fun formatHistoryTimestamp(raw: String): String {
+        if (raw.isBlank()) return "Recently"
+        return try {
+            val isoParser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
+            val date = isoParser.parse(raw)
+            if (date != null) dateFormat.format(date) else raw
+        } catch (_: Exception) {
+            raw
         }
     }
 }

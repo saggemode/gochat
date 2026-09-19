@@ -4,14 +4,15 @@ package repository
 type OrderStatus string
 
 const (
-	OrderStatusPending    OrderStatus = "pending"     // Order created, awaiting payment
-	OrderStatusPaid       OrderStatus = "paid"        // Payment confirmed, awaiting processing
-	OrderStatusProcessing OrderStatus = "processing"  // Being prepared for shipment
-	OrderStatusShipped    OrderStatus = "shipped"     // Shipped to customer
-	OrderStatusDelivered  OrderStatus = "delivered"   // Delivered to customer
-	OrderStatusCancelled  OrderStatus = "cancelled"   // Order cancelled
-	OrderStatusRefunded   OrderStatus = "refunded"    // Order refunded
-	OrderStatusReturned   OrderStatus = "returned"    // Order returned by customer
+	OrderStatusPending        OrderStatus = "pending"          // Order created, awaiting payment
+	OrderStatusPaid           OrderStatus = "paid"             // Payment confirmed, awaiting processing
+	OrderStatusProcessing     OrderStatus = "processing"       // Being prepared for shipment
+	OrderStatusShipped        OrderStatus = "shipped"          // Shipped to customer
+	OrderStatusOutForDelivery OrderStatus = "out_for_delivery" // Package is with courier out for delivery
+	OrderStatusDelivered      OrderStatus = "delivered"        // Delivered to customer
+	OrderStatusCancelled      OrderStatus = "cancelled"        // Order cancelled
+	OrderStatusRefunded       OrderStatus = "refunded"         // Order refunded
+	OrderStatusReturned       OrderStatus = "returned"         // Order returned by customer
 )
 
 // OrderStatusTransition represents a valid transition between order statuses
@@ -28,25 +29,33 @@ var ValidOrderStatusTransitions = map[OrderStatus][]OrderStatus{
 	},
 	OrderStatusPaid: {
 		OrderStatusProcessing, // Start processing
+		OrderStatusShipped,    // Direct ship if ready
 		OrderStatusCancelled,  // Customer cancelled before processing
-		OrderStatusRefunded,    // Refund requested
+		OrderStatusRefunded,   // Refund requested
 	},
 	OrderStatusProcessing: {
-		OrderStatusShipped,    // Order shipped
-		OrderStatusCancelled,  // Cancel before shipping
-		OrderStatusRefunded,    // Refund during processing
+		OrderStatusShipped,        // Order shipped
+		OrderStatusOutForDelivery, // Direct out for delivery (local courier)
+		OrderStatusCancelled,      // Cancel before shipping
+		OrderStatusRefunded,       // Refund during processing
 	},
 	OrderStatusShipped: {
-		OrderStatusDelivered,  // Order delivered
-		OrderStatusReturned,   // Customer returned
-		OrderStatusRefunded,   // Partial/full refund
+		OrderStatusOutForDelivery, // With courier out for delivery
+		OrderStatusDelivered,      // Order delivered directly
+		OrderStatusReturned,       // Customer returned
+		OrderStatusRefunded,       // Partial/full refund
+	},
+	OrderStatusOutForDelivery: {
+		OrderStatusDelivered, // Successfully delivered to customer
+		OrderStatusReturned,  // Delivery failed / customer rejected
+		OrderStatusRefunded,  // Refunded during delivery
 	},
 	OrderStatusDelivered: {
 		OrderStatusReturned, // Customer returned after delivery
 		OrderStatusRefunded, // Refund after delivery
 	},
 	OrderStatusCancelled: {}, // Terminal state
-	OrderStatusRefunded: {},  // Terminal state
+	OrderStatusRefunded:  {}, // Terminal state
 	OrderStatusReturned: {
 		OrderStatusRefunded, // Return processed as refund
 	},

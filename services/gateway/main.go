@@ -329,6 +329,11 @@ func main() {
 		// Media proxy with resizing
 
 		api.GET("/media/thumbnail/:fileId", mediaHandler.DownloadResized)
+
+		// Carrier Webhooks (public endpoint for shipping couriers e.g., DHL, FedEx, GIG)
+		api.POST("/webhooks/shipping/carrier", businessHandler.CarrierTrackingWebhook)
+		api.POST("/marketplace/orders/webhook/carrier", businessHandler.CarrierTrackingWebhook)
+		r.POST("/webhooks/shipping/carrier", businessHandler.CarrierTrackingWebhook)
 	}
 
 
@@ -588,6 +593,7 @@ func main() {
 		authRequired.POST("/marketplace/orders", checkoutLimiter, businessHandler.CreateOrders)
 		authRequired.GET("/marketplace/orders", businessHandler.ListBuyerOrders)
 		authRequired.GET("/marketplace/orders/:id", businessHandler.GetOrder)
+		authRequired.GET("/marketplace/orders/:id/history", businessHandler.GetOrderStatusHistory)
 		authRequired.GET("/business/orders", businessHandler.ListSellerOrders)
 		authRequired.PUT("/business/orders/:id/status", businessHandler.UpdateOrderStatus)
 		authRequired.PUT("/business/orders/:id/tracking", businessHandler.UpdateOrderTracking)

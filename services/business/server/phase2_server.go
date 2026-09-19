@@ -544,44 +544,57 @@ func (s *BusinessServer) ModerateProductQuestion(ctx context.Context, req *pb.Mo
 }
 
 // ── Order Status Workflow ───────────────────────────────────────────────────
-// TODO: Uncomment after regenerating protobuf files from business.proto
 
-// func (s *BusinessServer) TransitionOrderStatus(ctx context.Context, req *pb.TransitionOrderStatusRequest) (*pb.TransitionOrderStatusResponse, error) {
-// 	if req.OrderId == "" || req.UserId == "" || req.NewStatus == "" {
-// 		return nil, status.Error(codes.InvalidArgument, "order_id, user_id, and new_status are required")
-// 	}
-// 	order, err := s.repo.TransitionOrderStatusWithReason(ctx, req.OrderId, req.UserId, req.NewStatus, req.Reason)
-// 	if err != nil {
-// 		return nil, status.Errorf(codes.Internal, "transition order status: %v", err)
-// 	}
-// 	return &pb.TransitionOrderStatusResponse{
-// 		Order:   orderToPB(order),
-// 		Success: true,
-// 	}, nil
-// }
+func (s *BusinessServer) TransitionOrderStatus(ctx context.Context, req *pb.TransitionOrderStatusRequest) (*pb.TransitionOrderStatusResponse, error) {
+	if req.OrderId == "" || req.UserId == "" || req.NewStatus == "" {
+		return nil, status.Error(codes.InvalidArgument, "order_id, user_id, and new_status are required")
+	}
+	order, err := s.repo.TransitionOrderStatusWithReason(ctx, req.OrderId, req.UserId, req.NewStatus, req.Reason)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "transition order status: %v", err)
+	}
+	return &pb.TransitionOrderStatusResponse{
+		Order:   orderToPB(order),
+		Success: true,
+	}, nil
+}
 
-// func (s *BusinessServer) GetOrderStatusHistory(ctx context.Context, req *pb.GetOrderStatusHistoryRequest) (*pb.GetOrderStatusHistoryResponse, error) {
-// 	if req.OrderId == "" {
-// 		return nil, status.Error(codes.InvalidArgument, "order_id is required")
-// 	}
-// 	history, err := s.repo.GetOrderStatusHistory(ctx, req.OrderId)
-// 	if err != nil {
-// 		return nil, status.Errorf(codes.Internal, "get order status history: %v", err)
-// 	}
-// 	pbHistory := make([]*pb.OrderStatusChangePB, len(history))
-// 	for i, change := range history {
-// 		pbHistory[i] = &pb.OrderStatusChangePB{
-// 			Id:           change.ID,
-// 			OrderId:      change.OrderID,
-// 			FromStatus:   string(change.FromStatus),
-// 			ToStatus:     string(change.ToStatus),
-// 			ChangedBy:    change.ChangedBy,
-// 			ChangeReason: change.ChangeReason,
-// 			CreatedAt:    change.CreatedAt,
-// 		}
-// 	}
-// 	return &pb.GetOrderStatusHistoryResponse{History: pbHistory}, nil
-// }
+func (s *BusinessServer) GetOrderStatusHistory(ctx context.Context, req *pb.GetOrderStatusHistoryRequest) (*pb.GetOrderStatusHistoryResponse, error) {
+	if req.OrderId == "" {
+		return nil, status.Error(codes.InvalidArgument, "order_id is required")
+	}
+	history, err := s.repo.GetOrderStatusHistory(ctx, req.OrderId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "get order status history: %v", err)
+	}
+	pbHistory := make([]*pb.OrderStatusChangePB, len(history))
+	for i, change := range history {
+		pbHistory[i] = &pb.OrderStatusChangePB{
+			Id:           change.ID,
+			OrderId:      change.OrderID,
+			FromStatus:   string(change.FromStatus),
+			ToStatus:     string(change.ToStatus),
+			ChangedBy:    change.ChangedBy,
+			ChangeReason: change.ChangeReason,
+			CreatedAt:    change.CreatedAt,
+		}
+	}
+	return &pb.GetOrderStatusHistoryResponse{History: pbHistory}, nil
+}
+
+func (s *BusinessServer) UpdateOrderByCarrierWebhook(ctx context.Context, req *pb.UpdateOrderByCarrierWebhookRequest) (*pb.UpdateOrderByCarrierWebhookResponse, error) {
+	if req.OrderId == "" && req.TrackingNumber == "" {
+		return nil, status.Error(codes.InvalidArgument, "either order_id or tracking_number is required")
+	}
+	order, err := s.repo.UpdateOrderByCarrierTracking(ctx, req.TrackingNumber, req.OrderId, req.Carrier, req.Status, req.Location, req.Notes)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "update order carrier webhook: %v", err)
+	}
+	return &pb.UpdateOrderByCarrierWebhookResponse{
+		Order:   orderToPB(order),
+		Success: true,
+	}, nil
+}
 
 // ── Refunds ───────────────────────────────────────────────────────────────
 // TODO: Uncomment after regenerating protobuf files from business.proto

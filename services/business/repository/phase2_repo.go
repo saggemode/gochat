@@ -912,6 +912,56 @@ func (r *BusinessRepository) getCurrentOrderStatus(ctx context.Context, orderID 
 	return status, nil
 }
 
+// GetOrderByID retrieves an order by its ID without user ownership restriction
+func (r *BusinessRepository) GetOrderByID(ctx context.Context, orderID string) (*Order, error) {
+	o := &Order{}
+	err := r.db.QueryRow(ctx,
+		`SELECT 
+			o.id, o.order_number, o.buyer_id, o.business_id,
+			o.total_amount, o.shipping_fee, o.discount_amount, o.grand_total, COALESCE(o.coupon_code, ''),
+			o.status, o.shipping_name, o.shipping_phone, o.shipping_address,
+			COALESCE(o.shipping_city, ''), COALESCE(o.shipping_state, ''), COALESCE(o.shipping_country, ''),
+			COALESCE(o.payment_method, 'card'), COALESCE(o.payment_status, 'paid'), COALESCE(o.notes, ''),
+			COALESCE(b.business_name, ''), COALESCE(b.logo_url, ''),
+			COALESCE(u.display_name, ''), COALESCE(u.avatar_url, ''), o.created_at, o.fx_quote,
+			COALESCE(o.tracking_number, ''), COALESCE(o.tracking_carrier, ''), COALESCE(o.tracking_url, ''),
+			o.estimated_delivery_date, o.actual_delivery_date, o.shipped_at, COALESCE(o.delivery_notes, '')
+		 FROM business.orders o
+		 LEFT JOIN business.business_profiles b ON b.user_id = o.business_id
+		 LEFT JOIN core.users u ON u.id = o.buyer_id
+		 WHERE o.id = $1`, orderID).
+		Scan(
+			&o.ID, &o.OrderNumber, &o.BuyerID, &o.BusinessID,
+			&o.TotalAmount, &o.ShippingFee, &o.DiscountAmount, &o.GrandTotal, &o.CouponCode,
+			&o.Status, &o.ShippingName, &o.ShippingPhone, &o.ShippingAddress,
+			&o.ShippingCity, &o.ShippingState, &o.ShippingCountry,
+			&o.PaymentMethod, &o.PaymentStatus, &o.Notes,
+			&o.BusinessName, &o.BusinessLogo,
+			&o.BuyerName, &o.BuyerAvatar, &o.CreatedAt, &o.FxQuote,
+			&o.TrackingNumber, &o.TrackingCarrier, &o.TrackingURL,
+			&o.EstimatedDeliveryDate, &o.ActualDeliveryDate, &o.ShippedAt, &o.DeliveryNotes,
+		)
+	if err != nil {
+		return nil, fmt.Errorf("get order by id: %w", err)
+	}
+
+	rows, err := r.db.Query(ctx,
+		`SELECT id, order_id, COALESCE(product_id::text, ''), product_name, COALESCE(product_sku, ''), COALESCE(image_url, ''), unit_price, quantity, subtotal, 
+		        COALESCE(locked_price, 0), COALESCE(locked_discount_percent, 0), COALESCE(price_changed, FALSE)
+		 FROM business.order_items WHERE order_id = $1`, orderID)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			item := &OrderItem{}
+			if err := rows.Scan(&item.ID, &item.OrderID, &item.ProductID, &item.ProductName, &item.ProductSKU, &item.ImageURL, &item.UnitPrice, &item.Quantity, &item.Subtotal, &item.LockedPrice, &item.LockedDiscountPercent, &item.PriceChanged); err == nil {
+				o.Items = append(o.Items, item)
+			}
+		}
+	}
+
+	return o, nil
+}
+
 // TransitionOrderStatusWithReason updates order status with reason and changed_by tracking
 func (r *BusinessRepository) TransitionOrderStatusWithReason(ctx context.Context, orderID, userID, newStatus, reason string) (*Order, error) {
 	// Get current status
@@ -926,9 +976,16 @@ func (r *BusinessRepository) TransitionOrderStatusWithReason(ctx context.Context
 	}
 
 	// Update order status
-	res, err := r.db.Exec(ctx,
-		`UPDATE business.orders SET status = $1, updated_at = NOW()
-		 WHERE id = $2`, newStatus, orderID)
+	var updateQuery string
+	if OrderStatus(newStatus) == OrderStatusDelivered {
+		updateQuery = `UPDATE business.orders SET status = $1, actual_delivery_date = NOW(), updated_at = NOW() WHERE id = $2`
+	} else if OrderStatus(newStatus) == OrderStatusShipped {
+		updateQuery = `UPDATE business.orders SET status = $1, shipped_at = COALESCE(shipped_at, NOW()), updated_at = NOW() WHERE id = $2`
+	} else {
+		updateQuery = `UPDATE business.orders SET status = $1, updated_at = NOW() WHERE id = $2`
+	}
+
+	res, err := r.db.Exec(ctx, updateQuery, newStatus, orderID)
 	if err != nil {
 		return nil, fmt.Errorf("update order status: %w", err)
 	}
@@ -937,11 +994,18 @@ func (r *BusinessRepository) TransitionOrderStatusWithReason(ctx context.Context
 	}
 
 	// Record status change with reason
+	var changedBy interface{}
+	if _, parseErr := uuid.Parse(userID); parseErr == nil {
+		changedBy = userID
+	} else {
+		changedBy = nil
+	}
+
 	changeID := uuid.New().String()
 	_, err = r.db.Exec(ctx,
 		`INSERT INTO business.order_status_history (id, order_id, from_status, to_status, changed_by, change_reason, created_at)
 		 VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-		changeID, orderID, currentStatus, newStatus, userID, reason)
+		changeID, orderID, currentStatus, newStatus, changedBy, reason)
 	if err != nil {
 		if r.logger != nil {
 			r.logger.Warn("Failed to record status history", zap.Error(err))
@@ -956,14 +1020,13 @@ func (r *BusinessRepository) TransitionOrderStatusWithReason(ctx context.Context
 	}
 
 	// Get updated order
-	return r.GetOrder(ctx, orderID, userID)
+	return r.GetOrderByID(ctx, orderID)
 }
-
 
 // GetOrderStatusHistory retrieves the status change history for an order
 func (r *BusinessRepository) GetOrderStatusHistory(ctx context.Context, orderID string) ([]OrderStatusChange, error) {
 	rows, err := r.db.Query(ctx,
-		`SELECT id, order_id, from_status, to_status, changed_by, change_reason, created_at
+		`SELECT id, order_id, COALESCE(from_status, ''), to_status, COALESCE(changed_by::text, ''), COALESCE(change_reason, ''), to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
 		 FROM business.order_status_history
 		 WHERE order_id = $1
 		 ORDER BY created_at ASC`, orderID)
@@ -983,6 +1046,96 @@ func (r *BusinessRepository) GetOrderStatusHistory(ctx context.Context, orderID 
 	}
 
 	return history, nil
+}
+
+// UpdateOrderByCarrierTracking updates an order's status and tracking notes based on a carrier webhook event
+func (r *BusinessRepository) UpdateOrderByCarrierTracking(ctx context.Context, trackingNumber, orderID, carrier, rawStatus, location, notes string) (*Order, error) {
+	var targetOrderID, currentStatus, buyerID, orderNum string
+	var err error
+	if orderID != "" {
+		err = r.db.QueryRow(ctx, `SELECT id, status, buyer_id, order_number FROM business.orders WHERE id = $1`, orderID).Scan(&targetOrderID, &currentStatus, &buyerID, &orderNum)
+	} else if trackingNumber != "" {
+		err = r.db.QueryRow(ctx, `SELECT id, status, buyer_id, order_number FROM business.orders WHERE tracking_number = $1`, trackingNumber).Scan(&targetOrderID, &currentStatus, &buyerID, &orderNum)
+	} else {
+		return nil, fmt.Errorf("either order_id or tracking_number is required")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("order not found for carrier update: %w", err)
+	}
+
+	// Map raw carrier status to OrderStatus
+	normStatus := strings.ToLower(strings.TrimSpace(rawStatus))
+	var newStatus OrderStatus
+	switch normStatus {
+	case "shipped", "in_transit", "picked_up", "departed":
+		newStatus = OrderStatusShipped
+	case "out_for_delivery", "outfordelivery", "with_courier":
+		newStatus = OrderStatusOutForDelivery
+	case "delivered", "completed", "signed":
+		newStatus = OrderStatusDelivered
+	case "returned", "return_to_sender", "failed_delivery":
+		newStatus = OrderStatusReturned
+	default:
+		newStatus = OrderStatus(normStatus)
+	}
+
+	// Build reason description
+	var statusReason strings.Builder
+	if carrier != "" {
+		statusReason.WriteString(fmt.Sprintf("Carrier [%s] update: %s", carrier, normStatus))
+	} else {
+		statusReason.WriteString(fmt.Sprintf("Carrier update: %s", normStatus))
+	}
+	if location != "" {
+		statusReason.WriteString(fmt.Sprintf(" at %s", location))
+	}
+	if notes != "" {
+		statusReason.WriteString(fmt.Sprintf(" - %s", notes))
+	}
+	fullReason := statusReason.String()
+
+	statusChanged := false
+	if currentStatus != string(newStatus) && CanTransitionTo(OrderStatus(currentStatus), newStatus) {
+		statusChanged = true
+	}
+
+	effectiveStatus := currentStatus
+	if statusChanged {
+		effectiveStatus = string(newStatus)
+	}
+
+	var deliveryNotesUpdate = notes
+	if location != "" {
+		if notes != "" {
+			deliveryNotesUpdate = fmt.Sprintf("%s (%s)", notes, location)
+		} else {
+			deliveryNotesUpdate = location
+		}
+	}
+
+	query := `UPDATE business.orders 
+	          SET status = $1, 
+	              delivery_notes = COALESCE(NULLIF($2, ''), delivery_notes),
+	              actual_delivery_date = CASE WHEN $1 = 'delivered' THEN NOW() ELSE actual_delivery_date END,
+	              shipped_at = CASE WHEN $1 = 'shipped' AND shipped_at IS NULL THEN NOW() ELSE shipped_at END,
+	              updated_at = NOW() 
+	          WHERE id = $3`
+	_, err = r.db.Exec(ctx, query, effectiveStatus, deliveryNotesUpdate, targetOrderID)
+	if err != nil {
+		return nil, fmt.Errorf("update order carrier status: %w", err)
+	}
+
+	changeID := uuid.New().String()
+	_, _ = r.db.Exec(ctx,
+		`INSERT INTO business.order_status_history (id, order_id, from_status, to_status, changed_by, change_reason, created_at)
+		 VALUES ($1, $2, $3, $4, NULL, $5, NOW())`,
+		changeID, targetOrderID, currentStatus, effectiveStatus, fullReason)
+
+	if statusChanged {
+		_ = r.notificationService.SendOrderUpdateNotification(ctx, buyerID, targetOrderID, orderNum, effectiveStatus)
+	}
+
+	return r.GetOrderByID(ctx, targetOrderID)
 }
 
 // ── Refund Repository ───────────────────────────────────────────────────────

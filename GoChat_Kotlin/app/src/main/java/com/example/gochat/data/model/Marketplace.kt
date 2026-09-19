@@ -195,6 +195,9 @@ data class Order(
     @SerialName("tracking_number") val trackingNumber: String? = null,
     @SerialName("tracking_carrier") val trackingCarrier: String? = null,
     @SerialName("tracking_url") val trackingUrl: String? = null,
+    @SerialName("estimated_delivery_date") val estimatedDeliveryDate: String? = null,
+    @SerialName("actual_delivery_date") val actualDeliveryDate: String? = null,
+    @SerialName("delivery_notes") val deliveryNotes: String? = null,
     @SerialName("shipped_at") val shippedAt: String? = null,
     @SerialName("created_at") val createdAt: Long = System.currentTimeMillis()
 )
@@ -205,10 +208,22 @@ enum class OrderStatus {
     @SerialName("paid") PAID,
     @SerialName("processing") PROCESSING,
     @SerialName("shipped") SHIPPED,
+    @SerialName("out_for_delivery") OUT_FOR_DELIVERY,
     @SerialName("delivered") DELIVERED,
     @SerialName("cancelled") CANCELLED,
     @SerialName("refunded") REFUNDED
 }
+
+@Serializable
+data class OrderStatusHistoryItem(
+    val id: String = "",
+    @SerialName("order_id") val orderId: String = "",
+    @SerialName("from_status") val fromStatus: String? = null,
+    @SerialName("to_status") val toStatus: String = "",
+    @SerialName("changed_by") val changedBy: String? = null,
+    @SerialName("change_reason") val changeReason: String? = null,
+    @SerialName("created_at") val createdAt: String = ""
+)
 
 @Serializable
 data class SellerInsights(

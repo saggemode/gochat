@@ -1131,6 +1131,45 @@ class MarketplaceRepository @Inject constructor(
         }
     }
 
+    suspend fun getOrderById(orderId: String): Result<Order> {
+        return try {
+            val response = api.getOrderById(orderId)
+            if (response.isSuccessful && response.body() != null) {
+                val body = response.body()!!
+                val orderObj = body["order"]?.let { if (it is JsonObject) it else null } ?: body
+                val order = json.decodeFromJsonElement<Order>(orderObj)
+                marketplaceDao.insertOrder(order)
+                Result.success(order)
+            } else {
+                val localOrder = marketplaceDao.getOrderById(orderId)
+                if (localOrder != null) Result.success(localOrder)
+                else Result.failure(Exception("Order not found"))
+            }
+        } catch (e: Exception) {
+            val localOrder = marketplaceDao.getOrderById(orderId)
+            if (localOrder != null) Result.success(localOrder)
+            else Result.failure(e)
+        }
+    }
+
+    suspend fun getOrderStatusHistory(orderId: String): Result<List<OrderStatusHistoryItem>> {
+        return try {
+            val response = api.getOrderStatusHistory(orderId)
+            if (response.isSuccessful && response.body() != null) {
+                val body = response.body()!!
+                val histArray = body["history"]?.let { if (it is JsonArray) it else null } ?: JsonArray(emptyList())
+                val list = histArray.mapNotNull {
+                    try { json.decodeFromJsonElement<OrderStatusHistoryItem>(it) } catch (_: Exception) { null }
+                }
+                Result.success(list)
+            } else {
+                Result.success(emptyList())
+            }
+        } catch (e: Exception) {
+            Result.success(emptyList())
+        }
+    }
+
     suspend fun placeOrder(storeId: String, items: List<CartItem>, totalAmount: Double, address: String): Result<Order> {
         return try {
             val body = buildJsonObject {

@@ -628,3 +628,65 @@ func (h *BusinessHandler) ModerateProductQuestion(c *gin.Context) {
 
 	c.JSON(http.StatusOK, resp)
 }
+
+// ── Order Tracking & Status Workflow Handlers ────────────────────────────────
+
+func (h *BusinessHandler) GetOrderStatusHistory(c *gin.Context) {
+	orderID := c.Param("id")
+	if orderID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "order_id is required"})
+		return
+	}
+
+	resp, err := h.client.GetOrderStatusHistory(c.Request.Context(), &pb.GetOrderStatusHistoryRequest{
+		OrderId: orderID,
+	}, jsonOpt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"history": resp.History})
+}
+
+func (h *BusinessHandler) CarrierTrackingWebhook(c *gin.Context) {
+	var req struct {
+		TrackingNumber string `json:"tracking_number"`
+		OrderID        string `json:"order_id"`
+		Carrier        string `json:"carrier"`
+		Status         string `json:"status" binding:"required"`
+		Location       string `json:"location"`
+		Notes          string `json:"notes"`
+		Timestamp      string `json:"timestamp"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.TrackingNumber == "" && req.OrderID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "either tracking_number or order_id is required"})
+		return
+	}
+
+	resp, err := h.client.UpdateOrderByCarrierWebhook(c.Request.Context(), &pb.UpdateOrderByCarrierWebhookRequest{
+		TrackingNumber: req.TrackingNumber,
+		OrderId:        req.OrderID,
+		Carrier:        req.Carrier,
+		Status:         req.Status,
+		Location:       req.Location,
+		Notes:          req.Notes,
+		Timestamp:      req.Timestamp,
+	}, jsonOpt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":  resp.Success,
+		"order":    resp.Order,
+		"order_id": resp.Order.GetId(),
+		"status":   resp.Order.GetStatus(),
+	})
+}

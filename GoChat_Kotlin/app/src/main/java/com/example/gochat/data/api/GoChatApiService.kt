@@ -327,6 +327,16 @@ interface GoChatApiService {
     @GET("api/v1/marketplace/orders/buyer")
     suspend fun getBuyerOrders(): Response<JsonElement>
 
+    @GET("api/v1/marketplace/orders/{id}")
+    suspend fun getOrderById(
+        @Path("id") orderId: String
+    ): Response<JsonObject>
+
+    @GET("api/v1/marketplace/orders/{id}/history")
+    suspend fun getOrderStatusHistory(
+        @Path("id") orderId: String
+    ): Response<JsonObject>
+
     @GET(ApiConstants.BUSINESS_ORDERS)
     suspend fun getSellerOrders(): Response<JsonElement>
 

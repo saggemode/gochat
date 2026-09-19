@@ -93,6 +93,7 @@ service BusinessService {
   // Order Status Workflow
   rpc TransitionOrderStatus(TransitionOrderStatusRequest) returns (TransitionOrderStatusResponse);
   rpc GetOrderStatusHistory(GetOrderStatusHistoryRequest) returns (GetOrderStatusHistoryResponse);
+  rpc UpdateOrderByCarrierWebhook(UpdateOrderByCarrierWebhookRequest) returns (UpdateOrderByCarrierWebhookResponse);
 
   // Refunds
   rpc CreateRefund(CreateRefundRequest) returns (CreateRefundResponse);
@@ -877,6 +878,21 @@ message OrderStatusChangePB {
   string changed_by  = 5;
   string change_reason = 6;
   string created_at  = 7;
+}
+
+message UpdateOrderByCarrierWebhookRequest {
+  string tracking_number = 1;
+  string order_id        = 2;
+  string carrier          = 3;
+  string status           = 4;
+  string location         = 5;
+  string notes            = 6;
+  string timestamp        = 7;
+}
+
+message UpdateOrderByCarrierWebhookResponse {
+  Order order   = 1;
+  bool  success = 2;
 }
 
 // ── Refunds ───────────────────────────────────────────────────────────────

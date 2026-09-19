@@ -73,6 +73,7 @@ const (
 	BusinessService_ModerateProductQuestion_FullMethodName         = "/business.BusinessService/ModerateProductQuestion"
 	BusinessService_TransitionOrderStatus_FullMethodName           = "/business.BusinessService/TransitionOrderStatus"
 	BusinessService_GetOrderStatusHistory_FullMethodName           = "/business.BusinessService/GetOrderStatusHistory"
+	BusinessService_UpdateOrderByCarrierWebhook_FullMethodName     = "/business.BusinessService/UpdateOrderByCarrierWebhook"
 	BusinessService_CreateRefund_FullMethodName                    = "/business.BusinessService/CreateRefund"
 	BusinessService_ProcessRefund_FullMethodName                   = "/business.BusinessService/ProcessRefund"
 	BusinessService_ListRefunds_FullMethodName                     = "/business.BusinessService/ListRefunds"
@@ -159,6 +160,7 @@ type BusinessServiceClient interface {
 	// Order Status Workflow
 	TransitionOrderStatus(ctx context.Context, in *TransitionOrderStatusRequest, opts ...grpc.CallOption) (*TransitionOrderStatusResponse, error)
 	GetOrderStatusHistory(ctx context.Context, in *GetOrderStatusHistoryRequest, opts ...grpc.CallOption) (*GetOrderStatusHistoryResponse, error)
+	UpdateOrderByCarrierWebhook(ctx context.Context, in *UpdateOrderByCarrierWebhookRequest, opts ...grpc.CallOption) (*UpdateOrderByCarrierWebhookResponse, error)
 	// Refunds
 	CreateRefund(ctx context.Context, in *CreateRefundRequest, opts ...grpc.CallOption) (*CreateRefundResponse, error)
 	ProcessRefund(ctx context.Context, in *ProcessRefundRequest, opts ...grpc.CallOption) (*ProcessRefundResponse, error)
@@ -723,6 +725,16 @@ func (c *businessServiceClient) GetOrderStatusHistory(ctx context.Context, in *G
 	return out, nil
 }
 
+func (c *businessServiceClient) UpdateOrderByCarrierWebhook(ctx context.Context, in *UpdateOrderByCarrierWebhookRequest, opts ...grpc.CallOption) (*UpdateOrderByCarrierWebhookResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateOrderByCarrierWebhookResponse)
+	err := c.cc.Invoke(ctx, BusinessService_UpdateOrderByCarrierWebhook_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *businessServiceClient) CreateRefund(ctx context.Context, in *CreateRefundRequest, opts ...grpc.CallOption) (*CreateRefundResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateRefundResponse)
@@ -897,6 +909,7 @@ type BusinessServiceServer interface {
 	// Order Status Workflow
 	TransitionOrderStatus(context.Context, *TransitionOrderStatusRequest) (*TransitionOrderStatusResponse, error)
 	GetOrderStatusHistory(context.Context, *GetOrderStatusHistoryRequest) (*GetOrderStatusHistoryResponse, error)
+	UpdateOrderByCarrierWebhook(context.Context, *UpdateOrderByCarrierWebhookRequest) (*UpdateOrderByCarrierWebhookResponse, error)
 	// Refunds
 	CreateRefund(context.Context, *CreateRefundRequest) (*CreateRefundResponse, error)
 	ProcessRefund(context.Context, *ProcessRefundRequest) (*ProcessRefundResponse, error)
@@ -1082,6 +1095,9 @@ func (UnimplementedBusinessServiceServer) TransitionOrderStatus(context.Context,
 }
 func (UnimplementedBusinessServiceServer) GetOrderStatusHistory(context.Context, *GetOrderStatusHistoryRequest) (*GetOrderStatusHistoryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetOrderStatusHistory not implemented")
+}
+func (UnimplementedBusinessServiceServer) UpdateOrderByCarrierWebhook(context.Context, *UpdateOrderByCarrierWebhookRequest) (*UpdateOrderByCarrierWebhookResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateOrderByCarrierWebhook not implemented")
 }
 func (UnimplementedBusinessServiceServer) CreateRefund(context.Context, *CreateRefundRequest) (*CreateRefundResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateRefund not implemented")
@@ -2106,6 +2122,24 @@ func _BusinessService_GetOrderStatusHistory_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BusinessService_UpdateOrderByCarrierWebhook_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateOrderByCarrierWebhookRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BusinessServiceServer).UpdateOrderByCarrierWebhook(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BusinessService_UpdateOrderByCarrierWebhook_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BusinessServiceServer).UpdateOrderByCarrierWebhook(ctx, req.(*UpdateOrderByCarrierWebhookRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _BusinessService_CreateRefund_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateRefundRequest)
 	if err := dec(in); err != nil {
@@ -2508,6 +2542,10 @@ var BusinessService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetOrderStatusHistory",
 			Handler:    _BusinessService_GetOrderStatusHistory_Handler,
+		},
+		{
+			MethodName: "UpdateOrderByCarrierWebhook",
+			Handler:    _BusinessService_UpdateOrderByCarrierWebhook_Handler,
 		},
 		{
 			MethodName: "CreateRefund",

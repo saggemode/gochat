@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal">
+
+    <LinearLayout
+        android:layout_width="24dp"
+        android:layout_height="match_parent"
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
+
+        <View
+            android:id="@+id/historyDot"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/bg_pill"
+            android:backgroundTint="#00A884" />
+
+        <View
+            android:id="@+id/historyLine"
+            android:layout_width="2dp"
+            android:layout_height="match_parent"
+            android:layout_marginVertical="2dp"
+            android:background="@color/gochat_border_dark" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:orientation="vertical"
+        android:paddingBottom="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvHistoryStatus"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="@color/white"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                tools:text="Out for Delivery" />
+
+            <TextView
+                android:id="@+id/tvHistoryTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/gochat_text_muted"
+                android:textSize="11sp"
+                tools:text="Today, 2:15 PM" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvHistoryReason"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:textColor="@color/gochat_text_secondary"
+            android:textSize="12sp"
+            tools:text="Package scanned at Ikeja Logistics Distribution Center" />
+    </LinearLayout>
+</LinearLayout>
