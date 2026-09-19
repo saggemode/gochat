@@ -280,7 +280,9 @@
     <string name="settings_privacy_desc">Blocked contacts, disappearing messages</string>
     <string name="settings_notifications_title">Notifications</string>
     <string name="settings_notifications_desc">Message, group &amp; call ringtones</string>
-    <string name="btn_logout">Log Out</string>
+    <string name="settings_invite_title">Invite a Friend</string>
+    <string name="settings_help_title">Help &amp; Support</string>
+    <string name="btn_logout">Sign Out</string>
 
     <!-- Fragment Simple Tab -->
     <string name="updates_title">Updates</string>
@@ -361,6 +363,11 @@
     <string name="caption_voice_note">🎙️ Voice Note (%1$s)</string>
     <string name="error_recording_failed">Recording failed or too short</string>
     <string name="toast_recording_cancelled">Recording cancelled</string>
+    <string name="slide_to_cancel">&#8249; Slide to cancel</string>
+    <string name="slide_to_lock">Slide up to lock</string>
+    <string name="hold_to_record_hint">Hold to record, release to send</string>
+    <string name="action_pause_recording">Pause</string>
+    <string name="action_resume_recording">Resume</string>
     <string name="error_camera_init">Unable to initialize camera</string>
     <string name="caption_photo">📷 Photo</string>
     <string name="error_photo_process">Failed to process photo</string>
@@ -520,4 +527,17 @@
     <!-- Network Connectivity Status -->
     <string name="waiting_for_network">Waiting for network…</string>
     <string name="connecting">Connecting…</string>
+
+    <!-- Shared Media, Links and Docs Browser -->
+    <string name="media_links_and_docs">Media, links, and docs</string>
+    <string name="no_media_items">None</string>
+    <string name="tab_media">Media</string>
+    <string name="tab_docs">Docs</string>
+    <string name="tab_links">Links</string>
+    <string name="no_media_title">No media yet</string>
+    <string name="no_media_desc">Photos and videos shared in this chat will appear here.</string>
+    <string name="no_docs_title">No documents yet</string>
+    <string name="no_docs_desc">Documents shared in this chat will appear here.</string>
+    <string name="no_links_title">No links yet</string>
+    <string name="no_links_desc">Links shared in this chat will appear here.</string>
 </resources>

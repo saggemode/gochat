@@ -32,6 +32,7 @@ import com.example.gochat.databinding.ItemMessageMeBinding
 import com.example.gochat.databinding.ItemMessageOtherBinding
 import com.example.gochat.databinding.ItemMessageSystemBinding
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.regex.Pattern
@@ -252,76 +253,104 @@ class MessageAdapter(
         tvCatalogCardTitle: TextView,
         tvCatalogCardSubtitle: TextView,
         tvCatalogCardCountBadge: TextView,
-        rvCatalogGrid: RecyclerView,
+        layoutCatalogThumbs: View,
+        ivCatalogThumb1: ImageView,
+        ivCatalogThumb2: ImageView,
+        ivCatalogThumb3: ImageView,
+        tvCatalogMoreOverlay: TextView,
         btnViewCatalogStore: TextView,
         tvMessageContent: TextView
     ) {
         val isCatalog = (message.type == MessageType.CATALOG ||
-                (message.content.contains("\"catalog\"") && message.content.contains("\"products\""))) && !message.isDeleted
+                (message.content.contains("\"products\"") && (message.content.contains("\"catalog\"") || message.content.contains("\"store_name\""))) ||
+                (message.content.startsWith("{") && (message.content.contains("\"type\":\"catalog\"") || message.content.contains("\"type\": \"catalog\"")))) && !message.isDeleted
 
         if (!isCatalog) {
             layoutCatalogCard.visibility = View.GONE
             return
         }
 
-        layoutCatalogCard.visibility = View.VISIBLE
+        // Prevent bulk raw JSON text from displaying or crashing the UI
         tvMessageContent.visibility = View.GONE
+        tvMessageContent.text = ""
 
         try {
             val json = Json { ignoreUnknownKeys = true }
             val rootObj = json.decodeFromString<JsonObject>(message.content)
-            val catalogObj = rootObj["catalog"]?.jsonObject
-            val storeTitle = catalogObj?.get("title")?.jsonPrimitive?.contentOrNull
-                ?: catalogObj?.get("store_name")?.jsonPrimitive?.contentOrNull
+            val catalogObj = rootObj["catalog"]?.jsonObject ?: rootObj
+            val storeTitle = catalogObj["title"]?.jsonPrimitive?.contentOrNull
+                ?: catalogObj["store_name"]?.jsonPrimitive?.contentOrNull
                 ?: "Store Catalog"
-            val storeId = catalogObj?.get("store_id")?.jsonPrimitive?.contentOrNull.orEmpty()
-            val subtitle = catalogObj?.get("subtitle")?.jsonPrimitive?.contentOrNull
-                ?: "Browse featured collection"
+            val storeId = catalogObj["store_id"]?.jsonPrimitive?.contentOrNull.orEmpty()
+            val subtitle = catalogObj["subtitle"]?.jsonPrimitive?.contentOrNull
+                ?: "Featured Selection"
 
-            val productsArray = rootObj["products"]?.jsonArray
-            val productsList = mutableListOf<CatalogItemData>()
-            productsArray?.forEach { elem ->
-                if (elem is JsonObject) {
-                    val id = elem["id"]?.jsonPrimitive?.contentOrNull.orEmpty()
-                    val name = (elem["name"] ?: elem["title"])?.jsonPrimitive?.contentOrNull.orEmpty()
-                    val price = elem["price"]?.jsonPrimitive?.doubleOrNull ?: 0.0
-                    val image = (elem["image"] ?: elem["imageUrl"] ?: elem["image_url"])?.jsonPrimitive?.contentOrNull.orEmpty()
-                    val category = elem["category"]?.jsonPrimitive?.contentOrNull.orEmpty()
-                    val rating = elem["rating"]?.jsonPrimitive?.doubleOrNull ?: 5.0
-                    productsList.add(CatalogItemData(id, name, price, image, category, rating))
-                }
+            val previewImagesList = mutableListOf<String>()
+            val previewArray = (rootObj["preview_images"] ?: catalogObj["preview_images"])?.jsonArray
+            previewArray?.forEach { elem ->
+                elem.jsonPrimitive.contentOrNull?.let { if (it.isNotBlank()) previewImagesList.add(it) }
             }
 
-            tvCatalogCardTitle.text = storeTitle
-            tvCatalogCardSubtitle.text = "$subtitle · ${productsList.size} items"
-            tvCatalogCardCountBadge.text = "${productsList.size} ITEMS"
-
-            rvCatalogGrid.layoutManager = GridLayoutManager(layoutCatalogCard.context, 2, RecyclerView.HORIZONTAL, false)
-            rvCatalogGrid.adapter = CatalogGridAdapter(productsList) { item ->
-                if (item.id.isNotBlank()) {
-                    val intent = Intent(layoutCatalogCard.context, ProductDetailsActivity::class.java).apply {
-                        putExtra("product_id", item.id)
+            // Fallback for V1 format: extract image from products array if preview_images is absent
+            if (previewImagesList.isEmpty()) {
+                val productsArray = (rootObj["products"] ?: catalogObj["products"])?.jsonArray
+                productsArray?.forEach { elem ->
+                    if (elem is JsonObject) {
+                        val img = (elem["image"] ?: elem["imageUrl"] ?: elem["image_url"])?.jsonPrimitive?.contentOrNull
+                        if (!img.isNullOrBlank()) previewImagesList.add(img)
                     }
-                    layoutCatalogCard.context.startActivity(intent)
                 }
             }
 
-            btnViewCatalogStore.setOnClickListener {
-                if (storeId.isNotBlank()) {
-                    val intent = Intent(layoutCatalogCard.context, com.example.gochat.ui.marketplace.StorefrontActivity::class.java).apply {
+            val itemCount = rootObj["item_count"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+                ?: catalogObj["item_count"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+                ?: (rootObj["products"] ?: catalogObj["products"])?.jsonArray?.size
+                ?: previewImagesList.size
+
+            layoutCatalogCard.visibility = View.VISIBLE
+            tvCatalogCardTitle.text = storeTitle
+            tvCatalogCardSubtitle.text = "$subtitle · $itemCount items"
+            tvCatalogCardCountBadge.text = "$itemCount ITEMS"
+
+            layoutCatalogThumbs.visibility = if (previewImagesList.isNotEmpty()) View.VISIBLE else View.GONE
+
+            val thumbViews = listOf(ivCatalogThumb1, ivCatalogThumb2, ivCatalogThumb3)
+            thumbViews.forEachIndexed { index, thumbView ->
+                if (index < previewImagesList.size) {
+                    thumbView.visibility = View.VISIBLE
+                    MediaImageHelper.loadSafeImage(
+                        imageView = thumbView,
+                        url = previewImagesList[index],
+                        cornerRadiusDp = 6f
+                    )
+                } else {
+                    thumbView.visibility = View.INVISIBLE
+                }
+            }
+
+            if (itemCount > 3) {
+                tvCatalogMoreOverlay.visibility = View.VISIBLE
+                tvCatalogMoreOverlay.text = "+${itemCount - 2}"
+            } else {
+                tvCatalogMoreOverlay.visibility = View.GONE
+            }
+
+            val openStorefront: (View) -> Unit = { view ->
+                val intent = Intent(view.context, com.example.gochat.ui.marketplace.StorefrontActivity::class.java).apply {
+                    if (storeId.isNotBlank()) {
                         putExtra("store_id", storeId)
                     }
-                    layoutCatalogCard.context.startActivity(intent)
-                } else if (productsList.isNotEmpty()) {
-                    val firstItem = productsList.first()
-                    val intent = Intent(layoutCatalogCard.context, ProductDetailsActivity::class.java).apply {
-                        putExtra("product_id", firstItem.id)
-                    }
-                    layoutCatalogCard.context.startActivity(intent)
+                    putExtra("store_name", storeTitle)
                 }
+                view.context.startActivity(intent)
             }
+
+            btnViewCatalogStore.setOnClickListener(openStorefront)
+            layoutCatalogCard.setOnClickListener(openStorefront)
         } catch (e: Exception) {
             layoutCatalogCard.visibility = View.GONE
+            tvMessageContent.visibility = View.VISIBLE
+            tvMessageContent.text = "🛍️ Product Catalog"
         }
     }
 
@@ -675,14 +704,18 @@ class MessageAdapter(
                     tvMessageContent = tvMessageContent
                 )
 
-                // Product Catalog Grid Card Row
+                // Product Catalog Card Row
                 bindCatalogCard(
                     message = message,
                     layoutCatalogCard = layoutCatalogCard,
                     tvCatalogCardTitle = tvCatalogCardTitle,
                     tvCatalogCardSubtitle = tvCatalogCardSubtitle,
                     tvCatalogCardCountBadge = tvCatalogCardCountBadge,
-                    rvCatalogGrid = rvCatalogGrid,
+                    layoutCatalogThumbs = layoutCatalogThumbs,
+                    ivCatalogThumb1 = ivCatalogThumb1,
+                    ivCatalogThumb2 = ivCatalogThumb2,
+                    ivCatalogThumb3 = ivCatalogThumb3,
+                    tvCatalogMoreOverlay = tvCatalogMoreOverlay,
                     btnViewCatalogStore = btnViewCatalogStore,
                     tvMessageContent = tvMessageContent
                 )
@@ -692,7 +725,13 @@ class MessageAdapter(
                     message.content.contains("Photo", ignoreCase = true) || 
                     message.content.contains("Voice Note", ignoreCase = true)
 
-                if ((isImage || isVoice) && isOnlyMediaLabel) {
+                val isCatalogMessage = (message.type == MessageType.CATALOG ||
+                        (message.content.contains("\"products\"") && (message.content.contains("\"catalog\"") || message.content.contains("\"store_name\""))) ||
+                        (message.content.startsWith("{") && (message.content.contains("\"type\":\"catalog\"") || message.content.contains("\"type\": \"catalog\"")))) && !message.isDeleted
+
+                if (isCatalogMessage) {
+                    tvMessageContent.visibility = View.GONE
+                } else if ((isImage || isVoice) && isOnlyMediaLabel) {
                     tvMessageContent.visibility = View.GONE
                 } else {
                     tvMessageContent.visibility = if (message.content.isNotEmpty() || message.isPing || message.isDeleted) View.VISIBLE else View.GONE
@@ -1025,14 +1064,18 @@ class MessageAdapter(
                     tvMessageContent = tvMessageContent
                 )
 
-                // Product Catalog Grid Card Row
+                // Product Catalog Card Row
                 bindCatalogCard(
                     message = message,
                     layoutCatalogCard = layoutCatalogCard,
                     tvCatalogCardTitle = tvCatalogCardTitle,
                     tvCatalogCardSubtitle = tvCatalogCardSubtitle,
                     tvCatalogCardCountBadge = tvCatalogCardCountBadge,
-                    rvCatalogGrid = rvCatalogGrid,
+                    layoutCatalogThumbs = layoutCatalogThumbs,
+                    ivCatalogThumb1 = ivCatalogThumb1,
+                    ivCatalogThumb2 = ivCatalogThumb2,
+                    ivCatalogThumb3 = ivCatalogThumb3,
+                    tvCatalogMoreOverlay = tvCatalogMoreOverlay,
                     btnViewCatalogStore = btnViewCatalogStore,
                     tvMessageContent = tvMessageContent
                 )
@@ -1041,7 +1084,13 @@ class MessageAdapter(
                     message.content.contains("Photo", ignoreCase = true) || 
                     message.content.contains("Voice Note", ignoreCase = true)
 
-                if ((isImage || isVoice) && isOnlyMediaLabel) {
+                val isCatalogMessage = (message.type == MessageType.CATALOG ||
+                        (message.content.contains("\"products\"") && (message.content.contains("\"catalog\"") || message.content.contains("\"store_name\""))) ||
+                        (message.content.startsWith("{") && (message.content.contains("\"type\":\"catalog\"") || message.content.contains("\"type\": \"catalog\"")))) && !message.isDeleted
+
+                if (isCatalogMessage) {
+                    tvMessageContent.visibility = View.GONE
+                } else if ((isImage || isVoice) && isOnlyMediaLabel) {
                     tvMessageContent.visibility = View.GONE
                 } else {
                     tvMessageContent.visibility = if (message.content.isNotEmpty() || message.isPing || message.isDeleted) View.VISIBLE else View.GONE

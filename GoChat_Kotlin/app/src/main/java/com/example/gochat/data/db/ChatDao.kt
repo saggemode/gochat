@@ -128,8 +128,20 @@ interface ChatDao {
     @Query("SELECT * FROM messages WHERE isDeleted = 0 AND content LIKE '%' || :query || '%' ORDER BY createdAt DESC LIMIT 100")
     suspend fun searchAllMessages(query: String): List<Message>
 
-    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND ((mediaUrl IS NOT NULL AND mediaUrl != '') OR content LIKE '%http%') ORDER BY createdAt DESC")
+    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND isViewOnce = 0 AND (type = 'IMAGE' OR type = 'VIDEO') AND mediaUrl IS NOT NULL AND mediaUrl != '' ORDER BY createdAt DESC")
     fun getMediaMessagesForConversation(convId: String): Flow<List<Message>>
+
+    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND type = 'FILE' AND mediaUrl IS NOT NULL AND mediaUrl != '' ORDER BY createdAt DESC")
+    fun getDocumentMessagesForConversation(convId: String): Flow<List<Message>>
+
+    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND (content LIKE '%http://%' OR content LIKE '%https://%' OR content LIKE '%www.%') ORDER BY createdAt DESC")
+    fun getLinkMessagesForConversation(convId: String): Flow<List<Message>>
+
+    @Query("SELECT COUNT(*) FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND ((isViewOnce = 0 AND (type = 'IMAGE' OR type = 'VIDEO' OR type = 'FILE') AND mediaUrl IS NOT NULL AND mediaUrl != '') OR content LIKE '%http://%' OR content LIKE '%https://%' OR content LIKE '%www.%')")
+    fun getSharedMediaCount(convId: String): Flow<Int>
+
+    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND isViewOnce = 0 AND (type = 'IMAGE' OR type = 'VIDEO') AND mediaUrl IS NOT NULL AND mediaUrl != '' ORDER BY createdAt DESC LIMIT 10")
+    fun getRecentMediaPreviews(convId: String): Flow<List<Message>>
 
     // ── Calls ──────────────────────────────────────────────────
     @Query("SELECT * FROM calls ORDER BY timestamp DESC")

@@ -1090,4 +1090,19 @@ class ChatRepository @Inject constructor(
             createdAt = System.currentTimeMillis()
         )
     }
+
+    fun getMediaMessages(conversationId: String): Flow<List<Message>> =
+        dao.getMediaMessagesForConversation(conversationId)
+
+    fun getDocumentMessages(conversationId: String): Flow<List<Message>> =
+        dao.getDocumentMessagesForConversation(conversationId)
+
+    fun getLinkMessages(conversationId: String): Flow<List<Message>> =
+        dao.getLinkMessagesForConversation(conversationId)
+
+    fun getSharedMediaCount(conversationId: String): Flow<Int> =
+        dao.getSharedMediaCount(conversationId)
+
+    fun getRecentMediaPreviews(conversationId: String): Flow<List<Message>> =
+        dao.getRecentMediaPreviews(conversationId)
 }

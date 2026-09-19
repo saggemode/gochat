@@ -198,6 +198,20 @@ class SettingsFragment : Fragment() {
                 startActivity(Intent(requireContext(), com.example.gochat.ui.storage.StorageManagementActivity::class.java))
             }
 
+            // Help
+            tileHelp.setOnClickListener {
+                Toast.makeText(requireContext(), "Help Center coming soon!", Toast.LENGTH_SHORT).show()
+            }
+
+            // Invite
+            tileInvite.setOnClickListener {
+                val inviteIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, "Join me on GoChat! Download the app at https://gochat.app")
+                }
+                startActivity(Intent.createChooser(inviteIntent, "Invite a Friend"))
+            }
+
             // Logout
             tileLogout.setOnClickListener {
                 showLogoutConfirmation()

@@ -75,8 +75,8 @@ class CatalogPickerBottomSheet(
 
         binding.btnSendCatalogGrid.setOnClickListener {
             val count = selectedProductIds.size
-            if (count < 2) {
-                Toast.makeText(requireContext(), "Please select at least 4 products (or at least 2) for a catalog grid", Toast.LENGTH_SHORT).show()
+            if (count < 1) {
+                Toast.makeText(requireContext(), "Please select at least 1 product to share your catalog", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             val selectedList = allProducts.filter { selectedProductIds.contains(it.id) }
@@ -133,10 +133,10 @@ class CatalogPickerBottomSheet(
         binding.btnSendCatalogGrid.text = if (count > 0) {
             "Send Catalog ($count selected)"
         } else {
-            "Select 4 to 8 Products"
+            "Select Products"
         }
         binding.btnSendCatalogGrid.isEnabled = count in 1..8
-        binding.tvSelectionSubtitle.text = "Selected $count of 8 products (ideal: 4–8)"
+        binding.tvSelectionSubtitle.text = "Selected $count of 8 products for catalog preview"
     }
 
     inner class SelectableProductAdapter : RecyclerView.Adapter<SelectableProductAdapter.ViewHolder>() {

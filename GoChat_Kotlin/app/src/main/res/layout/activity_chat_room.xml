@@ -594,6 +594,41 @@
             tools:listitem="@layout/item_group_member"
             tools:visibility="visible" />
 
+        <!-- Slide-to-Lock Floating Pill -->
+        <LinearLayout
+            android:id="@+id/layoutSlideToLock"
+            android:layout_width="44dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginEnd="8dp"
+            android:layout_marginBottom="6dp"
+            android:background="@drawable/bg_card_dark"
+            android:elevation="6dp"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="10dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <ImageView
+                android:id="@+id/ivLockIcon"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:contentDescription="@string/slide_to_lock"
+                android:src="@drawable/ic_lock"
+                app:tint="@color/gochat_emerald_light" />
+
+            <ImageView
+                android:id="@+id/ivArrowUp"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:layout_marginTop="4dp"
+                android:contentDescription="@string/slide_to_lock"
+                android:src="@drawable/ic_arrow_up"
+                app:tint="@color/gochat_text_muted" />
+        </LinearLayout>
+
         <!-- Chat Input Bar -->
         <LinearLayout
             android:id="@+id/layoutNormalInput"
@@ -687,68 +722,156 @@
         <LinearLayout
             android:id="@+id/layoutVoiceRecording"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
+            android:layout_height="54dp"
             android:layout_marginHorizontal="6dp"
             android:layout_marginVertical="6dp"
             android:background="@drawable/bg_card_dark"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingHorizontal="14dp"
+            android:paddingHorizontal="10dp"
             android:visibility="gone"
             tools:visibility="visible">
 
-            <!-- Red Pulsing Recording Dot -->
-            <View
-                android:id="@+id/viewRecordingDot"
-                android:layout_width="12dp"
-                android:layout_height="12dp"
-                android:background="@drawable/bg_circle_pulse"
-                android:backgroundTint="#FF3B30" />
-
-            <!-- Timer -->
-            <TextView
-                android:id="@+id/tvRecordingTimer"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
-                android:textColor="@color/white"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                tools:text="00:05" />
-
-            <com.example.gochat.ui.custom.WaveformView
-                android:id="@+id/waveformRecording"
-                android:layout_width="0dp"
-                android:layout_height="36dp"
-                android:layout_marginStart="12dp"
-                android:layout_weight="1" />
-
-            <!-- Discard / Cancel Button -->
+            <!-- Discard / Trash Button -->
             <ImageView
                 android:id="@+id/btnCancelVoiceRecording"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:contentDescription="Discard"
                 android:focusable="true"
-                android:padding="7dp"
+                android:padding="6dp"
                 android:src="@drawable/ic_delete_recording"
                 app:tint="#FF3B30" />
+
+            <!-- Live Status Container: Red Pulsing Dot + Live Timer -->
+            <LinearLayout
+                android:id="@+id/layoutRecordingLiveStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <View
+                    android:id="@+id/viewRecordingDot"
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:background="@drawable/bg_circle_pulse"
+                    android:backgroundTint="#FF3B30" />
+
+                <TextView
+                    android:id="@+id/tvRecordingTimer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:textColor="@color/white"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    tools:text="00:05" />
+            </LinearLayout>
+
+            <!-- Preview Status Container: Play/Pause Button + Preview Timer -->
+            <LinearLayout
+                android:id="@+id/layoutRecordingPreviewStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <ImageView
+                    android:id="@+id/btnPlayPreview"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:background="@drawable/bg_button_emerald"
+                    android:clickable="true"
+                    android:contentDescription="Play preview"
+                    android:focusable="true"
+                    android:padding="7dp"
+                    android:src="@drawable/ic_play"
+                    app:tint="@color/black" />
+
+                <TextView
+                    android:id="@+id/tvPreviewTimer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:textColor="@color/white"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    tools:text="00:03 / 00:08" />
+            </LinearLayout>
+
+            <!-- Slide To Cancel Hint (visible during hold-to-record sliding) -->
+            <TextView
+                android:id="@+id/tvSlideToCancel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:text="@string/slide_to_cancel"
+                android:textColor="@color/gochat_text_muted"
+                android:textSize="13sp"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <!-- Waveform Visualizer -->
+            <com.example.gochat.ui.custom.WaveformView
+                android:id="@+id/waveformRecording"
+                android:layout_width="0dp"
+                android:layout_height="34dp"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1" />
+
+            <!-- Pause Recording Button (during active locked recording) -->
+            <ImageView
+                android:id="@+id/btnPauseRecording"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="@string/action_pause_recording"
+                android:focusable="true"
+                android:padding="6dp"
+                android:src="@drawable/ic_pause"
+                android:visibility="gone"
+                app:tint="#FF3B30"
+                tools:visibility="visible" />
+
+            <!-- Resume Recording Button (when paused) -->
+            <ImageView
+                android:id="@+id/btnResumeRecording"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="@string/action_resume_recording"
+                android:focusable="true"
+                android:padding="6dp"
+                android:src="@drawable/ic_mic"
+                android:visibility="gone"
+                app:tint="#FF3B30"
+                tools:visibility="visible" />
 
             <!-- Send Voice Note Button -->
             <ImageView
                 android:id="@+id/btnSendVoiceRecording"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
-                android:layout_marginStart="8dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="4dp"
                 android:background="@drawable/bg_button_emerald"
                 android:clickable="true"
                 android:contentDescription="Send Voice Note"
                 android:focusable="true"
                 android:padding="8dp"
                 android:src="@drawable/ic_send"
-                app:tint="@color/black" />
+                android:visibility="gone"
+                app:tint="@color/black"
+                tools:visibility="visible" />
 
         </LinearLayout>
 

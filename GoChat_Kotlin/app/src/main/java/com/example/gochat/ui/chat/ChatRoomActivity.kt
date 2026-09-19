@@ -836,6 +836,8 @@ class ChatRoomActivity : AppCompatActivity() {
             showProductPicker()
         }
 
+        // Catalog sharing (Lightweight Catalog V2)
+        sheetBinding.btnPickCatalog.visibility = View.VISIBLE
         sheetBinding.btnPickCatalog.setOnClickListener {
             sheet.dismiss()
             showCatalogPicker()
@@ -851,19 +853,8 @@ class ChatRoomActivity : AppCompatActivity() {
 
     private fun showCatalogPicker() {
         val picker = CatalogPickerBottomSheet { selectedProducts ->
-            val convId = intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty()
-            val titleText = binding.tvChatTitle.text.toString().ifBlank { intent.getStringExtra(EXTRA_CONVERSATION_TITLE).orEmpty() }
-            val storeTitle = titleText.ifBlank { "Store Catalog" }
-            val storeId = if (convId.startsWith("conv_store_")) {
-                convId.removePrefix("conv_store_")
-            } else ""
-            viewModel.sendCatalogMessage(
-                title = "$storeTitle Collection",
-                products = selectedProducts,
-                storeId = storeId,
-                storeName = storeTitle
-            )
-            Toast.makeText(this, "🛍️ Catalog sent (${selectedProducts.size} items)", Toast.LENGTH_SHORT).show()
+            if (selectedProducts.isEmpty()) return@CatalogPickerBottomSheet
+            viewModel.sendCatalogMessage(selectedProducts)
         }
         picker.show(supportFragmentManager, "CatalogPickerBottomSheet")
     }

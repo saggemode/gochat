@@ -6,11 +6,18 @@ import android.content.Intent
 import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.RemoteInput
+import androidx.work.BackoffPolicy
+import androidx.work.Constraints
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import com.example.gochat.data.repository.ChatRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 /**
@@ -42,21 +49,51 @@ class NotificationActionReceiver : BroadcastReceiver() {
             NotificationHelper.ACTION_DIRECT_REPLY -> {
                 val resultsBundle = RemoteInput.getResultsFromIntent(intent)
                 val replyText = resultsBundle?.getCharSequence(NotificationHelper.KEY_TEXT_REPLY)?.toString()
+                val senderTitle = intent.getStringExtra(NotificationHelper.EXTRA_CONVERSATION_TITLE) ?: "GoChat Contact"
 
                 if (!replyText.isNullOrBlank() && conversationId.isNotBlank()) {
+                    // 1. Immediately update the notification to dismiss system RemoteInput progress spinner
+                    NotificationHelper.updateNotificationWithReply(
+                        context = context,
+                        conversationId = conversationId,
+                        notificationId = notificationId,
+                        replyText = replyText,
+                        senderTitle = senderTitle
+                    )
+
+                    // 2. Schedule reliable background delivery via WorkManager
+                    val workData = workDataOf(
+                        DirectReplyWorker.KEY_CONVERSATION_ID to conversationId,
+                        DirectReplyWorker.KEY_REPLY_TEXT to replyText,
+                        DirectReplyWorker.KEY_NOTIFICATION_ID to notificationId
+                    )
+                    val constraints = Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .build()
+                    val replyWorkRequest = OneTimeWorkRequestBuilder<DirectReplyWorker>()
+                        .setInputData(workData)
+                        .setConstraints(constraints)
+                        .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
+                        .build()
+
+                    try {
+                        WorkManager.getInstance(context).enqueue(replyWorkRequest)
+                    } catch (we: Exception) {
+                        Log.w(TAG, "Failed to enqueue DirectReplyWorker: ${we.message}")
+                    }
+
+                    // 3. Concurrently attempt immediate dispatch via goAsync
                     scope.launch {
                         try {
-                            Log.d(TAG, "Sending direct reply to $conversationId: $replyText")
+                            Log.d(TAG, "Attempting immediate direct reply to $conversationId: $replyText")
                             chatRepository.sendMessage(
                                 conversationId = conversationId,
                                 content = replyText
                             )
                             chatRepository.markConversationAsRead(conversationId)
                         } catch (e: Exception) {
-                            Log.e(TAG, "Failed to send direct reply", e)
+                            Log.w(TAG, "Immediate direct reply failed, WorkManager will ensure delivery: ${e.message}")
                         } finally {
-                            val notificationManager = NotificationManagerCompat.from(context)
-                            notificationManager.cancel(notificationId)
                             pendingResult.finish()
                         }
                     }
@@ -66,6 +103,9 @@ class NotificationActionReceiver : BroadcastReceiver() {
             }
 
             NotificationHelper.ACTION_MARK_AS_READ -> {
+                val notificationManager = NotificationManagerCompat.from(context)
+                notificationManager.cancel(notificationId)
+
                 if (conversationId.isNotBlank()) {
                     scope.launch {
                         try {
@@ -74,8 +114,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
                         } catch (e: Exception) {
                             Log.e(TAG, "Failed to mark as read", e)
                         } finally {
-                            val notificationManager = NotificationManagerCompat.from(context)
-                            notificationManager.cancel(notificationId)
                             pendingResult.finish()
                         }
                     }

@@ -54,6 +54,29 @@ object HapticEngine {
         } catch (_: Exception) {}
     }
 
+    fun playLightTap(context: Context) {
+        playMessageSent(context)
+    }
+
+    fun playCancel(context: Context) {
+        try {
+            val vibrator = getVibrator(context) ?: return
+            if (!vibrator.hasVibrator()) return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                try {
+                    vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
+                } catch (_: Exception) {
+                    vibrator.vibrate(VibrationEffect.createOneShot(15, 60))
+                }
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(15, 60))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(15)
+            }
+        } catch (_: Exception) {}
+    }
+
     /**
      * "Payment Confirmed" - Success double-pulse (70ms tap, 80ms pause, 120ms confident tap).
      */

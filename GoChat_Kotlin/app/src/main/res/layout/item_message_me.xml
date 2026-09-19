@@ -366,30 +366,75 @@
                         tools:text="6 ITEMS" />
                 </LinearLayout>
 
-                <!-- Scrollable Catalog Grid (2 rows horizontal) -->
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/rvCatalogGrid"
+                <!-- 3 Preview Thumbnails -->
+                <LinearLayout
+                    android:id="@+id/layoutCatalogThumbs"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="72dp"
                     android:layout_marginTop="8dp"
-                    android:clipToPadding="false"
-                    android:nestedScrollingEnabled="false"
-                    android:orientation="horizontal"
-                    tools:listitem="@layout/item_catalog_grid_product" />
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/ivCatalogThumb1"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:background="#15FFFFFF"
+                        android:scaleType="centerCrop"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Small" />
+
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/ivCatalogThumb2"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="1"
+                        android:background="#15FFFFFF"
+                        android:scaleType="centerCrop"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Small" />
+
+                    <FrameLayout
+                        android:id="@+id/containerCatalogThumb3"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="1">
+
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:id="@+id/ivCatalogThumb3"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="#15FFFFFF"
+                            android:scaleType="centerCrop"
+                            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Small" />
+
+                        <TextView
+                            android:id="@+id/tvCatalogMoreOverlay"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="#99000000"
+                            android:gravity="center"
+                            android:textColor="@color/white"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:visibility="gone"
+                            tools:text="+5" />
+                    </FrameLayout>
+                </LinearLayout>
 
                 <!-- Footer: View All Action -->
                 <TextView
                     android:id="@+id/btnViewCatalogStore"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="8dp"
                     android:background="@drawable/bg_pill"
                     android:backgroundTint="#30FFFFFF"
                     android:gravity="center"
-                    android:paddingVertical="6dp"
-                    android:text="🛍️ View Full Store Catalog"
+                    android:paddingVertical="7dp"
+                    android:text="🛍️ View Catalog"
                     android:textColor="@color/white"
-                    android:textSize="11sp"
+                    android:textSize="12sp"
                     android:textStyle="bold" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

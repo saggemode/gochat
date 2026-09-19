@@ -428,6 +428,39 @@ class ChatRoomViewModel @Inject constructor(
         }
     }
 
+    fun sendCatalogMessage(
+        selectedProducts: List<Product>,
+        targetConvId: String? = null
+    ) {
+        val convId = targetConvId ?: _conversationId.value
+        if (convId.isEmpty() || selectedProducts.isEmpty()) return
+
+        val firstProd = selectedProducts.first()
+        val storeId = firstProd.storeId.ifBlank { "store_default" }
+        val storeName = firstProd.storeName.ifBlank { "Official Store" }
+        val previewImages = selectedProducts.mapNotNull { it.primaryImage.ifBlank { null } }.take(3)
+        val catalogId = "cat_${System.currentTimeMillis()}"
+
+        val catalogJson = buildJsonObject {
+            put("type", "catalog")
+            put("catalog_id", catalogId)
+            put("store_id", storeId)
+            put("store_name", storeName)
+            put("item_count", selectedProducts.size)
+            put("preview_images", buildJsonArray {
+                previewImages.forEach { add(JsonPrimitive(it)) }
+            })
+        }.toString()
+
+        viewModelScope.launch {
+            chatRepository.sendMessage(
+                conversationId = convId,
+                content = catalogJson,
+                type = 11 // MessageType.CATALOG
+            )
+        }
+    }
+
     fun sendPaymentRequestMessage(
         itemName: String,
         amount: Double,
@@ -512,43 +545,6 @@ class ChatRoomViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e("ChatRoomVM", "Failed to update payment status: ${e.message}")
             }
-        }
-    }
-
-    fun sendCatalogMessage(
-        title: String,
-        products: List<com.example.gochat.data.model.Product>,
-        storeId: String = "",
-        storeName: String = "",
-        targetConvId: String? = null
-    ) {
-        val convId = targetConvId ?: _conversationId.value
-        if (convId.isEmpty() || products.isEmpty()) return
-
-        val items = products.map { prod ->
-            com.example.gochat.data.model.CatalogItemData(
-                id = prod.id,
-                name = prod.displayTitle,
-                price = prod.price,
-                image = prod.primaryImage,
-                category = prod.category,
-                rating = prod.rating
-            )
-        }
-
-        val catalogData = com.example.gochat.data.model.CatalogData(
-            title = title.ifBlank { "Store Catalog" },
-            storeId = storeId,
-            storeName = storeName.ifBlank { "Official Store" },
-            subtitle = "Featured Selection",
-            products = items
-        )
-
-        viewModelScope.launch {
-            chatRepository.sendCatalogMessage(
-                conversationId = convId,
-                catalogData = catalogData
-            )
         }
     }
 

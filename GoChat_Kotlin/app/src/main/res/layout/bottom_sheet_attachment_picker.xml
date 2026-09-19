@@ -301,7 +301,7 @@
                 android:textSize="13sp" />
         </LinearLayout>
 
-        <!-- Catalog Grid Option -->
+        <!-- Catalog Sharing Option -->
         <LinearLayout
             android:id="@+id/btnPickCatalog"
             android:layout_width="0dp"
@@ -312,7 +312,8 @@
             android:focusable="true"
             android:gravity="center"
             android:orientation="vertical"
-            android:padding="12dp">
+            android:padding="12dp"
+            android:visibility="visible">
 
             <FrameLayout
                 android:layout_width="56dp"
@@ -337,6 +338,11 @@
                 android:textColor="@color/gochat_text_primary"
                 android:textSize="13sp" />
         </LinearLayout>
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
 
         <View
             android:layout_width="0dp"

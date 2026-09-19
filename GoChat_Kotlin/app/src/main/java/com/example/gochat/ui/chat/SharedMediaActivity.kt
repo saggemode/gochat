@@ -1,288 +1,337 @@
 package com.example.gochat.ui.chat
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
+import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.example.gochat.R
-import com.example.gochat.core.media.MediaImageHelper
 import com.example.gochat.data.model.Message
 import com.example.gochat.data.model.MessageType
 import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.databinding.ActivitySharedMediaBinding
-import com.example.gochat.databinding.ItemSharedDocOrLinkBinding
-import com.example.gochat.databinding.ItemSharedMediaGridBinding
-import com.google.android.material.tabs.TabLayout
+import com.example.gochat.databinding.FragmentSharedMediaTabBinding
+import com.google.android.material.tabs.TabLayoutMediator
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.regex.Pattern
+import java.net.URI
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class SharedMediaActivity : AppCompatActivity() {
 
-    companion object {
-        const val EXTRA_CONVERSATION_ID = "extra_conversation_id"
-        const val EXTRA_CONVERSATION_TITLE = "extra_conversation_title"
-    }
-
     @Inject
     lateinit var chatRepository: ChatRepository
 
-    private lateinit var binding: ActivitySharedMediaBinding
-    private var conversationId: String = ""
-    private var conversationTitle: String = ""
+    companion object {
+        const val EXTRA_CONVERSATION_ID = "extra_conversation_id"
+        const val EXTRA_TITLE = "extra_title"
+        const val EXTRA_CONVERSATION_TITLE = "extra_conversation_title"
+    }
 
-    private var allMessages: List<Message> = emptyList()
-    private var currentTabPosition = 0
+    private lateinit var binding: ActivitySharedMediaBinding
+    private val conversationId: String by lazy { intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty() }
+    private val conversationTitle: String by lazy {
+        intent.getStringExtra(EXTRA_CONVERSATION_TITLE)
+            ?: intent.getStringExtra(EXTRA_TITLE)
+            ?: "Chat"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivitySharedMediaBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty()
-        conversationTitle = intent.getStringExtra(EXTRA_CONVERSATION_TITLE) ?: "Chat"
-
-        binding.tvSharedMediaHeaderSubtitle.text = conversationTitle
-        binding.btnBackSharedMedia.setOnClickListener { finish() }
-
-        setupTabs()
-        observeMedia()
+        setupToolbar()
+        setupViewPager()
     }
 
-    private fun setupTabs() {
-        binding.tabLayoutSharedMedia.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-            override fun onTabSelected(tab: TabLayout.Tab?) {
-                currentTabPosition = tab?.position ?: 0
-                renderCurrentTab()
+    private fun setupToolbar() {
+        setSupportActionBar(binding.toolbar)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        binding.toolbar.title = conversationTitle
+        binding.toolbar.subtitle = getString(R.string.media_links_and_docs)
+        binding.toolbar.setNavigationOnClickListener { finish() }
+    }
+
+    private fun setupViewPager() {
+        val adapter = SharedMediaPagerAdapter(this, conversationId)
+        binding.viewPager.adapter = adapter
+
+        TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
+            tab.text = when (position) {
+                0 -> getString(R.string.tab_media)
+                1 -> getString(R.string.tab_docs)
+                2 -> getString(R.string.tab_links)
+                else -> ""
             }
-            override fun onTabUnselected(tab: TabLayout.Tab?) {}
-            override fun onTabReselected(tab: TabLayout.Tab?) {}
-        })
+        }.attach()
     }
 
-    private fun observeMedia() {
-        if (conversationId.isEmpty()) return
+    private class SharedMediaPagerAdapter(
+        activity: AppCompatActivity,
+        private val convId: String
+    ) : FragmentStateAdapter(activity) {
 
-        binding.pbLoadingShared.visibility = View.VISIBLE
-        lifecycleScope.launch {
-            chatRepository.observeMessages(conversationId).collectLatest { messages ->
-                binding.pbLoadingShared.visibility = View.GONE
-                allMessages = messages
-                renderCurrentTab()
+        override fun getItemCount(): Int = 3
+
+        override fun createFragment(position: Int): Fragment {
+            return when (position) {
+                0 -> SharedMediaTabFragment.newInstance(convId)
+                1 -> SharedDocsTabFragment.newInstance(convId)
+                2 -> SharedLinksTabFragment.newInstance(convId)
+                else -> throw IllegalArgumentException("Invalid tab position $position")
             }
         }
     }
+}
 
-    private fun renderCurrentTab() {
-        when (currentTabPosition) {
-            0 -> renderMediaTab()
-            1 -> renderDocsTab()
-            2 -> renderLinksTab()
+/**
+ * Tab 0: Photos & Videos 3-column Grid
+ */
+@AndroidEntryPoint
+class SharedMediaTabFragment : Fragment() {
+
+    @Inject
+    lateinit var chatRepository: ChatRepository
+
+    private var _binding: FragmentSharedMediaTabBinding? = null
+    private val binding get() = _binding!!
+    private val convId: String by lazy { requireArguments().getString(ARG_CONV_ID).orEmpty() }
+
+    private lateinit var adapter: SharedMediaGridAdapter
+
+    companion object {
+        private const val ARG_CONV_ID = "arg_conv_id"
+        fun newInstance(convId: String) = SharedMediaTabFragment().apply {
+            arguments = Bundle().apply { putString(ARG_CONV_ID, convId) }
         }
     }
 
-    private fun renderMediaTab() {
-        val mediaList = allMessages.filter { msg ->
-            !msg.isDeleted && (
-                msg.type == MessageType.IMAGE ||
-                msg.type == MessageType.VIDEO ||
-                (!msg.mediaUrl.isNullOrBlank() && (msg.content.contains("Photo", ignoreCase = true) || msg.content.contains("Video", ignoreCase = true)))
-            )
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        _binding = FragmentSharedMediaTabBinding.inflate(inflater, container, false)
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        binding.recyclerView.layoutManager = GridLayoutManager(requireContext(), 3)
+        adapter = SharedMediaGridAdapter { message ->
+            val intent = Intent(requireContext(), MediaViewerActivity::class.java).apply {
+                putExtra(MediaViewerActivity.EXTRA_MEDIA_URL, message.mediaUrl)
+                putExtra(MediaViewerActivity.EXTRA_IS_VIDEO, message.type == MessageType.VIDEO)
+                putExtra(MediaViewerActivity.EXTRA_TITLE, message.senderName)
+            }
+            startActivity(intent)
         }
+        binding.recyclerView.adapter = adapter
 
-        if (mediaList.isEmpty()) {
-            binding.rvSharedMedia.visibility = View.GONE
-            binding.layoutEmptyShared.visibility = View.VISIBLE
-            binding.ivEmptyIcon.setImageResource(R.drawable.ic_gallery)
-            binding.tvEmptyTitle.text = "No media shared yet"
-        } else {
-            binding.rvSharedMedia.visibility = View.VISIBLE
-            binding.layoutEmptyShared.visibility = View.GONE
+        binding.ivEmptyIcon.setImageResource(R.drawable.ic_gallery)
+        binding.tvEmptyTitle.text = getString(R.string.no_media_title)
+        binding.tvEmptyDescription.text = getString(R.string.no_media_desc)
 
-            binding.rvSharedMedia.layoutManager = GridLayoutManager(this, 3)
-            binding.rvSharedMedia.adapter = SharedMediaGridAdapter(mediaList) { clickedMsg ->
-                val url = clickedMsg.mediaUrl.orEmpty()
-                if (url.isNotBlank()) {
-                    val intent = Intent(this, MediaViewerActivity::class.java).apply {
-                        putExtra(MediaViewerActivity.EXTRA_MEDIA_URL, url)
-                        putExtra(MediaViewerActivity.EXTRA_TITLE, conversationTitle)
-                        putExtra(MediaViewerActivity.EXTRA_IS_VIDEO, clickedMsg.type == MessageType.VIDEO)
-                    }
-                    startActivity(intent)
+        viewLifecycleOwner.lifecycleScope.launch {
+            chatRepository.getMediaMessages(convId).collectLatest { list ->
+                adapter.submitList(list)
+                if (list.isEmpty()) {
+                    binding.layoutEmpty.visibility = View.VISIBLE
+                    binding.recyclerView.visibility = View.GONE
+                } else {
+                    binding.layoutEmpty.visibility = View.GONE
+                    binding.recyclerView.visibility = View.VISIBLE
                 }
             }
         }
     }
 
-    private fun renderDocsTab() {
-        val docsList = allMessages.filter { msg ->
-            !msg.isDeleted && (
-                msg.type == MessageType.FILE ||
-                msg.type == MessageType.AUDIO ||
-                msg.type == MessageType.VOICE ||
-                msg.content.contains("Voice Note", ignoreCase = true) ||
-                msg.content.endsWith(".pdf", ignoreCase = true) ||
-                msg.content.endsWith(".doc", ignoreCase = true) ||
-                msg.content.endsWith(".zip", ignoreCase = true)
-            )
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+}
+
+/**
+ * Tab 1: Shared Documents List
+ */
+@AndroidEntryPoint
+class SharedDocsTabFragment : Fragment() {
+
+    @Inject
+    lateinit var chatRepository: ChatRepository
+
+    private var _binding: FragmentSharedMediaTabBinding? = null
+    private val binding get() = _binding!!
+    private val convId: String by lazy { requireArguments().getString(ARG_CONV_ID).orEmpty() }
+
+    private lateinit var adapter: SharedDocsAdapter
+
+    companion object {
+        private const val ARG_CONV_ID = "arg_conv_id"
+        fun newInstance(convId: String) = SharedDocsTabFragment().apply {
+            arguments = Bundle().apply { putString(ARG_CONV_ID, convId) }
         }
+    }
 
-        if (docsList.isEmpty()) {
-            binding.rvSharedMedia.visibility = View.GONE
-            binding.layoutEmptyShared.visibility = View.VISIBLE
-            binding.ivEmptyIcon.setImageResource(R.drawable.ic_attach_file)
-            binding.tvEmptyTitle.text = "No documents shared yet"
-        } else {
-            binding.rvSharedMedia.visibility = View.VISIBLE
-            binding.layoutEmptyShared.visibility = View.GONE
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        _binding = FragmentSharedMediaTabBinding.inflate(inflater, container, false)
+        return binding.root
+    }
 
-            binding.rvSharedMedia.layoutManager = LinearLayoutManager(this)
-            binding.rvSharedMedia.adapter = SharedDocsAdapter(docsList) { clickedMsg ->
-                // Navigate to ChatRoom focused on this message
-                val intent = Intent(this, ChatRoomActivity::class.java).apply {
-                    putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, conversationId)
-                    putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, conversationTitle)
-                    putExtra(ChatRoomActivity.EXTRA_TARGET_MESSAGE_ID, clickedMsg.id)
-                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
+        adapter = SharedDocsAdapter { message ->
+            openDocument(message)
+        }
+        binding.recyclerView.adapter = adapter
+
+        binding.ivEmptyIcon.setImageResource(R.drawable.ic_attach_file)
+        binding.tvEmptyTitle.text = getString(R.string.no_docs_title)
+        binding.tvEmptyDescription.text = getString(R.string.no_docs_desc)
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            chatRepository.getDocumentMessages(convId).collectLatest { list ->
+                adapter.submitList(list)
+                if (list.isEmpty()) {
+                    binding.layoutEmpty.visibility = View.VISIBLE
+                    binding.recyclerView.visibility = View.GONE
+                } else {
+                    binding.layoutEmpty.visibility = View.GONE
+                    binding.recyclerView.visibility = View.VISIBLE
                 }
-                startActivity(intent)
-                finish()
             }
         }
     }
 
-    private val urlPattern = Pattern.compile("https?://[\\w\\d:#@%/;$()~_?\\+-=\\\\\\.&]+")
-
-    private fun renderLinksTab() {
-        val linksList = allMessages.filter { msg ->
-            !msg.isDeleted && urlPattern.matcher(msg.content).find()
+    private fun openDocument(message: Message) {
+        val url = message.mediaUrl ?: return
+        try {
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(Uri.parse(url), "*/*")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(Intent.createChooser(intent, "Open Document"))
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "No application found to open this document", Toast.LENGTH_SHORT).show()
         }
+    }
 
-        if (linksList.isEmpty()) {
-            binding.rvSharedMedia.visibility = View.GONE
-            binding.layoutEmptyShared.visibility = View.VISIBLE
-            binding.ivEmptyIcon.setImageResource(R.drawable.ic_link)
-            binding.tvEmptyTitle.text = "No links shared yet"
-        } else {
-            binding.rvSharedMedia.visibility = View.VISIBLE
-            binding.layoutEmptyShared.visibility = View.GONE
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+}
 
-            binding.rvSharedMedia.layoutManager = LinearLayoutManager(this)
-            binding.rvSharedMedia.adapter = SharedLinksAdapter(linksList) { clickedMsg, linkUrl ->
+/**
+ * Tab 2: Shared Links List
+ */
+@AndroidEntryPoint
+class SharedLinksTabFragment : Fragment() {
+
+    @Inject
+    lateinit var chatRepository: ChatRepository
+
+    private var _binding: FragmentSharedMediaTabBinding? = null
+    private val binding get() = _binding!!
+    private val convId: String by lazy { requireArguments().getString(ARG_CONV_ID).orEmpty() }
+
+    private lateinit var adapter: SharedLinksAdapter
+    private val urlRegex = Regex("""(https?://[^\s]+|www\.[^\s]+)""")
+
+    companion object {
+        private const val ARG_CONV_ID = "arg_conv_id"
+        fun newInstance(convId: String) = SharedLinksTabFragment().apply {
+            arguments = Bundle().apply { putString(ARG_CONV_ID, convId) }
+        }
+    }
+
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        _binding = FragmentSharedMediaTabBinding.inflate(inflater, container, false)
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
+        adapter = SharedLinksAdapter(
+            onLinkClick = { rawUrl ->
+                val fullUrl = if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
+                    "https://$rawUrl"
+                } else {
+                    rawUrl
+                }
                 try {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(linkUrl))
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(fullUrl))
                     startActivity(intent)
-                } catch (_: Exception) {
-                    val intent = Intent(this, ChatRoomActivity::class.java).apply {
-                        putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, conversationId)
-                        putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, conversationTitle)
-                        putExtra(ChatRoomActivity.EXTRA_TARGET_MESSAGE_ID, clickedMsg.id)
-                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                } catch (e: Exception) {
+                    Toast.makeText(requireContext(), "Cannot open link", Toast.LENGTH_SHORT).show()
+                }
+            },
+            onCopyClick = { url ->
+                val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText("URL", url)
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(requireContext(), getString(R.string.toast_link_copied), Toast.LENGTH_SHORT).show()
+            }
+        )
+        binding.recyclerView.adapter = adapter
+
+        binding.ivEmptyIcon.setImageResource(R.drawable.ic_link)
+        binding.tvEmptyTitle.text = getString(R.string.no_links_title)
+        binding.tvEmptyDescription.text = getString(R.string.no_links_desc)
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            chatRepository.getLinkMessages(convId).collectLatest { messages ->
+                val linkItems = mutableListOf<SharedLinkItem>()
+                for (msg in messages) {
+                    val matches = urlRegex.findAll(msg.content)
+                    for (m in matches) {
+                        val u = m.value
+                        val host = try {
+                            val uri = if (u.startsWith("http")) URI(u) else URI("https://$u")
+                            uri.host ?: u
+                        } catch (_: Exception) {
+                            u
+                        }
+                        linkItems.add(
+                            SharedLinkItem(
+                                messageId = "${msg.id}_${u.hashCode()}",
+                                url = u,
+                                domain = host,
+                                timestamp = msg.createdAt
+                            )
+                        )
                     }
-                    startActivity(intent)
-                    finish()
+                }
+                adapter.submitList(linkItems)
+                if (linkItems.isEmpty()) {
+                    binding.layoutEmpty.visibility = View.VISIBLE
+                    binding.recyclerView.visibility = View.GONE
+                } else {
+                    binding.layoutEmpty.visibility = View.GONE
+                    binding.recyclerView.visibility = View.VISIBLE
                 }
             }
         }
     }
 
-    // --- Adapters ---
-
-    private class SharedMediaGridAdapter(
-        private val items: List<Message>,
-        private val onClick: (Message) -> Unit
-    ) : RecyclerView.Adapter<SharedMediaGridAdapter.ViewHolder>() {
-
-        class ViewHolder(val binding: ItemSharedMediaGridBinding) : RecyclerView.ViewHolder(binding.root)
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val binding = ItemSharedMediaGridBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-            return ViewHolder(binding)
-        }
-
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val msg = items[position]
-            MediaImageHelper.loadSafeImage(
-                imageView = holder.binding.ivSharedThumbnail,
-                url = msg.mediaUrl,
-                isCircle = false,
-                placeholderRes = R.drawable.ic_gallery,
-                errorRes = R.drawable.ic_gallery
-            )
-            holder.binding.ivVideoIndicator.visibility = if (msg.type == MessageType.VIDEO) View.VISIBLE else View.GONE
-            holder.binding.root.setOnClickListener { onClick(msg) }
-        }
-
-        override fun getItemCount(): Int = items.size
-    }
-
-    private class SharedDocsAdapter(
-        private val items: List<Message>,
-        private val onClick: (Message) -> Unit
-    ) : RecyclerView.Adapter<SharedDocsAdapter.ViewHolder>() {
-
-        class ViewHolder(val binding: ItemSharedDocOrLinkBinding) : RecyclerView.ViewHolder(binding.root)
-
-        private val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val binding = ItemSharedDocOrLinkBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-            return ViewHolder(binding)
-        }
-
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val msg = items[position]
-            val isAudio = msg.type == MessageType.AUDIO || msg.type == MessageType.VOICE || msg.content.contains("Voice Note", ignoreCase = true)
-            holder.binding.ivDocOrLinkIcon.setImageResource(if (isAudio) R.drawable.ic_mic else R.drawable.ic_attach_file)
-            holder.binding.tvDocOrLinkTitle.text = if (isAudio) "Voice Note" else msg.content.ifBlank { "Document" }
-            holder.binding.tvDocOrLinkSubtitle.text = dateFormat.format(Date(msg.createdAt))
-            holder.binding.root.setOnClickListener { onClick(msg) }
-        }
-
-        override fun getItemCount(): Int = items.size
-    }
-
-    private class SharedLinksAdapter(
-        private val items: List<Message>,
-        private val onClick: (Message, String) -> Unit
-    ) : RecyclerView.Adapter<SharedLinksAdapter.ViewHolder>() {
-
-        class ViewHolder(val binding: ItemSharedDocOrLinkBinding) : RecyclerView.ViewHolder(binding.root)
-
-        private val urlPattern = Pattern.compile("https?://[\\w\\d:#@%/;$()~_?\\+-=\\\\\\.&]+")
-        private val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val binding = ItemSharedDocOrLinkBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-            return ViewHolder(binding)
-        }
-
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val msg = items[position]
-            val matcher = urlPattern.matcher(msg.content)
-            val extractedUrl = if (matcher.find()) matcher.group(0) ?: msg.content else msg.content
-
-            holder.binding.ivDocOrLinkIcon.setImageResource(R.drawable.ic_link)
-            holder.binding.tvDocOrLinkTitle.text = extractedUrl
-            holder.binding.tvDocOrLinkSubtitle.text = "${dateFormat.format(Date(msg.createdAt))} • Tap to open"
-            holder.binding.root.setOnClickListener { onClick(msg, extractedUrl) }
-        }
-
-        override fun getItemCount(): Int = items.size
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 }

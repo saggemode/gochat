@@ -374,19 +374,32 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 	convID := c.Param("id")
 
 	var req struct {
-		Content          string   `json:"content"`
-		Type             int32    `json:"type"` // 0=text, 1=image, etc.
-		MediaURL         string   `json:"media_url"`
-		MediaMime        string   `json:"media_mime"`
-		MediaSize        int64    `json:"media_size"`
-		ParentID         string   `json:"parent_id"`  // threaded reply
-		ExpiresAt        int64    `json:"expires_at"` // TTL self-destruct (Unix ts, 0 = never)
-		MentionedUserIds []string `json:"mentioned_user_ids"`
+		Content               string   `json:"content"`
+		Type                  int32    `json:"type"` // 0=text, 1=image, etc.
+		MediaURL              string   `json:"media_url"`
+		MediaMime             string   `json:"media_mime"`
+		MediaSize             int64    `json:"media_size"`
+		ParentID              string   `json:"parent_id"`  // threaded reply
+		ExpiresAt             int64    `json:"expires_at"` // TTL self-destruct (Unix ts, 0 = never)
+		DisappearingDuration  int64    `json:"disappearing_messages_duration"`
+		DisappearingDurationS int64    `json:"disappearing_duration_seconds"`
+		DisappearingDur       int64    `json:"disappearing_duration"`
+		MentionedUserIds      []string `json:"mentioned_user_ids"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	if req.ExpiresAt == 0 {
+		if req.DisappearingDuration > 0 {
+			req.ExpiresAt = time.Now().Unix() + req.DisappearingDuration
+		} else if req.DisappearingDurationS > 0 {
+			req.ExpiresAt = time.Now().Unix() + req.DisappearingDurationS
+		} else if req.DisappearingDur > 0 {
+			req.ExpiresAt = time.Now().Unix() + req.DisappearingDur
+		}
 	}
 
 	resp, err := h.client.SendMessage(c.Request.Context(), &chatpb.SendMessageRequest{
@@ -408,22 +421,31 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 
 	// Fan out to all conversation members connected via WebSocket immediately
 	if resp != nil && resp.Message != nil {
+		msgData := map[string]interface{}{
+			"id":              resp.Message.Id,
+			"conversation_id": resp.Message.ConversationId,
+			"sender_id":       resp.Message.SenderId,
+			"content":         resp.Message.Content,
+			"type":            resp.Message.Type.String(),
+			"media_type":      resp.Message.Type.String(),
+			"status":          resp.Message.Status.String(),
+			"media_url":       resp.Message.MediaUrl,
+			"media_mime":      resp.Message.MediaMime,
+			"media_size":      resp.Message.MediaSize,
+			"parent_id":       resp.Message.ParentId,
+			"created_at":      resp.Message.CreatedAt,
+			"send_at":         resp.Message.SendAt,
+			"expires_at":      resp.Message.ExpiresAt,
+		}
+		if resp.Message.ExpiresAt > 0 {
+			dur := resp.Message.ExpiresAt - time.Now().Unix()
+			if dur < 0 {
+				dur = 0
+			}
+			msgData["disappearing_duration_seconds"] = dur
+		}
 		h.fanOutEvent("new_message", resp.Message.Id, convID, userID, map[string]interface{}{
-			"message": map[string]interface{}{
-				"id":              resp.Message.Id,
-				"conversation_id": resp.Message.ConversationId,
-				"sender_id":       resp.Message.SenderId,
-				"content":         resp.Message.Content,
-				"type":            resp.Message.Type.String(),
-				"media_type":      resp.Message.Type.String(),
-				"status":          resp.Message.Status.String(),
-				"media_url":       resp.Message.MediaUrl,
-				"media_mime":      resp.Message.MediaMime,
-				"media_size":      resp.Message.MediaSize,
-				"parent_id":       resp.Message.ParentId,
-				"created_at":      resp.Message.CreatedAt,
-				"send_at":         resp.Message.SendAt,
-			},
+			"message": msgData,
 		})
 	}
 

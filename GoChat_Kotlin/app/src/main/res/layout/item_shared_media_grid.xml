@@ -1,30 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="120dp"
-    android:layout_margin="1.5dp"
-    android:background="@color/whatsapp_surface_dark"
+    android:layout_height="wrap_content"
+    android:padding="1dp"
     android:foreground="?attr/selectableItemBackground">
 
     <ImageView
-        android:id="@+id/ivSharedThumbnail"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:id="@+id/ivMediaThumbnail"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:scaleType="centerCrop"
-        android:contentDescription="Shared thumbnail"
-        tools:src="@drawable/ic_gallery" />
+        android:background="@color/gochat_card_lighter"
+        app:layout_constraintDimensionRatio="1:1"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:srcCompat="@drawable/ic_launcher_background" />
 
-    <ImageView
-        android:id="@+id/ivVideoIndicator"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:layout_gravity="bottom|start"
-        android:layout_margin="6dp"
-        android:src="@drawable/ic_play"
+    <!-- Video duration / play overlay -->
+    <LinearLayout
+        android:id="@+id/layoutVideoOverlay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:layout_marginBottom="4dp"
+        android:background="@drawable/bg_media_timestamp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="4dp"
+        android:paddingVertical="2dp"
         android:visibility="gone"
-        app:tint="#FFFFFF"
-        tools:visibility="visible" />
+        app:layout_constraintBottom_toBottomOf="@id/ivMediaThumbnail"
+        app:layout_constraintStart_toStartOf="@id/ivMediaThumbnail"
+        tools:visibility="visible">
 
-</FrameLayout>
+        <ImageView
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:src="@drawable/ic_play"
+            app:tint="@color/white" />
+
+        <TextView
+            android:id="@+id/tvVideoDuration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="2dp"
+            android:textColor="@color/white"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            tools:text="0:45" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

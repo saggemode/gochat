@@ -1,144 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/whatsapp_bg_dark"
-    android:orientation="vertical">
+    android:background="@color/gochat_bg_dark">
 
-    <!-- Action Toolbar -->
-    <androidx.appcompat.widget.Toolbar
-        android:id="@+id/toolbarSharedMedia"
-        android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="@color/whatsapp_toolbar_dark"
-        app:contentInsetStart="4dp"
-        app:contentInsetEnd="16dp">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <ImageView
-                android:id="@+id/btnBackSharedMedia"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:clickable="true"
-                android:contentDescription="Back"
-                android:focusable="true"
-                android:padding="7dp"
-                android:src="@drawable/ic_back"
-                app:tint="@color/gochat_text_primary" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/tvSharedMediaHeaderTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:text="Media, links, and docs"
-                    android:textColor="@color/gochat_text_primary"
-                    android:textSize="17sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tvSharedMediaHeaderSubtitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:textColor="@color/gochat_text_secondary"
-                    android:textSize="12sp"
-                    tools:text="Chat Name" />
-            </LinearLayout>
-        </LinearLayout>
-    </androidx.appcompat.widget.Toolbar>
-
-    <!-- Navigation Tabs -->
-    <com.google.android.material.tabs.TabLayout
-        android:id="@+id/tabLayoutSharedMedia"
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/whatsapp_toolbar_dark"
-        app:tabIndicatorColor="@color/gochat_emerald_light"
-        app:tabIndicatorHeight="3dp"
-        app:tabSelectedTextColor="@color/gochat_emerald_light"
-        app:tabTextColor="@color/gochat_text_secondary">
+        android:background="@color/gochat_surface_dark"
+        app:elevation="1dp">
 
-        <com.google.android.material.tabs.TabItem
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="MEDIA" />
-
-        <com.google.android.material.tabs.TabItem
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="DOCS" />
-
-        <com.google.android.material.tabs.TabItem
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="LINKS" />
-    </com.google.android.material.tabs.TabLayout>
-
-    <!-- Content Container with RecyclerView and Empty State -->
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvSharedMedia"
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:padding="2dp" />
+            android:layout_height="?attr/actionBarSize"
+            app:navigationIcon="@drawable/ic_back"
+            app:navigationIconTint="@color/gochat_text_primary"
+            app:titleTextColor="@color/gochat_text_primary"
+            app:subtitleTextColor="@color/gochat_text_muted"
+            tools:title="John Doe"
+            tools:subtitle="Media, links and docs" />
 
-        <LinearLayout
-            android:id="@+id/layoutEmptyShared"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:visibility="gone"
-            tools:visibility="visible">
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tabLayout"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="@color/gochat_surface_dark"
+            app:tabGravity="fill"
+            app:tabIndicatorColor="@color/gochat_emerald_primary"
+            app:tabIndicatorHeight="3dp"
+            app:tabMode="fixed"
+            app:tabRippleColor="@color/gochat_glow_emerald"
+            app:tabSelectedTextColor="@color/gochat_emerald_primary"
+            app:tabTextAppearance="@style/TextAppearance.MaterialComponents.Subtitle2"
+            app:tabTextColor="@color/gochat_text_secondary" />
 
-            <ImageView
-                android:id="@+id/ivEmptyIcon"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                android:src="@drawable/ic_gallery"
-                app:tint="@color/gochat_text_secondary" />
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/gochat_border_dark" />
 
-            <TextView
-                android:id="@+id/tvEmptyTitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="No media shared yet"
-                android:textColor="@color/gochat_text_secondary"
-                android:textSize="15sp" />
-        </LinearLayout>
+    </com.google.android.material.appbar.AppBarLayout>
 
-        <ProgressBar
-            android:id="@+id/pbLoadingShared"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_gravity="center"
-            android:indeterminateTint="@color/gochat_emerald_light"
-            android:visibility="gone" />
-    </FrameLayout>
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/viewPager"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
-</LinearLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

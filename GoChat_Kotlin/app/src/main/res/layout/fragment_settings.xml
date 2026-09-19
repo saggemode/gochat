@@ -473,6 +473,72 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <!-- Help Row -->
+            <LinearLayout
+                android:id="@+id/tileHelp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="20dp"
+                android:paddingVertical="16dp">
+
+                <ImageView
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:contentDescription="Help"
+                    android:src="@drawable/ic_shield"
+                    app:tint="@color/gochat_text_secondary" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_weight="1"
+                    android:text="@string/settings_help_title"
+                    android:textColor="@color/gochat_text_primary"
+                    android:textSize="15.5sp" />
+            </LinearLayout>
+
+            <!-- Invite Row -->
+            <LinearLayout
+                android:id="@+id/tileInvite"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="20dp"
+                android:paddingVertical="16dp">
+
+                <ImageView
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:contentDescription="Invite"
+                    android:src="@drawable/ic_share"
+                    app:tint="@color/gochat_text_secondary" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_weight="1"
+                    android:text="@string/settings_invite_title"
+                    android:textColor="@color/gochat_text_primary"
+                    android:textSize="15.5sp" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0.5dp"
+                android:layout_marginTop="8dp"
+                android:background="@color/gochat_border_dark" />
+
             <!-- Log Out Row -->
             <LinearLayout
                 android:id="@+id/tileLogout"
@@ -487,21 +553,55 @@
                 android:paddingVertical="16dp">
 
                 <ImageView
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:contentDescription="Log Out"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:contentDescription="Sign Out"
                     android:src="@drawable/ic_close"
-                    app:tint="#FF3B30" />
+                    app:tint="@color/gochat_text_secondary" />
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="20dp"
+                    android:layout_marginStart="22dp"
                     android:layout_weight="1"
                     android:text="@string/btn_logout"
-                    android:textColor="#FF3B30"
-                    android:textSize="15.5sp"
-                    android:textStyle="bold" />
+                    android:textColor="@color/gochat_text_secondary"
+                    android:textSize="15sp" />
+            </LinearLayout>
+
+            <!-- App Info Footer -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingVertical="24dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="from"
+                    android:textAllCaps="true"
+                    android:textColor="@color/gochat_text_muted"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.1" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="GoChat Team"
+                    android:textColor="@color/gochat_emerald_primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:layout_marginTop="2dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Version 1.0.0 (Build 42)"
+                    android:textColor="@color/gochat_text_subtle"
+                    android:textSize="11sp"
+                    android:layout_marginTop="8dp" />
             </LinearLayout>
 
         </LinearLayout>

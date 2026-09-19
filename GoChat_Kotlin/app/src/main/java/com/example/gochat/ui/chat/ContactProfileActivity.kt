@@ -83,6 +83,7 @@ class ContactProfileActivity : AppCompatActivity() {
         setupSettingsRows(userName, convId)
         loadDisappearingStatus(convId)
         setupSellerStorefront(userName, targetUserId, userPin, convId, userPhone)
+        setupSharedMedia(convId, userName)
     }
 
     private fun setupToolbar(name: String) {
@@ -526,5 +527,44 @@ class ContactProfileActivity : AppCompatActivity() {
             }
         }
     }
-}
 
+    private fun setupSharedMedia(convId: String, contactName: String) {
+        // Horizontal preview thumbnails
+        val thumbAdapter = MediaPreviewThumbAdapter { message ->
+            val intent = Intent(this, MediaViewerActivity::class.java).apply {
+                putExtra(MediaViewerActivity.EXTRA_MEDIA_URL, message.mediaUrl)
+                putExtra(MediaViewerActivity.EXTRA_IS_VIDEO, message.type == com.example.gochat.data.model.MessageType.VIDEO)
+                putExtra(MediaViewerActivity.EXTRA_TITLE, message.senderName)
+            }
+            startActivity(intent)
+        }
+        binding.rvMediaPreview.layoutManager = LinearLayoutManager(
+            this, LinearLayoutManager.HORIZONTAL, false
+        )
+        binding.rvMediaPreview.adapter = thumbAdapter
+
+        // Observe count
+        lifecycleScope.launch {
+            chatRepository.getSharedMediaCount(convId).collect { count ->
+                binding.tvMediaCount.text = if (count > 0) count.toString() else getString(R.string.no_media_items)
+            }
+        }
+
+        // Observe recent previews
+        lifecycleScope.launch {
+            chatRepository.getRecentMediaPreviews(convId).collect { previews ->
+                thumbAdapter.submitList(previews)
+                binding.rvMediaPreview.visibility = if (previews.isNotEmpty()) android.view.View.VISIBLE else android.view.View.GONE
+            }
+        }
+
+        // Tap card to open full shared media browser
+        binding.cardSharedMedia.setOnClickListener {
+            val intent = Intent(this, SharedMediaActivity::class.java).apply {
+                putExtra(SharedMediaActivity.EXTRA_CONVERSATION_ID, convId)
+                putExtra(SharedMediaActivity.EXTRA_TITLE, contactName)
+            }
+            startActivity(intent)
+        }
+    }
+}

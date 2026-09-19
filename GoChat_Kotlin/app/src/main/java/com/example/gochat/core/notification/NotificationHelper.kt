@@ -42,6 +42,7 @@ object NotificationHelper {
 
     const val KEY_TEXT_REPLY = "key_text_reply"
     const val EXTRA_CONVERSATION_ID = "extra_conversation_id"
+    const val EXTRA_CONVERSATION_TITLE = "extra_conversation_title"
     const val EXTRA_NOTIFICATION_ID = "extra_notification_id"
 
     const val ACTION_DIRECT_REPLY = "com.example.gochat.ACTION_DIRECT_REPLY"
@@ -213,6 +214,7 @@ object NotificationHelper {
             action = ACTION_DIRECT_REPLY
             putExtra(EXTRA_CONVERSATION_ID, conversationId)
             putExtra(EXTRA_NOTIFICATION_ID, notificationId)
+            putExtra(EXTRA_CONVERSATION_TITLE, displayTitle)
         }
 
         // RemoteInput requires FLAG_MUTABLE on API 31+
@@ -229,6 +231,8 @@ object NotificationHelper {
             replyPendingIntent
         ).addRemoteInput(remoteInput)
             .setAllowGeneratedReplies(true)
+            .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
+            .setShowsUserInterface(false)
             .build()
 
         // 3. Mark as Read action
@@ -249,7 +253,9 @@ object NotificationHelper {
             0,
             "Mark as Read",
             markReadPendingIntent
-        ).build()
+        ).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_MARK_AS_READ)
+            .setShowsUserInterface(false)
+            .build()
 
         // 4. Build Person & MessagingStyle
         val userPerson = Person.Builder().setName("Me").build()
@@ -306,6 +312,66 @@ object NotificationHelper {
             Log.d("NotificationHelper", "Notification shown for $conversationId: $displayTitle (id=$notificationId)")
         } catch (e: Exception) {
             Log.e("NotificationHelper", "Failed to show notification", e)
+        }
+    }
+
+    /**
+     * Updates an active notification with the user's inline direct reply.
+     * Appending the reply to MessagingStyle stops the system RemoteInput progress spinner
+     * and displays immediate confirmation to the user.
+     */
+    fun updateNotificationWithReply(
+        context: Context,
+        conversationId: String,
+        notificationId: Int,
+        replyText: String,
+        senderTitle: String = "GoChat Contact"
+    ) {
+        if (conversationId.isBlank()) return
+        try {
+            val notificationManager = NotificationManagerCompat.from(context)
+            val channelId = CHANNEL_MESSAGES
+
+            val userPerson = Person.Builder().setName("You").build()
+            val senderPerson = Person.Builder().setName(senderTitle).build()
+
+            val messagingStyle = NotificationCompat.MessagingStyle(userPerson)
+                .setConversationTitle(null)
+                .setGroupConversation(false)
+                .addMessage(replyText, System.currentTimeMillis(), userPerson)
+
+            val tapIntent = Intent(context, ChatRoomActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, conversationId)
+                putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, senderTitle)
+            }
+            val tapPendingIntent = PendingIntent.getActivity(
+                context,
+                notificationId,
+                tapIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val builder = NotificationCompat.Builder(context, channelId)
+                .setSmallIcon(R.drawable.ic_chat_bubble_rounded)
+                .setColor(ContextCompat.getColor(context, R.color.gochat_accent))
+                .setContentTitle(senderTitle)
+                .setContentText("You: $replyText")
+                .setStyle(messagingStyle)
+                .setOnlyAlertOnce(true)
+                .setAutoCancel(true)
+                .setContentIntent(tapPendingIntent)
+                .setTimeoutAfter(3000L) // Auto dismiss after 3 seconds once replied
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    return
+                }
+            }
+            notificationManager.notify(notificationId, builder.build())
+            Log.d("NotificationHelper", "Updated notification with reply for conv=$conversationId (id=$notificationId)")
+        } catch (e: Exception) {
+            Log.e("NotificationHelper", "Failed to update notification with reply", e)
         }
     }
 

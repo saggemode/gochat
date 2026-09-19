@@ -14,9 +14,12 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.gochat.R
 import com.example.gochat.core.media.MediaImageHelper
 import com.example.gochat.data.model.GroupMember
+import com.example.gochat.data.model.MessageType
+import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.databinding.ActivityGroupInfoBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class GroupInfoActivity : AppCompatActivity() {
@@ -27,6 +30,9 @@ class GroupInfoActivity : AppCompatActivity() {
         const val EXTRA_GROUP_AVATAR = "extra_group_avatar"
         const val EXTRA_MEMBER_IDS = "extra_member_ids"
     }
+
+    @Inject
+    lateinit var chatRepository: ChatRepository
 
     private lateinit var binding: ActivityGroupInfoBinding
     private val viewModel: GroupInfoViewModel by viewModels()
@@ -45,6 +51,7 @@ class GroupInfoActivity : AppCompatActivity() {
         setupToolbar(groupName)
         setupUI(groupName, groupAvatar)
         observeViewModel()
+        setupSharedMedia(convId, groupName)
 
         viewModel.loadGroupData(convId, memberIds)
     }
@@ -147,5 +154,41 @@ class GroupInfoActivity : AppCompatActivity() {
                 }
             }
             .show()
+    }
+
+    private fun setupSharedMedia(convId: String, groupName: String) {
+        val thumbAdapter = MediaPreviewThumbAdapter { message ->
+            val intent = Intent(this, MediaViewerActivity::class.java).apply {
+                putExtra(MediaViewerActivity.EXTRA_MEDIA_URL, message.mediaUrl)
+                putExtra(MediaViewerActivity.EXTRA_IS_VIDEO, message.type == MessageType.VIDEO)
+                putExtra(MediaViewerActivity.EXTRA_TITLE, message.senderName)
+            }
+            startActivity(intent)
+        }
+        binding.rvMediaPreview.layoutManager = LinearLayoutManager(
+            this, LinearLayoutManager.HORIZONTAL, false
+        )
+        binding.rvMediaPreview.adapter = thumbAdapter
+
+        lifecycleScope.launch {
+            chatRepository.getSharedMediaCount(convId).collect { count ->
+                binding.tvMediaCount.text = if (count > 0) count.toString() else getString(R.string.no_media_items)
+            }
+        }
+
+        lifecycleScope.launch {
+            chatRepository.getRecentMediaPreviews(convId).collect { previews ->
+                thumbAdapter.submitList(previews)
+                binding.rvMediaPreview.visibility = if (previews.isNotEmpty()) View.VISIBLE else View.GONE
+            }
+        }
+
+        binding.cardSharedMedia.setOnClickListener {
+            val intent = Intent(this, SharedMediaActivity::class.java).apply {
+                putExtra(SharedMediaActivity.EXTRA_CONVERSATION_ID, convId)
+                putExtra(SharedMediaActivity.EXTRA_TITLE, groupName)
+            }
+            startActivity(intent)
+        }
     }
 }

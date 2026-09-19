@@ -46,6 +46,16 @@ data class CatalogData(
 )
 
 @Serializable
+data class CatalogV2Data(
+    val type: String = "catalog",
+    @SerialName("catalog_id") val catalogId: String = "",
+    @SerialName("store_id") val storeId: String = "",
+    @SerialName("store_name") val storeName: String = "Official Store",
+    @SerialName("item_count") val itemCount: Int = 0,
+    @SerialName("preview_images") val previewImages: List<String> = emptyList()
+)
+
+@Serializable
 data class InvoiceData(
     val id: String = "",
     @SerialName("item_name") val itemName: String = "",
@@ -168,7 +178,7 @@ data class Message(
             val isPaymentVal = typeInt == 10 || typeStr.contains("payment") || typeStr.contains("invoice") ||
                     (content.startsWith("{") && (content.contains("\"payment_request\"") || content.contains("\"invoice\"")))
             val isCatalogVal = typeInt == 11 || typeStr.contains("catalog") ||
-                    (content.startsWith("{") && content.contains("\"catalog\"") && content.contains("\"products\""))
+                    (content.startsWith("{") && (content.contains("\"type\":\"catalog\"") || content.contains("\"type\": \"catalog\"") || (content.contains("\"catalog\"") && (content.contains("\"store_id\"") || content.contains("\"products\"")))))
             val isSystemVal = typeInt == 12 || typeStr.contains("system") ||
                     content.startsWith("📦 Order") || content.startsWith("🛡️") || content.startsWith("SYSTEM:")
 
