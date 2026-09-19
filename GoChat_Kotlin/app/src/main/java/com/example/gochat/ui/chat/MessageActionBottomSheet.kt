@@ -17,7 +17,7 @@ class MessageActionBottomSheet(
     private val binding get() = _binding!!
 
     enum class Action {
-        REPLY, FORWARD, STAR, EDIT, DELETE, REACT_LIKE, REACT_HEART, REACT_LAUGH, REACT_WOW, REACT_SAD, REACT_PRAY
+        REPLY, FORWARD, STAR, PIN, EDIT, DELETE, REACT_LIKE, REACT_HEART, REACT_LAUGH, REACT_WOW, REACT_SAD, REACT_PRAY
     }
 
     override fun onCreateView(
@@ -38,10 +38,14 @@ class MessageActionBottomSheet(
         // Star toggle text
         binding.btnStar.text = if (message.isStarred) "Unstar" else "Star"
 
+        // Pin toggle text
+        binding.btnPin.text = if (message.isPinned) "Unpin from Top" else "Pin to Top"
+
         // Setup click listeners
         binding.btnReply.setOnClickListener { dismiss(); onAction(Action.REPLY) }
         binding.btnForward.setOnClickListener { dismiss(); onAction(Action.FORWARD) }
         binding.btnStar.setOnClickListener { dismiss(); onAction(Action.STAR) }
+        binding.btnPin.setOnClickListener { dismiss(); onAction(Action.PIN) }
         binding.btnEdit.setOnClickListener { dismiss(); onAction(Action.EDIT) }
         binding.btnDelete.setOnClickListener { dismiss(); onAction(Action.DELETE) }
 

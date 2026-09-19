@@ -15,6 +15,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
@@ -119,11 +120,23 @@ class MarketplaceFragment : Fragment() {
 
     private fun setupAdapters() {
         // 1. Explore Products Adapter
-        productAdapter = ProductAdapter { product ->
+        productAdapter = ProductAdapter { product, sharedView ->
             val intent = Intent(requireContext(), ProductDetailsActivity::class.java).apply {
                 putExtra("product_id", product.id)
+                putExtra("product_name", product.displayTitle)
+                putExtra("product_image", product.primaryImage)
+                putExtra("product_price", product.price)
+                putExtra("store_id", product.storeId)
+                putExtra("store_name", product.storeName)
+                putExtra("seller_pin", product.sellerPin)
+                putExtra("seller_id", product.sellerId)
             }
-            startActivity(intent)
+            val options = ActivityOptionsCompat.makeSceneTransitionAnimation(
+                requireActivity(),
+                sharedView,
+                "product_image_${product.id}"
+            )
+            startActivity(intent, options.toBundle())
         }
         binding.rvProducts.apply {
             adapter = productAdapter

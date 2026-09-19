@@ -65,6 +65,7 @@ class ChatRoomViewModel @Inject constructor(
     val partnerLastSeen: StateFlow<Long?> = _partnerLastSeen.asStateFlow()
 
     private var currentPartnerId: String? = null
+    val partnerId: String? get() = currentPartnerId
 
     fun setInitialPresence(isOnline: Boolean, lastSeen: Long?, partnerId: String? = null) {
         _isPartnerOnline.value = isOnline
@@ -110,6 +111,14 @@ class ChatRoomViewModel @Inject constructor(
         .flatMapLatest { id ->
             if (id.isEmpty()) flowOf(emptyList())
             else chatRepository.observeMessages(id)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val pinnedMessages: StateFlow<List<Message>> = _conversationId
+        .flatMapLatest { id ->
+            if (id.isEmpty()) flowOf(emptyList())
+            else chatRepository.getPinnedMessages(id)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -376,6 +385,12 @@ class ChatRoomViewModel @Inject constructor(
         }
     }
 
+    fun togglePin(messageId: String, isPinned: Boolean) {
+        viewModelScope.launch {
+            chatRepository.toggleMessagePin(messageId, isPinned)
+        }
+    }
+
     fun forwardMessage(message: Message, targetConversationId: String) {
         viewModelScope.launch {
             chatRepository.forwardMessage(message, targetConversationId)
@@ -410,6 +425,80 @@ class ChatRoomViewModel @Inject constructor(
                 content = productJson,
                 type = 7 // Product
             )
+        }
+    }
+
+    fun sendPaymentRequestMessage(
+        itemName: String,
+        amount: Double,
+        note: String,
+        targetConvId: String? = null
+    ) {
+        val convId = targetConvId ?: _conversationId.value
+        if (convId.isEmpty()) return
+
+        val paymentId = "pay_req_${System.currentTimeMillis()}"
+        val paymentJson = buildJsonObject {
+            put("type", "payment_request")
+            put("payment_request", buildJsonObject {
+                put("id", paymentId)
+                put("item_name", itemName)
+                put("amount", amount)
+                put("note", note)
+                put("status", "pending")
+            })
+        }.toString()
+
+        viewModelScope.launch {
+            chatRepository.sendMessage(
+                conversationId = convId,
+                content = paymentJson,
+                type = 10 // Payment Request
+            )
+        }
+    }
+
+    fun updatePaymentRequestStatus(
+        messageId: String,
+        currentContent: String,
+        newStatus: String
+    ) {
+        viewModelScope.launch {
+            try {
+                val rootObj = Json.decodeFromString<JsonObject>(currentContent)
+                val invObj = rootObj["payment_request"]?.jsonObject ?: rootObj["invoice"]?.jsonObject ?: rootObj
+
+                val updatedPaymentObj = buildJsonObject {
+                    invObj.forEach { (key, value) ->
+                        if (key == "status") {
+                            put("status", newStatus)
+                        } else {
+                            put(key, value)
+                        }
+                    }
+                    if (!invObj.containsKey("status")) {
+                        put("status", newStatus)
+                    }
+                }
+
+                val updatedRoot = buildJsonObject {
+                    put("type", "payment_request")
+                    put("payment_request", updatedPaymentObj)
+                }.toString()
+
+                chatRepository.editMessageLocally(messageId, updatedRoot)
+
+                val wsPayload = buildJsonObject {
+                    put("type", "payment_status_update")
+                    put("conversation_id", _conversationId.value)
+                    put("message_id", messageId)
+                    put("status", newStatus)
+                    put("updated_content", updatedRoot)
+                }
+                webSocket.send(wsPayload)
+            } catch (e: Exception) {
+                Log.e("ChatRoomVM", "Failed to update payment status: ${e.message}")
+            }
         }
     }
 

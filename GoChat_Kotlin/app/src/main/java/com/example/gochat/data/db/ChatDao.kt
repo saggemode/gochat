@@ -98,6 +98,12 @@ interface ChatDao {
     @Query("UPDATE messages SET isStarred = :isStarred WHERE id = :messageId")
     suspend fun updateMessageStarred(messageId: String, isStarred: Boolean): Int
 
+    @Query("UPDATE messages SET isPinned = :isPinned WHERE id = :messageId")
+    suspend fun updateMessagePinned(messageId: String, isPinned: Boolean): Int
+
+    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isPinned = 1 ORDER BY createdAt DESC")
+    fun getPinnedMessagesForConversation(convId: String): Flow<List<Message>>
+
     @Query("UPDATE messages SET reactions = :reactions WHERE id = :messageId")
     suspend fun updateMessageReactions(messageId: String, reactions: List<Reaction>): Int
 

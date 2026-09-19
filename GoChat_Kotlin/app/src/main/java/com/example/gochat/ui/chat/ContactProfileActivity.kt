@@ -26,11 +26,21 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.gochat.core.contacts.ContactSyncManager
+import com.example.gochat.data.repository.MarketplaceRepository
+
 @AndroidEntryPoint
 class ContactProfileActivity : AppCompatActivity() {
 
     @Inject
     lateinit var chatRepository: ChatRepository
+
+    @Inject
+    lateinit var marketplaceRepository: MarketplaceRepository
+
+    @Inject
+    lateinit var contactSyncManager: ContactSyncManager
 
     companion object {
         const val EXTRA_CONVERSATION_ID = "extra_conversation_id"
@@ -65,13 +75,14 @@ class ContactProfileActivity : AppCompatActivity() {
         val userPin = intent.getStringExtra(EXTRA_USER_PIN).orEmpty()
         val isOnline = intent.getBooleanExtra(EXTRA_IS_ONLINE, false)
         val lastSeen = intent.getLongExtra(EXTRA_LAST_SEEN, 0L)
-        val targetUserId = intent.getStringExtra(EXTRA_TARGET_USER_ID).orEmpty().ifBlank { convId }
+        val targetUserId = intent.getStringExtra(EXTRA_TARGET_USER_ID).orEmpty()
 
         setupToolbar(userName)
-        setupProfileInfo(userName, userPhone, userAvatar, userPin, isOnline, lastSeen)
-        setupActionButtons(targetUserId, userName, userAvatar)
+        setupProfileInfo(userName, userPhone, userAvatar, userPin, isOnline, lastSeen, targetUserId)
+        setupActionButtons(targetUserId, userName, userAvatar, convId)
         setupSettingsRows(userName, convId)
         loadDisappearingStatus(convId)
+        setupSellerStorefront(userName, targetUserId, userPin, convId, userPhone)
     }
 
     private fun setupToolbar(name: String) {
@@ -88,7 +99,8 @@ class ContactProfileActivity : AppCompatActivity() {
         avatar: String,
         pin: String,
         isOnline: Boolean,
-        lastSeen: Long
+        lastSeen: Long,
+        targetUserId: String = ""
     ) {
         binding.tvProfileName.text = name
 
@@ -107,13 +119,22 @@ class ContactProfileActivity : AppCompatActivity() {
             binding.tvProfilePresence.setTextColor(getColor(R.color.gochat_text_secondary))
         }
 
-        // BBM / GoChat PIN
-        val finalPin = if (pin.isNotBlank()) pin else generatePinFromId(name)
-        binding.tvProfilePin.text = finalPin
+        // BBM / GoChat PIN: check passed PIN -> synced contact PIN -> fallback
+        val cachedContact = contactSyncManager.getCachedContacts().find {
+            (targetUserId.isNotBlank() && (it.id == targetUserId || it.userId == targetUserId)) ||
+            (phone.isNotBlank() && it.phone == phone) ||
+            it.phonebookName.equals(name, ignoreCase = true)
+        }
+        val resolvedPin = when {
+            pin.isNotBlank() -> pin
+            !cachedContact?.pin.isNullOrBlank() -> cachedContact!!.pin
+            else -> generatePinFromId(name)
+        }
+        binding.tvProfilePin.text = resolvedPin
         binding.layoutPinBadge.setOnClickListener {
             val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            clipboard.setPrimaryClip(ClipData.newPlainText("GoChat PIN", finalPin))
-            Toast.makeText(this, "PIN $finalPin copied to clipboard", Toast.LENGTH_SHORT).show()
+            clipboard.setPrimaryClip(ClipData.newPlainText("GoChat PIN", resolvedPin))
+            Toast.makeText(this, "PIN $resolvedPin copied to clipboard", Toast.LENGTH_SHORT).show()
         }
 
         // Avatar
@@ -129,12 +150,24 @@ class ContactProfileActivity : AppCompatActivity() {
         binding.tvCreateGroupWith.text = getString(R.string.create_group_with_format, name)
     }
 
-    private fun setupActionButtons(targetUserId: String, userName: String, userAvatar: String) {
+    private fun setupActionButtons(
+        targetUserId: String,
+        userName: String,
+        userAvatar: String,
+        convId: String
+    ) {
+        fun resolveCallTarget(): String {
+            if (targetUserId.isNotBlank() && targetUserId != convId && !targetUserId.startsWith("conv_")) {
+                return targetUserId
+            }
+            return targetUserId.ifBlank { convId }
+        }
+
         // 1. Voice Call
         binding.btnActionVoice.setOnClickListener {
             val intent = Intent(this, CallActivity::class.java).apply {
                 putExtra(CallActivity.EXTRA_CALL_ID, "call_${System.currentTimeMillis()}")
-                putExtra(CallActivity.EXTRA_TARGET_USER_ID, targetUserId)
+                putExtra(CallActivity.EXTRA_TARGET_USER_ID, resolveCallTarget())
                 putExtra(CallActivity.EXTRA_PEER_NAME, userName)
                 putExtra(CallActivity.EXTRA_PEER_AVATAR, userAvatar)
                 putExtra(CallActivity.EXTRA_IS_OUTGOING, true)
@@ -147,7 +180,7 @@ class ContactProfileActivity : AppCompatActivity() {
         binding.btnActionVideo.setOnClickListener {
             val intent = Intent(this, CallActivity::class.java).apply {
                 putExtra(CallActivity.EXTRA_CALL_ID, "call_${System.currentTimeMillis()}")
-                putExtra(CallActivity.EXTRA_TARGET_USER_ID, targetUserId)
+                putExtra(CallActivity.EXTRA_TARGET_USER_ID, resolveCallTarget())
                 putExtra(CallActivity.EXTRA_PEER_NAME, userName)
                 putExtra(CallActivity.EXTRA_PEER_AVATAR, userAvatar)
                 putExtra(CallActivity.EXTRA_IS_OUTGOING, true)
@@ -393,4 +426,105 @@ class ContactProfileActivity : AppCompatActivity() {
         val dateFormat = SimpleDateFormat("MMM d", Locale.getDefault())
         return getString(R.string.status_last_seen_date, dateFormat.format(Date(lastSeenMs)), timeStr)
     }
+
+    private fun setupSellerStorefront(
+        userName: String,
+        targetUserId: String,
+        userPin: String,
+        convId: String,
+        userPhone: String
+    ) {
+        val adapter = SellerCatalogAdapter { product ->
+            val resultIntent = Intent().apply {
+                putExtra(ChatRoomActivity.EXTRA_PRODUCT_ID, product.id)
+                putExtra(ChatRoomActivity.EXTRA_PRODUCT_NAME, product.displayTitle)
+                putExtra(ChatRoomActivity.EXTRA_PRODUCT_PRICE, product.price)
+                putExtra(ChatRoomActivity.EXTRA_PRODUCT_IMAGE, product.primaryImage)
+                putExtra(ChatRoomActivity.EXTRA_INITIAL_MESSAGE, "Hi! I'm interested in ${product.displayTitle} (${String.format(Locale.US, "$%.2f", product.price)})")
+            }
+            setResult(RESULT_OK, resultIntent)
+            finish()
+        }
+
+        binding.rvSellerCatalog.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        binding.rvSellerCatalog.adapter = adapter
+
+        // Hide card immediately until we verify this user actually has products
+        binding.cardSellerStorefront.visibility = android.view.View.GONE
+
+        lifecycleScope.launch {
+            var sellerUserId = targetUserId.trim()
+            var sellerPin = userPin.trim()
+
+            // If sellerUserId is blank or equals convId (or starts with "conv_"), resolve member from conversation
+            if (sellerUserId.isBlank() || sellerUserId == convId || sellerUserId.startsWith("conv_")) {
+                val conv = chatRepository.getConversationById(convId)
+                val myId = marketplaceRepository.userId.orEmpty()
+                val otherMember = conv?.memberIds?.find { it.isNotBlank() && it != myId }
+                if (!otherMember.isNullOrBlank()) {
+                    sellerUserId = otherMember
+                }
+            }
+
+            val cachedContacts = contactSyncManager.getCachedContacts()
+            // If sellerPin is blank, attempt to resolve from synced contacts
+            if (sellerPin.isBlank()) {
+                val contact = cachedContacts.find {
+                    (sellerUserId.isNotBlank() && (it.id == sellerUserId || it.userId == sellerUserId)) ||
+                    (userPhone.isNotBlank() && it.phone == userPhone) ||
+                    it.phonebookName.equals(userName, ignoreCase = true) ||
+                    it.gochatName.equals(userName, ignoreCase = true)
+                }
+                if (contact != null && contact.pin.isNotBlank()) {
+                    sellerPin = contact.pin.trim()
+                    binding.tvProfilePin.text = sellerPin
+                }
+            }
+
+            // If sellerUserId is still blank, try resolving from synced contacts using phone or name
+            if (sellerUserId.isBlank()) {
+                val contact = cachedContacts.find {
+                    (sellerPin.isNotBlank() && it.pin.equals(sellerPin, ignoreCase = true)) ||
+                    (userPhone.isNotBlank() && it.phone == userPhone) ||
+                    it.phonebookName.equals(userName, ignoreCase = true)
+                }
+                if (contact != null) {
+                    sellerUserId = contact.finalUserId
+                }
+            }
+
+            // If neither seller user ID nor PIN is identifiable, do not show any products
+            if (sellerUserId.isBlank() && sellerPin.isBlank()) {
+                binding.cardSellerStorefront.visibility = android.view.View.GONE
+                adapter.submitList(emptyList())
+                return@launch
+            }
+
+            // Strictly fetch only this user's products
+            val userProducts = marketplaceRepository.getUserProducts(sellerUserId, sellerPin)
+            val store = marketplaceRepository.getStoreForUser(sellerUserId, sellerPin)
+
+            // ONLY show the user's products if he has any; NEVER show other people's products!
+            if (userProducts.isNotEmpty()) {
+                binding.cardSellerStorefront.visibility = android.view.View.VISIBLE
+                val storeTitle = store?.name?.ifBlank { null } ?: "$userName's Catalog"
+                binding.tvSellerStoreName.text = storeTitle
+                adapter.submitList(userProducts.take(8))
+
+                binding.btnVisitFullStore.setOnClickListener {
+                    val storeIdToPass = store?.id?.ifBlank { null } ?: sellerUserId.ifBlank { "store_default" }
+                    val storeNameToPass = store?.name?.ifBlank { null } ?: "$userName's Official Store"
+                    val intent = Intent(this@ContactProfileActivity, com.example.gochat.ui.marketplace.StorefrontActivity::class.java).apply {
+                        putExtra("store_id", storeIdToPass)
+                        putExtra("store_name", storeNameToPass)
+                    }
+                    startActivity(intent)
+                }
+            } else {
+                binding.cardSellerStorefront.visibility = android.view.View.GONE
+                adapter.submitList(emptyList())
+            }
+        }
+    }
 }
+

@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.gochat.R
+import com.example.gochat.core.haptic.HapticEngine
 import com.example.gochat.data.model.CartItem
 import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.databinding.ActivityCheckoutBinding
@@ -142,6 +143,7 @@ class CheckoutActivity : AppCompatActivity() {
                     )
                 }
 
+                HapticEngine.playPaymentConfirmed(this@CheckoutActivity)
                 Toast.makeText(this@CheckoutActivity, getString(R.string.toast_order_placed_success), Toast.LENGTH_LONG).show()
 
                 // Offer immediate navigation to the linked seller chat thread or orders overview

@@ -52,6 +52,10 @@ import com.example.gochat.core.wallpaper.ChatTheme
 import com.example.gochat.core.wallpaper.ChatThemeManager
 import com.example.gochat.core.wallpaper.WallpaperType
 import com.example.gochat.data.model.Message
+import com.example.gochat.data.model.MessageType
+import com.example.gochat.core.haptic.HapticEngine
+import androidx.transition.TransitionManager
+import androidx.transition.AutoTransition
 import com.example.gochat.databinding.ActivityChatRoomBinding
 import com.example.gochat.databinding.BottomSheetAttachmentPickerBinding
 import com.example.gochat.databinding.DialogImagePreviewBinding
@@ -96,6 +100,10 @@ class ChatRoomActivity : AppCompatActivity() {
     private lateinit var messageAdapter: MessageAdapter
     private lateinit var mentionAdapter: GroupMemberAdapter
     private lateinit var audioRecorderManager: AudioRecorderManager
+
+    private var unreadNewMessagesCount = 0
+    private var isScrolledUp = false
+    private var currentPartnerId: String? = null
 
     private var recordingDurationSeconds = 0
     private val recordingHandler = Handler(Looper.getMainLooper())
@@ -222,6 +230,28 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     }
 
+    private val contactProfileLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK && result.data != null) {
+            val prodId = result.data?.getStringExtra(EXTRA_PRODUCT_ID)
+            if (!prodId.isNullOrBlank()) {
+                val prodName = result.data?.getStringExtra(EXTRA_PRODUCT_NAME).orEmpty()
+                val prodPrice = result.data?.getDoubleExtra(EXTRA_PRODUCT_PRICE, 0.0) ?: 0.0
+                val prodImage = result.data?.getStringExtra(EXTRA_PRODUCT_IMAGE).orEmpty()
+                val inquiry = result.data?.getStringExtra(EXTRA_INITIAL_MESSAGE).orEmpty()
+
+                viewModel.sendProductMessage(
+                    productId = prodId,
+                    name = prodName,
+                    price = prodPrice,
+                    image = prodImage,
+                    inquiry = inquiry
+                )
+            }
+        }
+    }
+
     private fun checkNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
@@ -247,6 +277,7 @@ class ChatRoomActivity : AppCompatActivity() {
         val isOnline = intent.getBooleanExtra(EXTRA_IS_ONLINE, false)
         val lastSeen = intent.getLongExtra(EXTRA_LAST_SEEN, 0L)
         val partnerId = intent.getStringExtra(EXTRA_PARTNER_ID)
+        currentPartnerId = partnerId
         viewModel.setInitialPresence(isOnline, if (lastSeen > 0L) lastSeen else null, partnerId)
 
         setupToolbar(title, avatarUrl)
@@ -389,15 +420,18 @@ class ChatRoomActivity : AppCompatActivity() {
                     }
                     startActivity(intent)
                 } else {
+                    val resolvedPartnerId = currentPartnerId?.ifBlank { null }
+                        ?: viewModel.partnerId?.ifBlank { null }
+                        ?: ""
                     val intent = Intent(this@ChatRoomActivity, ContactProfileActivity::class.java).apply {
                         putExtra(ContactProfileActivity.EXTRA_CONVERSATION_ID, viewModel.conversationId.value)
                         putExtra(ContactProfileActivity.EXTRA_USER_NAME, title)
                         putExtra(ContactProfileActivity.EXTRA_USER_AVATAR, avatarUrl)
                         putExtra(ContactProfileActivity.EXTRA_IS_ONLINE, viewModel.isPartnerOnline.value)
                         putExtra(ContactProfileActivity.EXTRA_LAST_SEEN, viewModel.partnerLastSeen.value ?: 0L)
-                        putExtra(ContactProfileActivity.EXTRA_TARGET_USER_ID, viewModel.conversationId.value)
+                        putExtra(ContactProfileActivity.EXTRA_TARGET_USER_ID, resolvedPartnerId)
                     }
-                    startActivity(intent)
+                    contactProfileLauncher.launch(intent)
                 }
             }
 
@@ -408,9 +442,12 @@ class ChatRoomActivity : AppCompatActivity() {
             }
 
             btnCall.setOnClickListener {
+                val resolvedPartnerId = currentPartnerId?.ifBlank { null }
+                    ?: viewModel.partnerId?.ifBlank { null }
+                    ?: viewModel.conversationId.value
                 val intent = Intent(this@ChatRoomActivity, CallActivity::class.java).apply {
                     putExtra(CallActivity.EXTRA_CALL_ID, "call_${System.currentTimeMillis()}")
-                    putExtra(CallActivity.EXTRA_TARGET_USER_ID, viewModel.conversationId.value)
+                    putExtra(CallActivity.EXTRA_TARGET_USER_ID, resolvedPartnerId)
                     putExtra(CallActivity.EXTRA_PEER_NAME, title)
                     putExtra(CallActivity.EXTRA_PEER_AVATAR, avatarUrl)
                     putExtra(CallActivity.EXTRA_IS_OUTGOING, true)
@@ -455,6 +492,40 @@ class ChatRoomActivity : AppCompatActivity() {
                 }
                 startActivity(intent)
             }
+            onPayInvoiceClicked = { message, invoiceData ->
+                showEscrowCheckoutBottomSheet(message, invoiceData)
+            }
+            onMarkShippedClicked = { message, invoiceData ->
+                AlertDialog.Builder(this@ChatRoomActivity)
+                    .setTitle("Mark as Shipped")
+                    .setMessage("Confirm that you have dispatched '${invoiceData.itemName}' to the buyer?")
+                    .setPositiveButton("Confirm Shipped") { _, _ ->
+                        viewModel.updatePaymentRequestStatus(
+                            messageId = message.id,
+                            currentContent = message.content,
+                            newStatus = "shipped"
+                        )
+                        Toast.makeText(this@ChatRoomActivity, "🚚 Item marked as shipped", Toast.LENGTH_SHORT).show()
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            }
+            onConfirmReceiptClicked = { message, invoiceData ->
+                AlertDialog.Builder(this@ChatRoomActivity)
+                    .setTitle("Confirm Receipt & Release Funds")
+                    .setMessage("Have you received '${invoiceData.itemName}' in satisfactory condition?\n\nThis will release ${String.format(Locale.US, "$%.2f", invoiceData.amount)} from Escrow to the seller.")
+                    .setPositiveButton("Release Funds") { _, _ ->
+                        viewModel.updatePaymentRequestStatus(
+                            messageId = message.id,
+                            currentContent = message.content,
+                            newStatus = "completed"
+                        )
+                        HapticEngine.playPaymentConfirmed(this@ChatRoomActivity)
+                        Toast.makeText(this@ChatRoomActivity, "🎉 Order completed! Funds released to seller.", Toast.LENGTH_LONG).show()
+                    }
+                    .setNegativeButton("Not Yet", null)
+                    .show()
+            }
         }
 
         val layoutManager = LinearLayoutManager(this).apply {
@@ -468,12 +539,36 @@ class ChatRoomActivity : AppCompatActivity() {
 
         binding.rvMessages.layoutManager = layoutManager
         binding.rvMessages.adapter = messageAdapter
-        
-        // Auto-scroll to bottom on new messages
+
+        // Floating FAB & Unread Messages Pill clicks
+        binding.layoutScrollToBottomContainer.setOnClickListener {
+            unreadNewMessagesCount = 0
+            binding.rvMessages.smoothScrollToPosition(0)
+            updateScrollToBottomVisibility()
+        }
+        binding.btnScrollToBottomFab.setOnClickListener {
+            unreadNewMessagesCount = 0
+            binding.rvMessages.smoothScrollToPosition(0)
+            updateScrollToBottomVisibility()
+        }
+
+        binding.rvMessages.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                super.onScrolled(recyclerView, dx, dy)
+                updateScrollToBottomVisibility()
+            }
+        })
+
+        // Auto-scroll to bottom on new messages if at bottom; otherwise increment unread badge!
         messageAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
             override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
                 if (positionStart == 0) {
-                    binding.rvMessages.scrollToPosition(0)
+                    if (!isScrolledUp) {
+                        binding.rvMessages.scrollToPosition(0)
+                    } else {
+                        unreadNewMessagesCount += itemCount
+                        updateScrollToBottomVisibility()
+                    }
                 }
             }
         })
@@ -496,6 +591,27 @@ class ChatRoomActivity : AppCompatActivity() {
         )
         binding.rvMentionSuggestions.layoutManager = LinearLayoutManager(this)
         binding.rvMentionSuggestions.adapter = mentionAdapter
+    }
+
+    private fun updateScrollToBottomVisibility() {
+        val layoutManager = binding.rvMessages.layoutManager as? LinearLayoutManager ?: return
+        val firstVisible = layoutManager.findFirstVisibleItemPosition()
+        isScrolledUp = firstVisible > 1
+
+        if (!isScrolledUp) {
+            unreadNewMessagesCount = 0
+            binding.layoutScrollToBottomContainer.visibility = View.GONE
+            binding.layoutUnreadBadge.visibility = View.GONE
+        } else {
+            binding.layoutScrollToBottomContainer.visibility = View.VISIBLE
+            if (unreadNewMessagesCount > 0) {
+                binding.layoutUnreadBadge.visibility = View.VISIBLE
+                val msgLabel = if (unreadNewMessagesCount == 1) "1 new message" else "$unreadNewMessagesCount new messages"
+                binding.tvUnreadMessagesText.text = "↓ $msgLabel"
+            } else {
+                binding.layoutUnreadBadge.visibility = View.GONE
+            }
+        }
     }
 
     private fun insertMention(name: String) {
@@ -561,6 +677,7 @@ class ChatRoomActivity : AppCompatActivity() {
                         viewModel.sendTypingEvent(false)
                     }
                     viewModel.sendTextMessage(text)
+                    HapticEngine.playMessageSent(this@ChatRoomActivity)
                     etMessageInput.setText("")
                 } else {
                     checkAudioPermissionAndStartRecording()
@@ -637,6 +754,7 @@ class ChatRoomActivity : AppCompatActivity() {
                 type = 5, // Voice note
                 caption = getString(R.string.caption_voice_note, durationLabel)
             )
+            HapticEngine.playMessageSent(this)
         } else {
             Toast.makeText(this, getString(R.string.error_recording_failed), Toast.LENGTH_SHORT).show()
         }
@@ -688,6 +806,86 @@ class ChatRoomActivity : AppCompatActivity() {
         sheetBinding.btnPickProduct.setOnClickListener {
             sheet.dismiss()
             showProductPicker()
+        }
+
+        sheetBinding.btnPickPayment.setOnClickListener {
+            sheet.dismiss()
+            showCreateInvoiceBottomSheet()
+        }
+
+        sheet.show()
+    }
+
+    private fun showCreateInvoiceBottomSheet() {
+        val sheet = BottomSheetDialog(this)
+        val invoiceBinding = com.example.gochat.databinding.BottomSheetCreateInvoiceBinding.inflate(layoutInflater)
+        sheet.setContentView(invoiceBinding.root)
+
+        invoiceBinding.btnCloseInvoiceSheet.setOnClickListener {
+            sheet.dismiss()
+        }
+
+        invoiceBinding.btnSendInvoice.setOnClickListener {
+            val itemName = invoiceBinding.etInvoiceItemName.text.toString().trim()
+            val amountStr = invoiceBinding.etInvoiceAmount.text.toString().trim()
+            val note = invoiceBinding.etInvoiceNote.text.toString().trim()
+
+            if (itemName.isBlank()) {
+                Toast.makeText(this, "Please enter an item or service name", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val amount = amountStr.toDoubleOrNull()
+            if (amount == null || amount <= 0.0) {
+                Toast.makeText(this, "Please enter a valid amount", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            viewModel.sendPaymentRequestMessage(
+                itemName = itemName,
+                amount = amount,
+                note = note
+            )
+            HapticEngine.playMessageSent(this)
+            sheet.dismiss()
+            Toast.makeText(this, "💳 Payment request sent", Toast.LENGTH_SHORT).show()
+        }
+
+        sheet.show()
+    }
+
+    private fun showEscrowCheckoutBottomSheet(message: Message, invoiceData: com.example.gochat.data.model.InvoiceData) {
+        val sheet = BottomSheetDialog(this)
+        val checkoutBinding = com.example.gochat.databinding.BottomSheetEscrowCheckoutBinding.inflate(layoutInflater)
+        sheet.setContentView(checkoutBinding.root)
+
+        checkoutBinding.tvCheckoutItemName.text = invoiceData.itemName
+        checkoutBinding.tvCheckoutItemNote.text = if (invoiceData.note.isNotBlank()) invoiceData.note else "Standard GoChat escrow protection applies"
+        checkoutBinding.tvCheckoutTotalAmount.text = String.format(Locale.US, "$%.2f", invoiceData.amount)
+
+        checkoutBinding.btnCloseCheckoutSheet.setOnClickListener {
+            sheet.dismiss()
+        }
+
+        // Toggle payment methods
+        checkoutBinding.layoutMethodWallet.setOnClickListener {
+            checkoutBinding.rbWallet.isChecked = true
+            checkoutBinding.rbCard.isChecked = false
+        }
+        checkoutBinding.layoutMethodCard.setOnClickListener {
+            checkoutBinding.rbWallet.isChecked = false
+            checkoutBinding.rbCard.isChecked = true
+        }
+
+        checkoutBinding.btnAuthorizeEscrowPay.setOnClickListener {
+            sheet.dismiss()
+            viewModel.updatePaymentRequestStatus(
+                messageId = message.id,
+                currentContent = message.content,
+                newStatus = "paid_escrow"
+            )
+            HapticEngine.playPaymentConfirmed(this@ChatRoomActivity)
+            Toast.makeText(this, "✅ ${String.format(Locale.US, "$%.2f", invoiceData.amount)} paid into Escrow", Toast.LENGTH_LONG).show()
         }
 
         sheet.show()
@@ -812,6 +1010,7 @@ class ChatRoomActivity : AppCompatActivity() {
                         dataUriFallback = compressed.dataUri,
                         caption = caption.ifBlank { getString(R.string.caption_photo) }
                     )
+                    HapticEngine.playMessageSent(this@ChatRoomActivity)
                     dialog.dismiss()
                 } else {
                     dialogBinding.fabSendImage.isEnabled = true
@@ -852,6 +1051,7 @@ class ChatRoomActivity : AppCompatActivity() {
                     type = 5,
                     caption = getString(R.string.caption_audio_file)
                 )
+                HapticEngine.playMessageSent(this@ChatRoomActivity)
             } else {
                 Toast.makeText(this@ChatRoomActivity, getString(R.string.error_audio_process), Toast.LENGTH_SHORT).show()
             }
@@ -966,6 +1166,63 @@ class ChatRoomActivity : AppCompatActivity() {
                         }
                     }
                 }
+
+                launch {
+                    viewModel.pinnedMessages.collect { pinnedList ->
+                        updatePinnedMessageHeader(pinnedList)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun updatePinnedMessageHeader(pinnedList: List<Message>) {
+        if (pinnedList.isEmpty()) {
+            if (binding.layoutPinnedMessage.visibility == View.VISIBLE) {
+                TransitionManager.beginDelayedTransition(binding.chatContentContainer, AutoTransition().apply { duration = 180 })
+                binding.layoutPinnedMessage.visibility = View.GONE
+            }
+            return
+        }
+
+        val pinnedMsg = pinnedList.first()
+        if (binding.layoutPinnedMessage.visibility != View.VISIBLE) {
+            TransitionManager.beginDelayedTransition(binding.chatContentContainer, AutoTransition().apply { duration = 180 })
+            binding.layoutPinnedMessage.visibility = View.VISIBLE
+        }
+
+        val senderLabel = if (pinnedMsg.isMe) "You" else pinnedMsg.senderName.ifBlank { "Contact" }
+        binding.tvPinnedTitle.text = "Pinned • $senderLabel"
+
+        val snippet = when (pinnedMsg.type) {
+            MessageType.TEXT -> pinnedMsg.content
+            MessageType.IMAGE -> "📷 Photo"
+            MessageType.VIDEO -> "🎥 Video"
+            MessageType.AUDIO, MessageType.VOICE -> "🎵 Audio message"
+            MessageType.FILE -> "📄 Document"
+            MessageType.LOCATION -> "📍 Location"
+            MessageType.CONTACT -> "👤 Contact card"
+            MessageType.POLL -> "📊 Poll: ${pinnedMsg.content}"
+            MessageType.PRODUCT -> "🛍️ Product inquiry"
+            MessageType.ORDER -> "📦 Order update"
+            MessageType.PAYMENT_REQUEST -> "💳 Payment Request"
+            else -> pinnedMsg.content
+        }
+        binding.tvPinnedSnippet.text = snippet
+
+        binding.btnUnpinMessage.setOnClickListener {
+            viewModel.togglePin(pinnedMsg.id, false)
+            Toast.makeText(this, "Message unpinned", Toast.LENGTH_SHORT).show()
+        }
+
+        binding.layoutPinnedMessage.setOnClickListener {
+            val pos = (0 until messageAdapter.itemCount).indexOfFirst {
+                messageAdapter.peek(it)?.id == pinnedMsg.id
+            }
+            if (pos != -1) {
+                binding.rvMessages.smoothScrollToPosition(pos)
+            } else {
+                Toast.makeText(this, "Pinned message loaded in history", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -1015,6 +1272,14 @@ class ChatRoomActivity : AppCompatActivity() {
                     viewModel.toggleStar(message.id, !message.isStarred)
                     val status = if (message.isStarred) "unstarred" else "starred"
                     Toast.makeText(this, getString(R.string.toast_message_status, status), Toast.LENGTH_SHORT).show()
+                }
+                MessageActionBottomSheet.Action.PIN -> {
+                    viewModel.togglePin(message.id, !message.isPinned)
+                    Toast.makeText(
+                        this,
+                        if (message.isPinned) "Message unpinned from top" else "📌 Message pinned to top",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
                 MessageActionBottomSheet.Action.EDIT -> viewModel.setEditingMessage(message)
                 MessageActionBottomSheet.Action.DELETE -> {

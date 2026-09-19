@@ -12,8 +12,12 @@ import com.example.gochat.data.model.Product
 import com.example.gochat.databinding.ItemProductBinding
 import java.util.Locale
 
-class ProductAdapter(private val onClick: (Product) -> Unit) :
-    PagingDataAdapter<Product, ProductAdapter.ProductViewHolder>(ProductDiffCallback()) {
+class ProductAdapter(
+    private val onClick: (Product) -> Unit = {},
+    private val onItemClick: ((Product, View) -> Unit)? = null
+) : PagingDataAdapter<Product, ProductAdapter.ProductViewHolder>(ProductDiffCallback()) {
+
+    constructor(onItemClick: (Product, View) -> Unit) : this(onClick = {}, onItemClick = onItemClick)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ProductViewHolder {
         val binding = ItemProductBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -47,10 +51,16 @@ class ProductAdapter(private val onClick: (Product) -> Unit) :
             binding.tvStoreName.text = product.storeName
             binding.ivVerifiedBadge.visibility = if (product.isVerifiedSeller) View.VISIBLE else View.GONE
 
+            binding.ivProductImage.transitionName = "product_image_${product.id}"
             MediaImageHelper.loadSafeImage(binding.ivProductImage, product.primaryImage, thumbnailWidth = 400)
 
-            binding.root.setOnClickListener { onClick(product) }
-
+            binding.root.setOnClickListener {
+                if (onItemClick != null) {
+                    onItemClick.invoke(product, binding.ivProductImage)
+                } else {
+                    onClick(product)
+                }
+            }
         }
     }
 

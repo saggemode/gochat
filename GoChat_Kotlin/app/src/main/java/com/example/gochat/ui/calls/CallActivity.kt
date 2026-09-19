@@ -11,6 +11,7 @@ import androidx.lifecycle.lifecycleScope
 import coil.load
 import coil.transform.CircleCropTransformation
 import com.example.gochat.R
+import com.example.gochat.core.haptic.HapticEngine
 import com.example.gochat.core.webrtc.WebRTCClient
 import com.example.gochat.core.webrtc.WebRTCReconnectionHandler
 import com.example.gochat.data.model.CallRecord
@@ -90,6 +91,7 @@ class CallActivity : AppCompatActivity() {
             }
             startOutgoingCall()
         } else {
+            HapticEngine.startIncomingCall(this)
             lifecycleScope.launch(Dispatchers.IO) {
                 callRepo.recordCall(
                     CallRecord(
@@ -129,6 +131,7 @@ class CallActivity : AppCompatActivity() {
                 runOnUiThread {
                     when (state) {
                         PeerConnection.IceConnectionState.CONNECTED -> {
+                            HapticEngine.stopIncomingCall(this@CallActivity)
                             startCallTimer()
                         }
                         PeerConnection.IceConnectionState.DISCONNECTED -> {
@@ -290,12 +293,14 @@ class CallActivity : AppCompatActivity() {
                     }
                     "call_accepted" -> {
                         runOnUiThread {
+                            HapticEngine.stopIncomingCall(this@CallActivity)
                             binding.tvCallStatus.text = "Connected"
                             startCallTimer()
                         }
                     }
                     "call_rejected" -> {
                         runOnUiThread {
+                            HapticEngine.stopIncomingCall(this@CallActivity)
                             binding.tvCallStatus.text = "Call Declined"
                         }
                         delay(1200)
@@ -329,6 +334,7 @@ class CallActivity : AppCompatActivity() {
     }
 
     private fun endCall() {
+        HapticEngine.stopIncomingCall(this)
         if (isCallEnded) return
         isCallEnded = true
 
@@ -352,6 +358,7 @@ class CallActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        HapticEngine.stopIncomingCall(this)
         reconnectionHandler?.cancel()
         rtcClient.close()
         timerJob?.cancel()

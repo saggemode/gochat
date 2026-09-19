@@ -20,8 +20,18 @@ enum class MessageType {
     @SerialName("sticker") STICKER,
     @SerialName("product") PRODUCT,
     @SerialName("order") ORDER,
+    @SerialName("payment_request") PAYMENT_REQUEST,
     @SerialName("ping") PING
 }
+
+@Serializable
+data class InvoiceData(
+    val id: String = "",
+    @SerialName("item_name") val itemName: String = "",
+    val amount: Double = 0.0,
+    val note: String = "",
+    val status: String = "pending" // "pending", "paid_escrow", "shipped", "completed"
+)
 
 @Serializable
 enum class MessageStatus {
@@ -88,6 +98,7 @@ data class Message(
     @SerialName("is_edited") val isEdited: Boolean = false,
     @SerialName("is_deleted") val isDeleted: Boolean = false,
     @SerialName("is_starred") val isStarred: Boolean = false,
+    @SerialName("is_pinned") val isPinned: Boolean = false,
     @SerialName("is_forwarded") val isForwarded: Boolean = false,
     @SerialName("original_sender_name") val originalSenderName: String? = null
 ) {
@@ -133,9 +144,12 @@ data class Message(
                     (content.startsWith("{") && content.contains("\"product\"") && content.contains("\"price\""))
             val isOrderVal = typeInt == 9 || typeStr.contains("order") ||
                     (content.startsWith("{") && (content.contains("\"order_id\"") || content.contains("\"order_number\"") || content.contains("\"order\"")))
+            val isPaymentVal = typeInt == 10 || typeStr.contains("payment") || typeStr.contains("invoice") ||
+                    (content.startsWith("{") && (content.contains("\"payment_request\"") || content.contains("\"invoice\"")))
 
             val msgType = when {
                 isPingVal -> MessageType.PING
+                isPaymentVal -> MessageType.PAYMENT_REQUEST
                 isOrderVal -> MessageType.ORDER
                 isProductVal -> MessageType.PRODUCT
                 typeInt == 1 || typeStr.contains("image") -> MessageType.IMAGE
@@ -146,6 +160,7 @@ data class Message(
                 typeInt == 6 || typeStr.contains("poll") -> MessageType.POLL
                 typeInt == 7 || typeStr.contains("product") -> MessageType.PRODUCT
                 typeInt == 8 || typeStr.contains("ping") -> MessageType.PING
+                typeInt == 10 || typeStr.contains("payment") -> MessageType.PAYMENT_REQUEST
                 else -> MessageType.TEXT
             }
 
@@ -217,6 +232,7 @@ data class Message(
             val isEdited = json["is_edited"]?.jsonPrimitive?.booleanOrNull ?: false
             val isDeleted = json["is_deleted"]?.jsonPrimitive?.booleanOrNull ?: false
             val isStarred = json["is_starred"]?.jsonPrimitive?.booleanOrNull ?: false
+            val isPinned = json["is_pinned"]?.jsonPrimitive?.booleanOrNull ?: false
             
             val isForwarded = json["is_forwarded"]?.jsonPrimitive?.booleanOrNull == true ||
                     json.containsKey("forwarded_from_id") ||
@@ -260,6 +276,7 @@ data class Message(
                 isEdited = isEdited,
                 isDeleted = isDeleted,
                 isStarred = isStarred,
+                isPinned = isPinned,
                 isForwarded = isForwarded,
                 originalSenderName = originalSenderName
             )

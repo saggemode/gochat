@@ -30,6 +30,10 @@ import kotlinx.serialization.json.*
 import java.util.Locale
 import javax.inject.Inject
 
+import android.transition.TransitionInflater
+import androidx.transition.TransitionManager
+import androidx.transition.AutoTransition
+
 @AndroidEntryPoint
 class ProductDetailsActivity : AppCompatActivity() {
 
@@ -62,12 +66,30 @@ class ProductDetailsActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        window.sharedElementEnterTransition = TransitionInflater.from(this)
+            .inflateTransition(android.R.transition.move)
+        window.sharedElementReturnTransition = TransitionInflater.from(this)
+            .inflateTransition(android.R.transition.move)
 
         super.onCreate(savedInstanceState)
         binding = ActivityProductDetailsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         val productId = intent.getStringExtra("product_id") ?: return finish()
+        binding.ivProductImage.transitionName = "product_image_$productId"
+
+        val initialImage = intent.getStringExtra("product_image")
+        if (!initialImage.isNullOrBlank()) {
+            MediaImageHelper.loadSafeImage(binding.ivProductImage, initialImage)
+        }
+        val initialName = intent.getStringExtra("product_name")
+        if (!initialName.isNullOrBlank()) {
+            binding.tvProductName.text = initialName
+        }
+        val initialPrice = intent.getDoubleExtra("product_price", 0.0)
+        if (initialPrice > 0.0) {
+            binding.tvProductPrice.text = String.format(Locale.US, "$%.2f", initialPrice)
+        }
 
         setupAdapters()
         setupListeners()
@@ -348,6 +370,9 @@ class ProductDetailsActivity : AppCompatActivity() {
 
 
     private fun displayProduct(product: Product) {
+        TransitionManager.beginDelayedTransition(binding.root, AutoTransition().apply {
+            duration = 200
+        })
         updateReviewUI()
         binding.tvProductName.text = product.displayTitle
         binding.tvProductPrice.text = String.format(Locale.US, "$%.2f", product.price)
@@ -378,6 +403,9 @@ class ProductDetailsActivity : AppCompatActivity() {
             binding.ivProductImage.setOnClickListener {
                 if (allImages.size > 1) {
                     currentImgIdx = (currentImgIdx + 1) % allImages.size
+                    TransitionManager.beginDelayedTransition(binding.appBar, AutoTransition().apply {
+                        duration = 180
+                    })
                     MediaImageHelper.loadSafeImage(binding.ivProductImage, allImages[currentImgIdx])
                     Toast.makeText(this@ProductDetailsActivity, "Photo ${currentImgIdx + 1}/${allImages.size}", Toast.LENGTH_SHORT).show()
                 }

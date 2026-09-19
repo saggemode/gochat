@@ -18,6 +18,9 @@ interface MarketplaceDao {
     @Query("SELECT * FROM stores WHERE ownerId = :ownerId LIMIT 1")
     suspend fun getStoreByOwner(ownerId: String): Store?
 
+    @Query("SELECT * FROM stores WHERE ownerPin = :ownerPin LIMIT 1")
+    suspend fun getStoreByOwnerPin(ownerPin: String): Store?
+
     // ── Products ─────────────────────────────────────────────────
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProducts(products: List<Product>)

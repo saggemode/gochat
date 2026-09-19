@@ -303,15 +303,146 @@
                 app:tint="@color/gochat_text_secondary" />
         </LinearLayout>
 
-        <!-- Message List -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvMessages"
+        <!-- Pinned Message Sticky Header Bar -->
+        <LinearLayout
+            android:id="@+id/layoutPinnedMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#1E2A30"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="7dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_pinned"
+                app:tint="@color/whatsapp_teal_light"
+                android:contentDescription="Pinned Message" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvPinnedTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/whatsapp_teal_light"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    tools:text="Pinned Message" />
+
+                <TextView
+                    android:id="@+id/tvPinnedSnippet"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/gochat_text_primary"
+                    android:textSize="12.5sp"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    tools:text="Bank transfer details: Account # 1234-5678-90" />
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/btnUnpinMessage"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_marginStart="6dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Unpin"
+                android:padding="5dp"
+                android:src="@drawable/ic_close"
+                app:tint="@color/gochat_text_secondary" />
+        </LinearLayout>
+
+        <!-- Message List Container with Floating FAB Overlay -->
+        <FrameLayout
+            android:id="@+id/layoutMessageListContainer"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"
-            android:clipToPadding="false"
-            android:paddingVertical="8dp"
-            tools:listitem="@layout/item_message_me" />
+            android:layout_weight="1">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvMessages"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingVertical="8dp"
+                tools:listitem="@layout/item_message_me" />
+
+            <!-- Floating Unread Messages Pill & Scroll-to-Bottom FAB -->
+            <LinearLayout
+                android:id="@+id/layoutScrollToBottomContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|end"
+                android:layout_marginEnd="16dp"
+                android:layout_marginBottom="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                android:elevation="6dp"
+                tools:visibility="visible">
+
+                <!-- Floating Unread Messages Pill -->
+                <LinearLayout
+                    android:id="@+id/layoutUnreadBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="8dp"
+                    android:background="@drawable/bg_pill"
+                    android:backgroundTint="@color/gochat_accent"
+                    android:gravity="center"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="14dp"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <TextView
+                        android:id="@+id/tvUnreadMessagesText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="↓ 1 new message"
+                        android:textColor="@color/white"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Scroll-to-Bottom Circular FAB -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/btnScrollToBottomFab"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:cardBackgroundColor="@color/gochat_surface_dark"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="4dp"
+                    app:strokeColor="@color/gochat_border_dark"
+                    app:strokeWidth="1dp">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_arrow_down"
+                        android:contentDescription="Scroll to bottom"
+                        app:tint="@color/white" />
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+
+        </FrameLayout>
 
         <!-- Bot Moderation Banner -->
         <TextView

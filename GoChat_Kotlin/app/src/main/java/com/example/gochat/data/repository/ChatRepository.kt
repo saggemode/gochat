@@ -864,6 +864,14 @@ class ChatRepository @Inject constructor(
         dao.updateMessageStarred(messageId, isStarred)
     }
 
+    suspend fun toggleMessagePin(messageId: String, isPinned: Boolean) {
+        dao.updateMessagePinned(messageId, isPinned)
+    }
+
+    fun getPinnedMessages(conversationId: String): Flow<List<Message>> {
+        return dao.getPinnedMessagesForConversation(conversationId)
+    }
+
     suspend fun deleteMessageLocally(messageId: String) {
         dao.markMessageAsDeleted(messageId)
     }

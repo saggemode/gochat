@@ -84,12 +84,12 @@ class StorefrontActivity : AppCompatActivity() {
     }
 
     private fun setupAdapter() {
-        productAdapter = ProductAdapter { product ->
+        productAdapter = ProductAdapter(onClick = { product ->
             val intent = Intent(this, ProductDetailsActivity::class.java).apply {
                 putExtra("product_id", product.id)
             }
             startActivity(intent)
-        }
+        })
         binding.rvProducts.apply {
             adapter = productAdapter
             layoutManager = GridLayoutManager(this@StorefrontActivity, 2)

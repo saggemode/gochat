@@ -1,6 +1,7 @@
 package com.example.gochat.ui.chat
 
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Typeface
 import android.net.Uri
 import android.text.Spannable
@@ -21,6 +22,7 @@ import com.example.gochat.core.media.AudioPlayerManager
 import com.example.gochat.core.wallpaper.BubbleShape
 import com.example.gochat.core.wallpaper.ChatBubbleHelper
 import com.example.gochat.core.wallpaper.ChatTheme
+import com.example.gochat.data.model.InvoiceData
 import com.example.gochat.data.model.Message
 import com.example.gochat.data.model.MessageStatus
 import com.example.gochat.data.model.MessageType
@@ -57,6 +59,9 @@ class MessageAdapter(
 
     var onImageClicked: ((String) -> Unit)? = null
     var onBuyNowClicked: ((productId: String, productName: String, price: Double, image: String) -> Unit)? = null
+    var onPayInvoiceClicked: ((message: Message, invoiceData: InvoiceData) -> Unit)? = null
+    var onMarkShippedClicked: ((message: Message, invoiceData: InvoiceData) -> Unit)? = null
+    var onConfirmReceiptClicked: ((message: Message, invoiceData: InvoiceData) -> Unit)? = null
     private var accentColor: Int = 0xFF00A884.toInt() // Default emerald
     private var bubbleShape: BubbleShape = BubbleShape.CLASSIC
 
@@ -96,6 +101,143 @@ class MessageAdapter(
         } else {
             layoutBadge.visibility = View.GONE
             layoutBadge.setOnClickListener(null)
+        }
+    }
+
+    private fun bindPaymentCard(
+        message: Message,
+        isMe: Boolean,
+        layoutPaymentCard: View,
+        tvPaymentItemName: TextView,
+        tvPaymentAmount: TextView,
+        tvPaymentNote: TextView,
+        tvPaymentStatusBadge: TextView,
+        tvPaymentEscrowNote: TextView,
+        btnPaymentAction: TextView,
+        tvMessageContent: TextView
+    ) {
+        val isPayment = (message.type == MessageType.PAYMENT_REQUEST ||
+                message.content.contains("\"payment_request\"") ||
+                message.content.contains("\"invoice\"")) && !message.isDeleted
+
+        if (isPayment) {
+            layoutPaymentCard.visibility = View.VISIBLE
+            try {
+                val rootObj = Json.decodeFromString<JsonObject>(message.content)
+                val invObj = rootObj["payment_request"]?.jsonObject ?: rootObj["invoice"]?.jsonObject ?: rootObj
+                val invoiceId = invObj["id"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                val itemName = invObj["item_name"]?.jsonPrimitive?.contentOrNull
+                    ?: invObj["name"]?.jsonPrimitive?.contentOrNull ?: "Item / Service"
+                val amount = invObj["amount"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+                val note = invObj["note"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                val status = invObj["status"]?.jsonPrimitive?.contentOrNull ?: "pending"
+
+                val invoiceData = InvoiceData(
+                    id = invoiceId,
+                    itemName = itemName,
+                    amount = amount,
+                    note = note,
+                    status = status
+                )
+
+                tvPaymentItemName.text = itemName
+                tvPaymentAmount.text = String.format(Locale.US, "$%.2f", amount)
+                if (note.isNotBlank()) {
+                    tvPaymentNote.visibility = View.VISIBLE
+                    tvPaymentNote.text = note
+                } else {
+                    tvPaymentNote.visibility = View.GONE
+                }
+
+                when (status.lowercase(Locale.ROOT)) {
+                    "pending" -> {
+                        tvPaymentStatusBadge.text = "PENDING"
+                        tvPaymentStatusBadge.backgroundTintList = ColorStateList.valueOf(0xFF3498DB.toInt())
+                        tvPaymentEscrowNote.text = "Secured by GoChat Escrow"
+
+                        if (isMe) {
+                            btnPaymentAction.visibility = View.VISIBLE
+                            btnPaymentAction.text = "⏳ Awaiting Buyer Payment"
+                            btnPaymentAction.backgroundTintList = ColorStateList.valueOf(0x30FFFFFF)
+                            btnPaymentAction.setTextColor(0xFFCCCCCC.toInt())
+                            btnPaymentAction.isEnabled = false
+                        } else {
+                            btnPaymentAction.visibility = View.VISIBLE
+                            btnPaymentAction.text = String.format(Locale.US, "💳 Pay Now ($%.2f)", amount)
+                            btnPaymentAction.backgroundTintList = ColorStateList.valueOf(0xFF00A884.toInt())
+                            btnPaymentAction.setTextColor(0xFF000000.toInt())
+                            btnPaymentAction.isEnabled = true
+                            btnPaymentAction.setOnClickListener {
+                                onPayInvoiceClicked?.invoke(message, invoiceData)
+                            }
+                        }
+                    }
+                    "paid_escrow" -> {
+                        tvPaymentStatusBadge.text = "✅ PAID (ESCROW)"
+                        tvPaymentStatusBadge.backgroundTintList = ColorStateList.valueOf(0xFF00A884.toInt())
+                        tvPaymentEscrowNote.text = "Held in Escrow • Awaiting shipment"
+
+                        if (isMe) {
+                            btnPaymentAction.visibility = View.VISIBLE
+                            btnPaymentAction.text = "📦 Mark as Shipped"
+                            btnPaymentAction.backgroundTintList = ColorStateList.valueOf(0xFF2980B9.toInt())
+                            btnPaymentAction.setTextColor(0xFFFFFFFF.toInt())
+                            btnPaymentAction.isEnabled = true
+                            btnPaymentAction.setOnClickListener {
+                                onMarkShippedClicked?.invoke(message, invoiceData)
+                            }
+                        } else {
+                            btnPaymentAction.visibility = View.VISIBLE
+                            btnPaymentAction.text = "🛡️ Paid • Held in Escrow"
+                            btnPaymentAction.backgroundTintList = ColorStateList.valueOf(0x3000A884.toInt())
+                            btnPaymentAction.setTextColor(0xFF00A884.toInt())
+                            btnPaymentAction.isEnabled = false
+                        }
+                    }
+                    "shipped" -> {
+                        tvPaymentStatusBadge.text = "🚚 SHIPPED"
+                        tvPaymentStatusBadge.backgroundTintList = ColorStateList.valueOf(0xFFE67E22.toInt())
+                        tvPaymentEscrowNote.text = "Dispatched • Deliver to buyer"
+
+                        if (isMe) {
+                            btnPaymentAction.visibility = View.VISIBLE
+                            btnPaymentAction.text = "🚚 Shipped • In Transit"
+                            btnPaymentAction.backgroundTintList = ColorStateList.valueOf(0x30FFFFFF)
+                            btnPaymentAction.setTextColor(0xFFCCCCCC.toInt())
+                            btnPaymentAction.isEnabled = false
+                        } else {
+                            btnPaymentAction.visibility = View.VISIBLE
+                            btnPaymentAction.text = "🎉 Confirm Receipt & Release"
+                            btnPaymentAction.backgroundTintList = ColorStateList.valueOf(0xFF00A884.toInt())
+                            btnPaymentAction.setTextColor(0xFF000000.toInt())
+                            btnPaymentAction.isEnabled = true
+                            btnPaymentAction.setOnClickListener {
+                                onConfirmReceiptClicked?.invoke(message, invoiceData)
+                            }
+                        }
+                    }
+                    "completed" -> {
+                        tvPaymentStatusBadge.text = "🎉 COMPLETED"
+                        tvPaymentStatusBadge.backgroundTintList = ColorStateList.valueOf(0xFF27AE60.toInt())
+                        tvPaymentEscrowNote.text = "Funds released to seller"
+
+                        btnPaymentAction.visibility = View.VISIBLE
+                        btnPaymentAction.text = "✅ Order Completed"
+                        btnPaymentAction.backgroundTintList = ColorStateList.valueOf(0x3027AE60.toInt())
+                        btnPaymentAction.setTextColor(0xFF27AE60.toInt())
+                        btnPaymentAction.isEnabled = false
+                    }
+                    else -> {
+                        tvPaymentStatusBadge.text = status.uppercase(Locale.ROOT)
+                        btnPaymentAction.visibility = View.GONE
+                    }
+                }
+                tvMessageContent.visibility = View.GONE
+            } catch (e: Exception) {
+                layoutPaymentCard.visibility = View.GONE
+            }
+        } else {
+            layoutPaymentCard.visibility = View.GONE
         }
     }
 
@@ -384,6 +526,20 @@ class MessageAdapter(
                 } else {
                     layoutOrderCard.visibility = View.GONE
                 }
+
+                // Payment Request / Invoice Card Row
+                bindPaymentCard(
+                    message = message,
+                    isMe = true,
+                    layoutPaymentCard = layoutPaymentCard,
+                    tvPaymentItemName = tvPaymentItemName,
+                    tvPaymentAmount = tvPaymentAmount,
+                    tvPaymentNote = tvPaymentNote,
+                    tvPaymentStatusBadge = tvPaymentStatusBadge,
+                    tvPaymentEscrowNote = tvPaymentEscrowNote,
+                    btnPaymentAction = btnPaymentAction,
+                    tvMessageContent = tvMessageContent
+                )
 
                 // Hide the text label if it's purely a media label
                 val isOnlyMediaLabel = message.content.isBlank() || 
@@ -701,6 +857,20 @@ class MessageAdapter(
                 } else {
                     layoutOrderCard.visibility = View.GONE
                 }
+
+                // Payment Request / Invoice Card Row
+                bindPaymentCard(
+                    message = message,
+                    isMe = false,
+                    layoutPaymentCard = layoutPaymentCard,
+                    tvPaymentItemName = tvPaymentItemName,
+                    tvPaymentAmount = tvPaymentAmount,
+                    tvPaymentNote = tvPaymentNote,
+                    tvPaymentStatusBadge = tvPaymentStatusBadge,
+                    tvPaymentEscrowNote = tvPaymentEscrowNote,
+                    btnPaymentAction = btnPaymentAction,
+                    tvMessageContent = tvMessageContent
+                )
 
                 val isOnlyMediaLabel = message.content.isBlank() || 
                     message.content.contains("Photo", ignoreCase = true) || 

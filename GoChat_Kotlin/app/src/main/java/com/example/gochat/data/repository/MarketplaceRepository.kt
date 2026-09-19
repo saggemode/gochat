@@ -812,6 +812,99 @@ class MarketplaceRepository @Inject constructor(
         }
     }
 
+    suspend fun getStoreForUser(sellerUserId: String, sellerPin: String = ""): Store? {
+        val trimmedUserId = sellerUserId.trim()
+        val trimmedPin = sellerPin.trim()
+        if (trimmedUserId.isBlank() && trimmedPin.isBlank()) return null
+
+        var store: Store? = null
+        if (trimmedUserId.isNotBlank()) {
+            store = marketplaceDao.getStoreByOwner(trimmedUserId)
+                ?: marketplaceDao.getStoreById(trimmedUserId)
+        }
+        if (store == null && trimmedPin.isNotBlank()) {
+            store = marketplaceDao.getStoreByOwnerPin(trimmedPin)
+        }
+        if (store == null && trimmedUserId.isNotBlank()) {
+            store = getStore(trimmedUserId).getOrNull()
+        }
+        return store
+    }
+
+    /**
+     * Strictly retrieves products owned by a specific user or their store.
+     * Guaranteed never to return products from other merchants or general catalog fallback.
+     */
+    suspend fun getUserProducts(sellerUserId: String, sellerPin: String = ""): List<Product> {
+        val trimmedUserId = sellerUserId.trim()
+        val trimmedPin = sellerPin.trim()
+        if (trimmedUserId.isBlank() && trimmedPin.isBlank()) return emptyList()
+
+        val currentUserId = tokenManager.userId.orEmpty()
+        val isCurrentUser = trimmedUserId.isNotBlank() && trimmedUserId == currentUserId
+
+        // If it's the current user, fetch their own products
+        if (isCurrentUser) {
+            val myResult = getMyProducts()
+            val list = myResult.getOrNull()
+            if (!list.isNullOrEmpty()) {
+                return list.distinctBy { it.id }
+            }
+        }
+
+        val store = getStoreForUser(trimmedUserId, trimmedPin)
+
+        // 1. Fetch from network API if possible
+        if (trimmedUserId.isNotBlank()) {
+            try {
+                getStoreProducts(trimmedUserId)
+            } catch (_: Exception) {}
+        }
+        if (store != null && store.id.isNotBlank() && store.id != trimmedUserId) {
+            try {
+                getStoreProducts(store.id)
+            } catch (_: Exception) {}
+        }
+
+        // 2. Query Room DB strictly for this user's products
+        val candidateProducts = mutableListOf<Product>()
+        if (trimmedUserId.isNotBlank()) {
+            candidateProducts.addAll(marketplaceDao.getMyProducts(trimmedUserId))
+            candidateProducts.addAll(marketplaceDao.getStoreProducts(trimmedUserId))
+        }
+        if (store != null && store.id.isNotBlank()) {
+            candidateProducts.addAll(marketplaceDao.getStoreProducts(store.id))
+        }
+
+        // Also check all cached products in case some match sellerId, sellerPin, or store
+        val allCached = marketplaceDao.getAllProducts()
+        candidateProducts.addAll(allCached.filter { p ->
+            isProductOwnedByUser(p, trimmedUserId, trimmedPin, store?.id)
+        })
+
+        // 3. Strict security filter: only keep products explicitly belonging to this user or store
+        val strictlyOwned = candidateProducts.filter { p ->
+            isProductOwnedByUser(p, trimmedUserId, trimmedPin, store?.id)
+        }.distinctBy { it.id }
+
+        return strictlyOwned
+    }
+
+    private fun isProductOwnedByUser(
+        p: Product,
+        sellerUserId: String,
+        sellerPin: String,
+        storeId: String?
+    ): Boolean {
+        if (p.id.isBlank()) return false
+        val matchesSellerId = sellerUserId.isNotBlank() && p.sellerId.isNotBlank() && p.sellerId == sellerUserId
+        val matchesStoreIdAsUser = sellerUserId.isNotBlank() && p.storeId.isNotBlank() && p.storeId == sellerUserId
+        val matchesStore = !storeId.isNullOrBlank() && p.storeId.isNotBlank() && p.storeId == storeId
+        val matchesPin = sellerPin.isNotBlank() && p.sellerPin.isNotBlank() && p.sellerPin.equals(sellerPin, ignoreCase = true)
+
+        return matchesSellerId || matchesStoreIdAsUser || matchesStore || matchesPin
+    }
+
     suspend fun insertProductLocally(product: Product) {
         marketplaceDao.insertProduct(product)
     }
