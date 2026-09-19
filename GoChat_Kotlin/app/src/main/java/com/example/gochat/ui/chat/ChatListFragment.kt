@@ -20,12 +20,15 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.paging.LoadState
 import com.example.gochat.R
 import com.example.gochat.core.media.MediaImageHelper
+import com.example.gochat.core.utils.BatteryOptimizationHelper
 import com.example.gochat.data.model.Conversation
 import com.example.gochat.data.model.User
 import com.example.gochat.databinding.DialogNewChatByPinBinding
 import com.example.gochat.databinding.FragmentChatListBinding
 import com.example.gochat.ui.stories.StoryViewerActivity
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -119,11 +122,14 @@ class ChatListFragment : Fragment() {
             viewModel.connectWebSocket(force = true)
             viewModel.refreshData()
         }
+
+        setupBatteryOptimizationCard()
     }
 
     override fun onResume() {
         super.onResume()
         viewModel.connectWebSocket(force = false)
+        checkBatteryOptimizationCardVisibility()
     }
 
     private fun setupSearch() {
@@ -289,28 +295,65 @@ class ChatListFragment : Fragment() {
                     }
                 }
 
+                var connectingBannerJob: Job? = null
                 launch {
                     viewModel.connectionState.collect { state ->
                         when (state) {
                             ConnectionState.WAITING_FOR_NETWORK -> {
+                                connectingBannerJob?.cancel()
                                 binding.layoutNetworkStatusBanner.visibility = View.VISIBLE
                                 binding.pbNetworkStatus.visibility = View.GONE
                                 binding.ivNetworkStatusIcon.visibility = View.VISIBLE
                                 binding.tvNetworkStatusText.text = getString(R.string.waiting_for_network)
                             }
                             ConnectionState.CONNECTING -> {
-                                binding.layoutNetworkStatusBanner.visibility = View.VISIBLE
-                                binding.pbNetworkStatus.visibility = View.VISIBLE
-                                binding.ivNetworkStatusIcon.visibility = View.GONE
-                                binding.tvNetworkStatusText.text = getString(R.string.connecting)
+                                connectingBannerJob?.cancel()
+                                connectingBannerJob = launch {
+                                    delay(1500)
+                                    binding.layoutNetworkStatusBanner.visibility = View.VISIBLE
+                                    binding.pbNetworkStatus.visibility = View.VISIBLE
+                                    binding.ivNetworkStatusIcon.visibility = View.GONE
+                                    binding.tvNetworkStatusText.text = getString(R.string.connecting)
+                                }
                             }
                             ConnectionState.CONNECTED -> {
+                                connectingBannerJob?.cancel()
                                 binding.layoutNetworkStatusBanner.visibility = View.GONE
                             }
                         }
                     }
                 }
             }
+        }
+    }
+
+    private fun setupBatteryOptimizationCard() {
+        checkBatteryOptimizationCardVisibility()
+
+        binding.btnEnableBatteryExemption.setOnClickListener {
+            val activity = activity ?: return@setOnClickListener
+            BatteryOptimizationHelper.requestIgnoreBatteryOptimizations(activity)
+            if (BatteryOptimizationHelper.needsAutostartWarning()) {
+                BatteryOptimizationHelper.showAutostartGuidanceDialog(activity)
+            }
+        }
+
+        binding.btnDismissBatteryCard.setOnClickListener {
+            context?.let { ctx ->
+                BatteryOptimizationHelper.setDismissed(ctx, true)
+            }
+            binding.layoutBatteryOptimizationCard.visibility = View.GONE
+        }
+    }
+
+    private fun checkBatteryOptimizationCardVisibility() {
+        val ctx = context ?: return
+        val isWhitelisted = BatteryOptimizationHelper.isIgnoringBatteryOptimizations(ctx)
+        val isDismissed = BatteryOptimizationHelper.isDismissed(ctx)
+        if (!isWhitelisted && !isDismissed) {
+            binding.layoutBatteryOptimizationCard.visibility = View.VISIBLE
+        } else {
+            binding.layoutBatteryOptimizationCard.visibility = View.GONE
         }
     }
 

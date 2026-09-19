@@ -1,5 +1,6 @@
 package com.example.gochat.ui.marketplace
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
@@ -11,9 +12,12 @@ import com.example.gochat.data.model.Order
 import com.example.gochat.data.model.OrderStatus
 import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.databinding.ActivityOrdersBinding
+import com.example.gochat.ui.chat.ChatRoomActivity
 import com.google.android.material.tabs.TabLayout
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -26,6 +30,12 @@ class OrdersActivity : AppCompatActivity() {
 
     @Inject
     lateinit var chatRepository: com.example.gochat.data.repository.ChatRepository
+
+    @Inject
+    lateinit var authRepository: com.example.gochat.data.repository.AuthRepository
+
+    @Inject
+    lateinit var tokenManager: com.example.gochat.data.api.TokenManager
     
     private var isSellerView: Boolean = false
     private var currentOrders: List<Order> = emptyList()
@@ -77,6 +87,9 @@ class OrdersActivity : AppCompatActivity() {
             isSellerView = isSellerView,
             onUpdateStatus = { order, nextStatus ->
                 updateOrderStatus(order, nextStatus)
+            },
+            onChatClick = { order ->
+                openChatWithParty(order)
             }
         )
         binding.rvOrders.adapter = adapter
@@ -111,12 +124,89 @@ class OrdersActivity : AppCompatActivity() {
                     else -> "📦" to "status updated to ${nextStatus.name.lowercase()}"
                 }
                 val systemMessageText = "$icon Order #$orderNum $desc"
-                val convId = "conv_store_${order.storeId.ifBlank { "official" }}"
-                chatRepository.sendSystemMessage(convId, systemMessageText)
+                val existingConv = withContext(Dispatchers.IO) {
+                    val store = repository.getStore(order.storeId).getOrNull()
+                    val targetUserId = store?.ownerId.orEmpty()
+                    if (targetUserId.isNotBlank()) {
+                        chatRepository.getAllConversationsList().firstOrNull { conv ->
+                            !conv.isGroup && (conv.memberIds.contains(targetUserId) || conv.memberIds.contains(order.buyerId))
+                        }
+                    } else null
+                }
+                if (existingConv != null) {
+                    chatRepository.sendSystemMessage(existingConv.id, systemMessageText)
+                }
 
                 loadOrders()
             } else {
                 Toast.makeText(this@OrdersActivity, "Failed to update order status", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun openChatWithParty(order: Order) {
+        val currentUserId = tokenManager.userId.orEmpty()
+        val targetTitle = if (isSellerView) order.buyerName.ifBlank { "Customer" } else order.storeName.ifBlank { "Seller" }
+
+        lifecycleScope.launch {
+            try {
+                binding.progressBar.visibility = View.VISIBLE
+                val targetUserId = if (isSellerView) {
+                    if (order.buyerId.isNotBlank()) {
+                        order.buyerId
+                    } else if (order.buyerPin.isNotBlank()) {
+                        authRepository.lookupUserByPin(order.buyerPin).getOrNull()?.id.orEmpty()
+                    } else ""
+                } else {
+                    val store = repository.getStore(order.storeId).getOrNull()
+                    if (!store?.ownerId.isNullOrBlank()) {
+                        store?.ownerId.orEmpty()
+                    } else if (!store?.ownerPin.isNullOrBlank()) {
+                        authRepository.lookupUserByPin(store?.ownerPin.orEmpty()).getOrNull()?.id.orEmpty()
+                    } else ""
+                }
+
+                if (targetUserId.isBlank()) {
+                    Toast.makeText(this@OrdersActivity, "Chat partner contact unavailable", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                val existingConv = withContext(Dispatchers.IO) {
+                    chatRepository.getAllConversationsList().firstOrNull { conv ->
+                        !conv.isGroup && conv.memberIds.contains(targetUserId)
+                    }
+                }
+
+                val conversation = existingConv ?: run {
+                    val createResult = chatRepository.createConversation(
+                        name = targetTitle,
+                        memberIds = listOf(targetUserId),
+                        isGroup = false
+                    )
+                    createResult.getOrNull()
+                }
+
+                if (conversation == null) {
+                    Toast.makeText(this@OrdersActivity, "Failed to start chat. Please try again.", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                val intent = Intent(this@OrdersActivity, ChatRoomActivity::class.java).apply {
+                    putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, conversation.id)
+                    putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, targetTitle)
+                    putExtra(ChatRoomActivity.EXTRA_ORDER_ID, order.id)
+                    putExtra(ChatRoomActivity.EXTRA_ORDER_NUMBER, order.orderNumber)
+                    putExtra(ChatRoomActivity.EXTRA_ORDER_TOTAL, order.totalAmount)
+                    putExtra(ChatRoomActivity.EXTRA_IS_ONLINE, conversation.isOnline)
+                    putExtra(ChatRoomActivity.EXTRA_LAST_SEEN, conversation.lastSeen ?: 0L)
+                    val partnerId = conversation.memberIds.firstOrNull { it != currentUserId } ?: targetUserId
+                    putExtra(ChatRoomActivity.EXTRA_PARTNER_ID, partnerId)
+                }
+                startActivity(intent)
+            } catch (e: Exception) {
+                Toast.makeText(this@OrdersActivity, "Connection error: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                binding.progressBar.visibility = View.GONE
             }
         }
     }

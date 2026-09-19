@@ -872,7 +872,25 @@ class ChatRepository @Inject constructor(
         dao.updateMessageStarred(messageId, isStarred)
     }
 
-    suspend fun toggleMessagePin(messageId: String, isPinned: Boolean) {
+    suspend fun toggleMessagePin(messageId: String, isPinned: Boolean, conversationId: String = "") {
+        dao.updateMessagePinned(messageId, isPinned)
+        if (conversationId.isNotEmpty()) {
+            try {
+                val body = buildJsonObject {
+                    put("conversation_id", conversationId)
+                }
+                if (isPinned) {
+                    api.pinMessage(messageId, body)
+                } else {
+                    api.unpinMessage(messageId, body)
+                }
+            } catch (e: Exception) {
+                Log.w("ChatRepository", "Failed to sync message pin state to remote server", e)
+            }
+        }
+    }
+
+    suspend fun toggleMessagePinLocally(messageId: String, isPinned: Boolean) {
         dao.updateMessagePinned(messageId, isPinned)
     }
 

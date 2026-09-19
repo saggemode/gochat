@@ -1275,8 +1275,11 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     }
 
+    private var currentPinnedIndex: Int = 0
+
     private fun updatePinnedMessageHeader(pinnedList: List<Message>) {
         if (pinnedList.isEmpty()) {
+            currentPinnedIndex = 0
             if (binding.layoutPinnedMessage.visibility == View.VISIBLE) {
                 TransitionManager.beginDelayedTransition(binding.chatContentContainer, AutoTransition().apply { duration = 180 })
                 binding.layoutPinnedMessage.visibility = View.GONE
@@ -1284,14 +1287,22 @@ class ChatRoomActivity : AppCompatActivity() {
             return
         }
 
-        val pinnedMsg = pinnedList.first()
+        if (currentPinnedIndex !in pinnedList.indices) {
+            currentPinnedIndex = 0
+        }
+        val pinnedMsg = pinnedList[currentPinnedIndex]
+
         if (binding.layoutPinnedMessage.visibility != View.VISIBLE) {
             TransitionManager.beginDelayedTransition(binding.chatContentContainer, AutoTransition().apply { duration = 180 })
             binding.layoutPinnedMessage.visibility = View.VISIBLE
         }
 
         val senderLabel = if (pinnedMsg.isMe) "You" else pinnedMsg.senderName.ifBlank { "Contact" }
-        binding.tvPinnedTitle.text = "Pinned • $senderLabel"
+        binding.tvPinnedTitle.text = if (pinnedList.size > 1) {
+            "📌 Pinned • $senderLabel (${currentPinnedIndex + 1} of ${pinnedList.size})"
+        } else {
+            "📌 Pinned • $senderLabel"
+        }
 
         val snippet = when (pinnedMsg.type) {
             MessageType.TEXT -> pinnedMsg.content
@@ -1310,8 +1321,12 @@ class ChatRoomActivity : AppCompatActivity() {
         binding.tvPinnedSnippet.text = snippet
 
         binding.btnUnpinMessage.setOnClickListener {
-            viewModel.togglePin(pinnedMsg.id, false)
+            val msgToUnpin = pinnedMsg
+            viewModel.togglePin(msgToUnpin.id, false)
             Toast.makeText(this, "Message unpinned", Toast.LENGTH_SHORT).show()
+            if (currentPinnedIndex >= pinnedList.size - 1) {
+                currentPinnedIndex = (pinnedList.size - 2).coerceAtLeast(0)
+            }
         }
 
         binding.layoutPinnedMessage.setOnClickListener {
@@ -1320,10 +1335,56 @@ class ChatRoomActivity : AppCompatActivity() {
             }
             if (pos != -1) {
                 binding.rvMessages.smoothScrollToPosition(pos)
+                messageAdapter.highlightMessage(pinnedMsg.id)
             } else {
                 Toast.makeText(this, "Pinned message loaded in history", Toast.LENGTH_SHORT).show()
             }
+
+            // Cycle to next pinned message on subsequent tap if multiple
+            if (pinnedList.size > 1) {
+                currentPinnedIndex = (currentPinnedIndex + 1) % pinnedList.size
+                updatePinnedMessageHeader(pinnedList)
+            }
         }
+
+        binding.layoutPinnedMessage.setOnLongClickListener {
+            showPinnedMessagesListDialog(pinnedList)
+            true
+        }
+    }
+
+    private fun showPinnedMessagesListDialog(pinnedList: List<Message>) {
+        val items = pinnedList.mapIndexed { idx, msg ->
+            val author = if (msg.isMe) "You" else msg.senderName.ifBlank { "Contact" }
+            val preview = when (msg.type) {
+                MessageType.TEXT -> msg.content
+                MessageType.IMAGE -> "📷 Photo"
+                MessageType.VIDEO -> "🎥 Video"
+                MessageType.AUDIO, MessageType.VOICE -> "🎵 Audio message"
+                MessageType.FILE -> "📄 Document"
+                MessageType.LOCATION -> "📍 Location"
+                MessageType.POLL -> "📊 Poll: ${msg.content}"
+                else -> msg.content
+            }.replace('\n', ' ').take(35)
+            "${idx + 1}. $author: $preview"
+        }.toTypedArray()
+
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Pinned Messages (${pinnedList.size})")
+            .setItems(items) { _, which ->
+                currentPinnedIndex = which
+                val selected = pinnedList[which]
+                updatePinnedMessageHeader(pinnedList)
+                val pos = (0 until messageAdapter.itemCount).indexOfFirst {
+                    messageAdapter.peek(it)?.id == selected.id
+                }
+                if (pos != -1) {
+                    binding.rvMessages.smoothScrollToPosition(pos)
+                    messageAdapter.highlightMessage(selected.id)
+                }
+            }
+            .setNegativeButton("Close", null)
+            .show()
     }
 
     private fun isLastItemVisible(): Boolean {

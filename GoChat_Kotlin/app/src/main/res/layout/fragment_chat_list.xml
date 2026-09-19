@@ -325,6 +325,81 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
+        <!-- Battery Optimization Exemption Card -->
+        <LinearLayout
+            android:id="@+id/layoutBatteryOptimizationCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="14dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/bg_username_chip"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="10dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:contentDescription="Instant Alerts"
+                android:src="@drawable/ic_bolt"
+                app:tint="@color/gochat_accent" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvBatteryCardTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Instant Background Alerts"
+                    android:textColor="@color/gochat_text_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvBatteryCardDesc"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Allow background wakeup so calls and messages arrive instantly when closed."
+                    android:textColor="@color/gochat_text_secondary"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/btnEnableBatteryExemption"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_unread_badge"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="5dp"
+                android:text="Enable"
+                android:textColor="@color/black"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:id="@+id/btnDismissBatteryCard"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="Dismiss"
+                android:focusable="true"
+                android:padding="6dp"
+                android:src="@drawable/ic_close"
+                app:tint="@color/gochat_text_muted" />
+        </LinearLayout>
+
     </com.google.android.material.appbar.AppBarLayout>
 
     <!-- Main List Container with Pull-to-Refresh -->

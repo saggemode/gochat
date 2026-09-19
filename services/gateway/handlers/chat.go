@@ -692,16 +692,21 @@ func (h *ChatHandler) PinMessage(c *gin.Context) {
 	msgID := c.Param("id")
 
 	var req struct {
-		ConversationId string `json:"conversation_id" binding:"required"`
+		ConversationId string `json:"conversation_id"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	_ = c.ShouldBindJSON(&req)
+	convID := req.ConversationId
+	if convID == "" {
+		convID = c.Query("conversation_id")
+	}
+	if convID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "conversation_id is required"})
 		return
 	}
 
 	resp, err := h.client.PinMessage(c.Request.Context(), &chatpb.PinMessageRequest{
 		MessageId:      msgID,
-		ConversationId: req.ConversationId,
+		ConversationId: convID,
 		UserId:         userID,
 	})
 	if err != nil {
@@ -721,16 +726,21 @@ func (h *ChatHandler) UnpinMessage(c *gin.Context) {
 	msgID := c.Param("id")
 
 	var req struct {
-		ConversationId string `json:"conversation_id" binding:"required"`
+		ConversationId string `json:"conversation_id"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	_ = c.ShouldBindJSON(&req)
+	convID := req.ConversationId
+	if convID == "" {
+		convID = c.Query("conversation_id")
+	}
+	if convID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "conversation_id is required"})
 		return
 	}
 
 	resp, err := h.client.UnpinMessage(c.Request.Context(), &chatpb.UnpinMessageRequest{
 		MessageId:      msgID,
-		ConversationId: req.ConversationId,
+		ConversationId: convID,
 		UserId:         userID,
 	})
 	if err != nil {

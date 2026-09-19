@@ -381,6 +381,17 @@ class MessageAdapter(
         }
     }
 
+    var highlightedMessageId: String? = null
+        private set
+
+    fun highlightMessage(messageId: String) {
+        highlightedMessageId = messageId
+        val pos = (0 until itemCount).indexOfFirst { peek(it)?.id == messageId }
+        if (pos != -1) {
+            notifyItemChanged(pos)
+        }
+    }
+
     var searchQuery: String = ""
         set(value) {
             if (field != value) {
@@ -559,6 +570,24 @@ class MessageAdapter(
 
                 val textColor = ChatBubbleHelper.getMessageTextColor(isMe = true, shape = bubbleShape)
                 val timeColor = ChatBubbleHelper.getTimestampTextColor(isMe = true, shape = bubbleShape)
+
+                // Highlight pulse animation if targeted
+                if (message.id == highlightedMessageId) {
+                    val highlightBg = 0x3300A884.toInt() // Soft emerald pulse
+                    root.setBackgroundColor(highlightBg)
+                    root.animate()
+                        .alpha(1f)
+                        .setDuration(1200)
+                        .withEndAction {
+                            root.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                            if (highlightedMessageId == message.id) {
+                                highlightedMessageId = null
+                            }
+                        }
+                        .start()
+                } else {
+                    root.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                }
 
                 // Forwarded status
                 layoutForwarded.visibility = if (message.isForwarded) View.VISIBLE else View.GONE
@@ -911,6 +940,24 @@ class MessageAdapter(
 
                 val textColor = ChatBubbleHelper.getMessageTextColor(isMe = false, shape = bubbleShape)
                 val timeColor = ChatBubbleHelper.getTimestampTextColor(isMe = false, shape = bubbleShape)
+
+                // Highlight pulse animation if targeted
+                if (message.id == highlightedMessageId) {
+                    val highlightBg = 0x3300A884.toInt() // Soft emerald pulse
+                    root.setBackgroundColor(highlightBg)
+                    root.animate()
+                        .alpha(1f)
+                        .setDuration(1200)
+                        .withEndAction {
+                            root.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                            if (highlightedMessageId == message.id) {
+                                highlightedMessageId = null
+                            }
+                        }
+                        .start()
+                } else {
+                    root.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                }
 
                 // Forwarded status
                 layoutForwarded.visibility = if (message.isForwarded) View.VISIBLE else View.GONE

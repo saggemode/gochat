@@ -17,6 +17,8 @@ import com.example.gochat.data.model.Product
 import com.example.gochat.data.model.ProductVariant
 import com.example.gochat.data.model.Review
 import com.example.gochat.data.model.Store
+import com.example.gochat.data.repository.AuthRepository
+import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.data.repository.StoryRepository
 import com.example.gochat.databinding.ActivityProductDetailsBinding
@@ -25,7 +27,9 @@ import com.example.gochat.ui.chat.ChatRoomActivity
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import dagger.hilt.android.AndroidEntryPoint
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 import java.util.Locale
 import javax.inject.Inject
@@ -44,6 +48,12 @@ class ProductDetailsActivity : AppCompatActivity() {
 
     @Inject
     lateinit var storyRepository: StoryRepository
+
+    @Inject
+    lateinit var chatRepository: ChatRepository
+
+    @Inject
+    lateinit var authRepository: AuthRepository
     
     private var product: Product? = null
     private var store: Store? = null
@@ -518,27 +528,92 @@ class ProductDetailsActivity : AppCompatActivity() {
     private fun openChatWithSeller(product: Product) {
         val inquiry = String.format(
             Locale.US,
-            "👋 Hi %s! I am interested in purchasing \"%s\" listed for $%.2f on GoChat Marketplace.",
+            "\uD83D\uDC4B Hi %s! I am interested in purchasing \"%s\" listed for $%.2f on GoChat Marketplace.",
             product.storeName,
             product.displayTitle,
             product.price
         )
 
-        val sellerPin = product.sellerPin.ifBlank { "1P0YE4WZ" }
-        val convId = "conv_store_${product.storeId.ifBlank { sellerPin }}"
+        // Show loading state
+        binding.btnChatSeller.isEnabled = false
+        binding.btnChatSeller.text = "Connecting…"
 
-        val intent = Intent(this, ChatRoomActivity::class.java).apply {
-            putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, convId)
-            putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, product.storeName)
-            putExtra(ChatRoomActivity.EXTRA_CONVERSATION_AVATAR, store?.logoUrl ?: product.primaryImage)
-            putExtra(ChatRoomActivity.EXTRA_INITIAL_MESSAGE, inquiry)
-            putExtra(ChatRoomActivity.EXTRA_PRODUCT_ID, product.id)
-            putExtra(ChatRoomActivity.EXTRA_PRODUCT_NAME, product.displayTitle)
-            putExtra(ChatRoomActivity.EXTRA_PRODUCT_PRICE, product.price)
-            putExtra(ChatRoomActivity.EXTRA_PRODUCT_IMAGE, product.primaryImage)
+        lifecycleScope.launch {
+            try {
+                var targetSellerId = product.sellerId.ifBlank { store?.ownerId.orEmpty() }
+                var targetSellerPin = product.sellerPin.ifBlank { store?.ownerPin.orEmpty() }
+
+                // If both are empty, try loading the store directly
+                if (targetSellerId.isBlank() && targetSellerPin.isBlank() && product.storeId.isNotBlank()) {
+                    val fetchedStore = repository.getStore(product.storeId).getOrNull()
+                    if (fetchedStore != null) {
+                        store = fetchedStore
+                        targetSellerId = fetchedStore.ownerId
+                        targetSellerPin = fetchedStore.ownerPin
+                    }
+                }
+
+                // 1. Resolve seller user ID
+                val resolvedSellerId = if (targetSellerId.isNotBlank()) {
+                    targetSellerId
+                } else if (targetSellerPin.isNotBlank()) {
+                    val lookupResult = authRepository.lookupUserByPin(targetSellerPin)
+                    lookupResult.getOrNull()?.id.orEmpty()
+                } else {
+                    ""
+                }
+
+                if (resolvedSellerId.isBlank()) {
+                    Toast.makeText(this@ProductDetailsActivity, "Could not find seller contact info", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                // 2. Find existing conversation with this seller, or create one
+                val existingConv = withContext(Dispatchers.IO) {
+                    chatRepository.getAllConversationsList().firstOrNull { conv ->
+                        !conv.isGroup && conv.memberIds.contains(resolvedSellerId)
+                    }
+                }
+
+                val conversation = existingConv ?: run {
+                    val createResult = chatRepository.createConversation(
+                        name = product.storeName.ifBlank { "Seller" },
+                        memberIds = listOf(resolvedSellerId),
+                        isGroup = false
+                    )
+                    createResult.getOrNull()
+                }
+
+                if (conversation == null) {
+                    Toast.makeText(this@ProductDetailsActivity, "Failed to start chat. Please try again.", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                // 3. Open ChatRoomActivity with the REAL conversation
+                val intent = Intent(this@ProductDetailsActivity, ChatRoomActivity::class.java).apply {
+                    putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, conversation.id)
+                    putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, product.storeName.ifBlank { conversation.title })
+                    putExtra(ChatRoomActivity.EXTRA_CONVERSATION_AVATAR, store?.logoUrl ?: product.primaryImage)
+                    putExtra(ChatRoomActivity.EXTRA_INITIAL_MESSAGE, inquiry)
+                    putExtra(ChatRoomActivity.EXTRA_PRODUCT_ID, product.id)
+                    putExtra(ChatRoomActivity.EXTRA_PRODUCT_NAME, product.displayTitle)
+                    putExtra(ChatRoomActivity.EXTRA_PRODUCT_PRICE, product.price)
+                    putExtra(ChatRoomActivity.EXTRA_PRODUCT_IMAGE, product.primaryImage)
+                    putExtra(ChatRoomActivity.EXTRA_IS_ONLINE, conversation.isOnline)
+                    putExtra(ChatRoomActivity.EXTRA_LAST_SEEN, conversation.lastSeen ?: 0L)
+                    val partnerId = conversation.memberIds.firstOrNull()
+                    if (!partnerId.isNullOrEmpty()) {
+                        putExtra(ChatRoomActivity.EXTRA_PARTNER_ID, partnerId)
+                    }
+                }
+                startActivity(intent)
+            } catch (e: Exception) {
+                Toast.makeText(this@ProductDetailsActivity, "Connection error: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                binding.btnChatSeller.isEnabled = true
+                binding.btnChatSeller.text = getString(R.string.chat_with_seller)
+            }
         }
-
-        startActivity(intent)
     }
 
     private fun addToCart(product: Product, andProceedToCheckout: Boolean) {

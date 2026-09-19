@@ -14,7 +14,9 @@ import com.example.gochat.data.model.CartItem
 import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.databinding.ActivityCheckoutBinding
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 import javax.inject.Inject
 
@@ -28,6 +30,9 @@ class CheckoutActivity : AppCompatActivity() {
 
     @Inject
     lateinit var chatRepository: com.example.gochat.data.repository.ChatRepository
+
+    @Inject
+    lateinit var authRepository: com.example.gochat.data.repository.AuthRepository
     
     private var cartItems: List<CartItem> = emptyList()
 
@@ -98,49 +103,60 @@ class CheckoutActivity : AppCompatActivity() {
             if (result.isSuccess) {
                 val order = result.getOrNull()
                 if (order != null) {
-                    val convId = "conv_store_${order.storeId.ifBlank { "official" }}"
-                    val itemsSummary = if (order.items.isNotEmpty()) {
-                        order.items.joinToString(", ") { "${it.productName} (x${it.quantity})" }
-                    } else {
-                        "Marketplace Order"
-                    }
-                    val orderJson = kotlinx.serialization.json.buildJsonObject {
-                        put("type", "order")
-                        put("order", kotlinx.serialization.json.buildJsonObject {
-                            put("id", order.id)
-                            put("order_number", order.orderNumber)
-                            put("store_id", order.storeId)
-                            put("store_name", order.storeName)
-                            put("buyer_id", order.buyerId)
-                            put("buyer_name", order.buyerName)
-                            put("total_amount", order.totalAmount)
-                            put("status", order.status.name)
-                            put("shipping_address", order.shippingAddress ?: address)
-                            put("items_count", order.items.size)
-                            put("items_summary", itemsSummary)
-                            put("created_at", order.createdAt)
-                        })
-                    }.toString()
+                    val store = repository.getStore(order.storeId).getOrNull()
+                    val targetUserId = if (!store?.ownerId.isNullOrBlank()) {
+                        store?.ownerId.orEmpty()
+                    } else if (!store?.ownerPin.isNullOrBlank()) {
+                        authRepository.lookupUserByPin(store?.ownerPin.orEmpty()).getOrNull()?.id.orEmpty()
+                    } else ""
 
-                    // Ensure conversation exists in local DB
-                    val existingConv = chatRepository.getConversationById(convId)
-                    if (existingConv == null) {
-                        chatRepository.insertConversationLocally(
-                            com.example.gochat.data.model.Conversation(
-                                id = convId,
-                                title = order.storeName.ifBlank { "Official Store" },
-                                type = com.example.gochat.data.model.ConversationType.DIRECT,
-                                lastMessageText = "📦 Order #${order.orderNumber} placed",
-                                lastMessageTime = System.currentTimeMillis()
-                            )
+                    val existingConv = if (targetUserId.isNotBlank()) {
+                        withContext(Dispatchers.IO) {
+                            chatRepository.getAllConversationsList().firstOrNull { c ->
+                                !c.isGroup && c.memberIds.contains(targetUserId)
+                            }
+                        }
+                    } else null
+
+                    val conversation = existingConv ?: if (targetUserId.isNotBlank()) {
+                        chatRepository.createConversation(
+                            name = order.storeName.ifBlank { "Official Store" },
+                            memberIds = listOf(targetUserId),
+                            isGroup = false
+                        ).getOrNull()
+                    } else null
+
+                    val realConvId = conversation?.id.orEmpty()
+                    if (realConvId.isNotBlank()) {
+                        val itemsSummary = if (order.items.isNotEmpty()) {
+                            order.items.joinToString(", ") { "${it.productName} (x${it.quantity})" }
+                        } else {
+                            "Marketplace Order"
+                        }
+                        val orderJson = kotlinx.serialization.json.buildJsonObject {
+                            put("type", "order")
+                            put("order", kotlinx.serialization.json.buildJsonObject {
+                                put("id", order.id)
+                                put("order_number", order.orderNumber)
+                                put("store_id", order.storeId)
+                                put("store_name", order.storeName)
+                                put("buyer_id", order.buyerId)
+                                put("buyer_name", order.buyerName)
+                                put("total_amount", order.totalAmount)
+                                put("status", order.status.name)
+                                put("shipping_address", order.shippingAddress ?: address)
+                                put("items_count", order.items.size)
+                                put("items_summary", itemsSummary)
+                                put("created_at", order.createdAt)
+                            })
+                        }.toString()
+
+                        chatRepository.sendMessage(
+                            conversationId = realConvId,
+                            content = orderJson,
+                            type = 9 // Order
                         )
                     }
-
-                    chatRepository.sendMessage(
-                        conversationId = convId,
-                        content = orderJson,
-                        type = 9 // Order
-                    )
                 }
 
                 HapticEngine.playPaymentConfirmed(this@CheckoutActivity)
@@ -151,16 +167,47 @@ class CheckoutActivity : AppCompatActivity() {
                     .setTitle("Order Placed Successfully! 🎉")
                     .setMessage("Your order has been sent to ${order?.storeName ?: "the seller"}. Would you like to chat with them about your order?")
                     .setPositiveButton("Chat with Seller") { _, _ ->
-                        val convId = "conv_store_${order?.storeId?.ifBlank { "official" } ?: "official"}"
-                        val chatIntent = Intent(this@CheckoutActivity, com.example.gochat.ui.chat.ChatRoomActivity::class.java).apply {
-                            putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_CONVERSATION_ID, convId)
-                            putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_CONVERSATION_TITLE, order?.storeName ?: "Seller")
-                            putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_ORDER_ID, order?.id)
-                            putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_ORDER_NUMBER, order?.orderNumber)
-                            putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_ORDER_TOTAL, order?.totalAmount ?: total)
+                        val storeId = order?.storeId.orEmpty()
+                        val storeName = order?.storeName ?: "Seller"
+                        lifecycleScope.launch {
+                            val store = if (storeId.isNotBlank()) repository.getStore(storeId).getOrNull() else null
+                            val targetUserId = if (!store?.ownerId.isNullOrBlank()) {
+                                store?.ownerId.orEmpty()
+                            } else if (!store?.ownerPin.isNullOrBlank()) {
+                                authRepository.lookupUserByPin(store?.ownerPin.orEmpty()).getOrNull()?.id.orEmpty()
+                            } else ""
+
+                            val conv = if (targetUserId.isNotBlank()) {
+                                val existing = withContext(Dispatchers.IO) {
+                                    chatRepository.getAllConversationsList().firstOrNull { c ->
+                                        !c.isGroup && c.memberIds.contains(targetUserId)
+                                    }
+                                }
+                                existing ?: chatRepository.createConversation(
+                                    name = storeName,
+                                    memberIds = listOf(targetUserId),
+                                    isGroup = false
+                                ).getOrNull()
+                            } else null
+
+                            if (conv != null) {
+                                val chatIntent = Intent(this@CheckoutActivity, com.example.gochat.ui.chat.ChatRoomActivity::class.java).apply {
+                                    putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_CONVERSATION_ID, conv.id)
+                                    putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_CONVERSATION_TITLE, storeName)
+                                    putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_ORDER_ID, order?.id)
+                                    putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_ORDER_NUMBER, order?.orderNumber)
+                                    putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_ORDER_TOTAL, order?.totalAmount ?: total)
+                                    putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_IS_ONLINE, conv.isOnline)
+                                    putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_LAST_SEEN, conv.lastSeen ?: 0L)
+                                    val partnerId = conv.memberIds.firstOrNull() ?: targetUserId
+                                    putExtra(com.example.gochat.ui.chat.ChatRoomActivity.EXTRA_PARTNER_ID, partnerId)
+                                }
+                                startActivity(chatIntent)
+                            } else {
+                                startActivity(Intent(this@CheckoutActivity, OrdersActivity::class.java))
+                            }
+                            finish()
                         }
-                        startActivity(chatIntent)
-                        finish()
                     }
                     .setNegativeButton("View Orders") { _, _ ->
                         startActivity(Intent(this@CheckoutActivity, OrdersActivity::class.java))

@@ -617,7 +617,7 @@ func (s *ChatServer) UnpinMessage(ctx context.Context, req *chatpb.UnpinMessageR
 		return nil, status.Error(codes.Internal, "failed to unpin message")
 	}
 
-	s.publishEvent(ctx, "message_unpinned", msgID.String(), convID.String(), "")
+	s.publishEvent(ctx, "message_unpinned", msgID.String(), convID.String(), req.UserId)
 
 	return &chatpb.UnpinMessageResponse{Success: true}, nil
 }

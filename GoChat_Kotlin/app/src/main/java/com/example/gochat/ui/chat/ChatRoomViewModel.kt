@@ -386,8 +386,9 @@ class ChatRoomViewModel @Inject constructor(
     }
 
     fun togglePin(messageId: String, isPinned: Boolean) {
+        val convId = _conversationId.value
         viewModelScope.launch {
-            chatRepository.toggleMessagePin(messageId, isPinned)
+            chatRepository.toggleMessagePin(messageId, isPinned, convId)
         }
     }
 
@@ -791,7 +792,7 @@ class ChatRoomViewModel @Inject constructor(
     }
 
     private fun handleWebSocketEvent(event: JsonObject) {
-        val type = (event["type"] ?: event["event_type"])?.jsonPrimitive?.contentOrNull.orEmpty().lowercase()
+        val type = (event["type"] ?: event["event_type"] ?: event["event"])?.jsonPrimitive?.contentOrNull.orEmpty().lowercase()
 
         if (type == "presence") {
             val userId = (event["user_id"] ?: event["userId"])?.jsonPrimitive?.contentOrNull.orEmpty()
@@ -830,6 +831,22 @@ class ChatRoomViewModel @Inject constructor(
             type == "ping" -> {
                 _screenShakeEvent.tryEmit(Unit)
                 _isPartnerOnline.value = true
+            }
+            type == "message_pinned" || type == "event_message_pinned" -> {
+                val msgId = (event["msg_id"] ?: event["message_id"] ?: event["messageId"])?.jsonPrimitive?.contentOrNull.orEmpty()
+                if (msgId.isNotEmpty()) {
+                    viewModelScope.launch {
+                        chatRepository.toggleMessagePinLocally(msgId, true)
+                    }
+                }
+            }
+            type == "message_unpinned" || type == "event_message_unpinned" -> {
+                val msgId = (event["msg_id"] ?: event["message_id"] ?: event["messageId"])?.jsonPrimitive?.contentOrNull.orEmpty()
+                if (msgId.isNotEmpty()) {
+                    viewModelScope.launch {
+                        chatRepository.toggleMessagePinLocally(msgId, false)
+                    }
+                }
             }
             type == "screenshot_setting_changed" -> {
                 val enabled = event["enabled"]?.jsonPrimitive?.booleanOrNull ?: false

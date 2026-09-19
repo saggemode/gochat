@@ -14,15 +14,20 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.gochat.R
+import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.model.Order
 import com.example.gochat.data.model.OrderStatus
 import com.example.gochat.data.model.OrderStatusHistoryItem
+import com.example.gochat.data.repository.AuthRepository
+import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.databinding.ActivityOrderDetailsBinding
 import com.example.gochat.databinding.ItemOrderStatusHistoryBinding
 import com.example.gochat.ui.chat.ChatRoomActivity
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -34,6 +39,15 @@ class OrderDetailsActivity : AppCompatActivity() {
 
     @Inject
     lateinit var marketplaceRepository: MarketplaceRepository
+
+    @Inject
+    lateinit var chatRepository: ChatRepository
+
+    @Inject
+    lateinit var authRepository: AuthRepository
+
+    @Inject
+    lateinit var tokenManager: TokenManager
 
     private lateinit var binding: ActivityOrderDetailsBinding
     private val dateFormat = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
@@ -103,15 +117,7 @@ class OrderDetailsActivity : AppCompatActivity() {
         // Chat with Seller
         binding.btnChatWithParty.text = "💬 Chat with ${order.storeName.ifBlank { "Seller" }}"
         binding.btnChatWithParty.setOnClickListener {
-            val convId = "conv_store_${order.storeId.ifBlank { "official" }}"
-            val intent = Intent(this, ChatRoomActivity::class.java).apply {
-                putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, convId)
-                putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, order.storeName.ifBlank { "Seller" })
-                putExtra(ChatRoomActivity.EXTRA_ORDER_ID, order.id)
-                putExtra(ChatRoomActivity.EXTRA_ORDER_NUMBER, order.orderNumber)
-                putExtra(ChatRoomActivity.EXTRA_ORDER_TOTAL, order.totalAmount)
-            }
-            startActivity(intent)
+            openChatWithOrderParty(order)
         }
 
         // Setup Live Courier Tracking Card & Stepper
@@ -320,6 +326,77 @@ class OrderDetailsActivity : AppCompatActivity() {
             if (date != null) dateFormat.format(date) else raw
         } catch (_: Exception) {
             raw
+        }
+    }
+
+    private fun openChatWithOrderParty(order: Order) {
+        val currentUserId = tokenManager.userId.orEmpty()
+        val isSeller = currentUserId.isNotBlank() && currentUserId != order.buyerId && (currentUserId == order.userId || currentUserId == order.storeId)
+
+        val targetTitle = if (isSeller) order.buyerName.ifBlank { "Customer" } else order.storeName.ifBlank { "Seller" }
+        binding.btnChatWithParty.isEnabled = false
+        binding.btnChatWithParty.text = "Connecting…"
+
+        lifecycleScope.launch {
+            try {
+                val targetUserId = if (isSeller) {
+                    if (order.buyerId.isNotBlank()) {
+                        order.buyerId
+                    } else if (order.buyerPin.isNotBlank()) {
+                        authRepository.lookupUserByPin(order.buyerPin).getOrNull()?.id.orEmpty()
+                    } else ""
+                } else {
+                    val store = marketplaceRepository.getStore(order.storeId).getOrNull()
+                    if (!store?.ownerId.isNullOrBlank()) {
+                        store?.ownerId.orEmpty()
+                    } else if (!store?.ownerPin.isNullOrBlank()) {
+                        authRepository.lookupUserByPin(store?.ownerPin.orEmpty()).getOrNull()?.id.orEmpty()
+                    } else ""
+                }
+
+                if (targetUserId.isBlank()) {
+                    Toast.makeText(this@OrderDetailsActivity, "Chat partner contact unavailable", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                val existingConv = withContext(Dispatchers.IO) {
+                    chatRepository.getAllConversationsList().firstOrNull { conv ->
+                        !conv.isGroup && conv.memberIds.contains(targetUserId)
+                    }
+                }
+
+                val conversation = existingConv ?: run {
+                    val createResult = chatRepository.createConversation(
+                        name = targetTitle,
+                        memberIds = listOf(targetUserId),
+                        isGroup = false
+                    )
+                    createResult.getOrNull()
+                }
+
+                if (conversation == null) {
+                    Toast.makeText(this@OrderDetailsActivity, "Failed to start chat. Please try again.", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                val intent = Intent(this@OrderDetailsActivity, ChatRoomActivity::class.java).apply {
+                    putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, conversation.id)
+                    putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, targetTitle)
+                    putExtra(ChatRoomActivity.EXTRA_ORDER_ID, order.id)
+                    putExtra(ChatRoomActivity.EXTRA_ORDER_NUMBER, order.orderNumber)
+                    putExtra(ChatRoomActivity.EXTRA_ORDER_TOTAL, order.totalAmount)
+                    putExtra(ChatRoomActivity.EXTRA_IS_ONLINE, conversation.isOnline)
+                    putExtra(ChatRoomActivity.EXTRA_LAST_SEEN, conversation.lastSeen ?: 0L)
+                    val partnerId = conversation.memberIds.firstOrNull { it != currentUserId } ?: targetUserId
+                    putExtra(ChatRoomActivity.EXTRA_PARTNER_ID, partnerId)
+                }
+                startActivity(intent)
+            } catch (e: Exception) {
+                Toast.makeText(this@OrderDetailsActivity, "Connection error: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                binding.btnChatWithParty.isEnabled = true
+                binding.btnChatWithParty.text = "💬 Chat with $targetTitle"
+            }
         }
     }
 }

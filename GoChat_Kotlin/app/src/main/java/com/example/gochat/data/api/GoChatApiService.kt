@@ -154,6 +154,18 @@ interface GoChatApiService {
         @Body body: JsonObject
     ): Response<JsonObject>
 
+    @POST("api/v1/chat/messages/{id}/pin")
+    suspend fun pinMessage(
+        @Path("id") messageId: String,
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @HTTP(method = "DELETE", path = "api/v1/chat/messages/{id}/pin", hasBody = true)
+    suspend fun unpinMessage(
+        @Path("id") messageId: String,
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
     // ═══════════════════════════════════════════════════════════════
     // ── Group Management ─────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════

@@ -29,6 +29,7 @@ import com.example.gochat.R
 import com.example.gochat.core.media.MediaImageHelper
 import com.example.gochat.core.sound.ChatSoundManager
 import com.example.gochat.core.theme.ThemeManager
+import com.example.gochat.core.utils.BatteryOptimizationHelper
 import com.example.gochat.data.repository.AuthRepository
 import com.example.gochat.databinding.BottomSheetPickAvatarBinding
 import com.example.gochat.databinding.DialogEditProfileBinding
@@ -136,6 +137,7 @@ class SettingsFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         viewModel.loadProfile()
+        updateBatteryStatus()
     }
 
     private fun setupClickListeners() {
@@ -193,6 +195,15 @@ class SettingsFragment : Fragment() {
                 showNotificationSettingsDialog()
             }
 
+            // Battery & Background Wakeup
+            tileBatteryOptimization.setOnClickListener {
+                val activity = activity ?: return@setOnClickListener
+                BatteryOptimizationHelper.requestIgnoreBatteryOptimizations(activity)
+                if (BatteryOptimizationHelper.needsAutostartWarning()) {
+                    BatteryOptimizationHelper.showAutostartGuidanceDialog(activity)
+                }
+            }
+
             // Storage
             tileStorage.setOnClickListener {
                 startActivity(Intent(requireContext(), com.example.gochat.ui.storage.StorageManagementActivity::class.java))
@@ -216,6 +227,18 @@ class SettingsFragment : Fragment() {
             tileLogout.setOnClickListener {
                 showLogoutConfirmation()
             }
+        }
+    }
+
+    private fun updateBatteryStatus() {
+        val ctx = context ?: return
+        val isWhitelisted = BatteryOptimizationHelper.isIgnoringBatteryOptimizations(ctx)
+        if (isWhitelisted) {
+            binding.tvBatteryStatusBadge.text = "Whitelisted (Instant Wakeup)"
+            binding.tvBatteryStatusBadge.setTextColor(ContextCompat.getColor(ctx, R.color.gochat_emerald_light))
+        } else {
+            binding.tvBatteryStatusBadge.text = "Restricted (Tap to Enable)"
+            binding.tvBatteryStatusBadge.setTextColor(ContextCompat.getColor(ctx, R.color.gochat_amber))
         }
     }
 
