@@ -39,6 +39,7 @@ object NotificationHelper {
     const val CHANNEL_MESSAGES = "gochat_channel_messages_v2"
     const val CHANNEL_GROUPS = "gochat_channel_groups_v2"
     const val CHANNEL_CALLS = "gochat_channel_calls_v2"
+    const val CHANNEL_MARKETPLACE = "gochat_channel_marketplace_v1"
 
     const val KEY_TEXT_REPLY = "key_text_reply"
     const val EXTRA_CONVERSATION_ID = "extra_conversation_id"
@@ -123,7 +124,23 @@ object NotificationHelper {
                 setShowBadge(true)
             }
 
-            notificationManager.createNotificationChannels(listOf(messageChannel, groupChannel, callsChannel))
+            // 4. Marketplace & Store Updates channel
+            val marketplaceChannel = NotificationChannel(
+                CHANNEL_MARKETPLACE,
+                "Store & Marketplace Updates",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Alerts when followed stores upload new products"
+                enableLights(true)
+                lightColor = 0xFF10B981.toInt()
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 200, 150, 200)
+                setSound(soundUri, audioAttributes)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                setShowBadge(true)
+            }
+
+            notificationManager.createNotificationChannels(listOf(messageChannel, groupChannel, callsChannel, marketplaceChannel))
         }
     }
 
@@ -468,6 +485,91 @@ object NotificationHelper {
             Log.d("NotificationHelper", "Call notification shown for $callId from $callerName")
         } catch (e: Exception) {
             Log.e("NotificationHelper", "Failed to show call notification", e)
+        }
+    }
+
+    suspend fun showProductUploadedNotification(
+        context: Context,
+        storeId: String,
+        storeName: String,
+        productId: String,
+        productName: String,
+        price: String,
+        imageUrl: String
+    ) {
+        val notificationManager = NotificationManagerCompat.from(context)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                return
+            }
+        }
+
+        createNotificationChannels(context)
+
+        val intent = Intent(context, com.example.gochat.ui.marketplace.ProductDetailsActivity::class.java).apply {
+            putExtra("product_id", productId)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            (productId.ifBlank { System.currentTimeMillis().toString() }).hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val displayStoreName = storeName.ifBlank { "Official Store" }
+        val title = "🛍️ $displayStoreName uploaded a new product!"
+        val formattedPrice = price.toDoubleOrNull()?.let { String.format(java.util.Locale.US, "$%.2f", it) } ?: price
+        val displayProduct = productName.ifBlank { "A new item" }
+        val body = if (formattedPrice.isNotBlank()) "$displayProduct is now available for $formattedPrice. Tap to view!" else "$displayProduct is now available. Tap to view!"
+
+        var largeIcon: Bitmap? = null
+        if (imageUrl.isNotBlank()) {
+            largeIcon = try {
+                withTimeoutOrNull(4000L) {
+                    val req = ImageRequest.Builder(context)
+                        .data(imageUrl)
+                        .size(300, 300)
+                        .allowHardware(false)
+                        .build()
+                    val result = context.imageLoader.execute(req)
+                    (result.drawable as? BitmapDrawable)?.bitmap
+                }
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        val notifBuilder = NotificationCompat.Builder(context, CHANNEL_MARKETPLACE)
+            .setSmallIcon(R.drawable.ic_chat_bubble_rounded)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(
+                if (largeIcon != null) {
+                    NotificationCompat.BigPictureStyle()
+                        .bigPicture(largeIcon)
+                        .setSummaryText(body)
+                } else {
+                    NotificationCompat.BigTextStyle().bigText(body)
+                }
+            )
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_PROMO)
+            .setColor(ContextCompat.getColor(context, R.color.gochat_accent))
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+
+        if (largeIcon != null) {
+            notifBuilder.setLargeIcon(largeIcon)
+        }
+
+        val notifId = ((if (productId.isNotBlank()) productId else System.currentTimeMillis().toString()).hashCode() and 0x7FFFFFFF)
+        try {
+            notificationManager.notify(notifId, notifBuilder.build())
+            Log.d("NotificationHelper", "Product uploaded notification shown for $productId: $title")
+        } catch (e: Exception) {
+            Log.e("NotificationHelper", "Failed to show product uploaded notification", e)
         }
     }
 }

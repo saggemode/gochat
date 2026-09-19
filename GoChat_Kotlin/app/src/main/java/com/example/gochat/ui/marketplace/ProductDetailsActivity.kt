@@ -1,9 +1,12 @@
 package com.example.gochat.ui.marketplace
 
 import android.content.Intent
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.graphics.Paint
 import android.net.Uri
 import android.os.Bundle
+import androidx.core.content.ContextCompat
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -523,6 +526,56 @@ class ProductDetailsActivity : AppCompatActivity() {
         )
         binding.ivStoreVerified.visibility = if (store.isVerified) View.VISIBLE else View.GONE
         MediaImageHelper.loadSafeImage(binding.ivStoreLogo, store.logoUrl, isCircle = true)
+
+        lifecycleScope.launch {
+            val myProfile = repository.getBusinessProfile().getOrNull()
+            val isOwner = (myProfile != null && (myProfile.id == store.id || myProfile.id == store.ownerId || myProfile.name == store.name))
+            if (isOwner) {
+                binding.btnFollowStore.visibility = View.GONE
+            } else {
+                binding.btnFollowStore.visibility = View.VISIBLE
+                checkFollowStatus(store.id)
+                binding.btnFollowStore.setOnClickListener {
+                    toggleFollow(store.id)
+                }
+            }
+        }
+    }
+
+    private fun checkFollowStatus(storeId: String) {
+        lifecycleScope.launch {
+            val res = repository.isFollowingStore(storeId)
+            if (res.isSuccess) {
+                updateFollowButton(res.getOrThrow())
+            }
+        }
+    }
+
+    private fun toggleFollow(storeId: String) {
+        lifecycleScope.launch {
+            val res = repository.toggleFollowStore(storeId)
+            if (res.isSuccess) {
+                val following = res.getOrThrow()
+                updateFollowButton(following)
+                Toast.makeText(
+                    this@ProductDetailsActivity,
+                    if (following) "🔔 Following ${store?.name ?: "store"}! You'll receive alerts on new products." else "Unfollowed store",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    private fun updateFollowButton(isFollowing: Boolean) {
+        if (isFollowing) {
+            binding.btnFollowStore.text = "Following"
+            binding.btnFollowStore.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#374151")))
+            binding.btnFollowStore.setTextColor(Color.WHITE)
+        } else {
+            binding.btnFollowStore.text = "Follow"
+            binding.btnFollowStore.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.gochat_accent)))
+            binding.btnFollowStore.setTextColor(Color.BLACK)
+        }
     }
 
     private fun openChatWithSeller(product: Product) {

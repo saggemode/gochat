@@ -365,3 +365,64 @@ func SendToUser(ctx context.Context, userID, title, body string, data map[string
 	return nil
 }
 
+// GetFollowersForStore queries all user IDs who follow the specified store.
+func GetFollowersForStore(ctx context.Context, storeID string) ([]string, error) {
+	pool := getDBPool()
+	if pool == nil {
+		return nil, errors.New("database pool unavailable")
+	}
+
+	rows, err := pool.Query(ctx, "SELECT user_id FROM business.store_followers WHERE store_id = $1", storeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var followers []string
+	for rows.Next() {
+		var uid string
+		if err := rows.Scan(&uid); err == nil && uid != "" {
+			followers = append(followers, uid)
+		}
+	}
+	return followers, nil
+}
+
+// NotifyStoreFollowersNewProduct dispatches high-priority push notifications to all users following a store.
+func NotifyStoreFollowersNewProduct(ctx context.Context, storeID, storeName, productID, productName, imageURL string, price float64) error {
+	followers, err := GetFollowersForStore(ctx, storeID)
+	if err != nil {
+		return err
+	}
+	if len(followers) == 0 {
+		return nil
+	}
+
+	title := fmt.Sprintf("🛍️ %s uploaded a new product!", storeName)
+	body := fmt.Sprintf("%s is now available for $%.2f. Tap to view.", productName, price)
+	data := map[string]string{
+		"type":         "store_new_product",
+		"event_type":   "store_new_product",
+		"store_id":     storeID,
+		"store_name":   storeName,
+		"product_id":   productID,
+		"product_name": productName,
+		"price":        fmt.Sprintf("%.2f", price),
+		"image_url":    imageURL,
+		"title":        title,
+		"body":         body,
+	}
+
+	for _, uid := range followers {
+		targetUID := uid
+		go func() {
+			pushCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			_ = SendToUser(pushCtx, targetUID, title, body, data)
+		}()
+	}
+
+	return nil
+}
+
+

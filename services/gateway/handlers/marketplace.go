@@ -1,12 +1,15 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	pb "gochat/gen/business"
+	"gochat/pkg/fcm"
 
 	"github.com/gin-gonic/gin"
 )
@@ -168,6 +171,29 @@ func (h *BusinessHandler) CreateMarketplaceProduct(c *gin.Context) {
 			// Fallback to local broadcast if Redis is missing
 			h.hub.Broadcast(evtJSON, "")
 		}
+
+		// Dispatch high-priority FCM push notifications to all followers of this store
+		storeID := resp.Product.BusinessId
+		if storeID == "" {
+			storeID = userID
+		}
+		storeName := resp.Product.SellerName
+		if storeName == "" {
+			storeName = "Official Store"
+		}
+		prodID := resp.Product.Id
+		prodName := resp.Product.Name
+		prodPrice := resp.Product.Price
+		primaryImage := ""
+		if len(resp.Product.ImageUrls) > 0 {
+			primaryImage = resp.Product.ImageUrls[0]
+		}
+
+		go func() {
+			pushCtx, pCancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer pCancel()
+			_ = fcm.NotifyStoreFollowersNewProduct(pushCtx, storeID, storeName, prodID, prodName, primaryImage, prodPrice)
+		}()
 	}
 
 

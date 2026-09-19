@@ -138,6 +138,38 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
             ?: data["isGroup"]?.toBoolean()
             ?: false
 
+        if (eventType == "store_new_product" || eventType == "new_product") {
+            val storeId = data["store_id"].orEmpty()
+            val storeName = data["store_name"] ?: title
+            val productId = data["product_id"].orEmpty()
+            val productName = data["product_name"] ?: body
+            val price = data["price"].orEmpty()
+            val imageUrl = data["image_url"] ?: data["media_url"] ?: ""
+
+            val prodWakeLock = powerManager?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "GoChat:FCMProductWakeLock")?.apply {
+                try { acquire(15000L) } catch (_: Exception) {}
+            }
+
+            serviceScope.launch {
+                try {
+                    NotificationHelper.showProductUploadedNotification(
+                        context = applicationContext,
+                        storeId = storeId,
+                        storeName = storeName,
+                        productId = productId,
+                        productName = productName,
+                        price = price,
+                        imageUrl = imageUrl
+                    )
+                } finally {
+                    try {
+                        if (prodWakeLock?.isHeld == true) prodWakeLock.release()
+                    } catch (_: Exception) {}
+                }
+            }
+            return
+        }
+
         if (eventType.startsWith("order_") || eventType == "low_stock") {
             val orderId = data["order_id"] ?: ""
             val productId = data["product_id"] ?: ""
