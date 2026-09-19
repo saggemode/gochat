@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_card_dark"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- Bottom sheet drag handle -->
+    <View
+        android:layout_width="36dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/bg_unread_badge"
+        android:backgroundTint="@color/gochat_border_dark" />
+
+    <!-- Header Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Share Product Catalog"
+                android:textColor="@color/white"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvSelectionSubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Select 4 to 8 products to share in chat"
+                android:textColor="@color/gochat_text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btnCloseCatalogPicker"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Close"
+            android:src="@drawable/ic_close"
+            app:tint="@color/gochat_text_secondary" />
+    </LinearLayout>
+
+    <!-- Quick action & Search -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <EditText
+            android:id="@+id/etSearchCatalogProducts"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_input_field"
+            android:drawableStart="@drawable/ic_search"
+            android:drawablePadding="8dp"
+            android:hint="Search store inventory..."
+            android:imeOptions="actionDone"
+            android:inputType="text"
+            android:paddingHorizontal="12dp"
+            android:textColor="@color/white"
+            android:textColorHint="@color/gochat_text_muted"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/btnQuickSelectAll"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_pill"
+            android:backgroundTint="#25FFFFFF"
+            android:gravity="center"
+            android:paddingHorizontal="12dp"
+            android:text="Select 6"
+            android:textColor="@color/gochat_emerald_light"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/progressBarCatalog"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginVertical="24dp"
+        android:indeterminateTint="@color/gochat_emerald_light"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/tvEmptyCatalog"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginVertical="24dp"
+        android:gravity="center"
+        android:text="No products found in inventory"
+        android:textColor="@color/gochat_text_secondary"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
+    <!-- Recycler View for selectable products -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvCatalogPickerProducts"
+        android:layout_width="match_parent"
+        android:layout_height="280dp"
+        android:layout_marginTop="10dp" />
+
+    <!-- Send Catalog Action Button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnSendCatalogGrid"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="12dp"
+        android:backgroundTint="@color/gochat_emerald_light"
+        android:text="Send Catalog (0 selected)"
+        android:textAllCaps="false"
+        android:textColor="@color/white"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        app:cornerRadius="24dp" />
+</LinearLayout>

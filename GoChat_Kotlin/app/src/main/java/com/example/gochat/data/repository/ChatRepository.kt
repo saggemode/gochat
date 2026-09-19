@@ -685,6 +685,10 @@ class ChatRepository @Inject constructor(
             6 -> MessageType.POLL
             7 -> MessageType.PRODUCT
             8 -> MessageType.PING
+            9 -> MessageType.ORDER
+            10 -> MessageType.PAYMENT_REQUEST
+            11 -> MessageType.CATALOG
+            12 -> MessageType.SYSTEM
             else -> MessageType.TEXT
         }
 
@@ -923,8 +927,36 @@ class ChatRepository @Inject constructor(
             MessageType.POLL -> 6
             MessageType.PRODUCT -> 7
             MessageType.PING -> 8
+            MessageType.ORDER -> 9
+            MessageType.PAYMENT_REQUEST -> 10
+            MessageType.CATALOG -> 11
+            MessageType.SYSTEM -> 12
             else -> 0
         }
+    }
+
+    suspend fun sendCatalogMessage(
+        conversationId: String,
+        catalogData: com.example.gochat.data.model.CatalogData
+    ): Result<Message> {
+        val json = kotlinx.serialization.json.Json { encodeDefaults = true }
+        val content = json.encodeToString(com.example.gochat.data.model.CatalogData.serializer(), catalogData)
+        return sendMessage(
+            conversationId = conversationId,
+            content = content,
+            type = 11
+        )
+    }
+
+    suspend fun sendSystemMessage(
+        conversationId: String,
+        content: String
+    ): Result<Message> {
+        return sendMessage(
+            conversationId = conversationId,
+            content = content,
+            type = 12
+        )
     }
 
     suspend fun votePoll(pollId: String, optionId: String): Result<Unit> {
@@ -1028,6 +1060,10 @@ class ChatRepository @Inject constructor(
             6 -> MessageType.POLL
             7 -> MessageType.PRODUCT
             8 -> MessageType.PING
+            9 -> MessageType.ORDER
+            10 -> MessageType.PAYMENT_REQUEST
+            11 -> MessageType.CATALOG
+            12 -> MessageType.SYSTEM
             else -> MessageType.TEXT
         }
         return Message(

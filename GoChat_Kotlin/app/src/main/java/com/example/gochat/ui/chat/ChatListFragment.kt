@@ -222,6 +222,12 @@ class ChatListFragment : Fragment() {
                 }
 
                 launch {
+                    viewModel.verifiedStoreIds.collect { verifiedIds ->
+                        conversationAdapter.verifiedStoreIdentifiers = verifiedIds
+                    }
+                }
+
+                launch {
                     conversationAdapter.loadStateFlow.collectLatest { loadStates ->
                         val isListEmpty = loadStates.refresh is LoadState.NotLoading && conversationAdapter.itemCount == 0
                         if (isListEmpty) {

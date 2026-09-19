@@ -23,6 +23,9 @@ class OrdersActivity : AppCompatActivity() {
     
     @Inject
     lateinit var repository: MarketplaceRepository
+
+    @Inject
+    lateinit var chatRepository: com.example.gochat.data.repository.ChatRepository
     
     private var isSellerView: Boolean = false
     private var currentOrders: List<Order> = emptyList()
@@ -95,6 +98,22 @@ class OrdersActivity : AppCompatActivity() {
             binding.progressBar.visibility = View.GONE
             if (result.isSuccess) {
                 Toast.makeText(this@OrdersActivity, "Order status updated to ${nextStatus.name}", Toast.LENGTH_SHORT).show()
+
+                // Post system message to the chat room for this order
+                val orderNum = order.orderNumber.ifBlank { "ORD-${order.id.takeLast(6)}" }
+                val (icon, desc) = when (nextStatus) {
+                    OrderStatus.PAID -> "💳" to "payment has been confirmed and secured in Escrow"
+                    OrderStatus.PROCESSING -> "⚙️" to "is now being prepared for shipment"
+                    OrderStatus.SHIPPED -> "📦" to "has been marked as shipped 🚚"
+                    OrderStatus.DELIVERED -> "✅" to "has been delivered to customer"
+                    OrderStatus.CANCELLED -> "❌" to "has been cancelled"
+                    OrderStatus.REFUNDED -> "↩️" to "has been refunded"
+                    else -> "📦" to "status updated to ${nextStatus.name.lowercase()}"
+                }
+                val systemMessageText = "$icon Order #$orderNum $desc"
+                val convId = "conv_store_${order.storeId.ifBlank { "official" }}"
+                chatRepository.sendSystemMessage(convId, systemMessageText)
+
                 loadOrders()
             } else {
                 Toast.makeText(this@OrdersActivity, "Failed to update order status", Toast.LENGTH_SHORT).show()

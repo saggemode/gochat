@@ -290,6 +290,110 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Product Catalog Grid Card Preview -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/layoutCatalogCard"
+            android:layout_width="260dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="6dp"
+            app:cardBackgroundColor="#20FFFFFF"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp"
+            app:strokeColor="#30FFFFFF"
+            app:strokeWidth="1dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="8dp">
+
+                <!-- Header: Store Icon, Catalog Title, Items Count Badge -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_cart"
+                        app:tint="@color/gochat_emerald_light"
+                        android:contentDescription="Catalog" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tvCatalogCardTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:textColor="@color/white"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            tools:text="Official Store Catalog" />
+
+                        <TextView
+                            android:id="@+id/tvCatalogCardSubtitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:textColor="@color/gochat_text_secondary"
+                            android:textSize="10sp"
+                            tools:text="Browse collection · 6 products" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tvCatalogCardCountBadge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_speed_pill"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:textColor="@color/white"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        tools:text="6 ITEMS" />
+                </LinearLayout>
+
+                <!-- Scrollable Catalog Grid (2 rows horizontal) -->
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvCatalogGrid"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:clipToPadding="false"
+                    android:nestedScrollingEnabled="false"
+                    android:orientation="horizontal"
+                    tools:listitem="@layout/item_catalog_grid_product" />
+
+                <!-- Footer: View All Action -->
+                <TextView
+                    android:id="@+id/btnViewCatalogStore"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:background="@drawable/bg_pill"
+                    android:backgroundTint="#30FFFFFF"
+                    android:gravity="center"
+                    android:paddingVertical="6dp"
+                    android:text="🛍️ View Full Store Catalog"
+                    android:textColor="@color/white"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- Order Confirmation Card Preview -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/layoutOrderCard"

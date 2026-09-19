@@ -21,8 +21,29 @@ enum class MessageType {
     @SerialName("product") PRODUCT,
     @SerialName("order") ORDER,
     @SerialName("payment_request") PAYMENT_REQUEST,
-    @SerialName("ping") PING
+    @SerialName("ping") PING,
+    @SerialName("catalog") CATALOG,
+    @SerialName("system") SYSTEM
 }
+
+@Serializable
+data class CatalogItemData(
+    val id: String = "",
+    val name: String = "",
+    val price: Double = 0.0,
+    val image: String = "",
+    val category: String = "",
+    val rating: Double = 5.0
+)
+
+@Serializable
+data class CatalogData(
+    val title: String = "Product Catalog",
+    @SerialName("store_id") val storeId: String = "",
+    @SerialName("store_name") val storeName: String = "Official Store",
+    val subtitle: String = "Browse our featured collection",
+    val products: List<CatalogItemData> = emptyList()
+)
 
 @Serializable
 data class InvoiceData(
@@ -146,9 +167,15 @@ data class Message(
                     (content.startsWith("{") && (content.contains("\"order_id\"") || content.contains("\"order_number\"") || content.contains("\"order\"")))
             val isPaymentVal = typeInt == 10 || typeStr.contains("payment") || typeStr.contains("invoice") ||
                     (content.startsWith("{") && (content.contains("\"payment_request\"") || content.contains("\"invoice\"")))
+            val isCatalogVal = typeInt == 11 || typeStr.contains("catalog") ||
+                    (content.startsWith("{") && content.contains("\"catalog\"") && content.contains("\"products\""))
+            val isSystemVal = typeInt == 12 || typeStr.contains("system") ||
+                    content.startsWith("📦 Order") || content.startsWith("🛡️") || content.startsWith("SYSTEM:")
 
             val msgType = when {
                 isPingVal -> MessageType.PING
+                isSystemVal -> MessageType.SYSTEM
+                isCatalogVal -> MessageType.CATALOG
                 isPaymentVal -> MessageType.PAYMENT_REQUEST
                 isOrderVal -> MessageType.ORDER
                 isProductVal -> MessageType.PRODUCT
@@ -161,6 +188,8 @@ data class Message(
                 typeInt == 7 || typeStr.contains("product") -> MessageType.PRODUCT
                 typeInt == 8 || typeStr.contains("ping") -> MessageType.PING
                 typeInt == 10 || typeStr.contains("payment") -> MessageType.PAYMENT_REQUEST
+                typeInt == 11 || typeStr.contains("catalog") -> MessageType.CATALOG
+                typeInt == 12 || typeStr.contains("system") -> MessageType.SYSTEM
                 else -> MessageType.TEXT
             }
 

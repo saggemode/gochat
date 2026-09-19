@@ -55,6 +55,9 @@ class ChatListViewModel @Inject constructor(
     private val _newConversationEvent = MutableSharedFlow<Conversation>(extraBufferCapacity = 1)
     val newConversationEvent: SharedFlow<Conversation> = _newConversationEvent.asSharedFlow()
 
+    private val _verifiedStoreIds = MutableStateFlow<Set<String>>(emptySet())
+    val verifiedStoreIds: StateFlow<Set<String>> = _verifiedStoreIds.asStateFlow()
+
     // Paged Conversations Flow
     val pagedConversations: Flow<PagingData<Conversation>> = chatRepository.getConversationsPaged()
         .cachedIn(viewModelScope)
@@ -160,6 +163,21 @@ class ChatListViewModel @Inject constructor(
                     refreshData()
                 }
             }
+        }
+
+        viewModelScope.launch {
+            try {
+                val stores = marketplaceRepository.getFollowedStores().getOrNull() ?: emptyList()
+                val verifiedIds = stores.filter { it.isVerified }.map { it.id }.toMutableSet()
+                val localProducts = marketplaceRepository.getLocalProducts()
+                localProducts.forEach { prod ->
+                    if (prod.isVerifiedSeller && prod.storeId.isNotBlank()) {
+                        verifiedIds.add(prod.storeId)
+                        verifiedIds.add("conv_store_${prod.storeId}")
+                    }
+                }
+                _verifiedStoreIds.value = verifiedIds
+            } catch (_: Exception) {}
         }
 
         viewModelScope.launch {

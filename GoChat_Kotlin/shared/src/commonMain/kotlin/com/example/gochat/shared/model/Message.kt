@@ -17,7 +17,11 @@ enum class MessageType {
     @SerialName("poll") POLL,
     @SerialName("sticker") STICKER,
     @SerialName("product") PRODUCT,
-    @SerialName("ping") PING
+    @SerialName("order") ORDER,
+    @SerialName("payment_request") PAYMENT_REQUEST,
+    @SerialName("ping") PING,
+    @SerialName("catalog") CATALOG,
+    @SerialName("system") SYSTEM
 }
 
 @Serializable

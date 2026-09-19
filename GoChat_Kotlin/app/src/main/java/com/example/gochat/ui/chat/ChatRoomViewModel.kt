@@ -496,9 +496,71 @@ class ChatRoomViewModel @Inject constructor(
                     put("updated_content", updatedRoot)
                 }
                 webSocket.send(wsPayload)
+
+                // Post shared timeline system message
+                val itemName = invObj["item_name"]?.jsonPrimitive?.contentOrNull
+                    ?: invObj["name"]?.jsonPrimitive?.contentOrNull ?: "Item"
+                val timelineMsg = when (newStatus) {
+                    "paid_escrow" -> "🛡️ Escrow Payment: Payment for \"$itemName\" is held securely in Escrow"
+                    "shipped" -> "📦 Order marked as shipped 🚚 · \"$itemName\" is in transit to buyer"
+                    "completed" -> "🎉 Order completed! Receipt for \"$itemName\" confirmed & funds released to seller"
+                    else -> null
+                }
+                if (timelineMsg != null && _conversationId.value.isNotBlank()) {
+                    chatRepository.sendSystemMessage(_conversationId.value, timelineMsg)
+                }
             } catch (e: Exception) {
                 Log.e("ChatRoomVM", "Failed to update payment status: ${e.message}")
             }
+        }
+    }
+
+    fun sendCatalogMessage(
+        title: String,
+        products: List<com.example.gochat.data.model.Product>,
+        storeId: String = "",
+        storeName: String = "",
+        targetConvId: String? = null
+    ) {
+        val convId = targetConvId ?: _conversationId.value
+        if (convId.isEmpty() || products.isEmpty()) return
+
+        val items = products.map { prod ->
+            com.example.gochat.data.model.CatalogItemData(
+                id = prod.id,
+                name = prod.displayTitle,
+                price = prod.price,
+                image = prod.primaryImage,
+                category = prod.category,
+                rating = prod.rating
+            )
+        }
+
+        val catalogData = com.example.gochat.data.model.CatalogData(
+            title = title.ifBlank { "Store Catalog" },
+            storeId = storeId,
+            storeName = storeName.ifBlank { "Official Store" },
+            subtitle = "Featured Selection",
+            products = items
+        )
+
+        viewModelScope.launch {
+            chatRepository.sendCatalogMessage(
+                conversationId = convId,
+                catalogData = catalogData
+            )
+        }
+    }
+
+    fun sendSystemMessage(content: String, targetConvId: String? = null) {
+        val convId = targetConvId ?: _conversationId.value
+        if (convId.isEmpty()) return
+
+        viewModelScope.launch {
+            chatRepository.sendSystemMessage(
+                conversationId = convId,
+                content = content
+            )
         }
     }
 

@@ -22,12 +22,16 @@ import com.example.gochat.core.media.AudioPlayerManager
 import com.example.gochat.core.wallpaper.BubbleShape
 import com.example.gochat.core.wallpaper.ChatBubbleHelper
 import com.example.gochat.core.wallpaper.ChatTheme
+import com.example.gochat.data.model.CatalogData
+import com.example.gochat.data.model.CatalogItemData
 import com.example.gochat.data.model.InvoiceData
 import com.example.gochat.data.model.Message
 import com.example.gochat.data.model.MessageStatus
 import com.example.gochat.data.model.MessageType
 import com.example.gochat.databinding.ItemMessageMeBinding
 import com.example.gochat.databinding.ItemMessageOtherBinding
+import com.example.gochat.databinding.ItemMessageSystemBinding
+import androidx.recyclerview.widget.GridLayoutManager
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.regex.Pattern
@@ -241,6 +245,85 @@ class MessageAdapter(
         }
     }
 
+    private fun bindCatalogCard(
+        message: Message,
+        layoutCatalogCard: View,
+        tvCatalogCardTitle: TextView,
+        tvCatalogCardSubtitle: TextView,
+        tvCatalogCardCountBadge: TextView,
+        rvCatalogGrid: RecyclerView,
+        btnViewCatalogStore: TextView,
+        tvMessageContent: TextView
+    ) {
+        val isCatalog = (message.type == MessageType.CATALOG ||
+                (message.content.contains("\"catalog\"") && message.content.contains("\"products\""))) && !message.isDeleted
+
+        if (!isCatalog) {
+            layoutCatalogCard.visibility = View.GONE
+            return
+        }
+
+        layoutCatalogCard.visibility = View.VISIBLE
+        tvMessageContent.visibility = View.GONE
+
+        try {
+            val json = Json { ignoreUnknownKeys = true }
+            val rootObj = json.decodeFromString<JsonObject>(message.content)
+            val catalogObj = rootObj["catalog"]?.jsonObject
+            val storeTitle = catalogObj?.get("title")?.jsonPrimitive?.contentOrNull
+                ?: catalogObj?.get("store_name")?.jsonPrimitive?.contentOrNull
+                ?: "Store Catalog"
+            val storeId = catalogObj?.get("store_id")?.jsonPrimitive?.contentOrNull.orEmpty()
+            val subtitle = catalogObj?.get("subtitle")?.jsonPrimitive?.contentOrNull
+                ?: "Browse featured collection"
+
+            val productsArray = rootObj["products"]?.jsonArray
+            val productsList = mutableListOf<CatalogItemData>()
+            productsArray?.forEach { elem ->
+                if (elem is JsonObject) {
+                    val id = elem["id"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                    val name = (elem["name"] ?: elem["title"])?.jsonPrimitive?.contentOrNull.orEmpty()
+                    val price = elem["price"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+                    val image = (elem["image"] ?: elem["imageUrl"] ?: elem["image_url"])?.jsonPrimitive?.contentOrNull.orEmpty()
+                    val category = elem["category"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                    val rating = elem["rating"]?.jsonPrimitive?.doubleOrNull ?: 5.0
+                    productsList.add(CatalogItemData(id, name, price, image, category, rating))
+                }
+            }
+
+            tvCatalogCardTitle.text = storeTitle
+            tvCatalogCardSubtitle.text = "$subtitle · ${productsList.size} items"
+            tvCatalogCardCountBadge.text = "${productsList.size} ITEMS"
+
+            rvCatalogGrid.layoutManager = GridLayoutManager(layoutCatalogCard.context, 2, RecyclerView.HORIZONTAL, false)
+            rvCatalogGrid.adapter = CatalogGridAdapter(productsList) { item ->
+                if (item.id.isNotBlank()) {
+                    val intent = Intent(layoutCatalogCard.context, ProductDetailsActivity::class.java).apply {
+                        putExtra("product_id", item.id)
+                    }
+                    layoutCatalogCard.context.startActivity(intent)
+                }
+            }
+
+            btnViewCatalogStore.setOnClickListener {
+                if (storeId.isNotBlank()) {
+                    val intent = Intent(layoutCatalogCard.context, com.example.gochat.ui.marketplace.StorefrontActivity::class.java).apply {
+                        putExtra("store_id", storeId)
+                    }
+                    layoutCatalogCard.context.startActivity(intent)
+                } else if (productsList.isNotEmpty()) {
+                    val firstItem = productsList.first()
+                    val intent = Intent(layoutCatalogCard.context, ProductDetailsActivity::class.java).apply {
+                        putExtra("product_id", firstItem.id)
+                    }
+                    layoutCatalogCard.context.startActivity(intent)
+                }
+            }
+        } catch (e: Exception) {
+            layoutCatalogCard.visibility = View.GONE
+        }
+    }
+
     private fun formatRemainingTime(remainingMs: Long): String {
         return when {
             remainingMs <= 0 -> "<1m"
@@ -354,30 +437,80 @@ class MessageAdapter(
     companion object {
         private const val VIEW_TYPE_ME = 1
         private const val VIEW_TYPE_OTHER = 2
+        private const val VIEW_TYPE_SYSTEM = 3
     }
 
     override fun getItemViewType(position: Int): Int {
         val message = getItem(position)
+        if (message?.type == MessageType.SYSTEM ||
+            message?.content?.startsWith("📦 Order") == true ||
+            message?.content?.startsWith("🛡️") == true ||
+            message?.content?.startsWith("SYSTEM:") == true) {
+            return VIEW_TYPE_SYSTEM
+        }
         return if (message?.isMe == true) VIEW_TYPE_ME else VIEW_TYPE_OTHER
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         val inflater = LayoutInflater.from(parent.context)
-        return if (viewType == VIEW_TYPE_ME) {
-            val binding = ItemMessageMeBinding.inflate(inflater, parent, false)
-            MessageMeViewHolder(binding)
-        } else {
-            val binding = ItemMessageOtherBinding.inflate(inflater, parent, false)
-            MessageOtherViewHolder(binding)
+        return when (viewType) {
+            VIEW_TYPE_SYSTEM -> {
+                val binding = ItemMessageSystemBinding.inflate(inflater, parent, false)
+                MessageSystemViewHolder(binding)
+            }
+            VIEW_TYPE_ME -> {
+                val binding = ItemMessageMeBinding.inflate(inflater, parent, false)
+                MessageMeViewHolder(binding)
+            }
+            else -> {
+                val binding = ItemMessageOtherBinding.inflate(inflater, parent, false)
+                MessageOtherViewHolder(binding)
+            }
         }
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val message = getItem(position) ?: return
-        if (holder is MessageMeViewHolder) {
-            holder.bind(message)
-        } else if (holder is MessageOtherViewHolder) {
-            holder.bind(message)
+        when (holder) {
+            is MessageSystemViewHolder -> holder.bind(message)
+            is MessageMeViewHolder -> holder.bind(message)
+            is MessageOtherViewHolder -> holder.bind(message)
+        }
+    }
+
+    inner class MessageSystemViewHolder(private val binding: ItemMessageSystemBinding) :
+        RecyclerView.ViewHolder(binding.root) {
+
+        fun bind(message: Message) {
+            binding.tvSystemMessageContent.text = message.content
+            binding.tvSystemMessageTime.text = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(message.createdAt))
+
+            val contentLower = message.content.lowercase(Locale.ROOT)
+            when {
+                contentLower.contains("shipped") || contentLower.contains("transit") -> {
+                    binding.ivSystemMessageIcon.setImageResource(R.drawable.ic_forward)
+                    binding.ivSystemMessageIcon.imageTintList = ColorStateList.valueOf(0xFF00B4D8.toInt())
+                }
+                contentLower.contains("delivered") || contentLower.contains("completed") || contentLower.contains("paid") -> {
+                    binding.ivSystemMessageIcon.setImageResource(R.drawable.ic_verified_badge)
+                    binding.ivSystemMessageIcon.imageTintList = ColorStateList.valueOf(0xFF00A884.toInt())
+                }
+                contentLower.contains("cancel") || contentLower.contains("refund") -> {
+                    binding.ivSystemMessageIcon.setImageResource(R.drawable.ic_close)
+                    binding.ivSystemMessageIcon.imageTintList = ColorStateList.valueOf(0xFFE74C3C.toInt())
+                }
+                else -> {
+                    binding.ivSystemMessageIcon.setImageResource(R.drawable.ic_cart)
+                    binding.ivSystemMessageIcon.imageTintList = ColorStateList.valueOf(0xFF00A884.toInt())
+                }
+            }
+
+            binding.layoutSystemPill.setOnClickListener {
+                if (message.content.contains("Order #", ignoreCase = true)) {
+                    val intent = Intent(binding.root.context, com.example.gochat.ui.marketplace.OrdersActivity::class.java)
+                    binding.root.context.startActivity(intent)
+                }
+            }
         }
     }
 
@@ -538,6 +671,18 @@ class MessageAdapter(
                     tvPaymentStatusBadge = tvPaymentStatusBadge,
                     tvPaymentEscrowNote = tvPaymentEscrowNote,
                     btnPaymentAction = btnPaymentAction,
+                    tvMessageContent = tvMessageContent
+                )
+
+                // Product Catalog Grid Card Row
+                bindCatalogCard(
+                    message = message,
+                    layoutCatalogCard = layoutCatalogCard,
+                    tvCatalogCardTitle = tvCatalogCardTitle,
+                    tvCatalogCardSubtitle = tvCatalogCardSubtitle,
+                    tvCatalogCardCountBadge = tvCatalogCardCountBadge,
+                    rvCatalogGrid = rvCatalogGrid,
+                    btnViewCatalogStore = btnViewCatalogStore,
                     tvMessageContent = tvMessageContent
                 )
 
@@ -869,6 +1014,18 @@ class MessageAdapter(
                     tvPaymentStatusBadge = tvPaymentStatusBadge,
                     tvPaymentEscrowNote = tvPaymentEscrowNote,
                     btnPaymentAction = btnPaymentAction,
+                    tvMessageContent = tvMessageContent
+                )
+
+                // Product Catalog Grid Card Row
+                bindCatalogCard(
+                    message = message,
+                    layoutCatalogCard = layoutCatalogCard,
+                    tvCatalogCardTitle = tvCatalogCardTitle,
+                    tvCatalogCardSubtitle = tvCatalogCardSubtitle,
+                    tvCatalogCardCountBadge = tvCatalogCardCountBadge,
+                    rvCatalogGrid = rvCatalogGrid,
+                    btnViewCatalogStore = btnViewCatalogStore,
                     tvMessageContent = tvMessageContent
                 )
 

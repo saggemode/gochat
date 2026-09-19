@@ -21,6 +21,12 @@ class ConversationAdapter(
     private val onConversationLongClicked: ((Conversation) -> Unit)? = null
 ) : PagingDataAdapter<Conversation, ConversationAdapter.ConversationViewHolder>(DiffCallback) {
 
+    var verifiedStoreIdentifiers: Set<String> = emptySet()
+        set(value) {
+            field = value
+            notifyDataSetChanged()
+        }
+
     class ConversationViewHolder(val binding: ItemConversationBinding) :
         RecyclerView.ViewHolder(binding.root)
 
@@ -36,6 +42,28 @@ class ConversationAdapter(
         with(holder.binding) {
             // Title / Name
             tvConversationTitle.text = conversation.title.ifBlank { "GoChat Contact" }
+
+            val isStore = com.example.gochat.core.marketplace.SellerVerificationHelper.isStoreConversation(conversation.id)
+            val verificationLevel = com.example.gochat.core.marketplace.SellerVerificationHelper.getVerificationLevel(
+                conversationId = conversation.id,
+                title = conversation.title,
+                verifiedStoreIds = verifiedStoreIdentifiers
+            )
+
+            if (isStore || verificationLevel != com.example.gochat.core.marketplace.SellerVerificationLevel.NONE) {
+                ivVerifiedStore.visibility = View.VISIBLE
+                ivVerifiedStore.imageTintList = android.content.res.ColorStateList.valueOf(verificationLevel.badgeColorInt)
+                ivVerifiedStore.setOnClickListener {
+                    android.widget.Toast.makeText(
+                        root.context,
+                        com.example.gochat.core.marketplace.SellerVerificationHelper.getTrustExplanation(verificationLevel, conversation.title),
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                }
+            } else {
+                ivVerifiedStore.visibility = View.GONE
+                ivVerifiedStore.setOnClickListener(null)
+            }
 
             val isLocked = com.example.gochat.core.security.ChatLockManager.isLocked(root.context, conversation.id)
             ivLockIndicator.visibility = if (isLocked) View.VISIBLE else View.GONE

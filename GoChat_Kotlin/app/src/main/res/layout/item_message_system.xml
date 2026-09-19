@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="5dp">
+
+    <LinearLayout
+        android:id="@+id/layoutSystemPill"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:background="@drawable/bg_system_message_pill"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackgroundBorderless"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/ivSystemMessageIcon"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginEnd="6dp"
+            android:contentDescription="System Event"
+            android:src="@drawable/ic_cart"
+            app:tint="@color/gochat_emerald_light" />
+
+        <TextView
+            android:id="@+id/tvSystemMessageContent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="3"
+            android:maxWidth="280dp"
+            android:textColor="#E0E6ED"
+            android:textSize="12sp"
+            tools:text="📦 Order #ORD-123 has been marked as shipped 🚚" />
+
+        <TextView
+            android:id="@+id/tvSystemMessageTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:textColor="#8898AA"
+            android:textSize="10sp"
+            tools:text="10:45 AM" />
+    </LinearLayout>
+</FrameLayout>

@@ -394,8 +394,24 @@ class ChatRoomActivity : AppCompatActivity() {
     }
 
     private fun setupToolbar(title: String, avatarUrl: String) {
+        val convId = intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty()
         with(binding) {
             tvChatTitle.text = title
+
+            val isStoreConv = com.example.gochat.core.marketplace.SellerVerificationHelper.isStoreConversation(convId)
+            val verificationLevel = com.example.gochat.core.marketplace.SellerVerificationHelper.getVerificationLevel(
+                conversationId = convId,
+                title = title
+            )
+            if (isStoreConv || verificationLevel != com.example.gochat.core.marketplace.SellerVerificationLevel.NONE) {
+                ivToolbarVerified.visibility = View.VISIBLE
+                ivToolbarVerified.imageTintList = ColorStateList.valueOf(verificationLevel.badgeColorInt)
+                ivToolbarVerified.setOnClickListener {
+                    Toast.makeText(this@ChatRoomActivity, com.example.gochat.core.marketplace.SellerVerificationHelper.getTrustExplanation(verificationLevel, title), Toast.LENGTH_LONG).show()
+                }
+            } else {
+                ivToolbarVerified.visibility = View.GONE
+            }
 
             MediaImageHelper.loadSafeImage(
                 imageView = ivHeaderAvatar,
@@ -808,12 +824,36 @@ class ChatRoomActivity : AppCompatActivity() {
             showProductPicker()
         }
 
+        sheetBinding.btnPickCatalog.setOnClickListener {
+            sheet.dismiss()
+            showCatalogPicker()
+        }
+
         sheetBinding.btnPickPayment.setOnClickListener {
             sheet.dismiss()
             showCreateInvoiceBottomSheet()
         }
 
         sheet.show()
+    }
+
+    private fun showCatalogPicker() {
+        val picker = CatalogPickerBottomSheet { selectedProducts ->
+            val convId = intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty()
+            val titleText = binding.tvChatTitle.text.toString().ifBlank { intent.getStringExtra(EXTRA_CONVERSATION_TITLE).orEmpty() }
+            val storeTitle = titleText.ifBlank { "Store Catalog" }
+            val storeId = if (convId.startsWith("conv_store_")) {
+                convId.removePrefix("conv_store_")
+            } else ""
+            viewModel.sendCatalogMessage(
+                title = "$storeTitle Collection",
+                products = selectedProducts,
+                storeId = storeId,
+                storeName = storeTitle
+            )
+            Toast.makeText(this, "🛍️ Catalog sent (${selectedProducts.size} items)", Toast.LENGTH_SHORT).show()
+        }
+        picker.show(supportFragmentManager, "CatalogPickerBottomSheet")
     }
 
     private fun showCreateInvoiceBottomSheet() {

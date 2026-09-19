@@ -147,6 +147,10 @@ class MessageSyncWorker @AssistedInject constructor(
             MessageType.POLL -> 6
             MessageType.PRODUCT -> 7
             MessageType.PING -> 8
+            MessageType.ORDER -> 9
+            MessageType.PAYMENT_REQUEST -> 10
+            MessageType.CATALOG -> 11
+            MessageType.SYSTEM -> 12
             else -> 0
         }
     }
