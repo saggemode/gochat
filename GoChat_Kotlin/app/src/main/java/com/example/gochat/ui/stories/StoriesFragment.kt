@@ -19,6 +19,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import coil.load
 import coil.transform.CircleCropTransformation
 import com.example.gochat.R
+import com.example.gochat.databinding.DialogCreateMediaStatusBinding
 import com.example.gochat.databinding.DialogCreateTextStatusBinding
 import com.example.gochat.databinding.FragmentStoriesBinding
 import dagger.hilt.android.AndroidEntryPoint
@@ -189,6 +190,20 @@ class StoriesFragment : Fragment() {
         currentColorIndex = 0
         dialogBinding.layoutTextStatusRoot.setBackgroundColor(Color.parseColor(bgColors[currentColorIndex]))
 
+        var allowReshare = true
+        dialogBinding.layoutReshareToggle.setOnClickListener {
+            allowReshare = !allowReshare
+            if (allowReshare) {
+                dialogBinding.ivReshareToggleIcon.setColorFilter(ContextCompat.getColor(requireContext(), R.color.gochat_emerald_light))
+                dialogBinding.tvReshareToggleText.text = "Reshare: Allowed"
+                dialogBinding.tvReshareToggleText.setTextColor(Color.WHITE)
+            } else {
+                dialogBinding.ivReshareToggleIcon.setColorFilter(Color.parseColor("#99FFFFFF"))
+                dialogBinding.tvReshareToggleText.text = "Reshare: Off"
+                dialogBinding.tvReshareToggleText.setTextColor(Color.parseColor("#99FFFFFF"))
+            }
+        }
+
         dialogBinding.btnCloseTextStatus.setOnClickListener {
             dialog.dismiss()
         }
@@ -209,7 +224,7 @@ class StoriesFragment : Fragment() {
             val chosenColor = bgColors[currentColorIndex]
             dialogBinding.fabPostStatus.isEnabled = false
 
-            viewModel.postTextStatus(text, chosenColor) { success, error ->
+            viewModel.postTextStatus(text, chosenColor, allowReshare) { success, error ->
                 dialog.dismiss()
                 Toast.makeText(
                     requireContext(),
@@ -235,19 +250,7 @@ class StoriesFragment : Fragment() {
                 }
 
                 if (compressed != null) {
-                    viewModel.postMediaStatus(
-                        mediaBytes = compressed.bytes,
-                        mimeType = compressed.mimeType,
-                        localDataUri = compressed.dataUri,
-                        caption = "",
-                        mediaType = "image"
-                    ) { success, error ->
-                        Toast.makeText(
-                            requireContext(),
-                            if (success) getString(R.string.toast_status_updated) else (error ?: getString(R.string.error_image_processing)),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
+                    showCreateMediaStatusDialog(compressed)
                 } else {
                     Toast.makeText(requireContext(), getString(R.string.error_image_processing), Toast.LENGTH_SHORT).show()
                 }
@@ -255,6 +258,61 @@ class StoriesFragment : Fragment() {
                 Toast.makeText(requireContext(), getString(R.string.error_image_loading), Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun showCreateMediaStatusDialog(compressed: com.example.gochat.core.media.CompressedImage) {
+        val dialog = Dialog(requireContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+
+        val dialogBinding = DialogCreateMediaStatusBinding.inflate(layoutInflater)
+        dialog.setContentView(dialogBinding.root)
+
+        com.example.gochat.core.media.MediaImageHelper.loadSafeImage(
+            dialogBinding.ivMediaPreview,
+            compressed.dataUri,
+            isCircle = false
+        )
+
+        var allowReshare = true
+        dialogBinding.layoutMediaReshareToggle.setOnClickListener {
+            allowReshare = !allowReshare
+            if (allowReshare) {
+                dialogBinding.ivMediaReshareIcon.setColorFilter(ContextCompat.getColor(requireContext(), R.color.gochat_emerald_light))
+                dialogBinding.tvMediaReshareText.text = "Reshare: Allowed"
+                dialogBinding.tvMediaReshareText.setTextColor(Color.WHITE)
+            } else {
+                dialogBinding.ivMediaReshareIcon.setColorFilter(Color.parseColor("#99FFFFFF"))
+                dialogBinding.tvMediaReshareText.text = "Reshare: Off"
+                dialogBinding.tvMediaReshareText.setTextColor(Color.parseColor("#99FFFFFF"))
+            }
+        }
+
+        dialogBinding.btnCloseMediaStatus.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialogBinding.fabPostMediaStatus.setOnClickListener {
+            val caption = dialogBinding.etMediaCaption.text?.toString()?.trim().orEmpty()
+            dialogBinding.fabPostMediaStatus.isEnabled = false
+
+            viewModel.postMediaStatus(
+                mediaBytes = compressed.bytes,
+                mimeType = compressed.mimeType,
+                localDataUri = compressed.dataUri,
+                caption = caption,
+                mediaType = "image",
+                allowReshare = allowReshare
+            ) { success, error ->
+                dialog.dismiss()
+                Toast.makeText(
+                    requireContext(),
+                    if (success) getString(R.string.toast_status_updated) else (error ?: getString(R.string.error_image_processing)),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+
+        dialog.show()
     }
 
     override fun onHiddenChanged(hidden: Boolean) {

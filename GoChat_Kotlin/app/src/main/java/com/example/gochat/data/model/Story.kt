@@ -50,7 +50,12 @@ data class StoryItem(
     @SerialName("background_color") val backgroundColor: String? = null,
     @SerialName("created_at") val createdAt: String = "",
     @SerialName("view_count") val viewCount: Int = 0,
-    val viewers: List<StoryViewer> = emptyList()
+    val viewers: List<StoryViewer> = emptyList(),
+    @SerialName("allow_reshare") val allowReshare: Boolean = true,
+    @SerialName("is_reshare") val isReshare: Boolean = false,
+    @SerialName("reshared_from_story_id") val resharedFromStoryId: String? = null,
+    @SerialName("original_author_id") val originalAuthorId: String? = null,
+    @SerialName("original_author_name") val originalAuthorName: String? = null
 ) {
     val isProductStory: Boolean get() = caption.contains("🏷️") || caption.contains("#prod_")
     val extractedProductId: String? get() = if (caption.contains("#prod_")) {
@@ -80,7 +85,12 @@ data class StoryItem(
                 else -> "Just now"
             }
 
-            val viewCount = (json["view_count"] ?: json["viewCount"])?.jsonPrimitive?.intOrNull ?: 0
+            val viewCount = (json["view_count"] ?: json["viewCount"] ?: json["viewer_count"] ?: json["viewerCount"])?.jsonPrimitive?.intOrNull ?: 0
+            val allowReshare = (json["allow_reshare"] ?: json["allowReshare"])?.jsonPrimitive?.booleanOrNull ?: true
+            val isReshare = (json["is_reshare"] ?: json["isReshare"])?.jsonPrimitive?.booleanOrNull ?: false
+            val resharedFromStoryId = (json["reshared_from_story_id"] ?: json["resharedFromStoryId"])?.jsonPrimitive?.contentOrNull
+            val originalAuthorId = (json["original_author_id"] ?: json["originalAuthorId"])?.jsonPrimitive?.contentOrNull
+            val originalAuthorName = (json["original_author_name"] ?: json["originalAuthorName"])?.jsonPrimitive?.contentOrNull
 
             val viewersList = (json["viewers"] ?: json["Viewers"])?.jsonArray?.mapNotNull { elem ->
                 if (elem is JsonObject) StoryViewer.fromJson(elem) else null
@@ -94,7 +104,12 @@ data class StoryItem(
                 backgroundColor = backgroundColor,
                 createdAt = createdAtStr,
                 viewCount = viewCount,
-                viewers = viewersList
+                viewers = viewersList,
+                allowReshare = allowReshare,
+                isReshare = isReshare,
+                resharedFromStoryId = resharedFromStoryId,
+                originalAuthorId = originalAuthorId,
+                originalAuthorName = originalAuthorName
             )
         }
 

@@ -10,18 +10,24 @@ import (
 )
 
 type Story struct {
-	ID              uuid.UUID
-	UserID          uuid.UUID
-	UserDisplayName string
-	UserAvatarURL   string
-	MediaURL        string
-	MediaType       string
-	Content         string
-	BackgroundColor string
-	FontStyle       string
-	ExpiresAt       time.Time
-	CreatedAt       time.Time
-	Viewed          bool
+	ID                  uuid.UUID
+	UserID              uuid.UUID
+	UserDisplayName     string
+	UserAvatarURL       string
+	MediaURL            string
+	MediaType           string
+	Content             string
+	BackgroundColor     string
+	FontStyle           string
+	ExpiresAt           time.Time
+	CreatedAt           time.Time
+	Viewed              bool
+	AllowReshare        bool
+	IsReshare           bool
+	ResharedFromStoryID *uuid.UUID
+	OriginalAuthorID    *uuid.UUID
+	OriginalAuthorName  string
+	ViewerCount         int32
 }
 
 type StoryViewer struct {
@@ -58,16 +64,31 @@ func (r *StoryRepository) Create(ctx context.Context, s *Story) error {
 	}
 
 	_, err := r.db.Exec(ctx, `
-		INSERT INTO stories (id, user_id, media_url, media_type, content, background_color, font_style, expires_at, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-	`, s.ID, s.UserID, s.MediaURL, s.MediaType, s.Content, s.BackgroundColor, s.FontStyle, s.ExpiresAt, s.CreatedAt)
+		INSERT INTO stories (
+			id, user_id, media_url, media_type, content, background_color, font_style, expires_at, created_at,
+			allow_reshare, is_reshare, reshared_from_story_id, original_author_id, original_author_name
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+	`, s.ID, s.UserID, s.MediaURL, s.MediaType, s.Content, s.BackgroundColor, s.FontStyle, s.ExpiresAt, s.CreatedAt,
+		s.AllowReshare, s.IsReshare, s.ResharedFromStoryID, s.OriginalAuthorID, s.OriginalAuthorName)
+	if err != nil {
+		// Fallback for older schema
+		_, err = r.db.Exec(ctx, `
+			INSERT INTO stories (id, user_id, media_url, media_type, content, background_color, font_style, expires_at, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		`, s.ID, s.UserID, s.MediaURL, s.MediaType, s.Content, s.BackgroundColor, s.FontStyle, s.ExpiresAt, s.CreatedAt)
+	}
 	return err
 }
 
 func (r *StoryRepository) GetByID(ctx context.Context, id uuid.UUID) (*Story, error) {
 	s := &Story{}
 	err := r.db.QueryRow(ctx, `
-		SELECT s.id, s.user_id, COALESCE(NULLIF(u.display_name, ''), u.phone, u.pin, 'User'), COALESCE(u.avatar_url, ''), s.media_url, s.media_type, s.content, s.background_color, s.font_style, s.expires_at, s.created_at
+		SELECT s.id, s.user_id, COALESCE(NULLIF(u.display_name, ''), u.phone, u.pin, 'User'), COALESCE(u.avatar_url, ''),
+		       s.media_url, s.media_type, s.content, s.background_color, s.font_style, s.expires_at, s.created_at,
+		       COALESCE(s.allow_reshare, true), COALESCE(s.is_reshare, false), s.reshared_from_story_id, s.original_author_id,
+		       COALESCE(s.original_author_name, ''),
+		       (SELECT COUNT(*) FROM story_views WHERE story_id = s.id)
 		FROM stories s
 		LEFT JOIN core.users u ON s.user_id = u.id
 		WHERE s.id = $1
@@ -75,10 +96,13 @@ func (r *StoryRepository) GetByID(ctx context.Context, id uuid.UUID) (*Story, er
 		&s.ID, &s.UserID, &s.UserDisplayName, &s.UserAvatarURL,
 		&s.MediaURL, &s.MediaType, &s.Content, &s.BackgroundColor, &s.FontStyle,
 		&s.ExpiresAt, &s.CreatedAt,
+		&s.AllowReshare, &s.IsReshare, &s.ResharedFromStoryID, &s.OriginalAuthorID,
+		&s.OriginalAuthorName, &s.ViewerCount,
 	)
 	if err != nil {
 		err = r.db.QueryRow(ctx, `
-			SELECT s.id, s.user_id, 'User ' || SUBSTRING(s.user_id::text, 1, 4), '', s.media_url, s.media_type, s.content, s.background_color, s.font_style, s.expires_at, s.created_at
+			SELECT s.id, s.user_id, 'User ' || SUBSTRING(s.user_id::text, 1, 4), '',
+			       s.media_url, s.media_type, s.content, s.background_color, s.font_style, s.expires_at, s.created_at
 			FROM stories s
 			WHERE s.id = $1
 		`, id).Scan(
@@ -89,6 +113,7 @@ func (r *StoryRepository) GetByID(ctx context.Context, id uuid.UUID) (*Story, er
 		if err != nil {
 			return nil, err
 		}
+		s.AllowReshare = true
 	}
 	return s, nil
 }
@@ -108,16 +133,24 @@ func (r *StoryRepository) Delete(ctx context.Context, storyID, userID uuid.UUID)
 
 func (r *StoryRepository) GetStoriesFeed(ctx context.Context, requesterID uuid.UUID) ([]*UserStories, error) {
 	queryWithJoin := `
-		SELECT s.id, s.user_id, COALESCE(NULLIF(u.display_name, ''), u.phone, u.pin, 'Contact'), COALESCE(u.avatar_url, ''), s.media_url, s.media_type, s.content, s.background_color, s.font_style, s.expires_at, s.created_at,
-		       EXISTS(SELECT 1 FROM story_views WHERE story_id = s.id AND viewer_id = $1) as viewed
+		SELECT s.id, s.user_id, COALESCE(NULLIF(u.display_name, ''), u.phone, u.pin, 'Contact'), COALESCE(u.avatar_url, ''),
+		       s.media_url, s.media_type, s.content, s.background_color, s.font_style, s.expires_at, s.created_at,
+		       EXISTS(SELECT 1 FROM story_views WHERE story_id = s.id AND viewer_id = $1) as viewed,
+		       COALESCE(s.allow_reshare, true), COALESCE(s.is_reshare, false), s.reshared_from_story_id, s.original_author_id,
+		       COALESCE(s.original_author_name, ''),
+		       (SELECT COUNT(*) FROM story_views WHERE story_id = s.id) as viewer_count
 		FROM stories s
 		LEFT JOIN core.users u ON s.user_id = u.id
 		WHERE s.expires_at > NOW()
 		ORDER BY s.created_at DESC
 	`
 	queryStandalone := `
-		SELECT s.id, s.user_id, 'User ' || SUBSTRING(s.user_id::text, 1, 4), '', s.media_url, s.media_type, s.content, s.background_color, s.font_style, s.expires_at, s.created_at,
-		       EXISTS(SELECT 1 FROM story_views WHERE story_id = s.id AND viewer_id = $1) as viewed
+		SELECT s.id, s.user_id, 'User ' || SUBSTRING(s.user_id::text, 1, 4), '',
+		       s.media_url, s.media_type, s.content, s.background_color, s.font_style, s.expires_at, s.created_at,
+		       EXISTS(SELECT 1 FROM story_views WHERE story_id = s.id AND viewer_id = $1) as viewed,
+		       COALESCE(s.allow_reshare, true), COALESCE(s.is_reshare, false), s.reshared_from_story_id, s.original_author_id,
+		       COALESCE(s.original_author_name, ''),
+		       (SELECT COUNT(*) FROM story_views WHERE story_id = s.id) as viewer_count
 		FROM stories s
 		WHERE s.expires_at > NOW()
 		ORDER BY s.created_at DESC
@@ -141,6 +174,8 @@ func (r *StoryRepository) GetStoriesFeed(ctx context.Context, requesterID uuid.U
 			&s.ID, &s.UserID, &s.UserDisplayName, &s.UserAvatarURL,
 			&s.MediaURL, &s.MediaType, &s.Content, &s.BackgroundColor, &s.FontStyle,
 			&s.ExpiresAt, &s.CreatedAt, &s.Viewed,
+			&s.AllowReshare, &s.IsReshare, &s.ResharedFromStoryID, &s.OriginalAuthorID,
+			&s.OriginalAuthorName, &s.ViewerCount,
 		)
 		if err != nil {
 			return nil, err
@@ -169,7 +204,13 @@ func (r *StoryRepository) GetStoriesFeed(ctx context.Context, requesterID uuid.U
 }
 
 func (r *StoryRepository) ViewStory(ctx context.Context, storyID, viewerID uuid.UUID) error {
-	_, err := r.db.Exec(ctx, `
+	var authorID uuid.UUID
+	err := r.db.QueryRow(ctx, `SELECT user_id FROM stories WHERE id = $1`, storyID).Scan(&authorID)
+	if err == nil && authorID == viewerID {
+		return nil
+	}
+
+	_, err = r.db.Exec(ctx, `
 		INSERT INTO story_views (story_id, viewer_id, viewed_at)
 		VALUES ($1, $2, NOW())
 		ON CONFLICT (story_id, viewer_id) DO NOTHING
@@ -179,14 +220,22 @@ func (r *StoryRepository) ViewStory(ctx context.Context, storyID, viewerID uuid.
 
 func (r *StoryRepository) GetViewerList(ctx context.Context, storyID uuid.UUID) ([]*StoryViewer, error) {
 	rows, err := r.db.Query(ctx, `
-		SELECT v.viewer_id, u.display_name, u.avatar_url, v.viewed_at
+		SELECT v.viewer_id, COALESCE(NULLIF(u.display_name, ''), u.phone, u.pin, 'Contact'), COALESCE(u.avatar_url, ''), v.viewed_at
 		FROM story_views v
-		JOIN users u ON v.viewer_id = u.id
+		LEFT JOIN core.users u ON v.viewer_id = u.id
 		WHERE v.story_id = $1
 		ORDER BY v.viewed_at DESC
 	`, storyID)
 	if err != nil {
-		return nil, err
+		rows, err = r.db.Query(ctx, `
+			SELECT v.viewer_id, 'User ' || SUBSTRING(v.viewer_id::text, 1, 4), '', v.viewed_at
+			FROM story_views v
+			WHERE v.story_id = $1
+			ORDER BY v.viewed_at DESC
+		`, storyID)
+		if err != nil {
+			return []*StoryViewer{}, nil
+		}
 	}
 	defer rows.Close()
 

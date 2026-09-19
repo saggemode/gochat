@@ -106,23 +106,26 @@ class ChatRoomActivity : AppCompatActivity() {
     private var currentPartnerId: String? = null
 
     private var recordingDurationSeconds = 0
+    private var recordingDotPulse: ObjectAnimator? = null
     private val recordingHandler = Handler(Looper.getMainLooper())
     private val recordingTimerRunnable = object : Runnable {
         private var tickCount = 0
         override fun run() {
             if (audioRecorderManager.isRecording) {
-                tickCount++
-                if (tickCount >= 10) {
-                    recordingDurationSeconds++
-                    val minutes = recordingDurationSeconds / 60
-                    val seconds = recordingDurationSeconds % 60
-                    binding.tvRecordingTimer.text = String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
-                    tickCount = 0
+                if (!audioRecorderManager.isPaused) {
+                    tickCount++
+                    if (tickCount >= 10) {
+                        recordingDurationSeconds++
+                        val minutes = recordingDurationSeconds / 60
+                        val seconds = recordingDurationSeconds % 60
+                        binding.tvRecordingTimer.text = String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+                        tickCount = 0
+                    }
+                    
+                    // Update Waveform
+                    val amplitude = audioRecorderManager.getMaxAmplitude()
+                    binding.waveformRecording.addBar(amplitude.toFloat())
                 }
-                
-                // Update Waveform
-                val amplitude = audioRecorderManager.getMaxAmplitude()
-                binding.waveformRecording.addBar(amplitude.toFloat())
                 
                 recordingHandler.postDelayed(this, 100)
             } else {
@@ -733,8 +736,35 @@ class ChatRoomActivity : AppCompatActivity() {
             cancelVoiceRecording()
         }
 
+        binding.btnPauseRecording.setOnClickListener {
+            pauseVoiceRecording()
+        }
+
+        binding.btnResumeRecording.setOnClickListener {
+            resumeVoiceRecording()
+        }
+
         binding.btnSendVoiceRecording.setOnClickListener {
             stopAndSendVoiceRecording()
+        }
+    }
+
+    private fun pauseVoiceRecording() {
+        if (!audioRecorderManager.isRecording || audioRecorderManager.isPaused) return
+        audioRecorderManager.pauseRecording()
+        binding.btnPauseRecording.visibility = View.GONE
+        binding.btnResumeRecording.visibility = View.VISIBLE
+        recordingDotPulse?.pause()
+        binding.viewRecordingDot.alpha = 0.4f
+    }
+
+    private fun resumeVoiceRecording() {
+        if (!audioRecorderManager.isRecording || !audioRecorderManager.isPaused) return
+        val resumed = audioRecorderManager.resumeRecording()
+        if (resumed) {
+            binding.btnResumeRecording.visibility = View.GONE
+            binding.btnPauseRecording.visibility = View.VISIBLE
+            recordingDotPulse?.resume()
         }
     }
 
@@ -751,16 +781,23 @@ class ChatRoomActivity : AppCompatActivity() {
         if (started) {
             binding.layoutNormalInput.visibility = View.GONE
             binding.layoutVoiceRecording.visibility = View.VISIBLE
+            binding.btnCancelVoiceRecording.visibility = View.VISIBLE
+            binding.btnPauseRecording.visibility = View.VISIBLE
+            binding.btnResumeRecording.visibility = View.GONE
+            binding.btnSendVoiceRecording.visibility = View.VISIBLE
 
             recordingDurationSeconds = 0
             binding.tvRecordingTimer.text = "00:00"
-            recordingHandler.postDelayed(recordingTimerRunnable, 1000)
+            recordingHandler.removeCallbacks(recordingTimerRunnable)
+            recordingHandler.postDelayed(recordingTimerRunnable, 100)
 
             // Pulsing dot animation
-            val pulse = ObjectAnimator.ofFloat(binding.viewRecordingDot, "alpha", 1f, 0.2f, 1f)
-            pulse.duration = 1000
-            pulse.repeatCount = ObjectAnimator.INFINITE
-            pulse.start()
+            recordingDotPulse?.cancel()
+            recordingDotPulse = ObjectAnimator.ofFloat(binding.viewRecordingDot, "alpha", 1f, 0.2f, 1f).apply {
+                duration = 1000
+                repeatCount = ObjectAnimator.INFINITE
+                start()
+            }
         } else {
             Toast.makeText(this, getString(R.string.error_audio_recorder_start), Toast.LENGTH_SHORT).show()
         }
@@ -768,6 +805,8 @@ class ChatRoomActivity : AppCompatActivity() {
 
     private fun stopAndSendVoiceRecording() {
         recordingHandler.removeCallbacks(recordingTimerRunnable)
+        recordingDotPulse?.cancel()
+        recordingDotPulse = null
         val result = audioRecorderManager.stopRecording()
 
         binding.layoutVoiceRecording.visibility = View.GONE
@@ -790,6 +829,8 @@ class ChatRoomActivity : AppCompatActivity() {
 
     private fun cancelVoiceRecording() {
         recordingHandler.removeCallbacks(recordingTimerRunnable)
+        recordingDotPulse?.cancel()
+        recordingDotPulse = null
         audioRecorderManager.cancelRecording()
 
         binding.layoutVoiceRecording.visibility = View.GONE

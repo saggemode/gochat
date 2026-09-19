@@ -496,6 +496,7 @@ func main() {
 
 		// Ephemeral status/stories
 		authRequired.POST("/stories", storyHandler.PostStory)
+		authRequired.POST("/stories/:id/reshare", storyHandler.ReshareStory)
 		authRequired.DELETE("/stories/:id", storyHandler.DeleteStory)
 		authRequired.GET("/stories", storyHandler.GetStories)
 		authRequired.POST("/stories/:id/view", storyHandler.ViewStory)

@@ -838,7 +838,7 @@
                 android:focusable="true"
                 android:padding="6dp"
                 android:src="@drawable/ic_pause"
-                android:visibility="gone"
+                android:visibility="visible"
                 app:tint="#FF3B30"
                 tools:visibility="visible" />
 
@@ -869,7 +869,7 @@
                 android:focusable="true"
                 android:padding="8dp"
                 android:src="@drawable/ic_send"
-                android:visibility="gone"
+                android:visibility="visible"
                 app:tint="@color/black"
                 tools:visibility="visible" />
 

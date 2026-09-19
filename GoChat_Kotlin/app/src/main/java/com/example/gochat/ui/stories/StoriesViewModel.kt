@@ -171,7 +171,12 @@ class StoriesViewModel @Inject constructor(
         }
     }
 
-    fun postTextStatus(text: String, backgroundColorHex: String, onComplete: (Boolean, String?) -> Unit) {
+    fun postTextStatus(
+        text: String,
+        backgroundColorHex: String,
+        allowReshare: Boolean = true,
+        onComplete: (Boolean, String?) -> Unit
+    ) {
         val currentUserId = tokenManager.userId.orEmpty()
         val currentUserName = tokenManager.userDisplayName ?: "My Status"
         val currentUserAvatar = tokenManager.userAvatarUrl.orEmpty()
@@ -185,7 +190,8 @@ class StoriesViewModel @Inject constructor(
             backgroundColor = backgroundColorHex,
             createdAt = "Just now",
             viewCount = 0,
-            viewers = emptyList()
+            viewers = emptyList(),
+            allowReshare = allowReshare
         )
 
         // Optimistic UI update (matches Flutter's app_state.dart)
@@ -215,6 +221,7 @@ class StoriesViewModel @Inject constructor(
                 put("content", text)
                 put("media_type", "text")
                 put("background_color", backgroundColorHex)
+                put("allow_reshare", allowReshare)
             })
         } catch (_: Exception) {}
 
@@ -225,7 +232,8 @@ class StoriesViewModel @Inject constructor(
                     mediaUrl = "",
                     caption = text,
                     mediaType = "text",
-                    backgroundColor = backgroundColorHex
+                    backgroundColor = backgroundColorHex,
+                    allowReshare = allowReshare
                 )
             }
 
@@ -244,6 +252,7 @@ class StoriesViewModel @Inject constructor(
         localDataUri: String,
         caption: String,
         mediaType: String = "image",
+        allowReshare: Boolean = true,
         onComplete: (Boolean, String?) -> Unit
     ) {
         val currentUserId = tokenManager.userId.orEmpty()
@@ -258,7 +267,8 @@ class StoriesViewModel @Inject constructor(
             mediaType = mediaType,
             createdAt = "Just now",
             viewCount = 0,
-            viewers = emptyList()
+            viewers = emptyList(),
+            allowReshare = allowReshare
         )
 
         // Optimistic UI update
@@ -303,6 +313,7 @@ class StoriesViewModel @Inject constructor(
                     put("caption", caption)
                     put("content", caption)
                     put("media_type", mediaType)
+                    put("allow_reshare", allowReshare)
                 })
             } catch (_: Exception) {}
 
@@ -311,7 +322,8 @@ class StoriesViewModel @Inject constructor(
                 repository.postStory(
                     mediaUrl = finalMediaUrl,
                     caption = caption,
-                    mediaType = mediaType
+                    mediaType = mediaType,
+                    allowReshare = allowReshare
                 )
             }
 
@@ -320,6 +332,36 @@ class StoriesViewModel @Inject constructor(
                 onComplete(true, null)
             }.onFailure { e ->
                 onComplete(false, e.message ?: "Failed to post status")
+            }
+        }
+    }
+
+    fun reshareStory(story: StoryItem, caption: String = "", onComplete: (Boolean, String?) -> Unit) {
+        val currentUserId = tokenManager.userId.orEmpty()
+        val currentUserName = tokenManager.userDisplayName ?: "My Status"
+        val currentUserAvatar = tokenManager.userAvatarUrl.orEmpty()
+
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                repository.reshareStory(story.id, caption)
+            }
+            result.onSuccess { resharedItem ->
+                // Optimistic UI update
+                val current = _myStories.value ?: UserStories(
+                    userId = currentUserId,
+                    userName = currentUserName,
+                    userAvatar = currentUserAvatar,
+                    isMe = true,
+                    stories = emptyList()
+                )
+                _myStories.value = current.copy(
+                    stories = listOf(resharedItem) + current.stories,
+                    isMe = true
+                )
+                loadStories()
+                onComplete(true, null)
+            }.onFailure { e ->
+                onComplete(false, e.message ?: "Failed to reshare status")
             }
         }
     }

@@ -6,6 +6,7 @@ option go_package = "gochat/gen/story";
 
 service StoryService {
   rpc PostStory(PostStoryRequest) returns (PostStoryResponse);
+  rpc ReshareStory(ReshareStoryRequest) returns (PostStoryResponse);
   rpc DeleteStory(DeleteStoryRequest) returns (DeleteStoryResponse);
   rpc GetStories(GetStoriesRequest) returns (GetStoriesResponse);
   rpc ViewStory(ViewStoryRequest) returns (ViewStoryResponse);
@@ -25,6 +26,12 @@ message Story {
   int64 expires_at = 10;
   int64 created_at = 11;
   bool viewed = 12;
+  bool allow_reshare = 13;
+  bool is_reshare = 14;
+  string reshared_from_story_id = 15;
+  string original_author_id = 16;
+  string original_author_name = 17;
+  int32 viewer_count = 18;
 }
 
 message PostStoryRequest {
@@ -34,6 +41,13 @@ message PostStoryRequest {
   string content = 4;
   string background_color = 5;
   string font_style = 6;
+  bool allow_reshare = 7;
+}
+
+message ReshareStoryRequest {
+  string user_id = 1;
+  string story_id = 2;
+  string caption = 3;
 }
 
 message PostStoryResponse {

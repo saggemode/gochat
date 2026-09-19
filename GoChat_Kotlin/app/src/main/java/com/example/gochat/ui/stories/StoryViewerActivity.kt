@@ -219,6 +219,13 @@ class StoryViewerActivity : AppCompatActivity() {
             binding.btnSendStoryReply.setOnClickListener {
                 sendStoryReply()
             }
+
+            binding.btnReshareStory.setOnClickListener {
+                val stories = user.stories
+                if (currentIndex in stories.indices) {
+                    showReshareConfirmDialog(stories[currentIndex])
+                }
+            }
         }
     }
 
@@ -305,6 +312,14 @@ class StoryViewerActivity : AppCompatActivity() {
             binding.layoutProductPill.visibility = View.GONE
         }
 
+        // Reshare attribution badge
+        if (story.isReshare && !story.originalAuthorName.isNullOrBlank()) {
+            binding.layoutReshareBadge.visibility = View.VISIBLE
+            binding.tvResharedFromText.text = "Reshared from ${story.originalAuthorName}"
+        } else {
+            binding.layoutReshareBadge.visibility = View.GONE
+        }
+
         if (user.isMe) {
             val count = story.viewCount.coerceAtLeast(story.viewers.size)
             binding.tvOwnStoryViewCount.text = if (count == 1) "1 view" else "$count views"
@@ -322,6 +337,8 @@ class StoryViewerActivity : AppCompatActivity() {
                 }
             }
         } else {
+            binding.btnReshareStory.visibility = if (story.allowReshare) View.VISIBLE else View.GONE
+
             lifecycleScope.launch(Dispatchers.IO) {
                 storyRepository.viewStory(story.id)
             }
@@ -446,6 +463,36 @@ class StoryViewerActivity : AppCompatActivity() {
                 resumeStory()
             }
         }
+    }
+
+    private fun showReshareConfirmDialog(story: StoryItem) {
+        pauseStory()
+        val authorName = userStories?.userName ?: "Contact"
+
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Reshare Status")
+            .setMessage("Reshare ${authorName}'s status update to your status?")
+            .setPositiveButton("Reshare") { _, _ ->
+                lifecycleScope.launch {
+                    val result = withContext(Dispatchers.IO) {
+                        storyRepository.reshareStory(story.id)
+                    }
+                    result.onSuccess {
+                        Toast.makeText(this@StoryViewerActivity, "Reshared to your status! 🔁", Toast.LENGTH_SHORT).show()
+                        resumeStory()
+                    }.onFailure { err ->
+                        Toast.makeText(this@StoryViewerActivity, err.message ?: "Failed to reshare", Toast.LENGTH_SHORT).show()
+                        resumeStory()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel") { _, _ ->
+                resumeStory()
+            }
+            .setOnCancelListener {
+                resumeStory()
+            }
+            .show()
     }
 
     override fun onPause() {

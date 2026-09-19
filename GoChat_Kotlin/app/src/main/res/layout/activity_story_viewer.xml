@@ -176,6 +176,40 @@
                 app:tint="@color/white" />
 
         </LinearLayout>
+
+        <!-- Reshare Attribution Badge Overlay -->
+        <LinearLayout
+            android:id="@+id/layoutReshareBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/bg_view_count_pill"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="4dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <ImageView
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:contentDescription="Reshare icon"
+                android:src="@drawable/ic_repeat"
+                app:tint="@color/gochat_emerald_light" />
+
+            <TextView
+                android:id="@+id/tvResharedFromText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:textColor="@color/white"
+                android:textSize="11.5sp"
+                android:textStyle="bold"
+                tools:text="Reshared from Alex" />
+        </LinearLayout>
+
     </LinearLayout>
 
     <!-- Interactive Floating Pill for Product Status Updates -->
@@ -246,7 +280,7 @@
             tools:text="3 views" />
     </LinearLayout>
 
-    <!-- Bottom Footer for Other User Story (Reply Input) -->
+    <!-- Bottom Footer for Other User Story (Reply Input + Reshare) -->
     <LinearLayout
         android:id="@+id/layoutReplyStoryFooter"
         android:layout_width="match_parent"
@@ -273,6 +307,22 @@
             android:textColor="@color/white"
             android:textColorHint="#99FFFFFF"
             android:textSize="14sp" />
+
+        <!-- Reshare Status Button (Visible when allowReshare is true) -->
+        <ImageView
+            android:id="@+id/btnReshareStory"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_view_count_pill"
+            android:clickable="true"
+            android:contentDescription="Reshare Status"
+            android:focusable="true"
+            android:padding="11dp"
+            android:src="@drawable/ic_repeat"
+            android:visibility="gone"
+            app:tint="@color/white"
+            tools:visibility="visible" />
 
         <ImageView
             android:id="@+id/btnSendStoryReply"

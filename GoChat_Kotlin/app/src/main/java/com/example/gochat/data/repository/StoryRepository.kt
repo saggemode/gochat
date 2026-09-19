@@ -87,7 +87,8 @@ class StoryRepository @Inject constructor(
         mediaUrl: String,
         caption: String = "",
         mediaType: String = "image",
-        backgroundColor: String? = null
+        backgroundColor: String? = null,
+        allowReshare: Boolean = true
     ): Result<Unit> {
         return try {
             val body = buildJsonObject {
@@ -95,6 +96,7 @@ class StoryRepository @Inject constructor(
                 put("content", caption)
                 put("caption", caption)
                 put("media_type", mediaType)
+                put("allow_reshare", allowReshare)
                 backgroundColor?.let { put("background_color", it) }
             }
             val response = api.postStory(body)
@@ -103,6 +105,30 @@ class StoryRepository @Inject constructor(
             } else {
                 val err = response.errorBody()?.string().orEmpty()
                 Result.failure(Exception(err.ifBlank { "Failed to post story" }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun reshareStory(storyId: String, caption: String = ""): Result<StoryItem> {
+        return try {
+            val body = buildJsonObject {
+                if (caption.isNotBlank()) {
+                    put("caption", caption)
+                }
+            }
+            val response = api.reshareStory(storyId, body)
+            if (response.isSuccessful) {
+                val json = response.body()
+                if (json != null) {
+                    Result.success(StoryItem.fromJson(json))
+                } else {
+                    Result.success(StoryItem(id = storyId, caption = caption, isReshare = true))
+                }
+            } else {
+                val err = response.errorBody()?.string().orEmpty()
+                Result.failure(Exception(err.ifBlank { "Failed to reshare status" }))
             }
         } catch (e: Exception) {
             Result.failure(e)

@@ -30,8 +30,10 @@ func (h *StoryHandler) PostStory(c *gin.Context) {
 		MediaUrl        string `json:"media_url"`
 		MediaType       string `json:"media_type"`       // "text", "image", "video"
 		Content         string `json:"content"`          // optional caption/text status content
+		Caption         string `json:"caption"`          // alternative key for caption
 		BackgroundColor string `json:"background_color"` // optional background hex code for text status
 		FontStyle       string `json:"font_style"`       // optional font name for text status
+		AllowReshare    *bool  `json:"allow_reshare"`    // optional allow reshare toggle, default true
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json payload"})
@@ -41,17 +43,52 @@ func (h *StoryHandler) PostStory(c *gin.Context) {
 	if req.MediaType == "" {
 		req.MediaType = "text"
 	}
+	content := req.Content
+	if content == "" && req.Caption != "" {
+		content = req.Caption
+	}
+
+	allowReshare := true
+	if req.AllowReshare != nil {
+		allowReshare = *req.AllowReshare
+	}
 
 	resp, err := h.client.PostStory(c.Request.Context(), &storypb.PostStoryRequest{
 		UserId:          userID,
 		MediaUrl:        req.MediaUrl,
 		MediaType:       req.MediaType,
-		Content:         req.Content,
+		Content:         content,
 		BackgroundColor: req.BackgroundColor,
 		FontStyle:       req.FontStyle,
+		AllowReshare:    allowReshare,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to post status story")
+		return
+	}
+
+	c.JSON(http.StatusCreated, resp.Story)
+}
+
+func (h *StoryHandler) ReshareStory(c *gin.Context) {
+	storyID := c.Param("id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+
+	var req struct {
+		Caption string `json:"caption"`
+	}
+	_ = c.ShouldBindJSON(&req)
+
+	resp, err := h.client.ReshareStory(c.Request.Context(), &storypb.ReshareStoryRequest{
+		UserId:  userID,
+		StoryId: storyID,
+		Caption: req.Caption,
+	})
+	if err != nil {
+		h.handleGrpcError(c, err, "failed to reshare status story")
 		return
 	}
 

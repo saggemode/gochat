@@ -61,38 +61,23 @@ class NotificationActionReceiver : BroadcastReceiver() {
                         senderTitle = senderTitle
                     )
 
-                    // 2. Schedule reliable background delivery via WorkManager
-                    val workData = workDataOf(
-                        DirectReplyWorker.KEY_CONVERSATION_ID to conversationId,
-                        DirectReplyWorker.KEY_REPLY_TEXT to replyText,
-                        DirectReplyWorker.KEY_NOTIFICATION_ID to notificationId
-                    )
-                    val constraints = Constraints.Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .build()
-                    val replyWorkRequest = OneTimeWorkRequestBuilder<DirectReplyWorker>()
-                        .setInputData(workData)
-                        .setConstraints(constraints)
-                        .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
-                        .build()
-
-                    try {
-                        WorkManager.getInstance(context).enqueue(replyWorkRequest)
-                    } catch (we: Exception) {
-                        Log.w(TAG, "Failed to enqueue DirectReplyWorker: ${we.message}")
-                    }
-
-                    // 3. Concurrently attempt immediate dispatch via goAsync
+                    // 2. Attempt immediate dispatch; only fallback to WorkManager if immediate send fails
                     scope.launch {
                         try {
-                            Log.d(TAG, "Attempting immediate direct reply to $conversationId: $replyText")
-                            chatRepository.sendMessage(
+                            Log.d(TAG, "Attempting direct reply to $conversationId: $replyText")
+                            val sendResult = chatRepository.sendMessage(
                                 conversationId = conversationId,
                                 content = replyText
                             )
-                            chatRepository.markConversationAsRead(conversationId)
+                            if (sendResult.isSuccess) {
+                                chatRepository.markConversationAsRead(conversationId)
+                            } else {
+                                Log.w(TAG, "Direct reply failed, enqueuing WorkManager fallback: ${sendResult.exceptionOrNull()?.message}")
+                                enqueueDirectReplyWork(context, conversationId, replyText, notificationId)
+                            }
                         } catch (e: Exception) {
-                            Log.w(TAG, "Immediate direct reply failed, WorkManager will ensure delivery: ${e.message}")
+                            Log.w(TAG, "Direct reply threw exception, enqueuing WorkManager fallback: ${e.message}")
+                            enqueueDirectReplyWork(context, conversationId, replyText, notificationId)
                         } finally {
                             pendingResult.finish()
                         }
@@ -146,6 +131,33 @@ class NotificationActionReceiver : BroadcastReceiver() {
             else -> {
                 pendingResult.finish()
             }
+        }
+    }
+
+    private fun enqueueDirectReplyWork(
+        context: Context,
+        conversationId: String,
+        replyText: String,
+        notificationId: Int
+    ) {
+        val workData = workDataOf(
+            DirectReplyWorker.KEY_CONVERSATION_ID to conversationId,
+            DirectReplyWorker.KEY_REPLY_TEXT to replyText,
+            DirectReplyWorker.KEY_NOTIFICATION_ID to notificationId
+        )
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+        val replyWorkRequest = OneTimeWorkRequestBuilder<DirectReplyWorker>()
+            .setInputData(workData)
+            .setConstraints(constraints)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
+            .build()
+
+        try {
+            WorkManager.getInstance(context).enqueue(replyWorkRequest)
+        } catch (we: Exception) {
+            Log.w(TAG, "Failed to enqueue DirectReplyWorker: ${we.message}")
         }
     }
 

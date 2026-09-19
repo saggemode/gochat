@@ -219,6 +219,12 @@ interface GoChatApiService {
         @Path("id") storyId: String
     ): Response<JsonObject>
 
+    @POST("api/v1/stories/{id}/reshare")
+    suspend fun reshareStory(
+        @Path("id") storyId: String,
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
     @GET("api/v1/stories/{id}/viewers")
     suspend fun getStoryViewers(
         @Path("id") storyId: String
