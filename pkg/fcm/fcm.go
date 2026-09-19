@@ -226,7 +226,8 @@ func (c *Client) SendNotification(ctx context.Context, pushToken, title, body st
 		"token": pushToken,
 		"data":  dataPayload,
 		"android": map[string]interface{}{
-			"priority": "high",
+			"priority":       "HIGH",
+			"direct_boot_ok": true,
 		},
 	}
 

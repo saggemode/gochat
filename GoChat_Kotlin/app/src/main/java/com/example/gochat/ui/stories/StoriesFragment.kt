@@ -260,7 +260,7 @@ class StoriesFragment : Fragment() {
         }
     }
 
-    private fun showCreateMediaStatusDialog(compressed: com.example.gochat.core.media.CompressedImage) {
+    private fun showCreateMediaStatusDialog(compressed: com.example.gochat.core.media.ImageCompressor.CompressedImage) {
         val dialog = Dialog(requireContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
 
