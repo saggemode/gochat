@@ -6,6 +6,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.gochat.R
+import com.example.gochat.core.media.MediaAutoDownloadManager
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.repository.AuthRepository
 import com.example.gochat.databinding.ActivityPrivacySettingsBinding
@@ -54,16 +55,27 @@ class PrivacySettingsActivity : AppCompatActivity() {
             }
         }
         binding.switchAppLock.isChecked = tokenManager.isBiometricLockEnabled
+
+        // Media Auto-Download summaries
+        updateMediaAutoDownloadSummaries()
+    }
+
+    private fun updateMediaAutoDownloadSummaries() {
+        binding.tvCellularAutoDownloadSummary.text = MediaAutoDownloadManager.getCellularSummary(this)
+        binding.tvWifiAutoDownloadSummary.text = MediaAutoDownloadManager.getWifiSummary(this)
     }
 
     private fun setupListeners() {
-        binding.btnLastSeen.setOnClickListener { showPrivacyDialog("last_seen_privacy") }
-        binding.btnProfilePhoto.setOnClickListener { showPrivacyDialog("profile_photo_privacy") }
-        binding.btnStatus.setOnClickListener { showPrivacyDialog("status_privacy") }
+        binding.btnLastSeen.setOnClickListener { showPrivacyDialog("last_seen_privacy", "Last Seen & Online Status") }
+        binding.btnProfilePhoto.setOnClickListener { showPrivacyDialog("profile_photo_privacy", "Profile Picture Visibility") }
+        binding.btnStatus.setOnClickListener { showPrivacyDialog("status_privacy", "Status Visibility") }
 
         binding.switchReadReceipts.setOnCheckedChangeListener { _, isChecked ->
             lifecycleScope.launch {
-                authRepo.updatePrivacySettings(readReceipts = isChecked)
+                val res = authRepo.updatePrivacySettings(readReceipts = isChecked)
+                if (res.isFailure) {
+                    Toast.makeText(this@PrivacySettingsActivity, "Failed to update read receipts", Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
@@ -72,9 +84,17 @@ class PrivacySettingsActivity : AppCompatActivity() {
             tokenManager.isBiometricLockEnabled = newState
             binding.switchAppLock.isChecked = newState
         }
+
+        binding.btnAutoDownloadCellular.setOnClickListener {
+            showCellularAutoDownloadDialog()
+        }
+
+        binding.btnAutoDownloadWifi.setOnClickListener {
+            showWifiAutoDownloadDialog()
+        }
     }
 
-    private fun showPrivacyDialog(key: String) {
+    private fun showPrivacyDialog(key: String, title: String) {
         val options = arrayOf(
             getString(R.string.visibility_everyone),
             getString(R.string.visibility_contacts),
@@ -83,12 +103,12 @@ class PrivacySettingsActivity : AppCompatActivity() {
         val values = arrayOf("everyone", "contacts", "nobody")
         
         AlertDialog.Builder(this)
-            .setTitle(getString(R.string.dialog_select_visibility_title)) // need to add this
+            .setTitle(title)
             .setItems(options) { _, which ->
                 val selectedValue = values[which]
                 lifecycleScope.launch {
                     val result = when (key) {
-                        "last_seen_privacy" -> authRepo.updatePrivacySettings(lastSeen = selectedValue)
+                        "last_seen_privacy" -> authRepo.updatePrivacySettings(lastSeen = selectedValue, online = selectedValue)
                         "profile_photo_privacy" -> authRepo.updatePrivacySettings(profilePhoto = selectedValue)
                         "status_privacy" -> authRepo.updatePrivacySettings(status = selectedValue)
                         else -> Result.failure(Exception("Invalid key"))
@@ -100,6 +120,66 @@ class PrivacySettingsActivity : AppCompatActivity() {
                     }
                 }
             }
+            .show()
+    }
+
+    private fun showCellularAutoDownloadDialog() {
+        val items = arrayOf("Photos", "Audio", "Videos", "Documents")
+        val keys = arrayOf(
+            MediaAutoDownloadManager.KEY_CELLULAR_PHOTOS,
+            MediaAutoDownloadManager.KEY_CELLULAR_AUDIO,
+            MediaAutoDownloadManager.KEY_CELLULAR_VIDEOS,
+            MediaAutoDownloadManager.KEY_CELLULAR_DOCUMENTS
+        )
+        val checkedItems = booleanArrayOf(
+            MediaAutoDownloadManager.isCellularEnabled(this, keys[0]),
+            MediaAutoDownloadManager.isCellularEnabled(this, keys[1]),
+            MediaAutoDownloadManager.isCellularEnabled(this, keys[2]),
+            MediaAutoDownloadManager.isCellularEnabled(this, keys[3])
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("When using mobile data")
+            .setMultiChoiceItems(items, checkedItems) { _, which, isChecked ->
+                checkedItems[which] = isChecked
+            }
+            .setPositiveButton("OK") { _, _ ->
+                for (i in keys.indices) {
+                    MediaAutoDownloadManager.setCellularEnabled(this, keys[i], checkedItems[i])
+                }
+                updateMediaAutoDownloadSummaries()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showWifiAutoDownloadDialog() {
+        val items = arrayOf("Photos", "Audio", "Videos", "Documents")
+        val keys = arrayOf(
+            MediaAutoDownloadManager.KEY_WIFI_PHOTOS,
+            MediaAutoDownloadManager.KEY_WIFI_AUDIO,
+            MediaAutoDownloadManager.KEY_WIFI_VIDEOS,
+            MediaAutoDownloadManager.KEY_WIFI_DOCUMENTS
+        )
+        val checkedItems = booleanArrayOf(
+            MediaAutoDownloadManager.isWifiEnabled(this, keys[0]),
+            MediaAutoDownloadManager.isWifiEnabled(this, keys[1]),
+            MediaAutoDownloadManager.isWifiEnabled(this, keys[2]),
+            MediaAutoDownloadManager.isWifiEnabled(this, keys[3])
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("When connected on Wi-Fi")
+            .setMultiChoiceItems(items, checkedItems) { _, which, isChecked ->
+                checkedItems[which] = isChecked
+            }
+            .setPositiveButton("OK") { _, _ ->
+                for (i in keys.indices) {
+                    MediaAutoDownloadManager.setWifiEnabled(this, keys[i], checkedItems[i])
+                }
+                updateMediaAutoDownloadSummaries()
+            }
+            .setNegativeButton("Cancel", null)
             .show()
     }
 }

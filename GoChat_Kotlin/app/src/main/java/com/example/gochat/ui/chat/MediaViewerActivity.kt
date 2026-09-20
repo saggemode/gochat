@@ -58,6 +58,7 @@ class MediaViewerActivity : AppCompatActivity() {
         if (isViewOnce) {
             // Strict View Once screenshot & screen recording blocking:
             // Prevents screenshots, video captures, and system recents previews at the OS level
+            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
             window.setFlags(
                 WindowManager.LayoutParams.FLAG_SECURE,
                 WindowManager.LayoutParams.FLAG_SECURE

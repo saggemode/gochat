@@ -96,7 +96,7 @@ class MessageAdapter(
 
     fun setTranslation(messageId: String, translatedText: String, detectedLang: String, targetLang: String) {
         translationsMap[messageId] = TranslationState(translatedText, detectedLang, targetLang)
-        val pos = currentList.indexOfFirst { it.id == messageId }
+        val pos = (0 until itemCount).indexOfFirst { peek(it)?.id == messageId }
         if (pos != -1) {
             notifyItemChanged(pos)
         }
@@ -104,7 +104,7 @@ class MessageAdapter(
 
     fun clearTranslation(messageId: String) {
         translationsMap.remove(messageId)
-        val pos = currentList.indexOfFirst { it.id == messageId }
+        val pos = (0 until itemCount).indexOfFirst { peek(it)?.id == messageId }
         if (pos != -1) {
             notifyItemChanged(pos)
         }

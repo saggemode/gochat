@@ -34,7 +34,7 @@
                 android:textSize="14sp"
                 android:textStyle="bold" />
 
-            <!-- Last Seen -->
+            <!-- Last Seen & Online Status -->
             <LinearLayout
                 android:id="@+id/btnLastSeen"
                 android:layout_width="match_parent"
@@ -47,7 +47,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/privacy_last_seen"
+                    android:text="Last Seen &amp; Online Status"
                     android:textColor="@color/white"
                     android:textSize="16sp" />
 
@@ -55,12 +55,13 @@
                     android:id="@+id/tvLastSeenValue"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
                     android:text="@string/visibility_everyone"
                     android:textColor="@color/gochat_text_secondary"
                     android:textSize="14sp" />
             </LinearLayout>
 
-            <!-- Profile Photo -->
+            <!-- Profile Photo Visibility -->
             <LinearLayout
                 android:id="@+id/btnProfilePhoto"
                 android:layout_width="match_parent"
@@ -73,7 +74,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/privacy_profile_photo"
+                    android:text="Profile Picture Visibility"
                     android:textColor="@color/white"
                     android:textSize="16sp" />
 
@@ -81,12 +82,13 @@
                     android:id="@+id/tvProfilePhotoValue"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
                     android:text="@string/visibility_everyone"
                     android:textColor="@color/gochat_text_secondary"
                     android:textSize="14sp" />
             </LinearLayout>
 
-            <!-- Status -->
+            <!-- Status Visibility -->
             <LinearLayout
                 android:id="@+id/btnStatus"
                 android:layout_width="match_parent"
@@ -107,6 +109,7 @@
                     android:id="@+id/tvStatusValue"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
                     android:text="@string/visibility_everyone"
                     android:textColor="@color/gochat_text_secondary"
                     android:textSize="14sp" />
@@ -118,7 +121,7 @@
                 android:layout_marginVertical="16dp"
                 android:background="#1F2C33" />
 
-            <!-- Read Receipts -->
+            <!-- Read Receipts (Blue Ticks) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -134,14 +137,15 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/privacy_read_receipts"
+                        android:text="Read Receipts (Blue Ticks)"
                         android:textColor="@color/white"
                         android:textSize="16sp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/privacy_read_receipts_desc"
+                        android:layout_marginTop="2dp"
+                        android:text="If turned off, you won't send or receive read receipts (blue ticks). Read receipts are always sent for group chats."
                         android:textColor="@color/gochat_text_secondary"
                         android:textSize="12sp" />
                 </LinearLayout>
@@ -159,14 +163,91 @@
                 android:layout_marginVertical="16dp"
                 android:background="#1F2C33" />
 
+            <!-- Media Auto-Download Section -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MEDIA AUTO-DOWNLOAD"
+                android:textColor="@color/gochat_emerald_light"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Voice messages are always automatically downloaded for the best chat experience."
+                android:textColor="@color/gochat_text_secondary"
+                android:textSize="12sp" />
+
+            <!-- Mobile Data Auto Download -->
+            <LinearLayout
+                android:id="@+id/btnAutoDownloadCellular"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="?attr/selectableItemBackground"
+                android:orientation="vertical"
+                android:paddingVertical="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="When using mobile data"
+                    android:textColor="@color/white"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/tvCellularAutoDownloadSummary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:textColor="@color/gochat_text_secondary"
+                    android:textSize="14sp"
+                    tools:text="Photos" />
+            </LinearLayout>
+
+            <!-- Wi-Fi Auto Download -->
+            <LinearLayout
+                android:id="@+id/btnAutoDownloadWifi"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="?attr/selectableItemBackground"
+                android:orientation="vertical"
+                android:paddingVertical="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="When connected on Wi-Fi"
+                    android:textColor="@color/white"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/tvWifiAutoDownloadSummary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:textColor="@color/gochat_text_secondary"
+                    android:textSize="14sp"
+                    tools:text="All media" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginVertical="16dp"
+                android:background="#1F2C33" />
+
             <!-- App Lock -->
             <LinearLayout
                 android:id="@+id/btnAppLock"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:background="?attr/selectableItemBackground"
                 android:paddingVertical="8dp">
 
                 <LinearLayout
@@ -186,6 +267,7 @@
                         android:id="@+id/tvAppLockDesc"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
                         android:text="@string/settings_app_lock_desc"
                         android:textColor="@color/gochat_text_secondary"
                         android:textSize="12sp" />

@@ -1310,11 +1310,7 @@ class ChatRoomActivity : AppCompatActivity() {
         }
 
         val senderLabel = if (pinnedMsg.isMe) "You" else pinnedMsg.senderName.ifBlank { "Contact" }
-        binding.tvPinnedTitle.text = if (pinnedList.size > 1) {
-            "📌 Pinned • $senderLabel (${currentPinnedIndex + 1} of ${pinnedList.size})"
-        } else {
-            "📌 Pinned • $senderLabel"
-        }
+        binding.tvPinnedTitle.text = "📌 Pinned • $senderLabel (${currentPinnedIndex + 1} of ${pinnedList.size})"
 
         val snippet = when (pinnedMsg.type) {
             MessageType.TEXT -> pinnedMsg.content
@@ -1459,7 +1455,7 @@ class ChatRoomActivity : AppCompatActivity() {
                                 .setTitle("Pinned Messages Limit (3/3)")
                                 .setMessage("You can only pin up to 3 messages per chat. Would you like to replace the oldest pinned message?")
                                 .setPositiveButton("Replace Oldest") { _, _ ->
-                                    val oldest = currentPinned.lastOrNull()
+                                    val oldest = currentPinned.minByOrNull { it.createdAt } ?: currentPinned.lastOrNull()
                                     if (oldest != null) {
                                         viewModel.togglePin(oldest.id, false)
                                     }
