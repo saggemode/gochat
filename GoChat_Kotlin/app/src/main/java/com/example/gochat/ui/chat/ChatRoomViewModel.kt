@@ -308,6 +308,27 @@ class ChatRoomViewModel @Inject constructor(
         _editingMessage.value = null
     }
 
+    private fun getReplyPreviewText(message: Message): String {
+        return when (message.type) {
+            MessageType.TEXT -> message.content.take(200)
+            MessageType.IMAGE -> "📷 Photo"
+            MessageType.VIDEO -> "🎥 Video"
+            MessageType.VOICE, MessageType.AUDIO -> "🎵 Voice note"
+            MessageType.FILE -> "📄 Document"
+            MessageType.POLL -> "📊 Poll"
+            MessageType.PING -> "💥 PING"
+            MessageType.CATALOG -> "🛍️ Product Catalog"
+            MessageType.PRODUCT -> "🛒 Product"
+            MessageType.PAYMENT_REQUEST -> "💳 Payment Request"
+            MessageType.LOCATION -> "📍 Location"
+            MessageType.CONTACT -> "👤 Contact"
+            MessageType.STICKER -> "🏷️ Sticker"
+            MessageType.ORDER -> "📦 Order"
+            MessageType.SYSTEM -> "System message"
+            else -> message.content.take(200).ifBlank { "Media" }
+        }
+    }
+
     fun sendTextMessage(content: String) {
         val trimmed = content.trim()
         if (trimmed.isEmpty()) return
@@ -317,8 +338,13 @@ class ChatRoomViewModel @Inject constructor(
 
         val edit = _editingMessage.value
         if (edit != null) {
+            val isWithin15Minutes = (System.currentTimeMillis() - edit.createdAt) <= 15 * 60 * 1000L
+            if (!isWithin15Minutes) {
+                clearEditing()
+                return
+            }
             viewModelScope.launch {
-                chatRepository.editMessageLocally(edit.id, trimmed)
+                chatRepository.editMessage(edit.id, trimmed, convId)
                 clearEditing()
             }
             return
@@ -335,7 +361,7 @@ class ChatRoomViewModel @Inject constructor(
                 content = trimmed,
                 type = 0, // text
                 replyToId = reply?.id,
-                replyToText = reply?.content,
+                replyToText = reply?.let { getReplyPreviewText(it) },
                 replyToSenderName = reply?.senderName,
                 mentionedUserIds = mentions,
                 disappearingDurationSeconds = _disappearingDuration.value
@@ -390,6 +416,10 @@ class ChatRoomViewModel @Inject constructor(
         viewModelScope.launch {
             chatRepository.toggleMessagePin(messageId, isPinned, convId)
         }
+    }
+
+    suspend fun translateMessage(text: String, targetLang: String): Result<Pair<String, String>> {
+        return chatRepository.translateText(text, targetLang)
     }
 
     fun forwardMessage(message: Message, targetConversationId: String) {
@@ -614,7 +644,7 @@ class ChatRoomViewModel @Inject constructor(
                 type = type,
                 mediaUrl = mediaUrl,
                 replyToId = reply?.id,
-                replyToText = reply?.content,
+                replyToText = reply?.let { getReplyPreviewText(it) },
                 replyToSenderName = reply?.senderName,
                 disappearingDurationSeconds = _disappearingDuration.value
             )
@@ -653,7 +683,7 @@ class ChatRoomViewModel @Inject constructor(
                 type = 1, // Image
                 mediaUrl = finalMediaUrl,
                 replyToId = reply?.id,
-                replyToText = reply?.content,
+                replyToText = reply?.let { getReplyPreviewText(it) },
                 replyToSenderName = reply?.senderName,
                 disappearingDurationSeconds = _disappearingDuration.value,
                 isViewOnce = isViewOnce
@@ -915,7 +945,17 @@ class ChatRoomViewModel @Inject constructor(
                     }
                 }
             }
-            type == "new_message" || type == "message_edited" || type == "message_deleted" || 
+            type == "message_edited" -> {
+                val editedMsgId = event["message_id"]?.jsonPrimitive?.contentOrNull
+                    ?: event["id"]?.jsonPrimitive?.contentOrNull
+                val newContent = event["content"]?.jsonPrimitive?.contentOrNull
+                if (!editedMsgId.isNullOrBlank() && newContent != null) {
+                    viewModelScope.launch {
+                        chatRepository.editMessageLocally(editedMsgId, newContent)
+                    }
+                }
+            }
+            type == "new_message" || type == "message_deleted" || 
             type == "reaction_added" || type == "reaction_removed" || 
             type == "event_new_message" || type == "message" || type == "chat_message" || event.containsKey("message") -> {
                 try {

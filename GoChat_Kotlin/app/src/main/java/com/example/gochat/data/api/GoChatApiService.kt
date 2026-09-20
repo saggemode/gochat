@@ -166,6 +166,12 @@ interface GoChatApiService {
         @Body body: JsonObject
     ): Response<JsonObject>
 
+    @PUT("api/v1/chat/messages/{id}")
+    suspend fun editMessage(
+        @Path("id") messageId: String,
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
     // ═══════════════════════════════════════════════════════════════
     // ── Group Management ─────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════
@@ -448,4 +454,37 @@ interface GoChatApiService {
     suspend fun downloadMedia(
         @Path("fileId") fileId: String
     ): Response<okhttp3.ResponseBody>
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── Link Preview Unfurl ───────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════
+
+    @GET("api/v1/chat/unfurl")
+    suspend fun unfurlUrl(
+        @Query("url") url: String
+    ): Response<JsonObject>
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── AI & Smart Messaging ───────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════
+
+    @POST("api/v1/ai/translate")
+    suspend fun translateMessage(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @POST("api/v1/ai/adjust-tone")
+    suspend fun adjustTone(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @POST("api/v1/ai/suggest-replies")
+    suspend fun suggestReplies(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @POST("api/v1/ai/summarize")
+    suspend fun summarizeChat(
+        @Body body: JsonObject
+    ): Response<JsonObject>
 }

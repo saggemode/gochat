@@ -180,6 +180,58 @@
             android:orientation="vertical"
             android:paddingTop="8dp">
 
+            <!-- Starred Messages Row -->
+            <LinearLayout
+                android:id="@+id/tileStarredMessages"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="20dp"
+                android:paddingVertical="16dp">
+
+                <ImageView
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:contentDescription="Starred Messages"
+                    android:src="@drawable/ic_star"
+                    app:tint="@color/gochat_accent" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Starred Messages"
+                        android:textColor="@color/gochat_text_primary"
+                        android:textSize="15.5sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Messages you bookmarked across chats"
+                        android:textColor="@color/gochat_text_muted"
+                        android:textSize="12.5sp" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="Go to starred messages"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/gochat_text_muted" />
+            </LinearLayout>
+
             <!-- Linked Devices Row -->
             <LinearLayout
                 android:id="@+id/tileLinkedDevices"

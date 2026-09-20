@@ -168,6 +168,11 @@ class SettingsFragment : Fragment() {
                 }
             }
 
+            // Starred Messages
+            tileStarredMessages.setOnClickListener {
+                startActivity(Intent(requireContext(), com.example.gochat.ui.chat.StarredMessagesActivity::class.java))
+            }
+
             // Linked Devices
             tileLinkedDevices.setOnClickListener {
                 startActivity(Intent(requireContext(), LinkedDevicesActivity::class.java))

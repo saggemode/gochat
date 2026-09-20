@@ -208,6 +208,15 @@ class ContactProfileActivity : AppCompatActivity() {
             showMediaVisibilityDialog()
         }
 
+        // Starred messages
+        binding.layoutStarredMessages.setOnClickListener {
+            val intent = Intent(this, StarredMessagesActivity::class.java).apply {
+                putExtra(StarredMessagesActivity.EXTRA_CONVERSATION_ID, convId)
+                putExtra(StarredMessagesActivity.EXTRA_CONVERSATION_TITLE, userName)
+            }
+            startActivity(intent)
+        }
+
         // 3. Disappearing messages
         binding.layoutDisappearingMessages.setOnClickListener {
             showDisappearingMessagesDialog(convId)

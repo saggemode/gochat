@@ -731,6 +731,65 @@
             android:textSize="14.5sp"
             tools:text="Hello! Are you ready for the meeting today?" />
 
+        <!-- Inline Translation Container -->
+        <LinearLayout
+            android:id="@+id/layoutTranslation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/bg_translation_container"
+            android:orientation="vertical"
+            android:padding="8dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/ic_translate"
+                    app:tint="@color/gochat_emerald_light" />
+
+                <TextView
+                    android:id="@+id/tvTranslationHeader"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="1"
+                    android:textColor="@color/gochat_emerald_light"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    tools:text="Translated (Spanish → English)" />
+
+                <ImageView
+                    android:id="@+id/btnCloseTranslation"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:contentDescription="Close translation"
+                    android:focusable="true"
+                    android:padding="2dp"
+                    android:src="@drawable/ic_close"
+                    app:tint="@color/gochat_text_muted" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvTranslatedText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:lineSpacingMultiplier="1.15"
+                android:textColor="@color/white"
+                android:textSize="14sp"
+                tools:text="This is the translated message text." />
+        </LinearLayout>
+
         <!-- Reactions Container -->
         <LinearLayout
             android:id="@+id/layoutReactions"

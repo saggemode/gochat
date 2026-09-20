@@ -139,6 +139,12 @@
             android:theme="@style/Theme.GoChat"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- Starred Messages Activity -->
+        <activity
+            android:name=".ui.chat.StarredMessagesActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+
         <!-- Call Activity -->
         <activity
             android:name=".ui.calls.CallActivity"

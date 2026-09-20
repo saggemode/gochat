@@ -86,6 +86,30 @@ class MessageAdapter(
         }
     }
 
+    data class TranslationState(
+        val translatedText: String,
+        val detectedLanguage: String,
+        val targetLanguage: String
+    )
+
+    private val translationsMap = mutableMapOf<String, TranslationState>()
+
+    fun setTranslation(messageId: String, translatedText: String, detectedLang: String, targetLang: String) {
+        translationsMap[messageId] = TranslationState(translatedText, detectedLang, targetLang)
+        val pos = currentList.indexOfFirst { it.id == messageId }
+        if (pos != -1) {
+            notifyItemChanged(pos)
+        }
+    }
+
+    fun clearTranslation(messageId: String) {
+        translationsMap.remove(messageId)
+        val pos = currentList.indexOfFirst { it.id == messageId }
+        if (pos != -1) {
+            notifyItemChanged(pos)
+        }
+    }
+
     private fun bindDisappearingBadge(
         message: Message,
         layoutBadge: View,
@@ -772,6 +796,21 @@ class MessageAdapter(
                 // Starred status
                 ivStarred.visibility = if (message.isStarred) View.VISIBLE else View.GONE
 
+                // Inline Translation
+                val translation = translationsMap[message.id]
+                if (translation != null && !message.isDeleted) {
+                    layoutTranslation.visibility = View.VISIBLE
+                    val fromLang = translation.detectedLanguage.replaceFirstChar { it.uppercase() }
+                    val toLang = translation.targetLanguage.replaceFirstChar { it.uppercase() }
+                    tvTranslationHeader.text = "🌐 Translated ($fromLang → $toLang)"
+                    tvTranslatedText.text = translation.translatedText
+                    btnCloseTranslation.setOnClickListener {
+                        clearTranslation(message.id)
+                    }
+                } else {
+                    layoutTranslation.visibility = View.GONE
+                }
+
                 // Reactions
                 if (message.reactions.isNotEmpty() && !message.isDeleted) {
                     layoutReactions.visibility = View.VISIBLE
@@ -1148,6 +1187,21 @@ class MessageAdapter(
 
                 // Starred status
                 ivStarred.visibility = if (message.isStarred) View.VISIBLE else View.GONE
+
+                // Inline Translation
+                val translation = translationsMap[message.id]
+                if (translation != null && !message.isDeleted) {
+                    layoutTranslation.visibility = View.VISIBLE
+                    val fromLang = translation.detectedLanguage.replaceFirstChar { it.uppercase() }
+                    val toLang = translation.targetLanguage.replaceFirstChar { it.uppercase() }
+                    tvTranslationHeader.text = "🌐 Translated ($fromLang → $toLang)"
+                    tvTranslatedText.text = translation.translatedText
+                    btnCloseTranslation.setOnClickListener {
+                        clearTranslation(message.id)
+                    }
+                } else {
+                    layoutTranslation.visibility = View.GONE
+                }
 
                 // Reactions
                 if (message.reactions.isNotEmpty() && !message.isDeleted) {

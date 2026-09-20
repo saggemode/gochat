@@ -69,6 +69,16 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
         if (title == null) title = "GoChat Message"
         if (body == null) body = "You received a new message"
 
+        // Sanitize body: if it looks like raw JSON, replace with a friendly label
+        if (body != null && body.trimStart().startsWith("{")) {
+            body = when {
+                body.contains("\"type\":\"catalog\"") || body.contains("\"type\": \"catalog\"") -> "🛍️ Product Catalog"
+                body.contains("\"product\"") && body.contains("\"price\"") -> "🛒 Product"
+                body.contains("\"payment_request\"") || body.contains("\"invoice\"") -> "💳 Payment Request"
+                else -> "New message"
+            }
+        }
+
         val eventType = data["type"] ?: data["event_type"] ?: ""
 
         val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager

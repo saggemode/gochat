@@ -30,6 +30,7 @@ import javax.inject.Inject
 class GoChatApp : Application(), Configuration.Provider, ImageLoaderFactory {
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
+    @Inject lateinit var apiService: com.example.gochat.data.api.GoChatApiService
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
@@ -47,15 +48,18 @@ class GoChatApp : Application(), Configuration.Provider, ImageLoaderFactory {
         // 2. Initialize Adaptive DayNight Theme
         ThemeManager.init(this)
 
-        // 3. Register Notification Channels for Android 8.0+
+        // 3. Initialize LinkPreviewManager with authenticated API service
+        com.example.gochat.core.utils.LinkPreviewManager.apiService = apiService
+
+        // 4. Register Notification Channels for Android 8.0+
         NotificationHelper.createNotificationChannels(this)
 
-        // 4. Initialize Firebase Cloud Messaging & sync Push Token
+        // 5. Initialize Firebase Cloud Messaging & sync Push Token
         appScope.launch {
             initFcm()
         }
 
-        // 5. Schedule Disappearing Messages Cleanup
+        // 6. Schedule Disappearing Messages Cleanup
         scheduleCleanupWorker()
     }
 

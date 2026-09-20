@@ -664,6 +664,7 @@ class ChatRoomActivity : AppCompatActivity() {
                 val hasText = !text.isNullOrBlank()
                 ivSendIcon.visibility = if (hasText) View.VISIBLE else View.GONE
                 ivMicIcon.visibility = if (hasText) View.GONE else View.VISIBLE
+                btnToneAssistant.visibility = if (hasText) View.VISIBLE else View.GONE
                 
                 if (hasText) {
                     if (!isCurrentlyTypingSent) {
@@ -681,6 +682,17 @@ class ChatRoomActivity : AppCompatActivity() {
                 }
                 
                 viewModel.onInputTextChanged(text?.toString().orEmpty(), etMessageInput.selectionStart)
+            }
+
+            btnToneAssistant.setOnClickListener {
+                val currentText = etMessageInput.text?.toString().orEmpty().trim()
+                if (currentText.isNotBlank()) {
+                    val sheet = ToneAssistantBottomSheet(currentText) { polishedText ->
+                        etMessageInput.setText(polishedText)
+                        etMessageInput.setSelection(polishedText.length)
+                    }
+                    sheet.show(supportFragmentManager, ToneAssistantBottomSheet.TAG)
+                }
             }
 
             etMessageInput.setOnClickListener {
@@ -1433,13 +1445,34 @@ class ChatRoomActivity : AppCompatActivity() {
                     val status = if (message.isStarred) "unstarred" else "starred"
                     Toast.makeText(this, getString(R.string.toast_message_status, status), Toast.LENGTH_SHORT).show()
                 }
+                MessageActionBottomSheet.Action.TRANSLATE -> {
+                    showTranslationDialog(message)
+                }
                 MessageActionBottomSheet.Action.PIN -> {
-                    viewModel.togglePin(message.id, !message.isPinned)
-                    Toast.makeText(
-                        this,
-                        if (message.isPinned) "Message unpinned from top" else "📌 Message pinned to top",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    if (message.isPinned) {
+                        viewModel.togglePin(message.id, false)
+                        Toast.makeText(this, "Message unpinned from top", Toast.LENGTH_SHORT).show()
+                    } else {
+                        val currentPinned = viewModel.pinnedMessages.value
+                        if (currentPinned.size >= 3) {
+                            AlertDialog.Builder(this)
+                                .setTitle("Pinned Messages Limit (3/3)")
+                                .setMessage("You can only pin up to 3 messages per chat. Would you like to replace the oldest pinned message?")
+                                .setPositiveButton("Replace Oldest") { _, _ ->
+                                    val oldest = currentPinned.lastOrNull()
+                                    if (oldest != null) {
+                                        viewModel.togglePin(oldest.id, false)
+                                    }
+                                    viewModel.togglePin(message.id, true)
+                                    Toast.makeText(this, "📌 Message pinned to top", Toast.LENGTH_SHORT).show()
+                                }
+                                .setNegativeButton("Cancel", null)
+                                .show()
+                        } else {
+                            viewModel.togglePin(message.id, true)
+                            Toast.makeText(this, "📌 Message pinned to top", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 }
                 MessageActionBottomSheet.Action.EDIT -> viewModel.setEditingMessage(message)
                 MessageActionBottomSheet.Action.DELETE -> {
@@ -1461,6 +1494,31 @@ class ChatRoomActivity : AppCompatActivity() {
         sheet.show(supportFragmentManager, MessageActionBottomSheet.TAG)
     }
 
+    private fun showTranslationDialog(message: Message) {
+        val languages = arrayOf("English", "Spanish", "French", "German", "Arabic", "Portuguese", "Russian", "Japanese", "Chinese", "Hindi")
+        AlertDialog.Builder(this)
+            .setTitle("Translate Message to")
+            .setItems(languages) { _, which ->
+                val targetLang = languages[which]
+                performTranslation(message, targetLang)
+            }
+            .setNegativeButton(getString(R.string.btn_cancel), null)
+            .show()
+    }
+
+    private fun performTranslation(message: Message, targetLang: String) {
+        Toast.makeText(this, "Translating to $targetLang...", Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch {
+            val result = viewModel.translateMessage(message.content, targetLang)
+            result.onSuccess { (translated, detected) ->
+                messageAdapter.setTranslation(message.id, translated, detected, targetLang)
+                Toast.makeText(this@ChatRoomActivity, "Translated from $detected", Toast.LENGTH_SHORT).show()
+            }.onFailure { err ->
+                Toast.makeText(this@ChatRoomActivity, "Translation failed: ${err.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     private fun showMoreMenu() {
         val convId = viewModel.conversationId.value.ifBlank { intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty() }
         val isLocked = com.example.gochat.core.security.ChatLockManager.isLocked(this, convId)
@@ -1469,6 +1527,7 @@ class ChatRoomActivity : AppCompatActivity() {
         val items = arrayOf(
             "Search",
             "Media, links, and docs",
+            "Starred Messages",
             lockOption,
             getString(R.string.option_wallpaper_theme),
             getString(R.string.option_disappearing_messages),
@@ -1490,6 +1549,13 @@ class ChatRoomActivity : AppCompatActivity() {
                         startActivity(intent)
                     }
                     2 -> {
+                        val intent = Intent(this, StarredMessagesActivity::class.java).apply {
+                            putExtra(StarredMessagesActivity.EXTRA_CONVERSATION_ID, convId)
+                            putExtra(StarredMessagesActivity.EXTRA_CONVERSATION_TITLE, intent.getStringExtra(EXTRA_CONVERSATION_TITLE) ?: "Chat")
+                        }
+                        startActivity(intent)
+                    }
+                    3 -> {
                         com.example.gochat.core.security.ChatLockManager.authenticate(
                             activity = this,
                             title = if (isLocked) "Unlock Chat" else "Lock Chat",
@@ -1501,7 +1567,7 @@ class ChatRoomActivity : AppCompatActivity() {
                             }
                         )
                     }
-                    3 -> {
+                    4 -> {
                         val title = intent.getStringExtra(EXTRA_CONVERSATION_TITLE) ?: getString(R.string.message_hint)
                         val sheet = ChatWallpaperBottomSheet(
                             conversationId = convId,
@@ -1512,10 +1578,10 @@ class ChatRoomActivity : AppCompatActivity() {
                         )
                         sheet.show(supportFragmentManager, ChatWallpaperBottomSheet.TAG)
                     }
-                    4 -> {
+                    5 -> {
                         showDisappearingMessagesDialog()
                     }
-                    5 -> {
+                    6 -> {
                         val current = viewModel.screenshotNotificationsEnabled.value
                         viewModel.toggleScreenshotNotifications(!current)
                         val status = if (!current) "enabled" else "disabled"

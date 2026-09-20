@@ -679,6 +679,21 @@
                     android:textColorHint="@color/gochat_text_muted"
                     android:textSize="15.5sp" />
 
+                <!-- AI Tone Assistant Button -->
+                <ImageView
+                    android:id="@+id/btnToneAssistant"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:contentDescription="AI Tone Assistant"
+                    android:focusable="true"
+                    android:padding="6dp"
+                    android:src="@drawable/ic_sparkle"
+                    android:visibility="gone"
+                    app:tint="@color/gochat_emerald_light"
+                    tools:visibility="visible" />
+
             </LinearLayout>
 
             <!-- Send / Voice Button -->

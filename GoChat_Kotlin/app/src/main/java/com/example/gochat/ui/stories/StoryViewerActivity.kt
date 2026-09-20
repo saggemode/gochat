@@ -431,7 +431,13 @@ class StoryViewerActivity : AppCompatActivity() {
 
         val user = userStories ?: return
         val currentStory = user.stories.getOrNull(currentIndex)
-        val storyCaption = currentStory?.caption?.ifBlank { "Status update" } ?: "Status update"
+        val storyCaption = if (!currentStory?.caption.isNullOrBlank()) {
+            currentStory!!.caption
+        } else if (!currentStory?.mediaUrl.isNullOrBlank()) {
+            "📷 Status update"
+        } else {
+            "Status update"
+        }
 
         binding.etStoryReplyInput.text?.clear()
         binding.etStoryReplyInput.clearFocus()
@@ -452,6 +458,7 @@ class StoryViewerActivity : AppCompatActivity() {
                     chatRepository.sendMessage(
                         conversationId = conv.id,
                         content = replyText,
+                        replyToId = currentStory?.id ?: "story_reply_${System.currentTimeMillis()}",
                         replyToText = storyCaption,
                         replyToSenderName = user.userName
                     )

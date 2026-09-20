@@ -24,7 +24,9 @@ import androidx.paging.PagingData
 import com.example.gochat.core.sync.MessageSyncWorker
 import com.example.gochat.core.utils.BlurHashUtil
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -728,6 +730,14 @@ class ChatRepository @Inject constructor(
             MessageType.FILE -> "📄 Document"
             MessageType.POLL -> "📊 Poll"
             MessageType.PING -> "💥 PING"
+            MessageType.CATALOG -> "🛍️ Product Catalog"
+            MessageType.PRODUCT -> "🛒 Product"
+            MessageType.PAYMENT_REQUEST -> "💳 Payment Request"
+            MessageType.LOCATION -> "📍 Location"
+            MessageType.CONTACT -> "👤 Contact"
+            MessageType.STICKER -> "🏷️ Sticker"
+            MessageType.ORDER -> "📦 Order"
+            MessageType.SYSTEM -> "System message"
             else -> "Media"
         }
 
@@ -910,6 +920,80 @@ class ChatRepository @Inject constructor(
         dao.updateMessageContent(messageId, newContent)
     }
 
+    suspend fun editMessage(messageId: String, newContent: String, conversationId: String = ""): Result<Unit> {
+        // 1. Update Room DB locally for instant feedback
+        dao.updateMessageContent(messageId, newContent)
+
+        // 2. Sync to backend via PUT /api/v1/chat/messages/:id
+        return try {
+            val body = buildJsonObject {
+                put("content", newContent)
+                if (conversationId.isNotBlank()) {
+                    put("conversation_id", conversationId)
+                }
+            }
+            val resp = api.editMessage(messageId, body)
+            if (resp.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Log.w("ChatRepository", "Remote editMessage returned code: ${resp.code()}")
+                Result.success(Unit)
+            }
+        } catch (e: Exception) {
+            Log.w("ChatRepository", "Failed to sync message edit to remote server", e)
+            Result.success(Unit)
+        }
+    }
+
+    suspend fun translateText(
+        text: String,
+        targetLanguage: String,
+        sourceLanguage: String = ""
+    ): Result<Pair<String, String>> = withContext(Dispatchers.IO) {
+        try {
+            val body = buildJsonObject {
+                put("text", text)
+                put("target_language", targetLanguage)
+                if (sourceLanguage.isNotBlank()) {
+                    put("source_language", sourceLanguage)
+                }
+            }
+            val resp = api.translateMessage(body)
+            if (resp.isSuccessful && resp.body() != null) {
+                val json = resp.body()!!
+                val translated = json["translated_text"]?.jsonPrimitive?.contentOrNull ?: text
+                val detected = json["detected_language"]?.jsonPrimitive?.contentOrNull ?: "auto"
+                Result.success(Pair(translated, detected))
+            } else {
+                Result.failure(Exception("Translation API error: ${resp.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun adjustTone(
+        text: String,
+        tone: String
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val body = buildJsonObject {
+                put("text", text)
+                put("tone", tone.lowercase())
+            }
+            val resp = api.adjustTone(body)
+            if (resp.isSuccessful && resp.body() != null) {
+                val json = resp.body()!!
+                val adjusted = json["adjusted_text"]?.jsonPrimitive?.contentOrNull ?: text
+                Result.success(adjusted)
+            } else {
+                Result.failure(Exception("Tone adjustment API error: ${resp.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun addReactionLocally(messageId: String, emoji: String) {
         val currentUserId = tokenManager.userId ?: "u_me"
         val currentUserName = tokenManager.userDisplayName ?: "Me"
@@ -927,6 +1011,9 @@ class ChatRepository @Inject constructor(
     }
 
     fun observeStarredMessages(): Flow<List<Message>> = dao.getStarredMessages()
+
+    fun observeStarredMessagesForConversation(conversationId: String): Flow<List<Message>> =
+        dao.getStarredMessagesForConversation(conversationId)
 
     suspend fun forwardMessage(originalMessage: Message, targetConversationId: String): Result<Message> {
         return sendMessage(

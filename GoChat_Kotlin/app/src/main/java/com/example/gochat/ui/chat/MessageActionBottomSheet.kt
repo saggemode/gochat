@@ -17,7 +17,7 @@ class MessageActionBottomSheet(
     private val binding get() = _binding!!
 
     enum class Action {
-        REPLY, FORWARD, STAR, PIN, EDIT, DELETE, REACT_LIKE, REACT_HEART, REACT_LAUGH, REACT_WOW, REACT_SAD, REACT_PRAY
+        REPLY, FORWARD, STAR, TRANSLATE, PIN, EDIT, DELETE, REACT_LIKE, REACT_HEART, REACT_LAUGH, REACT_WOW, REACT_SAD, REACT_PRAY
     }
 
     override fun onCreateView(
@@ -32,8 +32,17 @@ class MessageActionBottomSheet(
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Configure visibility based on ownership
-        binding.btnEdit.visibility = if (message.isMe) View.VISIBLE else View.GONE
+        // Enforce 15-minute message edit window (WhatsApp/Telegram standard)
+        val isWithin15Minutes = (System.currentTimeMillis() - message.createdAt) <= 15 * 60 * 1000L
+        val canEdit = message.isMe && !message.isDeleted && 
+                (message.type == com.example.gochat.data.model.MessageType.TEXT) && 
+                isWithin15Minutes
+        binding.btnEdit.visibility = if (canEdit) View.VISIBLE else View.GONE
+
+        // Translation visibility: available for text messages with content
+        val canTranslate = !message.isDeleted && message.content.isNotBlank() &&
+                message.type == com.example.gochat.data.model.MessageType.TEXT
+        binding.btnTranslate.visibility = if (canTranslate) View.VISIBLE else View.GONE
         
         // Star toggle text
         binding.btnStar.text = if (message.isStarred) "Unstar" else "Star"
@@ -45,6 +54,7 @@ class MessageActionBottomSheet(
         binding.btnReply.setOnClickListener { dismiss(); onAction(Action.REPLY) }
         binding.btnForward.setOnClickListener { dismiss(); onAction(Action.FORWARD) }
         binding.btnStar.setOnClickListener { dismiss(); onAction(Action.STAR) }
+        binding.btnTranslate.setOnClickListener { dismiss(); onAction(Action.TRANSLATE) }
         binding.btnPin.setOnClickListener { dismiss(); onAction(Action.PIN) }
         binding.btnEdit.setOnClickListener { dismiss(); onAction(Action.EDIT) }
         binding.btnDelete.setOnClickListener { dismiss(); onAction(Action.DELETE) }

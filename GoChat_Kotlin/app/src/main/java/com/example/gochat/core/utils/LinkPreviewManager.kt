@@ -1,7 +1,10 @@
 package com.example.gochat.core.utils
 
+import com.example.gochat.data.api.GoChatApiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
 import java.net.URI
 import java.util.regex.Pattern
@@ -15,6 +18,8 @@ data class LinkPreview(
 )
 
 object LinkPreviewManager {
+
+    var apiService: GoChatApiService? = null
 
     private val urlPattern = Pattern.compile(
         "(?:^|[\\W])((ht|f)tp(s?):\\/\\/|www\\.)" +
@@ -33,6 +38,35 @@ object LinkPreviewManager {
     }
 
     suspend fun getPreview(url: String): LinkPreview? = withContext(Dispatchers.IO) {
+        // 1. Try Go backend unfurl API first (provides caching and server-side SSRF-safe resolution)
+        val api = apiService
+        if (api != null) {
+            try {
+                val resp = api.unfurlUrl(url)
+                if (resp.isSuccessful && resp.body() != null) {
+                    val body = resp.body()!!
+                    val title = body["title"]?.jsonPrimitive?.contentOrNull
+                    val desc = body["description"]?.jsonPrimitive?.contentOrNull
+                    val image = body["image"]?.jsonPrimitive?.contentOrNull
+                    val siteName = body["site_name"]?.jsonPrimitive?.contentOrNull
+                    val fallbackDomain = try { URI(url).host?.removePrefix("www.") } catch (_: Exception) { null }
+
+                    if (!title.isNullOrBlank() || !desc.isNullOrBlank() || !image.isNullOrBlank()) {
+                        return@withContext LinkPreview(
+                            url = url,
+                            title = title?.takeIf { it.isNotBlank() },
+                            description = desc?.takeIf { it.isNotBlank() },
+                            imageUrl = image?.takeIf { it.isNotBlank() },
+                            domain = siteName ?: fallbackDomain
+                        )
+                    }
+                }
+            } catch (_: Exception) {
+                // Fall back to client-side parsing if remote API is unreachable
+            }
+        }
+
+        // 2. Fallback to client-side Jsoup extraction
         try {
             val doc = Jsoup.connect(url)
                 .timeout(5000)

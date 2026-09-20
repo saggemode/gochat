@@ -113,6 +113,9 @@ interface ChatDao {
     @Query("SELECT * FROM messages WHERE isStarred = 1 ORDER BY createdAt DESC")
     fun getStarredMessages(): Flow<List<Message>>
 
+    @Query("SELECT * FROM messages WHERE isStarred = 1 AND conversationId = :convId ORDER BY createdAt DESC")
+    fun getStarredMessagesForConversation(convId: String): Flow<List<Message>>
+
     @Query("DELETE FROM messages WHERE id = :messageId")
     suspend fun deleteMessage(messageId: String): Int
 

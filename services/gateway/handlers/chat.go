@@ -1398,6 +1398,27 @@ func (h *ChatHandler) fanOutEvent(eventType string, messageID string, convID str
 					if !isGroup {
 						pushTitle = "💥 PING Alert!"
 					}
+				} else if strings.Contains(strings.ToUpper(typeStr), "CATALOG") ||
+					strings.Contains(contentBody, `"type":"catalog"`) ||
+					strings.Contains(contentBody, `"type": "catalog"`) {
+					contentBody = "🛍️ Product Catalog"
+				} else if strings.Contains(strings.ToUpper(typeStr), "PRODUCT") {
+					contentBody = "🛒 Product"
+				} else if strings.Contains(strings.ToUpper(typeStr), "PAYMENT") || strings.Contains(strings.ToUpper(typeStr), "INVOICE") {
+					contentBody = "💳 Payment Request"
+				} else if strings.Contains(strings.ToUpper(typeStr), "LOCATION") {
+					contentBody = "📍 Location"
+				} else if strings.Contains(strings.ToUpper(typeStr), "CONTACT") {
+					contentBody = "👤 Contact"
+				} else if strings.Contains(strings.ToUpper(typeStr), "STICKER") {
+					contentBody = "🏷️ Sticker"
+				} else if strings.Contains(strings.ToUpper(typeStr), "ORDER") {
+					contentBody = "📦 Order"
+				}
+
+				// Fallback: if contentBody is still raw JSON, replace with generic label
+				if strings.HasPrefix(strings.TrimSpace(contentBody), "{") {
+					contentBody = "New message"
 				}
 			}
 
