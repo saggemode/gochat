@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"strings"
 
 	pb "gochat/gen/business"
 	"gochat/services/business/repository"
@@ -178,6 +179,12 @@ func (s *BusinessServer) CreateReview(ctx context.Context, req *pb.CreateReviewR
 	}
 	r, err := s.repo.CreateReview(ctx, req.ProductId, req.UserId, req.Rating, req.Comment, req.ImageUrls)
 	if err != nil {
+		if strings.Contains(err.Error(), "product not found") {
+			return nil, status.Errorf(codes.NotFound, "product not found: %v", err)
+		}
+		if strings.Contains(err.Error(), "cannot review your own product") {
+			return nil, status.Errorf(codes.PermissionDenied, "cannot review your own product")
+		}
 		return nil, status.Errorf(codes.Internal, "create review: %v", err)
 	}
 	return &pb.CreateReviewResponse{Review: reviewToPB(r)}, nil
@@ -214,6 +221,12 @@ func (s *BusinessServer) ToggleReviewHelpful(ctx context.Context, req *pb.Toggle
 func (s *BusinessServer) ToggleFollowStore(ctx context.Context, req *pb.ToggleFollowStoreRequest) (*pb.ToggleFollowStoreResponse, error) {
 	following, err := s.repo.ToggleFollowStore(ctx, req.StoreId, req.UserId)
 	if err != nil {
+		if strings.Contains(err.Error(), "store not found") {
+			return nil, status.Errorf(codes.NotFound, "store not found: %v", err)
+		}
+		if strings.Contains(err.Error(), "cannot follow your own store") {
+			return nil, status.Errorf(codes.InvalidArgument, "cannot follow your own store")
+		}
 		return nil, status.Errorf(codes.Internal, "toggle follow store: %v", err)
 	}
 	return &pb.ToggleFollowStoreResponse{IsFollowing: following}, nil

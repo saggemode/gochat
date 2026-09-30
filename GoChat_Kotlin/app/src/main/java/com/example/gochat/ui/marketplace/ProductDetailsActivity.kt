@@ -562,6 +562,9 @@ class ProductDetailsActivity : AppCompatActivity() {
                     if (following) "🔔 Following ${store?.name ?: "store"}! You'll receive alerts on new products." else "Unfollowed store",
                     Toast.LENGTH_SHORT
                 ).show()
+            } else {
+                val err = res.exceptionOrNull()?.message ?: "Failed to update follow status"
+                Toast.makeText(this@ProductDetailsActivity, err, Toast.LENGTH_SHORT).show()
             }
         }
     }

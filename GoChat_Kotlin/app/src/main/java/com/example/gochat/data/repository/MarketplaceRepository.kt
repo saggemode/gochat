@@ -676,7 +676,19 @@ class MarketplaceRepository @Inject constructor(
                 val isFollowing = response.body()?.get("is_following")?.jsonPrimitive?.booleanOrNull ?: false
                 Result.success(isFollowing)
             } else {
-                Result.failure(Exception("Failed to toggle follow"))
+                val errorBodyStr = response.errorBody()?.string().orEmpty()
+                val parsedMsg = try {
+                    if (errorBodyStr.isNotBlank()) {
+                        val errObj = json.parseToJsonElement(errorBodyStr).jsonObject
+                        errObj["error"]?.jsonPrimitive?.contentOrNull
+                    } else null
+                } catch (_: Exception) { null }
+                val msg = parsedMsg ?: when (response.code()) {
+                    404 -> "Store not found or endpoint not deployed yet"
+                    400 -> "Cannot follow your own store"
+                    else -> "Failed to follow store (HTTP ${response.code()})"
+                }
+                Result.failure(Exception(msg))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -784,8 +796,19 @@ class MarketplaceRepository @Inject constructor(
                 } catch (_: Exception) {
                     errorBodyStr.ifBlank { null }
                 }
-                val msg = parsedMsg ?: "Failed to submit review (HTTP ${response.code()})"
-                Result.failure(Exception(msg))
+                val rawMsg = parsedMsg ?: "Failed to submit review (HTTP ${response.code()})"
+                val cleanMsg = when {
+                    rawMsg.contains("foreign key constraint", ignoreCase = true) || rawMsg.contains("product not found", ignoreCase = true) ->
+                        "This product is no longer available on the server."
+                    rawMsg.contains("cannot review your own product", ignoreCase = true) ->
+                        "You cannot review your own product."
+                    rawMsg.startsWith("rpc error: code =") -> {
+                        val desc = rawMsg.substringAfter("desc = ").substringBefore(" (SQLSTATE")
+                        desc.ifBlank { rawMsg }
+                    }
+                    else -> rawMsg
+                }
+                Result.failure(Exception(cleanMsg))
             }
         } catch (e: Exception) {
             Result.failure(e)

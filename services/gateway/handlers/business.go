@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	pb "gochat/gen/business"
 	"gochat/services/gateway/ws"
@@ -332,6 +333,14 @@ func (h *BusinessHandler) ToggleFollowStore(c *gin.Context) {
 		StoreId: storeID, UserId: userID,
 	})
 	if err != nil {
+		if strings.Contains(err.Error(), "store not found") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Store not found"})
+			return
+		}
+		if strings.Contains(err.Error(), "cannot follow your own store") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "You cannot follow your own store"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

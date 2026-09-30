@@ -73,18 +73,12 @@ class MessageSyncWorker @AssistedInject constructor(
                     }
                 }
 
-                // 2. Content to send (E2EE)
-                var finalContent = msg.content
-                if (msg.type == MessageType.TEXT) {
-                    val conv = dao.getConversationById(msg.conversationId)
-                    val currentUserId = msg.senderId
-                    if (conv != null && conv.isDirect) {
-                        val targetUserId = conv.memberIds.find { it != currentUserId }
-                        if (targetUserId != null) {
-                            finalContent = encryptionManager.encryptMessage(targetUserId, msg.content)
-                        }
-                    }
-                }
+                // 2. Content to send
+                // NOTE: Client-side Signal Protocol encryption is disabled until session
+                // management is fully stable (matching ChatRepository.sendMessage).
+                // Messages are secured in transit via HTTPS/WSS.
+                // Keep msg.content as plaintext to prevent sending raw Base64 ciphertext.
+                val finalContent = msg.content
 
                 // 3. Send to server
                 val body = buildJsonObject {
@@ -101,13 +95,35 @@ class MessageSyncWorker @AssistedInject constructor(
                 val response = api.sendMessage(msg.conversationId, body)
                 if (response.isSuccessful) {
                     Log.d("MessageSyncWorker", "Successfully synced message ${msg.id}")
-                    dao.updateMessageStatus(msg.id, MessageStatus.SENT)
-                    // Update local message with remote URL and blurHash
-                    dao.insertMessage(msg.copy(
-                        status = MessageStatus.SENT, 
-                        mediaUrl = finalMediaUrl,
-                        blurHash = blurHash
-                    ))
+                    val data = response.body() ?: buildJsonObject {}
+                    val msgJson = data["message"]?.jsonObject ?: data
+                    val serverId = msgJson["id"]?.jsonPrimitive?.contentOrNull
+
+                    if (!serverId.isNullOrBlank() && serverId != msg.id) {
+                        dao.deleteMessage(msg.id)
+                        dao.insertMessage(msg.copy(
+                            id = serverId,
+                            status = MessageStatus.SENT,
+                            content = msg.content, // Preserve local plaintext
+                            mediaUrl = finalMediaUrl,
+                            blurHash = blurHash
+                        ))
+                    } else {
+                        dao.updateMessageStatus(msg.id, MessageStatus.SENT)
+                        dao.insertMessage(msg.copy(
+                            status = MessageStatus.SENT, 
+                            mediaUrl = finalMediaUrl,
+                            blurHash = blurHash
+                        ))
+                    }
+
+                    // Update last message in local conversation record
+                    dao.updateLastMessage(
+                        convId = msg.conversationId,
+                        lastText = if (msg.content.length > 50) msg.content.take(47) + "..." else msg.content.ifBlank { "Media" },
+                        lastTime = msg.createdAt,
+                        updatedAt = System.currentTimeMillis()
+                    )
                 } else {
                     val errorBody = response.errorBody()?.string()
                     Log.e("MessageSyncWorker", "Failed to sync message ${msg.id}: Code ${response.code()}, Error: $errorBody")

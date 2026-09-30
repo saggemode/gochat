@@ -123,6 +123,9 @@ class StorefrontActivity : AppCompatActivity() {
                 val following = res.getOrThrow()
                 updateFollowButton(following)
                 Toast.makeText(this@StorefrontActivity, if (following) "Following store!" else "Unfollowed store", Toast.LENGTH_SHORT).show()
+            } else {
+                val err = res.exceptionOrNull()?.message ?: "Failed to update follow status"
+                Toast.makeText(this@StorefrontActivity, err, Toast.LENGTH_SHORT).show()
             }
         }
     }

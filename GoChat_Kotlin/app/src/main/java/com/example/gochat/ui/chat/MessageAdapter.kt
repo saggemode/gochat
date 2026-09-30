@@ -424,6 +424,18 @@ class MessageAdapter(
             }
         }
 
+    private fun isBase64Ciphertext(text: String): Boolean {
+        val trimmed = text.trim()
+        if (trimmed.length < 44 || trimmed.contains(" ") || trimmed.contains("\n")) return false
+        if (!trimmed.matches(Regex("^[A-Za-z0-9+/=]+$"))) return false
+        return try {
+            android.util.Base64.decode(trimmed, android.util.Base64.DEFAULT)
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private val mentionPattern = Pattern.compile("@[\\w]+")
 
     private fun highlightQueryAndMentions(text: String, mentionColor: Int, query: String): CharSequence {
@@ -640,6 +652,11 @@ class MessageAdapter(
                         val intent = Intent(Intent.ACTION_VIEW, uri)
                         binding.root.context.startActivity(intent)
                     }
+                } else if (isBase64Ciphertext(message.content)) {
+                    tvMessageContent.text = "🔒 [Encrypted Message]"
+                    tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_text_secondary))
+                    tvMessageContent.setTypeface(null, Typeface.ITALIC)
+                    tvMessageContent.setOnClickListener(null)
                 } else {
                     tvMessageContent.text = highlightMentions(message.content, accentColor)
                     tvMessageContent.setTextColor(textColor)
@@ -1033,6 +1050,11 @@ class MessageAdapter(
                         val intent = Intent(Intent.ACTION_VIEW, uri)
                         binding.root.context.startActivity(intent)
                     }
+                } else if (isBase64Ciphertext(message.content)) {
+                    tvMessageContent.text = "🔒 [Encrypted Message]"
+                    tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_text_secondary))
+                    tvMessageContent.setTypeface(null, Typeface.ITALIC)
+                    tvMessageContent.setOnClickListener(null)
                 } else {
                     tvMessageContent.text = highlightMentions(message.content, accentColor)
                     tvMessageContent.setTextColor(textColor)

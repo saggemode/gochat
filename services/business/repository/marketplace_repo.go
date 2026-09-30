@@ -787,13 +787,34 @@ func (r *BusinessRepository) ToggleFollowStore(ctx context.Context, storeID, use
 	}
 	defer tx.Rollback(ctx)
 
+	// Resolve storeID if it is a slug, or check business_profiles
+	var resolvedStoreID string
+	err = tx.QueryRow(ctx, `
+		SELECT user_id::text 
+		FROM business.business_profiles 
+		WHERE user_id::text = $1 OR slug = $1 
+		LIMIT 1
+	`, storeID).Scan(&resolvedStoreID)
+	if err != nil {
+		return false, fmt.Errorf("store not found: %w", err)
+	}
+	storeID = resolvedStoreID
+
+	if storeID == userID {
+		return false, errors.New("cannot follow your own store")
+	}
+
 	var exists bool
 	_ = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM business.store_followers WHERE store_id = $1 AND user_id = $2)`, storeID, userID).Scan(&exists)
 
 	if exists {
-		_, _ = tx.Exec(ctx, `DELETE FROM business.store_followers WHERE store_id = $1 AND user_id = $2`, storeID, userID)
+		if _, err := tx.Exec(ctx, `DELETE FROM business.store_followers WHERE store_id = $1 AND user_id = $2`, storeID, userID); err != nil {
+			return false, fmt.Errorf("unfollow store: %w", err)
+		}
 	} else {
-		_, _ = tx.Exec(ctx, `INSERT INTO business.store_followers (store_id, user_id) VALUES ($1, $2)`, storeID, userID)
+		if _, err := tx.Exec(ctx, `INSERT INTO business.store_followers (store_id, user_id) VALUES ($1, $2)`, storeID, userID); err != nil {
+			return false, fmt.Errorf("follow store: %w", err)
+		}
 	}
 
 	err = tx.Commit(ctx)
@@ -801,8 +822,18 @@ func (r *BusinessRepository) ToggleFollowStore(ctx context.Context, storeID, use
 }
 
 func (r *BusinessRepository) IsFollowingStore(ctx context.Context, storeID, userID string) (bool, error) {
+	var resolvedStoreID string
+	err := r.db.QueryRow(ctx, `
+		SELECT user_id::text 
+		FROM business.business_profiles 
+		WHERE user_id::text = $1 OR slug = $1 
+		LIMIT 1
+	`, storeID).Scan(&resolvedStoreID)
+	if err != nil {
+		return false, nil
+	}
 	var exists bool
-	err := r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM business.store_followers WHERE store_id = $1 AND user_id = $2)`, storeID, userID).Scan(&exists)
+	err = r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM business.store_followers WHERE store_id = $1 AND user_id = $2)`, resolvedStoreID, userID).Scan(&exists)
 	return exists, err
 }
 

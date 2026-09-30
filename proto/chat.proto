@@ -104,12 +104,16 @@ service ChatService {
 // ── Enums ─────────────────────────────────────────────────────────────────────
 
 enum MessageType {
-  TEXT  = 0;
-  IMAGE = 1;
-  VIDEO = 2;
-  AUDIO = 3;
-  FILE  = 4;
-  VOICE = 5;
+  TEXT     = 0;
+  IMAGE    = 1;
+  VIDEO    = 2;
+  AUDIO    = 3;
+  FILE     = 4;
+  VOICE    = 5;
+  DOCUMENT = 6;
+  LOCATION = 7;
+  CONTACT  = 8;
+  STICKER  = 9;
 }
 
 enum MessageStatus {
@@ -143,6 +147,17 @@ enum EventType {
   EVENT_STORY_CREATED    = 13;
   EVENT_STORY_DELETED    = 14;
   EVENT_CONVERSATION_CREATED = 15;
+
+  // ── Group Events ──────────────────────────────────────────────────────
+  EVENT_MEMBER_ADDED              = 16;
+  EVENT_MEMBER_REMOVED            = 17;
+  EVENT_MEMBER_PROMOTED           = 18;
+  EVENT_MEMBER_DEMOTED            = 19;
+  EVENT_GROUP_CREATED             = 20;
+  EVENT_GROUP_NAME_CHANGED        = 21;
+  EVENT_GROUP_PHOTO_CHANGED       = 22;
+  EVENT_GROUP_DESCRIPTION_CHANGED = 23;
+  EVENT_GROUP_SETTINGS_CHANGED    = 24;
 }
 
 // ── Core Types ────────────────────────────────────────────────────────────────
@@ -406,6 +421,17 @@ message MessageEvent {
   string    actor_id   = 3;  // who triggered the event
   CallPayload call_payload = 4;
   StoryPayload story_payload = 5;
+  GroupEventPayload group_event_payload = 6;
+}
+
+// GroupEventPayload carries metadata for group lifecycle events.
+message GroupEventPayload {
+  string conversation_id  = 1;  // the group conversation
+  string actor_id         = 2;  // who triggered the event
+  string target_user_id   = 3;  // affected user (member events)
+  string new_role         = 4;  // for PROMOTED/DEMOTED
+  string new_value        = 5;  // new name, description, photo URL, etc.
+  string old_value        = 6;  // previous value
 }
 
 message SendTypingIndicatorRequest {

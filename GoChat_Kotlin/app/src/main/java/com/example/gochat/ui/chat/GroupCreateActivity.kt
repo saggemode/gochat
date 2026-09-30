@@ -1,15 +1,19 @@
 package com.example.gochat.ui.chat
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import coil.load
+import coil.transform.CircleCropTransformation
 import com.example.gochat.R
 import com.example.gochat.databinding.ActivityGroupCreateBinding
 import com.example.gochat.databinding.ItemSelectedMemberBinding
@@ -22,10 +26,20 @@ class GroupCreateActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_MEMBER_IDS = "extra_member_ids"
         const val EXTRA_MEMBER_NAMES = "extra_member_names"
+        const val EXTRA_MEMBER_AVATARS = "extra_member_avatars"
     }
 
     private lateinit var binding: ActivityGroupCreateBinding
     private val viewModel: GroupCreateViewModel by viewModels()
+
+    // Image picker launcher
+    private val pickImageLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            viewModel.setAvatarUri(it)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,15 +48,18 @@ class GroupCreateActivity : AppCompatActivity() {
 
         val memberIds = intent.getStringArrayExtra(EXTRA_MEMBER_IDS)?.toList() ?: emptyList()
         val memberNames = intent.getStringArrayExtra(EXTRA_MEMBER_NAMES)?.toList() ?: emptyList()
+        val memberAvatars = intent.getStringArrayExtra(EXTRA_MEMBER_AVATARS)?.toList() ?: emptyList()
 
         setupToolbar()
-        setupMembersList(memberNames)
+        setupAvatarPicker()
+        setupMembersList(memberNames, memberAvatars)
         observeViewModel()
         
         binding.fabCreate.setOnClickListener {
             val groupName = binding.etGroupName.text?.toString()?.trim().orEmpty()
             if (groupName.isEmpty()) {
                 Toast.makeText(this, "Please enter a group subject", Toast.LENGTH_SHORT).show()
+                binding.etGroupName.requestFocus()
                 return@setOnClickListener
             }
             
@@ -56,17 +73,49 @@ class GroupCreateActivity : AppCompatActivity() {
         binding.toolbar.setNavigationOnClickListener { finish() }
     }
 
-    private fun setupMembersList(names: List<String>) {
+    private fun setupAvatarPicker() {
+        // Clicking the avatar area opens the gallery
+        binding.layoutGroupAvatar.setOnClickListener {
+            pickImageLauncher.launch("image/*")
+        }
+
+        // Also make the camera overlay clickable
+        binding.layoutCameraOverlay.setOnClickListener {
+            pickImageLauncher.launch("image/*")
+        }
+    }
+
+    private fun setupMembersList(names: List<String>, avatars: List<String>) {
         binding.tvParticipantsCount.text = "PARTICIPANTS: ${names.size}"
         binding.rvSelectedMembers.layoutManager = 
             LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-        binding.rvSelectedMembers.adapter = SelectedMembersAdapter(names)
+        binding.rvSelectedMembers.adapter = SelectedMembersAdapter(names, avatars)
     }
 
     private fun observeViewModel() {
         lifecycleScope.launch {
             viewModel.isLoading.collect { loading ->
                 binding.fabCreate.isEnabled = !loading
+                binding.layoutLoading.visibility = if (loading) android.view.View.VISIBLE else android.view.View.GONE
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.avatarUri.collect { uri ->
+                if (uri != null) {
+                    // Show selected image in the avatar circle
+                    binding.ivGroupAvatar.load(uri) {
+                        crossfade(true)
+                        transformations(CircleCropTransformation())
+                        placeholder(R.drawable.ic_account)
+                        error(R.drawable.ic_account)
+                    }
+                    // Make the camera overlay semi-transparent so selected image shows through
+                    binding.layoutCameraOverlay.alpha = 0.4f
+                } else {
+                    binding.ivGroupAvatar.setImageResource(R.drawable.ic_account)
+                    binding.layoutCameraOverlay.alpha = 1.0f
+                }
             }
         }
 
@@ -90,8 +139,10 @@ class GroupCreateActivity : AppCompatActivity() {
         }
     }
 
-    private class SelectedMembersAdapter(private val names: List<String>) :
-        RecyclerView.Adapter<SelectedMembersAdapter.ViewHolder>() {
+    private class SelectedMembersAdapter(
+        private val names: List<String>,
+        private val avatars: List<String>
+    ) : RecyclerView.Adapter<SelectedMembersAdapter.ViewHolder>() {
 
         class ViewHolder(val binding: ItemSelectedMemberBinding) : RecyclerView.ViewHolder(binding.root)
 
@@ -102,7 +153,18 @@ class GroupCreateActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             holder.binding.tvName.text = names[position].split(" ").firstOrNull() ?: names[position]
-            holder.binding.ivAvatar.setImageResource(R.drawable.ic_account)
+            
+            val avatarUrl = avatars.getOrNull(position).orEmpty()
+            if (avatarUrl.isNotBlank()) {
+                holder.binding.ivAvatar.load(avatarUrl) {
+                    crossfade(true)
+                    transformations(CircleCropTransformation())
+                    placeholder(R.drawable.ic_account)
+                    error(R.drawable.ic_account)
+                }
+            } else {
+                holder.binding.ivAvatar.setImageResource(R.drawable.ic_account)
+            }
         }
 
         override fun getItemCount() = names.size

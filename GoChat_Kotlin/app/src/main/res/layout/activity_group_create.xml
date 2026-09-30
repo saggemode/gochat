@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/gochat_bg_dark"
-    android:orientation="vertical">
+    android:background="@color/gochat_bg_dark">
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
@@ -21,7 +20,8 @@
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:layout_marginTop="?attr/actionBarSize">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -29,77 +29,118 @@
             android:orientation="vertical"
             android:padding="16dp">
 
+            <!-- Group avatar + name input row -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
+                <!-- Group Avatar Picker -->
                 <FrameLayout
                     android:id="@+id/layoutGroupAvatar"
-                    android:layout_width="64dp"
-                    android:layout_height="64dp"
-                    android:background="@drawable/bg_circle_pulse"
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
                     android:clickable="true"
                     android:focusable="true">
 
-                    <ImageView
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:layout_gravity="center"
-                        android:src="@drawable/ic_camera_status"
-                        app:tint="@color/gochat_text_muted" />
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/ivGroupAvatar"
+                        android:layout_width="72dp"
+                        android:layout_height="72dp"
+                        android:scaleType="centerCrop"
+                        android:background="@color/gochat_card_lighter"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
+
+                    <!-- Camera overlay -->
+                    <FrameLayout
+                        android:id="@+id/layoutCameraOverlay"
+                        android:layout_width="72dp"
+                        android:layout_height="72dp"
+                        android:background="@drawable/bg_circle_pulse"
+                        android:backgroundTint="#66000000">
+
+                        <ImageView
+                            android:id="@+id/ivCameraIcon"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_camera_status"
+                            app:tint="@color/white" />
+                    </FrameLayout>
                 </FrameLayout>
 
-                <com.google.android.material.textfield.TextInputLayout
+                <!-- Group subject + emoji -->
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
                     android:layout_weight="1"
-                    app:hintEnabled="false">
+                    android:orientation="vertical">
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etGroupName"
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:background="@null"
-                        android:hint="Group subject here…"
-                        android:inputType="textCapSentences"
-                        android:maxLength="25"
-                        android:textColor="@color/gochat_text_primary"
-                        android:textSize="18sp" />
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etGroupName"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="@null"
+                            android:hint="Group subject"
+                            android:inputType="textCapSentences"
+                            android:maxLength="25"
+                            android:textColor="@color/gochat_text_primary"
+                            android:textColorHint="@color/gochat_text_muted"
+                            android:textSize="18sp" />
+
+                        <ImageView
+                            android:id="@+id/ivEmojiPicker"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:layout_marginStart="8dp"
+                            android:src="@drawable/ic_edit_status"
+                            app:tint="@color/gochat_text_muted" />
+                    </LinearLayout>
 
                     <View
                         android:layout_width="match_parent"
                         android:layout_height="2dp"
                         android:layout_marginTop="4dp"
                         android:background="@color/gochat_accent" />
-                </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
             </LinearLayout>
 
+            <!-- Hint text -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="12dp"
                 android:text="Provide a group subject and optional group icon"
                 android:textColor="@color/gochat_text_secondary"
                 android:textSize="13sp" />
 
+            <!-- Participants header -->
             <TextView
                 android:id="@+id/tvParticipantsCount"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
-                android:text="PARTICIPANTS: 2"
+                android:layout_marginTop="28dp"
+                android:text="PARTICIPANTS: 0"
                 android:textColor="@color/gochat_accent"
                 android:textSize="12sp"
                 android:textStyle="bold" />
 
+            <!-- Members grid -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvSelectedMembers"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
+                android:clipToPadding="false"
                 android:orientation="horizontal"
                 app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
                 tools:listitem="@layout/item_selected_member" />
@@ -107,6 +148,33 @@
         </LinearLayout>
     </ScrollView>
 
+    <!-- Loading overlay -->
+    <FrameLayout
+        android:id="@+id/layoutLoading"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#80000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <ProgressBar
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center"
+            android:indeterminateTint="@color/gochat_accent" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="64dp"
+            android:text="Creating group…"
+            android:textColor="@color/white"
+            android:textSize="14sp" />
+    </FrameLayout>
+
+    <!-- FAB -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabCreate"
         android:layout_width="wrap_content"
@@ -117,4 +185,4 @@
         app:backgroundTint="@color/gochat_accent"
         app:tint="@color/black" />
 
-</LinearLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

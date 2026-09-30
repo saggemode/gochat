@@ -156,8 +156,10 @@ class SelectContactActivity : AppCompatActivity() {
             val intent = Intent(this, GroupCreateActivity::class.java).apply {
                 val memberIds = selected.map { it.finalUserId }.toTypedArray()
                 val memberNames = selected.map { it.displayName }.toTypedArray()
+                val memberAvatars = selected.map { it.avatarUrl }.toTypedArray()
                 putExtra(GroupCreateActivity.EXTRA_MEMBER_IDS, memberIds)
                 putExtra(GroupCreateActivity.EXTRA_MEMBER_NAMES, memberNames)
+                putExtra(GroupCreateActivity.EXTRA_MEMBER_AVATARS, memberAvatars)
             }
             startActivity(intent)
         }

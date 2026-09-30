@@ -500,6 +500,10 @@ func (h *BusinessHandler) CreateReview(c *gin.Context) {
 			c.JSON(http.StatusForbidden, gin.H{"error": "You cannot review your own product"})
 			return
 		}
+		if strings.Contains(err.Error(), "product not found") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Product not found or has been removed"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
