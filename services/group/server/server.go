@@ -66,16 +66,37 @@ func (s *GroupServer) UpdateGroupMetadata(ctx context.Context, req *grouppb.Upda
 		JoinApprovalRequired: req.JoinApprovalRequired,
 	}
 
-	// Preserving existing settings if requester is not admin/owner
-	if role != "owner" && role != "admin" && existing != nil {
-		meta.AnnouncementsOnly = existing.AnnouncementsOnly
-		meta.AdminsOnlyEditInfo = existing.AdminsOnlyEditInfo
-		meta.JoinApprovalRequired = existing.JoinApprovalRequired
-	}
+	if existing != nil {
+		if meta.Name == "" {
+			meta.Name = existing.Name
+		}
+		if meta.AvatarURL == "" {
+			meta.AvatarURL = existing.AvatarURL
+		}
+		if meta.Description == "" {
+			meta.Description = existing.Description
+		}
+		// Preserving existing settings if requester is not admin/owner
+		if role != "owner" && role != "admin" {
+			meta.AnnouncementsOnly = existing.AnnouncementsOnly
+			meta.AdminsOnlyEditInfo = existing.AdminsOnlyEditInfo
+			meta.JoinApprovalRequired = existing.JoinApprovalRequired
+		} else {
+			if !req.AnnouncementsOnly && existing.AnnouncementsOnly {
+				meta.AnnouncementsOnly = existing.AnnouncementsOnly
+			}
+			if !req.AdminsOnlyEditInfo && existing.AdminsOnlyEditInfo {
+				meta.AdminsOnlyEditInfo = existing.AdminsOnlyEditInfo
+			}
+			if !req.JoinApprovalRequired && existing.JoinApprovalRequired {
+				meta.JoinApprovalRequired = existing.JoinApprovalRequired
+			}
+		}
 
-	// Preserving existing invite code
-	if existing != nil && existing.InviteCode.Valid {
-		meta.InviteCode = existing.InviteCode
+		// Preserving existing invite code
+		if existing.InviteCode.Valid {
+			meta.InviteCode = existing.InviteCode
+		}
 	}
 
 	err = s.repo.UpdateMetadata(ctx, meta)

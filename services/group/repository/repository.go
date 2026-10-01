@@ -141,14 +141,19 @@ type GroupMemberData struct {
 func (r *GroupRepository) ListMembers(ctx context.Context, convID uuid.UUID) ([]GroupMemberData, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT cm.user_id,
-		       COALESCE(NULLIF(cm.role, ''), CASE WHEN c.created_by = cm.user_id THEN 'owner' ELSE 'member' END) AS role,
+		       CASE 
+		           WHEN c.created_by = cm.user_id THEN 'owner'
+		           WHEN cm.role = 'owner' THEN 'owner'
+		           WHEN cm.role = 'admin' THEN 'admin'
+		           ELSE COALESCE(NULLIF(cm.role, ''), 'member')
+		       END AS role,
 		       cm.joined_at
 		FROM chat.conversation_members cm
 		JOIN chat.conversations c ON c.id = cm.conversation_id
 		WHERE cm.conversation_id = $1
 		ORDER BY 
 			CASE 
-				WHEN cm.role = 'owner' OR c.created_by = cm.user_id THEN 1
+				WHEN c.created_by = cm.user_id OR cm.role = 'owner' THEN 1
 				WHEN cm.role = 'admin' THEN 2
 				ELSE 3
 			END,
@@ -173,10 +178,17 @@ func (r *GroupRepository) ListMembers(ctx context.Context, convID uuid.UUID) ([]
 func (r *GroupRepository) GetUserRole(ctx context.Context, convID, userID uuid.UUID) (string, error) {
 	var role string
 	err := r.db.QueryRow(ctx, `
-		SELECT COALESCE(NULLIF(cm.role, ''), CASE WHEN c.created_by = cm.user_id THEN 'owner' ELSE 'member' END)
-		FROM chat.conversation_members cm
-		JOIN chat.conversations c ON c.id = cm.conversation_id
-		WHERE cm.conversation_id = $1 AND cm.user_id = $2
+		SELECT 
+			CASE 
+				WHEN c.created_by = $2 THEN 'owner'
+				WHEN cm.role = 'owner' THEN 'owner'
+				WHEN cm.role = 'admin' THEN 'admin'
+				WHEN cm.user_id IS NOT NULL THEN COALESCE(NULLIF(cm.role, ''), 'member')
+				ELSE ''
+			END
+		FROM chat.conversations c
+		LEFT JOIN chat.conversation_members cm ON cm.conversation_id = c.id AND cm.user_id = $2
+		WHERE c.id = $1
 	`, convID, userID).Scan(&role)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
