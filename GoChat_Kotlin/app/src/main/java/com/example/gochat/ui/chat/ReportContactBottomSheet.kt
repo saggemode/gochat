@@ -145,7 +145,7 @@ class ReportContactBottomSheet(
 
                 // 2. If user selected to clear chat, clear local chat messages
                 if (alsoBlock && !conversationId.isNullOrBlank()) {
-                    chatRepository.clearChat(conversationId = conversationId, deleteStarred = true)
+                    chatRepository.clearChat(convId = conversationId, deleteStarred = true)
                 }
 
                 Toast.makeText(
