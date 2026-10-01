@@ -19,9 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MediaService_UploadMedia_FullMethodName = "/media.MediaService/UploadMedia"
-	MediaService_GetMediaURL_FullMethodName = "/media.MediaService/GetMediaURL"
-	MediaService_DeleteMedia_FullMethodName = "/media.MediaService/DeleteMedia"
+	MediaService_UploadMedia_FullMethodName  = "/media.MediaService/UploadMedia"
+	MediaService_GetMediaURL_FullMethodName  = "/media.MediaService/GetMediaURL"
+	MediaService_DeleteMedia_FullMethodName  = "/media.MediaService/DeleteMedia"
+	MediaService_GetMediaFile_FullMethodName = "/media.MediaService/GetMediaFile"
 )
 
 // MediaServiceClient is the client API for MediaService service.
@@ -34,6 +35,8 @@ type MediaServiceClient interface {
 	GetMediaURL(ctx context.Context, in *GetMediaURLRequest, opts ...grpc.CallOption) (*GetMediaURLResponse, error)
 	// Delete a media object (called on message deletion)
 	DeleteMedia(ctx context.Context, in *DeleteMediaRequest, opts ...grpc.CallOption) (*DeleteMediaResponse, error)
+	// Download media file bytes directly (for fallback / DB / local storage)
+	GetMediaFile(ctx context.Context, in *GetMediaFileRequest, opts ...grpc.CallOption) (*GetMediaFileResponse, error)
 }
 
 type mediaServiceClient struct {
@@ -77,6 +80,16 @@ func (c *mediaServiceClient) DeleteMedia(ctx context.Context, in *DeleteMediaReq
 	return out, nil
 }
 
+func (c *mediaServiceClient) GetMediaFile(ctx context.Context, in *GetMediaFileRequest, opts ...grpc.CallOption) (*GetMediaFileResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMediaFileResponse)
+	err := c.cc.Invoke(ctx, MediaService_GetMediaFile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MediaServiceServer is the server API for MediaService service.
 // All implementations must embed UnimplementedMediaServiceServer
 // for forward compatibility.
@@ -87,6 +100,8 @@ type MediaServiceServer interface {
 	GetMediaURL(context.Context, *GetMediaURLRequest) (*GetMediaURLResponse, error)
 	// Delete a media object (called on message deletion)
 	DeleteMedia(context.Context, *DeleteMediaRequest) (*DeleteMediaResponse, error)
+	// Download media file bytes directly (for fallback / DB / local storage)
+	GetMediaFile(context.Context, *GetMediaFileRequest) (*GetMediaFileResponse, error)
 	mustEmbedUnimplementedMediaServiceServer()
 }
 
@@ -105,6 +120,9 @@ func (UnimplementedMediaServiceServer) GetMediaURL(context.Context, *GetMediaURL
 }
 func (UnimplementedMediaServiceServer) DeleteMedia(context.Context, *DeleteMediaRequest) (*DeleteMediaResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteMedia not implemented")
+}
+func (UnimplementedMediaServiceServer) GetMediaFile(context.Context, *GetMediaFileRequest) (*GetMediaFileResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMediaFile not implemented")
 }
 func (UnimplementedMediaServiceServer) mustEmbedUnimplementedMediaServiceServer() {}
 func (UnimplementedMediaServiceServer) testEmbeddedByValue()                      {}
@@ -170,6 +188,24 @@ func _MediaService_DeleteMedia_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MediaService_GetMediaFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMediaFileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MediaServiceServer).GetMediaFile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MediaService_GetMediaFile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MediaServiceServer).GetMediaFile(ctx, req.(*GetMediaFileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MediaService_ServiceDesc is the grpc.ServiceDesc for MediaService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -184,6 +220,10 @@ var MediaService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteMedia",
 			Handler:    _MediaService_DeleteMedia_Handler,
+		},
+		{
+			MethodName: "GetMediaFile",
+			Handler:    _MediaService_GetMediaFile_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

@@ -250,7 +250,14 @@ func startInProcessGRPC(
 		cfg.TelegramChannelID,
 		log,
 	)
-	mediapb.RegisterMediaServiceServer(s, mediaserver.New(minioStore, tgStore, log))
+	var dbStore *mediastorage.DatabaseStorage
+	mediaDSN := getServiceDSN("MEDIA_DB_DSN", chatDSN)
+	if mediaDB, err := database.NewPostgres(ctx, mediaDSN, log); err == nil {
+		_ = database.AutoMigrate(ctx, mediaDB, "media", log)
+		dbStore = mediastorage.NewDatabaseStorage(mediaDB, log)
+	}
+	localStorage := mediastorage.NewLocalStorage(log)
+	mediapb.RegisterMediaServiceServer(s, mediaserver.New(minioStore, tgStore, dbStore, localStorage, log))
 
 	go func() {
 		if err := s.Serve(lis); err != nil {

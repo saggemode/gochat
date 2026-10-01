@@ -15,6 +15,9 @@ service MediaService {
 
   // Delete a media object (called on message deletion)
   rpc DeleteMedia(DeleteMediaRequest) returns (DeleteMediaResponse);
+
+  // Download media file bytes directly (for fallback / DB / local storage)
+  rpc GetMediaFile(GetMediaFileRequest) returns (GetMediaFileResponse);
 }
 
 // ── Messages ──────────────────────────────────────────────────────────────────
@@ -77,4 +80,16 @@ message DeleteMediaRequest {
 
 message DeleteMediaResponse {
   bool success = 1;
+}
+
+message GetMediaFileRequest {
+  string file_id = 1;
+}
+
+message GetMediaFileResponse {
+  string file_id    = 1;
+  string file_name  = 2;
+  string mime_type  = 3;
+  int64  size_bytes = 4;
+  bytes  data       = 5;
 }

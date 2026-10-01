@@ -588,6 +588,126 @@ func (x *DeleteMediaResponse) GetSuccess() bool {
 	return false
 }
 
+type GetMediaFileRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	FileId        string                 `protobuf:"bytes,1,opt,name=file_id,json=fileId,proto3" json:"file_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMediaFileRequest) Reset() {
+	*x = GetMediaFileRequest{}
+	mi := &file_proto_media_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMediaFileRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMediaFileRequest) ProtoMessage() {}
+
+func (x *GetMediaFileRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_media_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMediaFileRequest.ProtoReflect.Descriptor instead.
+func (*GetMediaFileRequest) Descriptor() ([]byte, []int) {
+	return file_proto_media_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GetMediaFileRequest) GetFileId() string {
+	if x != nil {
+		return x.FileId
+	}
+	return ""
+}
+
+type GetMediaFileResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	FileId        string                 `protobuf:"bytes,1,opt,name=file_id,json=fileId,proto3" json:"file_id,omitempty"`
+	FileName      string                 `protobuf:"bytes,2,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
+	MimeType      string                 `protobuf:"bytes,3,opt,name=mime_type,json=mimeType,proto3" json:"mime_type,omitempty"`
+	SizeBytes     int64                  `protobuf:"varint,4,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
+	Data          []byte                 `protobuf:"bytes,5,opt,name=data,proto3" json:"data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMediaFileResponse) Reset() {
+	*x = GetMediaFileResponse{}
+	mi := &file_proto_media_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMediaFileResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMediaFileResponse) ProtoMessage() {}
+
+func (x *GetMediaFileResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_media_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMediaFileResponse.ProtoReflect.Descriptor instead.
+func (*GetMediaFileResponse) Descriptor() ([]byte, []int) {
+	return file_proto_media_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetMediaFileResponse) GetFileId() string {
+	if x != nil {
+		return x.FileId
+	}
+	return ""
+}
+
+func (x *GetMediaFileResponse) GetFileName() string {
+	if x != nil {
+		return x.FileName
+	}
+	return ""
+}
+
+func (x *GetMediaFileResponse) GetMimeType() string {
+	if x != nil {
+		return x.MimeType
+	}
+	return ""
+}
+
+func (x *GetMediaFileResponse) GetSizeBytes() int64 {
+	if x != nil {
+		return x.SizeBytes
+	}
+	return 0
+}
+
+func (x *GetMediaFileResponse) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
 var File_proto_media_proto protoreflect.FileDescriptor
 
 const file_proto_media_proto_rawDesc = "" +
@@ -635,18 +755,28 @@ const file_proto_media_proto_rawDesc = "" +
 	"object_key\x18\x01 \x01(\tR\tobjectKey\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"/\n" +
 	"\x13DeleteMediaResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess*_\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\".\n" +
+	"\x13GetMediaFileRequest\x12\x17\n" +
+	"\afile_id\x18\x01 \x01(\tR\x06fileId\"\x9c\x01\n" +
+	"\x14GetMediaFileResponse\x12\x17\n" +
+	"\afile_id\x18\x01 \x01(\tR\x06fileId\x12\x1b\n" +
+	"\tfile_name\x18\x02 \x01(\tR\bfileName\x12\x1b\n" +
+	"\tmime_type\x18\x03 \x01(\tR\bmimeType\x12\x1d\n" +
+	"\n" +
+	"size_bytes\x18\x04 \x01(\x03R\tsizeBytes\x12\x12\n" +
+	"\x04data\x18\x05 \x01(\fR\x04data*_\n" +
 	"\tMediaType\x12\x0f\n" +
 	"\vMEDIA_IMAGE\x10\x00\x12\x0f\n" +
 	"\vMEDIA_VIDEO\x10\x01\x12\x0f\n" +
 	"\vMEDIA_AUDIO\x10\x02\x12\x0f\n" +
 	"\vMEDIA_VOICE\x10\x03\x12\x0e\n" +
 	"\n" +
-	"MEDIA_FILE\x10\x042\xe2\x01\n" +
+	"MEDIA_FILE\x10\x042\xab\x02\n" +
 	"\fMediaService\x12F\n" +
 	"\vUploadMedia\x12\x19.media.UploadMediaRequest\x1a\x1a.media.UploadMediaResponse(\x01\x12D\n" +
 	"\vGetMediaURL\x12\x19.media.GetMediaURLRequest\x1a\x1a.media.GetMediaURLResponse\x12D\n" +
-	"\vDeleteMedia\x12\x19.media.DeleteMediaRequest\x1a\x1a.media.DeleteMediaResponseB\x12Z\x10gochat/gen/mediab\x06proto3"
+	"\vDeleteMedia\x12\x19.media.DeleteMediaRequest\x1a\x1a.media.DeleteMediaResponse\x12G\n" +
+	"\fGetMediaFile\x12\x1a.media.GetMediaFileRequest\x1a\x1b.media.GetMediaFileResponseB\x12Z\x10gochat/gen/mediab\x06proto3"
 
 var (
 	file_proto_media_proto_rawDescOnce sync.Once
@@ -661,34 +791,38 @@ func file_proto_media_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_media_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_proto_media_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_proto_media_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_proto_media_proto_goTypes = []any{
-	(MediaType)(0),              // 0: media.MediaType
-	(*MediaMeta)(nil),           // 1: media.MediaMeta
-	(*UploadMediaRequest)(nil),  // 2: media.UploadMediaRequest
-	(*UploadHeader)(nil),        // 3: media.UploadHeader
-	(*UploadMediaResponse)(nil), // 4: media.UploadMediaResponse
-	(*GetMediaURLRequest)(nil),  // 5: media.GetMediaURLRequest
-	(*GetMediaURLResponse)(nil), // 6: media.GetMediaURLResponse
-	(*DeleteMediaRequest)(nil),  // 7: media.DeleteMediaRequest
-	(*DeleteMediaResponse)(nil), // 8: media.DeleteMediaResponse
+	(MediaType)(0),               // 0: media.MediaType
+	(*MediaMeta)(nil),            // 1: media.MediaMeta
+	(*UploadMediaRequest)(nil),   // 2: media.UploadMediaRequest
+	(*UploadHeader)(nil),         // 3: media.UploadHeader
+	(*UploadMediaResponse)(nil),  // 4: media.UploadMediaResponse
+	(*GetMediaURLRequest)(nil),   // 5: media.GetMediaURLRequest
+	(*GetMediaURLResponse)(nil),  // 6: media.GetMediaURLResponse
+	(*DeleteMediaRequest)(nil),   // 7: media.DeleteMediaRequest
+	(*DeleteMediaResponse)(nil),  // 8: media.DeleteMediaResponse
+	(*GetMediaFileRequest)(nil),  // 9: media.GetMediaFileRequest
+	(*GetMediaFileResponse)(nil), // 10: media.GetMediaFileResponse
 }
 var file_proto_media_proto_depIdxs = []int32{
-	0, // 0: media.MediaMeta.media_type:type_name -> media.MediaType
-	3, // 1: media.UploadMediaRequest.header:type_name -> media.UploadHeader
-	0, // 2: media.UploadHeader.media_type:type_name -> media.MediaType
-	1, // 3: media.UploadMediaResponse.media:type_name -> media.MediaMeta
-	2, // 4: media.MediaService.UploadMedia:input_type -> media.UploadMediaRequest
-	5, // 5: media.MediaService.GetMediaURL:input_type -> media.GetMediaURLRequest
-	7, // 6: media.MediaService.DeleteMedia:input_type -> media.DeleteMediaRequest
-	4, // 7: media.MediaService.UploadMedia:output_type -> media.UploadMediaResponse
-	6, // 8: media.MediaService.GetMediaURL:output_type -> media.GetMediaURLResponse
-	8, // 9: media.MediaService.DeleteMedia:output_type -> media.DeleteMediaResponse
-	7, // [7:10] is the sub-list for method output_type
-	4, // [4:7] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	0,  // 0: media.MediaMeta.media_type:type_name -> media.MediaType
+	3,  // 1: media.UploadMediaRequest.header:type_name -> media.UploadHeader
+	0,  // 2: media.UploadHeader.media_type:type_name -> media.MediaType
+	1,  // 3: media.UploadMediaResponse.media:type_name -> media.MediaMeta
+	2,  // 4: media.MediaService.UploadMedia:input_type -> media.UploadMediaRequest
+	5,  // 5: media.MediaService.GetMediaURL:input_type -> media.GetMediaURLRequest
+	7,  // 6: media.MediaService.DeleteMedia:input_type -> media.DeleteMediaRequest
+	9,  // 7: media.MediaService.GetMediaFile:input_type -> media.GetMediaFileRequest
+	4,  // 8: media.MediaService.UploadMedia:output_type -> media.UploadMediaResponse
+	6,  // 9: media.MediaService.GetMediaURL:output_type -> media.GetMediaURLResponse
+	8,  // 10: media.MediaService.DeleteMedia:output_type -> media.DeleteMediaResponse
+	10, // 11: media.MediaService.GetMediaFile:output_type -> media.GetMediaFileResponse
+	8,  // [8:12] is the sub-list for method output_type
+	4,  // [4:8] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_proto_media_proto_init() }
@@ -706,7 +840,7 @@ func file_proto_media_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_media_proto_rawDesc), len(file_proto_media_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   8,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

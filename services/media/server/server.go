@@ -15,18 +15,32 @@ import (
 	"gochat/services/media/storage"
 )
 
-// MediaServer implements the gRPC MediaService.
+// MediaServer implements mediapb.MediaServiceServer.
 type MediaServer struct {
 	mediapb.UnimplementedMediaServiceServer
 
-	store   *storage.MinIOStorage
-	tgStore *storage.TelegramStorage
-	log     *zap.Logger
+	store        *storage.MinIOStorage
+	tgStore      *storage.TelegramStorage
+	dbStore      *storage.DatabaseStorage
+	localStorage *storage.LocalStorage
+	log          *zap.Logger
 }
 
-// New creates a MediaServer.
-func New(store *storage.MinIOStorage, tgStore *storage.TelegramStorage, log *zap.Logger) *MediaServer {
-	return &MediaServer{store: store, tgStore: tgStore, log: log}
+// New creates a MediaServer with all configured storage providers.
+func New(
+	store *storage.MinIOStorage,
+	tgStore *storage.TelegramStorage,
+	dbStore *storage.DatabaseStorage,
+	localStorage *storage.LocalStorage,
+	log *zap.Logger,
+) *MediaServer {
+	return &MediaServer{
+		store:        store,
+		tgStore:      tgStore,
+		dbStore:      dbStore,
+		localStorage: localStorage,
+		log:          log,
+	}
 }
 
 // UploadMedia handles client-streaming upload with automated optimization.
@@ -96,12 +110,18 @@ func (s *MediaServer) UploadMedia(stream mediapb.MediaService_UploadMediaServer)
 		s.log.Warn("optimizer error, continuing with stream", zap.Error(optErr))
 	}
 
+	optBytes, readErr := io.ReadAll(optResult.Reader)
+	if readErr != nil {
+		return status.Errorf(codes.Internal, "reading optimized stream: %v", readErr)
+	}
+	optSize := int64(len(optBytes))
+
 	var objectKey, publicURL string
 	var sizeBytes int64
 
 	// 1. Try Telegram Storage first if configured
 	if s.tgStore != nil && s.tgStore.IsConfigured() {
-		tgResult, tgErr := s.tgStore.Upload(ctx, optResult.Reader, h.FileName, optResult.MimeType, optResult.Size)
+		tgResult, tgErr := s.tgStore.Upload(ctx, bytes.NewReader(optBytes), h.FileName, optResult.MimeType, optSize)
 		if tgErr == nil {
 			objectKey = tgResult.FileID
 			publicURL = tgResult.URL
@@ -111,20 +131,59 @@ func (s *MediaServer) UploadMedia(stream mediapb.MediaService_UploadMediaServer)
 				zap.String("url", tgResult.URL),
 			)
 		} else {
-			s.log.Warn("telegram storage upload failed, attempting fallback to MinIO", zap.Error(tgErr))
+			s.log.Warn("telegram storage upload failed, attempting fallback to MinIO/DB", zap.Error(tgErr))
 		}
 	}
 
 	// 2. Fallback to MinIO if Telegram was not configured or failed
 	if objectKey == "" && s.store != nil {
-		minioResult, minioErr := s.store.Upload(ctx, optResult.Reader, h.FileName, optResult.MimeType, optResult.Size)
-		if minioErr != nil {
-			return status.Errorf(codes.Internal, "storage upload failed: %v", minioErr)
+		minioResult, minioErr := s.store.Upload(ctx, bytes.NewReader(optBytes), h.FileName, optResult.MimeType, optSize)
+		if minioErr == nil {
+			objectKey = minioResult.ObjectKey
+			publicURL = minioResult.URL
+			sizeBytes = minioResult.Size
+			s.log.Info("media uploaded via MinIO/S3",
+				zap.String("key", minioResult.ObjectKey),
+				zap.String("url", minioResult.URL),
+			)
+		} else {
+			s.log.Warn("minio storage upload failed, attempting fallback to DB", zap.Error(minioErr))
 		}
-		objectKey = minioResult.ObjectKey
-		publicURL = minioResult.URL
-		sizeBytes = minioResult.Size
-	} else if objectKey == "" {
+	}
+
+	// 3. Fallback to Database Storage (PostgreSQL / Neon)
+	if objectKey == "" && s.dbStore != nil && s.dbStore.IsConfigured() {
+		dbResult, dbErr := s.dbStore.Upload(ctx, bytes.NewReader(optBytes), h.FileName, optResult.MimeType, h.UploaderId, optSize)
+		if dbErr == nil {
+			objectKey = dbResult.FileID
+			publicURL = dbResult.URL
+			sizeBytes = dbResult.Size
+			s.log.Info("media uploaded via PostgreSQL Storage",
+				zap.String("file_id", dbResult.FileID),
+				zap.String("url", dbResult.URL),
+			)
+		} else {
+			s.log.Warn("database storage upload failed, attempting fallback to Local Storage", zap.Error(dbErr))
+		}
+	}
+
+	// 4. Fallback to Local Disk Storage
+	if objectKey == "" && s.localStorage != nil {
+		localResult, localErr := s.localStorage.Upload(ctx, bytes.NewReader(optBytes), h.FileName, optResult.MimeType, optSize)
+		if localErr == nil {
+			objectKey = localResult.FileID
+			publicURL = localResult.URL
+			sizeBytes = localResult.Size
+			s.log.Info("media uploaded via Local Disk Storage",
+				zap.String("file_id", localResult.FileID),
+				zap.String("url", localResult.URL),
+			)
+		} else {
+			return status.Errorf(codes.Internal, "all storage providers failed: %v", localErr)
+		}
+	}
+
+	if objectKey == "" {
 		return status.Errorf(codes.Unavailable, "no media storage provider available")
 	}
 
@@ -151,49 +210,98 @@ func (s *MediaServer) GetMediaURL(ctx context.Context, req *mediapb.GetMediaURLR
 		return nil, status.Error(codes.InvalidArgument, "object_key is required")
 	}
 
-	var expires time.Duration
-	if req.ExpiresSeconds > 0 {
-		expires = time.Duration(req.ExpiresSeconds) * time.Second
+	if s.store != nil {
+		var expires time.Duration
+		if req.ExpiresSeconds > 0 {
+			expires = time.Duration(req.ExpiresSeconds) * time.Second
+		}
+
+		url, expiresAt, err := s.store.GetPresignedURL(ctx, req.ObjectKey, expires)
+		if err == nil {
+			resp := &mediapb.GetMediaURLResponse{Url: url}
+			if !expiresAt.IsZero() {
+				resp.ExpiresAt = expiresAt.Unix()
+			}
+			return resp, nil
+		}
 	}
 
-	url, expiresAt, err := s.store.GetPresignedURL(ctx, req.ObjectKey, expires)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to generate URL: %v", err)
-	}
-
-	resp := &mediapb.GetMediaURLResponse{Url: url}
-	if !expiresAt.IsZero() {
-		resp.ExpiresAt = expiresAt.Unix()
-	}
-	return resp, nil
+	// Fallback to local / DB download URL
+	return &mediapb.GetMediaURLResponse{
+		Url: "/api/v1/media/download/" + req.ObjectKey,
+	}, nil
 }
 
-// DeleteMedia removes an object from MinIO.
+// GetMediaFile retrieves a stored media file (from DB or local disk or Telegram) and returns raw bytes.
+func (s *MediaServer) GetMediaFile(ctx context.Context, req *mediapb.GetMediaFileRequest) (*mediapb.GetMediaFileResponse, error) {
+	if req.FileId == "" {
+		return nil, status.Error(codes.InvalidArgument, "file_id is required")
+	}
+
+	// 1. Try DB storage
+	if s.dbStore != nil && s.dbStore.IsConfigured() {
+		file, err := s.dbStore.GetFile(ctx, req.FileId)
+		if err == nil {
+			return &mediapb.GetMediaFileResponse{
+				FileId:    file.FileID,
+				FileName:  file.FileName,
+				MimeType:  file.MimeType,
+				SizeBytes: file.Size,
+				Data:      file.Data,
+			}, nil
+		}
+	}
+
+	// 2. Try Local storage
+	if s.localStorage != nil {
+		file, err := s.localStorage.GetFile(ctx, req.FileId)
+		if err == nil {
+			return &mediapb.GetMediaFileResponse{
+				FileId:    file.FileID,
+				FileName:  file.FileName,
+				MimeType:  file.MimeType,
+				SizeBytes: file.Size,
+				Data:      file.Data,
+			}, nil
+		}
+	}
+
+	// 3. Try Telegram storage
+	if s.tgStore != nil && s.tgStore.IsConfigured() {
+		rc, size, mime, err := s.tgStore.Download(ctx, req.FileId)
+		if err == nil {
+			defer rc.Close()
+			data, readErr := io.ReadAll(rc)
+			if readErr == nil {
+				return &mediapb.GetMediaFileResponse{
+					FileId:    req.FileId,
+					FileName:  req.FileId,
+					MimeType:  mime,
+					SizeBytes: size,
+					Data:      data,
+				}, nil
+			}
+		}
+	}
+
+	return nil, status.Errorf(codes.NotFound, "media file %q not found", req.FileId)
+}
+
+// DeleteMedia removes an object from MinIO, DB, and local disk.
 func (s *MediaServer) DeleteMedia(ctx context.Context, req *mediapb.DeleteMediaRequest) (*mediapb.DeleteMediaResponse, error) {
 	if req.ObjectKey == "" {
 		return nil, status.Error(codes.InvalidArgument, "object_key is required")
 	}
 
-	if err := s.store.Delete(ctx, req.ObjectKey); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to delete media: %v", err)
+	if s.store != nil {
+		_ = s.store.Delete(ctx, req.ObjectKey)
+	}
+	if s.dbStore != nil && s.dbStore.IsConfigured() {
+		_ = s.dbStore.Delete(ctx, req.ObjectKey)
+	}
+	if s.localStorage != nil {
+		_ = s.localStorage.Delete(ctx, req.ObjectKey)
 	}
 
 	return &mediapb.DeleteMediaResponse{Success: true}, nil
-}
-
-// ── helper: in-memory buffer (for small files in tests) ──────────────────────
-func readAll(stream mediapb.MediaService_UploadMediaServer) ([]byte, error) {
-	var buf bytes.Buffer
-	for {
-		msg, err := stream.Recv()
-		if err == io.EOF {
-			return buf.Bytes(), nil
-		}
-		if err != nil {
-			return nil, err
-		}
-		if chunk, ok := msg.Data.(*mediapb.UploadMediaRequest_Chunk); ok {
-			buf.Write(chunk.Chunk)
-		}
-	}
 }

@@ -47,6 +47,8 @@ services:
         sync: false
       - key: CORS_ORIGINS
         value: "*"
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
       - key: AUTH_GRPC_ADDR
         value: gochat-auth:50051
       - key: CHAT_GRPC_ADDR
@@ -152,6 +154,14 @@ services:
         value: gochat-media
       - key: MINIO_USE_SSL
         value: "true"
+      - key: MEDIA_DB_DSN
+        sync: false
+      - key: CHAT_DB_DSN
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHANNEL_ID
+        sync: false
 
   # ─── 6. Authz Service (Private Service) ───────────────────────────────────
   - type: pserv

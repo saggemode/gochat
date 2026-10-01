@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -159,7 +161,8 @@ func (h *MediaHandler) handleGrpcError(c *gin.Context, err error, actionMsg stri
 	}
 }
 
-// DownloadTelegram proxies on-demand media downloads from Telegram CDN to client.
+// DownloadTelegram proxies media downloads to the client.
+// It checks Telegram CDN first (if botToken is configured), then falls back to the Media Service gRPC (PostgreSQL / Local storage).
 func (h *MediaHandler) DownloadTelegram(c *gin.Context) {
 	fileID := c.Param("fileId")
 	if fileID == "" {
@@ -167,24 +170,44 @@ func (h *MediaHandler) DownloadTelegram(c *gin.Context) {
 		return
 	}
 
-	if h.botToken == "" {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "telegram bot token not configured on server"})
+	// 1. Try Telegram CDN if bot token is configured
+	if h.botToken != "" {
+		if served := h.tryDownloadTelegram(c, fileID); served {
+			return
+		}
+	}
+
+	// 2. Fallback to Media Service gRPC (PostgreSQL DB or Local Disk storage)
+	resp, err := h.client.GetMediaFile(c.Request.Context(), &mediapb.GetMediaFileRequest{
+		FileId: fileID,
+	})
+	if err == nil && resp != nil && len(resp.Data) > 0 {
+		contentType := resp.MimeType
+		if contentType == "" {
+			contentType = "application/octet-stream"
+		}
+		c.Header("Cache-Control", "public, max-age=31536000, immutable")
+		if resp.FileName != "" {
+			c.Header("Content-Disposition", fmt.Sprintf("inline; filename=%q", resp.FileName))
+		}
+		c.Data(http.StatusOK, contentType, resp.Data)
 		return
 	}
 
-	// 1. Resolve file path via Telegram getFile
+	c.JSON(http.StatusNotFound, gin.H{"error": "media file not found"})
+}
+
+func (h *MediaHandler) tryDownloadTelegram(c *gin.Context, fileID string) bool {
 	client := &http.Client{Timeout: 120 * time.Second}
 	getFileURL := "https://api.telegram.org/bot" + h.botToken + "/getFile?file_id=" + fileID
 	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, getFileURL, nil)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed creating telegram request"})
-		return
+		return false
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "failed communicating with telegram API"})
-		return
+		return false
 	}
 	defer resp.Body.Close()
 
@@ -194,32 +217,27 @@ func (h *MediaHandler) DownloadTelegram(c *gin.Context) {
 			FilePath string `json:"file_path"`
 			FileSize int64  `json:"file_size"`
 		} `json:"result"`
-		Description string `json:"description"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&getFileResp); err != nil || !getFileResp.OK {
-		errMsg := getFileResp.Description
-		if errMsg == "" {
-			errMsg = "file not found on telegram"
-		}
-		c.JSON(http.StatusNotFound, gin.H{"error": errMsg})
-		return
+		return false
 	}
 
-	// 2. Fetch binary stream from Telegram file CDN
 	fileDownloadURL := "https://api.telegram.org/file/bot" + h.botToken + "/" + getFileResp.Result.FilePath
 	dlReq, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, fileDownloadURL, nil)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed creating download stream"})
-		return
+		return false
 	}
 
 	dlResp, err := client.Do(dlReq)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "failed fetching file from telegram"})
-		return
+		return false
 	}
 	defer dlResp.Body.Close()
+
+	if dlResp.StatusCode != http.StatusOK {
+		return false
+	}
 
 	contentType := dlResp.Header.Get("Content-Type")
 	if contentType == "" {
@@ -234,6 +252,7 @@ func (h *MediaHandler) DownloadTelegram(c *gin.Context) {
 		dlResp.Body,
 		nil,
 	)
+	return true
 }
 
 // DownloadResized handles on-demand resizing for media downloads.
@@ -247,47 +266,60 @@ func (h *MediaHandler) DownloadResized(c *gin.Context) {
 		return
 	}
 
-	if h.botToken == "" {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "telegram bot token not configured"})
+	var rawData []byte
+	var contentType string
+
+	// 1. Try Telegram if bot token configured
+	if h.botToken != "" {
+		client := &http.Client{Timeout: 120 * time.Second}
+		getFileURL := "https://api.telegram.org/bot" + h.botToken + "/getFile?file_id=" + fileID
+		req, _ := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, getFileURL, nil)
+		resp, err := client.Do(req)
+		if err == nil {
+			defer resp.Body.Close()
+			var getFileResp struct {
+				OK     bool `json:"ok"`
+				Result struct {
+					FilePath string `json:"file_path"`
+				} `json:"result"`
+			}
+			if json.NewDecoder(resp.Body).Decode(&getFileResp) == nil && getFileResp.OK {
+				fileDownloadURL := "https://api.telegram.org/file/bot" + h.botToken + "/" + getFileResp.Result.FilePath
+				dlResp, dlErr := client.Get(fileDownloadURL)
+				if dlErr == nil {
+					defer dlResp.Body.Close()
+					if dlResp.StatusCode == http.StatusOK {
+						contentType = dlResp.Header.Get("Content-Type")
+						rawData, _ = io.ReadAll(dlResp.Body)
+					}
+				}
+			}
+		}
+	}
+
+	// 2. Fallback to Media Service gRPC
+	if len(rawData) == 0 {
+		resp, err := h.client.GetMediaFile(c.Request.Context(), &mediapb.GetMediaFileRequest{
+			FileId: fileID,
+		})
+		if err == nil && resp != nil && len(resp.Data) > 0 {
+			rawData = resp.Data
+			contentType = resp.MimeType
+		}
+	}
+
+	if len(rawData) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "media file not found"})
 		return
 	}
 
-	// 1. Fetch from Telegram (same as DownloadTelegram but we need the bytes)
-	client := &http.Client{Timeout: 120 * time.Second}
-	getFileURL := "https://api.telegram.org/bot" + h.botToken + "/getFile?file_id=" + fileID
-	req, _ := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, getFileURL, nil)
-	resp, err := client.Do(req)
-	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "telegram api error"})
-		return
-	}
-	defer resp.Body.Close()
-
-	var getFileResp struct {
-		OK     bool `json:"ok"`
-		Result struct {
-			FilePath string `json:"file_path"`
-		} `json:"result"`
-	}
-	json.NewDecoder(resp.Body).Decode(&getFileResp)
-	if !getFileResp.OK {
-		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
-		return
+	if contentType == "" {
+		contentType = "application/octet-stream"
 	}
 
-	fileDownloadURL := "https://api.telegram.org/file/bot" + h.botToken + "/" + getFileResp.Result.FilePath
-	dlResp, err := client.Get(fileDownloadURL)
-	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "telegram download error"})
-		return
-	}
-	defer dlResp.Body.Close()
-
-	contentType := dlResp.Header.Get("Content-Type")
-
-	// 2. Resize if it's an image
+	// Resize if it's an image
 	if strings.HasPrefix(contentType, "image/") && !strings.Contains(contentType, "gif") {
-		optReader, optMime, _, err := optimizer.CompressImageWithLimit(dlResp.Body, contentType, width, h.log)
+		optReader, optMime, _, err := optimizer.CompressImageWithLimit(bytes.NewReader(rawData), contentType, width, h.log)
 		if err == nil {
 			c.Header("Cache-Control", "public, max-age=31536000, immutable")
 			c.DataFromReader(http.StatusOK, -1, optMime, optReader, nil)
@@ -295,8 +327,7 @@ func (h *MediaHandler) DownloadResized(c *gin.Context) {
 		}
 	}
 
-	// Fallback to original if not an image or resizing failed
 	c.Header("Cache-Control", "public, max-age=31536000, immutable")
-	c.DataFromReader(http.StatusOK, dlResp.ContentLength, contentType, dlResp.Body, nil)
+	c.Data(http.StatusOK, contentType, rawData)
 }
 

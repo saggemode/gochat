@@ -326,8 +326,8 @@ func main() {
 		api.GET("/search", searchHandler.ProxySearch)
 		api.GET("/search/suggestions", searchHandler.ProxySearch)
 
-		// Media proxy with resizing
-
+		// Media proxy with resizing & downloads
+		api.GET("/media/download/:fileId", mediaHandler.DownloadTelegram)
 		api.GET("/media/thumbnail/:fileId", mediaHandler.DownloadResized)
 
 		// Carrier Webhooks (public endpoint for shipping couriers e.g., DHL, FedEx, GIG)
