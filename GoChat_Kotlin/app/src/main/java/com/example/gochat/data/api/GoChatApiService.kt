@@ -492,4 +492,26 @@ interface GoChatApiService {
     suspend fun summarizeChat(
         @Body body: JsonObject
     ): Response<JsonObject>
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── Privacy: Block & Report ───────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════
+
+    @POST("api/v1/privacy/blocks/{userId}")
+    suspend fun blockUser(
+        @Path("userId") userId: String
+    ): Response<JsonObject>
+
+    @DELETE("api/v1/privacy/blocks/{userId}")
+    suspend fun unblockUser(
+        @Path("userId") userId: String
+    ): Response<JsonObject>
+
+    @GET(ApiConstants.BLOCKED_USERS)
+    suspend fun getBlockedUsers(): Response<JsonObject>
+
+    @POST(ApiConstants.REPORT_USER)
+    suspend fun reportUser(
+        @Body body: JsonObject
+    ): Response<JsonObject>
 }

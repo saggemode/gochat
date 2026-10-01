@@ -195,4 +195,26 @@ interface ChatDao {
 
     @Query("DELETE FROM calls")
     suspend fun clearAllCalls(): Int
+
+    // ── Blocked Users ──────────────────────────────────────────
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBlockedUser(blockedUser: com.example.gochat.data.model.BlockedUser)
+
+    @Query("DELETE FROM blocked_users WHERE userId = :userId")
+    suspend fun removeBlockedUser(userId: String): Int
+
+    @Query("SELECT EXISTS(SELECT 1 FROM blocked_users WHERE userId = :userId)")
+    suspend fun isUserBlocked(userId: String): Boolean
+
+    @Query("SELECT EXISTS(SELECT 1 FROM blocked_users WHERE userId = :userId)")
+    fun observeIsUserBlocked(userId: String): Flow<Boolean>
+
+    @Query("SELECT * FROM blocked_users ORDER BY blockedAt DESC")
+    fun getAllBlockedUsers(): Flow<List<com.example.gochat.data.model.BlockedUser>>
+
+    @Query("SELECT * FROM blocked_users ORDER BY blockedAt DESC")
+    suspend fun getAllBlockedUsersList(): List<com.example.gochat.data.model.BlockedUser>
+
+    @Query("SELECT COUNT(*) FROM blocked_users")
+    fun getBlockedUsersCount(): Flow<Int>
 }

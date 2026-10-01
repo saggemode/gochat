@@ -516,6 +516,12 @@ class ChatRepository @Inject constructor(
                 msg = msg.copy(conversationId = convId)
             }
 
+            // WhatsApp Behavior: If sender is blocked locally, drop incoming message & do not deliver notification
+            if (!msg.isMe && dao.isUserBlocked(msg.senderId)) {
+                Log.d("ChatRepository", "Incoming message dropped: sender ${msg.senderId} is blocked.")
+                return null
+            }
+
             // Guard: preserve locally-stored plaintext to prevent WS echo from
             // overwriting our decrypted/original content with server ciphertext.
             val localExisting = dao.getMessageById(msg.id)
@@ -816,6 +822,12 @@ class ChatRepository @Inject constructor(
 
     suspend fun insertWebSocketMessage(message: Message) {
         val decrypted = tryDecryptMessage(message)
+        val isMe = decrypted.senderId == (tokenManager.userId ?: "")
+        if (!isMe && dao.isUserBlocked(decrypted.senderId)) {
+            Log.d("ChatRepository", "insertWebSocketMessage: sender ${decrypted.senderId} is blocked, dropping.")
+            return
+        }
+
         val conv = if (decrypted.conversationId.isNotEmpty()) dao.getConversationById(decrypted.conversationId) else null
         val clearedAt = conv?.clearedAt ?: 0L
         val isDeletedForMe = decrypted.deletedForMe || 
@@ -1272,4 +1284,150 @@ class ChatRepository @Inject constructor(
 
     fun getRecentMediaPreviews(conversationId: String): Flow<List<Message>> =
         dao.getRecentMediaPreviews(conversationId)
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── Privacy: Block & Report ───────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Blocks a user locally in Room immediately (offline-first) and syncs with the backend.
+     */
+    suspend fun blockUser(userId: String, userName: String = ""): Result<Unit> {
+        return try {
+            // 1. Immediately update Room DB
+            dao.insertBlockedUser(
+                BlockedUser(
+                    userId = userId,
+                    userName = userName,
+                    blockedAt = System.currentTimeMillis()
+                )
+            )
+            // 2. Sync to server in background
+            try {
+                api.blockUser(userId)
+            } catch (e: Exception) {
+                Log.w("ChatRepository", "Failed to sync block to server for $userId: ${e.message}")
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Unblocks a user locally in Room immediately and syncs with the backend.
+     */
+    suspend fun unblockUser(userId: String): Result<Unit> {
+        return try {
+            // 1. Immediately remove from Room DB
+            dao.removeBlockedUser(userId)
+            // 2. Sync to server in background
+            try {
+                api.unblockUser(userId)
+            } catch (e: Exception) {
+                Log.w("ChatRepository", "Failed to sync unblock to server for $userId: ${e.message}")
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Checks if a user is currently blocked.
+     */
+    suspend fun isUserBlocked(userId: String): Boolean = dao.isUserBlocked(userId)
+
+    /**
+     * Observes whether a user is currently blocked as a Flow.
+     */
+    fun observeIsUserBlocked(userId: String): Flow<Boolean> = dao.observeIsUserBlocked(userId)
+
+    /**
+     * Observes all blocked users.
+     */
+    fun observeBlockedUsers(): Flow<List<BlockedUser>> = dao.getAllBlockedUsers()
+
+    suspend fun getBlockedUsersList(): List<BlockedUser> = dao.getAllBlockedUsersList()
+
+    /**
+     * Syncs blocked users from the server into the local database.
+     */
+    suspend fun syncBlockedUsers(): Result<List<BlockedUser>> {
+        return try {
+            val response = api.getBlockedUsers()
+            if (response.isSuccessful) {
+                val body = response.body()
+                val list = mutableListOf<BlockedUser>()
+                val rawArray = body?.get("blocked_users")?.jsonArray
+                    ?: body?.get("blocked")?.jsonArray
+                rawArray?.forEach { element ->
+                    if (element is JsonObject) {
+                        val uId = element["user_id"]?.jsonPrimitive?.contentOrNull
+                            ?: element["userId"]?.jsonPrimitive?.contentOrNull
+                            ?: element["id"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                        val uName = element["user_name"]?.jsonPrimitive?.contentOrNull
+                            ?: element["userName"]?.jsonPrimitive?.contentOrNull
+                            ?: element["name"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                        if (uId.isNotEmpty()) {
+                            list.add(BlockedUser(userId = uId, userName = uName))
+                        }
+                    }
+                }
+                list.forEach { dao.insertBlockedUser(it) }
+                Result.success(list)
+            } else {
+                Result.failure(Exception("Failed to fetch blocked users (${response.code()})"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Submits a report for a user to the backend and optionally blocks them.
+     */
+    suspend fun reportUser(
+        reportedUserId: String,
+        reportedUserName: String = "",
+        conversationId: String? = null,
+        reason: String,
+        details: String = "",
+        evidenceMsgIds: List<String> = emptyList(),
+        alsoBlock: Boolean = false
+    ): Result<Unit> {
+        return try {
+            val body = buildJsonObject {
+                put("reported_user_id", reportedUserId)
+                if (!conversationId.isNullOrBlank()) {
+                    put("conversation_id", conversationId)
+                }
+                put("reason", reason)
+                if (details.isNotBlank()) {
+                    put("details", details)
+                }
+                if (evidenceMsgIds.isNotEmpty()) {
+                    put("evidence_msg_ids", buildJsonArray {
+                        evidenceMsgIds.forEach { add(JsonPrimitive(it)) }
+                    })
+                }
+            }
+
+            try {
+                api.reportUser(body)
+            } catch (e: Exception) {
+                Log.w("ChatRepository", "Failed to submit report online: ${e.message}")
+            }
+
+            if (alsoBlock) {
+                blockUser(reportedUserId, reportedUserName)
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            if (alsoBlock) {
+                blockUser(reportedUserId, reportedUserName)
+            }
+            Result.success(Unit)
+        }
+    }
 }

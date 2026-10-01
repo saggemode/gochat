@@ -101,6 +101,7 @@ class ChatRoomActivity : AppCompatActivity() {
     private lateinit var binding: ActivityChatRoomBinding
     private val viewModel: ChatRoomViewModel by viewModels()
     @Inject lateinit var chatRepository: ChatRepository
+    @Inject lateinit var tokenManager: com.example.gochat.data.api.TokenManager
     private lateinit var messageAdapter: MessageAdapter
     private lateinit var mentionAdapter: GroupMemberAdapter
     private lateinit var audioRecorderManager: AudioRecorderManager
@@ -108,6 +109,7 @@ class ChatRoomActivity : AppCompatActivity() {
     private var unreadNewMessagesCount = 0
     private var isScrolledUp = false
     private var currentPartnerId: String? = null
+    private var isPartnerBlocked: Boolean = false
 
     private var recordingDurationSeconds = 0
     private var recordingDotPulse: ObjectAnimator? = null
@@ -1288,6 +1290,49 @@ class ChatRoomActivity : AppCompatActivity() {
                         updatePinnedMessageHeader(pinnedList)
                     }
                 }
+
+                // WhatsApp Behavior: Live observe if 1-on-1 contact is blocked
+                val isGroupChat = intent.getBooleanExtra(EXTRA_IS_GROUP, false)
+                val roomConvId = viewModel.conversationId.value.ifBlank { intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty() }
+                val contactTitle = intent.getStringExtra(EXTRA_CONVERSATION_TITLE) ?: getString(R.string.message_hint)
+
+                if (!isGroupChat) {
+                    launch {
+                        var targetId = currentPartnerId?.ifBlank { null } ?: viewModel.partnerId?.ifBlank { null }
+                        if (targetId.isNullOrBlank() && roomConvId.isNotEmpty()) {
+                            val conv = chatRepository.getConversationById(roomConvId)
+                            val myId = tokenManager.userId.orEmpty()
+                            targetId = conv?.memberIds?.find { it.isNotBlank() && it != myId }
+                            if (!targetId.isNullOrBlank()) {
+                                currentPartnerId = targetId
+                            }
+                        }
+                        val finalPartnerId = targetId.orEmpty().ifBlank { roomConvId }
+                        if (finalPartnerId.isNotEmpty()) {
+                            chatRepository.observeIsUserBlocked(finalPartnerId).collect { isBlocked ->
+                                isPartnerBlocked = isBlocked
+                                if (isBlocked) {
+                                    binding.layoutBlockedBanner.visibility = View.VISIBLE
+                                    binding.layoutNormalInput.visibility = View.GONE
+                                    binding.layoutVoiceRecording.visibility = View.GONE
+                                    binding.tvBlockedBannerMessage.text = getString(R.string.blocked_banner_text)
+                                    binding.layoutBlockedBanner.setOnClickListener {
+                                        BlockContactHelper.showUnblockConfirmationDialog(
+                                            context = this@ChatRoomActivity,
+                                            coroutineScope = lifecycleScope,
+                                            chatRepository = chatRepository,
+                                            userId = finalPartnerId,
+                                            userName = contactTitle
+                                        )
+                                    }
+                                } else {
+                                    binding.layoutBlockedBanner.visibility = View.GONE
+                                    binding.layoutNormalInput.visibility = View.VISIBLE
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -1674,6 +1719,52 @@ class ChatRoomActivity : AppCompatActivity() {
         menuItems.add(getString(R.string.option_export_chat))
         actions.add {
             showExportChatBottomSheet()
+        }
+
+        if (!isGroup) {
+            val targetId = currentPartnerId?.ifBlank { null }
+                ?: viewModel.partnerId?.ifBlank { null }
+                ?: convId
+
+            if (isPartnerBlocked) {
+                menuItems.add(getString(R.string.action_unblock_contact, title))
+                actions.add {
+                    BlockContactHelper.showUnblockConfirmationDialog(
+                        context = this@ChatRoomActivity,
+                        coroutineScope = lifecycleScope,
+                        chatRepository = chatRepository,
+                        userId = targetId,
+                        userName = title
+                    )
+                }
+            } else {
+                menuItems.add(getString(R.string.action_block_contact, title))
+                actions.add {
+                    BlockContactHelper.showBlockConfirmationDialog(
+                        context = this@ChatRoomActivity,
+                        coroutineScope = lifecycleScope,
+                        chatRepository = chatRepository,
+                        userId = targetId,
+                        userName = title
+                    )
+                }
+            }
+
+            menuItems.add(getString(R.string.action_report_contact, title))
+            actions.add {
+                BlockContactHelper.showReportBottomSheet(
+                    fragmentManager = supportFragmentManager,
+                    userId = targetId,
+                    userName = title,
+                    conversationId = convId,
+                    chatRepository = chatRepository,
+                    onReportCompleted = { blocked ->
+                        if (blocked) {
+                            finish()
+                        }
+                    }
+                )
+            }
         }
 
         AlertDialog.Builder(this)

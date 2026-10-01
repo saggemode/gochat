@@ -707,6 +707,42 @@
                 app:tint="@color/gochat_text_muted" />
         </LinearLayout>
 
+        <!-- WhatsApp Blocked Contact Banner (replaces normal input when blocked) -->
+        <LinearLayout
+            android:id="@+id/layoutBlockedBanner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="10dp"
+            android:layout_marginVertical="6dp"
+            android:background="@drawable/bg_card_dark"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            android:gravity="center"
+            android:minHeight="48dp"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="10dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:contentDescription="Blocked"
+                android:src="@drawable/ic_block"
+                app:tint="@color/gochat_error" />
+
+            <TextView
+                android:id="@+id/tvBlockedBannerMessage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:text="@string/blocked_banner_text"
+                android:textColor="@color/gochat_text_secondary"
+                android:textSize="14sp" />
+        </LinearLayout>
+
         <!-- Chat Input Bar -->
         <LinearLayout
             android:id="@+id/layoutNormalInput"

@@ -80,7 +80,7 @@ class ContactProfileActivity : AppCompatActivity() {
         setupToolbar(userName)
         setupProfileInfo(userName, userPhone, userAvatar, userPin, isOnline, lastSeen, targetUserId)
         setupActionButtons(targetUserId, userName, userAvatar, convId)
-        setupSettingsRows(userName, convId)
+        setupSettingsRows(userName, convId, targetUserId)
         loadDisappearingStatus(convId)
         setupSellerStorefront(userName, targetUserId, userPin, convId, userPhone)
         setupSharedMedia(convId, userName)
@@ -209,7 +209,7 @@ class ContactProfileActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupSettingsRows(userName: String, convId: String) {
+    private fun setupSettingsRows(userName: String, convId: String, targetUserId: String) {
         // 1. Notification
         binding.layoutNotification.setOnClickListener {
             showNotificationDialog()
@@ -295,6 +295,67 @@ class ContactProfileActivity : AppCompatActivity() {
                 coroutineScope = lifecycleScope,
                 chatRepository = chatRepository,
                 conversationId = convId
+            )
+        }
+
+        // 11. Block & Report Contact (WhatsApp style)
+        val resolvedTargetId = targetUserId.ifBlank { convId }
+        binding.tvBlockContactTitle.text = getString(R.string.action_block_contact, userName)
+        binding.tvReportContactTitle.text = getString(R.string.action_report_contact, userName)
+
+        lifecycleScope.launch {
+            chatRepository.observeIsUserBlocked(resolvedTargetId).collect { isBlocked ->
+                if (isBlocked) {
+                    binding.tvBlockContactTitle.text = getString(R.string.action_unblock_contact, userName)
+                    binding.tvBlockContactSubtitle.text = "Tap to unblock and resume messaging"
+                    binding.ivBlockIcon.setImageResource(R.drawable.ic_check)
+                    binding.ivBlockIcon.imageTintList = ColorStateList.valueOf(getColor(R.color.gochat_emerald_light))
+                    binding.tvBlockContactTitle.setTextColor(getColor(R.color.gochat_emerald_light))
+                } else {
+                    binding.tvBlockContactTitle.text = getString(R.string.action_block_contact, userName)
+                    binding.tvBlockContactSubtitle.text = "Blocked contacts cannot call or message you"
+                    binding.ivBlockIcon.setImageResource(R.drawable.ic_block)
+                    binding.ivBlockIcon.imageTintList = ColorStateList.valueOf(getColor(R.color.gochat_error))
+                    binding.tvBlockContactTitle.setTextColor(getColor(R.color.gochat_error))
+                }
+            }
+        }
+
+        binding.layoutBlockContact.setOnClickListener {
+            lifecycleScope.launch {
+                val isBlocked = chatRepository.isUserBlocked(resolvedTargetId)
+                if (isBlocked) {
+                    BlockContactHelper.showUnblockConfirmationDialog(
+                        context = this@ContactProfileActivity,
+                        coroutineScope = lifecycleScope,
+                        chatRepository = chatRepository,
+                        userId = resolvedTargetId,
+                        userName = userName
+                    )
+                } else {
+                    BlockContactHelper.showBlockConfirmationDialog(
+                        context = this@ContactProfileActivity,
+                        coroutineScope = lifecycleScope,
+                        chatRepository = chatRepository,
+                        userId = resolvedTargetId,
+                        userName = userName
+                    )
+                }
+            }
+        }
+
+        binding.layoutReportContact.setOnClickListener {
+            BlockContactHelper.showReportBottomSheet(
+                fragmentManager = supportFragmentManager,
+                userId = resolvedTargetId,
+                userName = userName,
+                conversationId = convId,
+                chatRepository = chatRepository,
+                onReportCompleted = { blocked ->
+                    if (blocked) {
+                        finish()
+                    }
+                }
             )
         }
     }

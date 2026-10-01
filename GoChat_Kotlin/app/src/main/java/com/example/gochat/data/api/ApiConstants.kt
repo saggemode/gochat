@@ -26,6 +26,12 @@ object ApiConstants {
     const val RECOVERY_REQUEST = "api/v1/auth/recovery/request"
     const val RECOVERY_VERIFY = "api/v1/auth/recovery/verify"
 
+    // ── Privacy, Block & Report ──────────────────────────────────
+    fun blockUser(userId: String) = "api/v1/privacy/blocks/$userId"
+    fun unblockUser(userId: String) = "api/v1/privacy/blocks/$userId"
+    const val BLOCKED_USERS = "api/v1/privacy/blocks"
+    const val REPORT_USER = "api/v1/users/report"
+
     // ── Conversations & Messages ─────────────────────────────────
     const val CONVERSATIONS = "api/v1/chat/conversations"
     fun conversationMessages(convId: String) = "api/v1/chat/conversations/$convId/messages"

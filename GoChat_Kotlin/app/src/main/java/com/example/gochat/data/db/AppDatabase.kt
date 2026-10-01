@@ -16,9 +16,10 @@ import com.example.gochat.data.model.*
         Product::class,
         CartItem::class,
         Order::class,
-        ProductRemoteKeys::class
+        ProductRemoteKeys::class,
+        BlockedUser::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

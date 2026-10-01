@@ -586,4 +586,24 @@
     <!-- Export Chat Selection -->
     <string name="export_selection_count">%d selected</string>
 
+    <!-- Block & Report Contact -->
+    <string name="block_user_title">Block %1$s?</string>
+    <string name="block_user_message">Blocked contacts will no longer be able to call you or send you messages. This contact will not be notified.</string>
+    <string name="unblock_user_title">Unblock %1$s?</string>
+    <string name="unblock_user_message">Unblock to send and receive messages and calls from this contact.</string>
+    <string name="action_block">Block</string>
+    <string name="action_unblock">Unblock</string>
+    <string name="action_block_contact">Block %1$s</string>
+    <string name="action_unblock_contact">Unblock %1$s</string>
+    <string name="action_report_contact">Report %1$s</string>
+    <string name="action_report_and_block">Report and block</string>
+    <string name="report_contact_title">Report %1$s?</string>
+    <string name="report_contact_subtitle">The last 5 messages from this chat will be forwarded to GoChat. This contact will not be notified.</string>
+    <string name="report_block_contact_checkbox">Block contact and delete chat messages</string>
+    <string name="report_reason_prompt">Select a reason for reporting</string>
+    <string name="report_details_hint">Add additional details (optional)</string>
+    <string name="user_blocked_toast">%1$s has been blocked</string>
+    <string name="user_unblocked_toast">%1$s has been unblocked</string>
+    <string name="report_submitted_toast">Report submitted. Thank you for keeping GoChat safe.</string>
+    <string name="blocked_banner_text">You blocked this contact. Tap to unblock.</string>
 </resources>
