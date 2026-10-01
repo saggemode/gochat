@@ -376,6 +376,15 @@ func (h *GroupHandler) ResolvePendingApproval(c *gin.Context) {
 		return
 	}
 
+	// If approved, post a system message so the group sees the entry channel
+	if req.Approve && resp.Success && resp.ConversationId != "" {
+		resolverName := h.resolveUserName(c.Request.Context(), userID)
+		joinerName := h.resolveUserName(c.Request.Context(), resp.UserId)
+		h.notifyGroupEvent(userID, resp.ConversationId,
+			fmt.Sprintf("%s approved %s to join", resolverName, joinerName),
+			"member_joined", nil)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success":         resp.Success,
 		"conversation_id": resp.ConversationId,

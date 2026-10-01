@@ -621,7 +621,18 @@ class MessageAdapter(
 
             val contentLower = rawContent.lowercase(Locale.ROOT)
             when {
+                contentLower.contains("invite link") -> {
+                    // Joined via invite link
+                    binding.ivSystemMessageIcon.setImageResource(R.drawable.ic_link)
+                    binding.ivSystemMessageIcon.imageTintList = ColorStateList.valueOf(0xFF00B4D8.toInt())
+                }
+                contentLower.contains("approved") && contentLower.contains("join") -> {
+                    // Admin approved a join request
+                    binding.ivSystemMessageIcon.setImageResource(R.drawable.ic_shield)
+                    binding.ivSystemMessageIcon.imageTintList = ColorStateList.valueOf(0xFF00A884.toInt())
+                }
                 contentLower.contains("added") || contentLower.contains("created group") || contentLower.contains("group") -> {
+                    // Admin added directly / other group event
                     binding.ivSystemMessageIcon.setImageResource(R.drawable.ic_group_add)
                     binding.ivSystemMessageIcon.imageTintList = ColorStateList.valueOf(0xFF00A884.toInt())
                 }
