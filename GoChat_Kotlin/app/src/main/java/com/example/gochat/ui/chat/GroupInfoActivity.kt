@@ -16,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.gochat.R
+import com.example.gochat.core.media.ImageCompressor
 import com.example.gochat.core.media.MediaImageHelper
 import com.example.gochat.data.model.GroupMember
 import com.example.gochat.data.model.MessageType
@@ -309,30 +310,50 @@ class GroupInfoActivity : AppCompatActivity() {
     private fun uploadAndSetAvatar(uri: Uri) {
         lifecycleScope.launch {
             Toast.makeText(this@GroupInfoActivity, "Uploading group photo...", Toast.LENGTH_SHORT).show()
-            val bytes = withContext(Dispatchers.IO) {
-                contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            val compressed = withContext(Dispatchers.IO) {
+                ImageCompressor.compressImageUri(
+                    context = this@GroupInfoActivity,
+                    uri = uri,
+                    maxDimension = 512,
+                    quality = 70
+                )
             }
-            if (bytes == null || bytes.isEmpty()) {
-                Toast.makeText(this@GroupInfoActivity, "Failed to read image", Toast.LENGTH_SHORT).show()
+            if (compressed == null) {
+                Toast.makeText(this@GroupInfoActivity, "Failed to process selected image", Toast.LENGTH_SHORT).show()
                 return@launch
             }
 
-            val mimeType = contentResolver.getType(uri) ?: "image/jpeg"
             val fileName = "group_avatar_${System.currentTimeMillis()}.jpg"
 
-            val uploadedUrl = chatRepository.uploadMedia(bytes, mimeType, fileName)
-            if (!uploadedUrl.isNullOrBlank()) {
-                viewModel.updateGroupDetails(convId, avatarUrl = uploadedUrl) { success, err ->
-                    if (success) {
-                        currentAvatar = uploadedUrl
-                        renderAvatar(uploadedUrl)
-                        Toast.makeText(this@GroupInfoActivity, getString(R.string.toast_group_updated), Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(this@GroupInfoActivity, err ?: getString(R.string.toast_group_update_failed), Toast.LENGTH_SHORT).show()
-                    }
+            // 1. Try uploading to remote CDN/storage first (mirroring SettingsViewModel / profile photo)
+            var finalAvatarUrl: String? = null
+            try {
+                val uploadedUrl = chatRepository.uploadMedia(
+                    bytes = compressed.bytes,
+                    mimeType = compressed.mimeType,
+                    fileName = fileName
+                )
+                if (!uploadedUrl.isNullOrBlank() &&
+                    (uploadedUrl.startsWith("http://") || uploadedUrl.startsWith("https://") || uploadedUrl.startsWith("/"))
+                ) {
+                    finalAvatarUrl = uploadedUrl
                 }
-            } else {
-                Toast.makeText(this@GroupInfoActivity, "Failed to upload group photo", Toast.LENGTH_SHORT).show()
+            } catch (_: Exception) {}
+
+            // 2. Fallback to compact Base64 Data URI so other devices can render directly
+            if (finalAvatarUrl.isNullOrBlank()) {
+                finalAvatarUrl = compressed.dataUri
+            }
+
+            // 3. Persist avatarUrl to group metadata and broadcast on WebSocket
+            viewModel.updateGroupDetails(convId, avatarUrl = finalAvatarUrl) { success, err ->
+                if (success) {
+                    currentAvatar = finalAvatarUrl
+                    renderAvatar(finalAvatarUrl)
+                    Toast.makeText(this@GroupInfoActivity, "✅ Group photo updated!", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this@GroupInfoActivity, err ?: getString(R.string.toast_group_update_failed), Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }

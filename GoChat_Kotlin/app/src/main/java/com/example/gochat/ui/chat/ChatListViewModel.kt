@@ -187,7 +187,7 @@ class ChatListViewModel @Inject constructor(
                     ?.jsonPrimitive?.contentOrNull.orEmpty().lowercase()
                 if (type == "new_product") {
                     marketplaceRepository.handleIncomingWebSocketEvent(event)
-                } else if (type == "added_to_group") {
+                } else if (type == "added_to_group" || type == "group_updated") {
                     val groupName = event["group_name"]?.jsonPrimitive?.contentOrNull ?: "a group"
                     val groupAvatar = (event["group_avatar"] ?: event["sender_avatar"])?.jsonPrimitive?.contentOrNull ?: ""
                     val addedByName = event["added_by_name"]?.jsonPrimitive?.contentOrNull ?: "Someone"
@@ -195,7 +195,7 @@ class ChatListViewModel @Inject constructor(
 
                     chatRepository.refreshConversations()
 
-                    if (convId.isNotEmpty() && chatRepository.activeConversationId != convId) {
+                    if (type == "added_to_group" && convId.isNotEmpty() && chatRepository.activeConversationId != convId) {
                         try {
                             NotificationHelper.showChatNotificationAsync(
                                 context = getApplication(),

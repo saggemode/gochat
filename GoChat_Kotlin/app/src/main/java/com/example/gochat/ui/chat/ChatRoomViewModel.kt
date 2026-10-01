@@ -996,6 +996,14 @@ class ChatRoomViewModel @Inject constructor(
                     }
                 }
             }
+            type == "group_updated" -> {
+                val updatedConvId = (event["conversation_id"] ?: event["conv_id"] ?: event["id"])?.jsonPrimitive?.contentOrNull.orEmpty()
+                if (updatedConvId.isNotEmpty() && updatedConvId == _conversationId.value) {
+                    viewModelScope.launch {
+                        chatRepository.fetchConversation(updatedConvId)
+                    }
+                }
+            }
             type == "new_message" || type == "message_deleted" || 
             type == "reaction_added" || type == "reaction_removed" || 
             type == "event_new_message" || type == "message" || type == "chat_message" || event.containsKey("message") -> {

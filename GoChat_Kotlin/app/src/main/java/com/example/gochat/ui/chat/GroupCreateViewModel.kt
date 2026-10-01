@@ -4,6 +4,7 @@ import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.gochat.core.media.ImageCompressor
 import com.example.gochat.data.model.Conversation
 import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.data.repository.GroupRepository
@@ -74,29 +75,39 @@ class GroupCreateViewModel @Inject constructor(
     private suspend fun uploadAvatarAndUpdateGroup(conversation: Conversation, avatarUri: Uri) {
         try {
             val context = getApplication<Application>()
-            val inputStream = context.contentResolver.openInputStream(avatarUri)
-            val bytes = inputStream?.readBytes()
-            inputStream?.close()
+            val compressed = ImageCompressor.compressImageUri(
+                context = context,
+                uri = avatarUri,
+                maxDimension = 512,
+                quality = 70
+            )
 
-            if (bytes == null || bytes.isEmpty()) {
-                // Avatar upload failed but group was created — still succeed
-                _isLoading.value = false
-                _successEvent.tryEmit(conversation)
-                return
+            var finalAvatarUrl: String? = null
+            if (compressed != null) {
+                val fileName = "group_avatar_${conversation.id}.jpg"
+                try {
+                    val uploadedUrl = chatRepository.uploadMedia(
+                        bytes = compressed.bytes,
+                        mimeType = compressed.mimeType,
+                        fileName = fileName
+                    )
+                    if (!uploadedUrl.isNullOrBlank() &&
+                        (uploadedUrl.startsWith("http://") || uploadedUrl.startsWith("https://") || uploadedUrl.startsWith("/"))
+                    ) {
+                        finalAvatarUrl = uploadedUrl
+                    }
+                } catch (_: Exception) {}
+
+                if (finalAvatarUrl.isNullOrBlank()) {
+                    finalAvatarUrl = compressed.dataUri
+                }
             }
 
-            // Determine mime type
-            val mimeType = context.contentResolver.getType(avatarUri) ?: "image/jpeg"
-            val fileName = "group_avatar_${conversation.id}.jpg"
-
-            // Upload the media
-            val uploadedUrl = chatRepository.uploadMedia(bytes, mimeType, fileName)
-
-            if (!uploadedUrl.isNullOrBlank()) {
+            if (!finalAvatarUrl.isNullOrBlank()) {
                 // Update group metadata with the new avatar URL
                 groupRepository.updateGroupMetadata(
                     convId = conversation.id,
-                    avatarUrl = uploadedUrl
+                    avatarUrl = finalAvatarUrl
                 )
             }
 
