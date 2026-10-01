@@ -172,11 +172,18 @@ func startInProcessGRPC(
 	}
 
 	// 4. Group Service
-	groupDSN := getServiceDSN("GROUP_DB_DSN", neonGroupDSN)
-	if groupDB, err := database.NewPostgres(ctx, groupDSN, log); err == nil {
+	// Group tables (group_metadata, approvals, bot_configs) join directly with chat.conversations
+	// and chat.conversation_members. Therefore, grp schema must reside on the same database pool as chat.
+	groupDB := chatDB
+	if groupDB == nil {
+		groupDSN := getServiceDSN("GROUP_DB_DSN", neonGroupDSN)
+		groupDB, _ = database.NewPostgres(ctx, groupDSN, log)
+	}
+	if groupDB != nil {
 		_ = database.AutoMigrate(ctx, groupDB, "grp", log)
 		var chatCl *chat.Client
 		grouppb.RegisterGroupServiceServer(s, groupserver.New(grouprepo.New(groupDB), chatCl, log))
+		log.Info("in-process Group Service registered")
 	}
 
 	// 5. Story Service

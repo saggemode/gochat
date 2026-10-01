@@ -1758,10 +1758,8 @@ class ChatRoomActivity : AppCompatActivity() {
                     userName = title,
                     conversationId = convId,
                     chatRepository = chatRepository,
-                    onReportCompleted = { blocked ->
-                        if (blocked) {
-                            finish()
-                        }
+                    onReportCompleted = { _ ->
+                        // Keep chat room open so previous chat history remains visible alongside blocked banner
                     }
                 )
             }

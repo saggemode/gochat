@@ -311,7 +311,7 @@ func (r *GroupRepository) ResolveApproval(ctx context.Context, approvalID, resol
 
 	if approve {
 		_, err = tx.Exec(ctx, `
-			INSERT INTO conversation_members (conversation_id, user_id, role)
+			INSERT INTO chat.conversation_members (conversation_id, user_id, role)
 			VALUES ($1, $2, 'member')
 			ON CONFLICT (conversation_id, user_id) DO NOTHING
 		`, convID, userID)
@@ -441,7 +441,7 @@ func (r *GroupRepository) ListCommunities(ctx context.Context, userID uuid.UUID)
 			SELECT DISTINCT c.id, c.name, c.description, c.created_by, c.created_at
 			FROM communities c
 			LEFT JOIN community_groups cg ON c.id = cg.community_id
-			LEFT JOIN conversation_members cm ON cg.conversation_id = cm.conversation_id
+			LEFT JOIN chat.conversation_members cm ON cg.conversation_id = cm.conversation_id
 			WHERE c.created_by = $1 OR cm.user_id = $1
 		`, userID)
 	}

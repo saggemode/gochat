@@ -351,10 +351,8 @@ class ContactProfileActivity : AppCompatActivity() {
                 userName = userName,
                 conversationId = convId,
                 chatRepository = chatRepository,
-                onReportCompleted = { blocked ->
-                    if (blocked) {
-                        finish()
-                    }
+                onReportCompleted = { _ ->
+                    // Keep profile open so contact block status updates smoothly
                 }
             )
         }

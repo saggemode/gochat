@@ -599,7 +599,7 @@
     <string name="action_report_and_block">Report and block</string>
     <string name="report_contact_title">Report %1$s?</string>
     <string name="report_contact_subtitle">The last 5 messages from this chat will be forwarded to GoChat. This contact will not be notified.</string>
-    <string name="report_block_contact_checkbox">Block contact and delete chat messages</string>
+    <string name="report_block_contact_checkbox">Block contact</string>
     <string name="report_reason_prompt">Select a reason for reporting</string>
     <string name="report_details_hint">Add additional details (optional)</string>
     <string name="user_blocked_toast">%1$s has been blocked</string>

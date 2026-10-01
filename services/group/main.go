@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -32,7 +33,11 @@ func main() {
 	ctx := context.Background()
 
 	// ── PostgreSQL ─────────────────────────────────────────────────────────────
-	db, err := database.NewPostgres(ctx, cfg.PostgresDSN, log)
+	dsn := cfg.PostgresDSN
+	if chatDSN := os.Getenv("CHAT_DB_DSN"); chatDSN != "" && (os.Getenv("GROUP_DB_DSN") == "" || strings.Contains(dsn, "group-gochat-db")) {
+		dsn = chatDSN
+	}
+	db, err := database.NewPostgres(ctx, dsn, log)
 	if err != nil {
 		log.Fatal("failed to connect to postgres", zap.Error(err))
 	}
