@@ -254,6 +254,71 @@
                 app:tint="@color/gochat_text_secondary" />
         </LinearLayout>
 
+        <!-- Multi-Message Selection Action Bar Overlay -->
+        <LinearLayout
+            android:id="@+id/layoutSelectionBar"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:background="@color/whatsapp_toolbar_dark"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="8dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <ImageView
+                android:id="@+id/btnCloseSelection"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="Close selection"
+                android:focusable="true"
+                android:padding="8dp"
+                android:src="@drawable/ic_close"
+                app:tint="@color/gochat_text_primary" />
+
+            <TextView
+                android:id="@+id/tvSelectionCount"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:textColor="@color/gochat_text_primary"
+                android:textSize="17sp"
+                android:textStyle="bold"
+                tools:text="1 selected" />
+
+            <ImageView
+                android:id="@+id/btnSelectAll"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="Select all"
+                android:focusable="true"
+                android:padding="8dp"
+                android:src="@drawable/ic_check"
+                app:tint="@color/gochat_emerald_light" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnExportSelectionAction"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_marginStart="6dp"
+                android:backgroundTint="#2500A884"
+                android:minHeight="0dp"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="0dp"
+                android:text="@string/action_export"
+                android:textColor="@color/gochat_emerald_light"
+                android:textSize="13sp"
+                app:icon="@drawable/ic_export_chat"
+                app:iconSize="16dp"
+                app:iconTint="@color/gochat_emerald_light" />
+        </LinearLayout>
+
         <!-- Linked Order Sticky Header Banner -->
         <LinearLayout
             android:id="@+id/layoutLinkedOrder"

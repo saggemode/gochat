@@ -277,6 +277,16 @@ class ContactProfileActivity : AppCompatActivity() {
         binding.layoutAddToFavourites.setOnClickListener {
             toggleFavourite(userName)
         }
+
+        // 9. Export chat
+        binding.layoutExportChat.setOnClickListener {
+            val sheet = ExportChatBottomSheet(
+                conversationId = convId,
+                conversationTitle = userName,
+                chatRepository = chatRepository
+            )
+            sheet.show(supportFragmentManager, ExportChatBottomSheet.TAG)
+        }
     }
 
     private fun showNotificationDialog() {

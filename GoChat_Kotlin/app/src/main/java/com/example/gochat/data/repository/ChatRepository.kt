@@ -256,6 +256,14 @@ class ChatRepository @Inject constructor(
         }
     }
 
+    suspend fun getMessagesForExport(convId: String): List<Message> = withContext(Dispatchers.IO) {
+        dao.getMessagesForExport(convId)
+    }
+
+    suspend fun getMessagesByIds(messageIds: List<String>): List<Message> = withContext(Dispatchers.IO) {
+        dao.getMessagesByIds(messageIds)
+    }
+
     suspend fun sendMessage(
         conversationId: String,
         content: String,

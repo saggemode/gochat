@@ -391,6 +391,23 @@
     <string name="option_disappearing_messages">Disappearing Messages</string>
     <string name="option_clear_chat">Clear chat</string>
     <string name="option_export_chat">Export chat</string>
+    <string name="export_chat_dialog_title">Export chat</string>
+    <string name="export_chat_dialog_desc">Including media will increase the size of the chat export.</string>
+    <string name="export_without_media">Without media</string>
+    <string name="export_without_media_desc">Lightweight .txt transcript of your messages</string>
+    <string name="export_include_media">Include media</string>
+    <string name="export_include_media_desc">ZIP archive with messages, photos, videos, audio, and documents</string>
+    <string name="export_selected_messages">Select messages to export</string>
+    <string name="export_selected_messages_desc">Pick specific messages to create a focused export</string>
+    <string name="exporting_chat">Exporting conversation...</string>
+    <string name="export_preparing_text">Preparing message transcript...</string>
+    <string name="export_downloading_media">Packaging media (%1$d of %2$d)...</string>
+    <string name="export_creating_zip">Compressing ZIP archive...</string>
+    <string name="export_complete">Export ready!</string>
+    <string name="export_empty">No messages to export in this conversation</string>
+    <string name="export_share_chooser">Export chat via</string>
+    <string name="export_selection_count">%1$d selected</string>
+    <string name="action_export">Export</string>
     <string name="toast_option_selected">Option selected</string>
 
     <!-- ChatWallpaperBottomSheet Kotlin -->

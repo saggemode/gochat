@@ -73,6 +73,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
+import com.example.gochat.data.repository.ChatRepository
 
 @AndroidEntryPoint
 class ChatRoomActivity : AppCompatActivity() {
@@ -98,6 +100,7 @@ class ChatRoomActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityChatRoomBinding
     private val viewModel: ChatRoomViewModel by viewModels()
+    @Inject lateinit var chatRepository: ChatRepository
     private lateinit var messageAdapter: MessageAdapter
     private lateinit var mentionAdapter: GroupMemberAdapter
     private lateinit var audioRecorderManager: AudioRecorderManager
@@ -292,6 +295,7 @@ class ChatRoomActivity : AppCompatActivity() {
         setupVoiceRecordingControls()
         setupWindowInsets()
         setupInChatSearch()
+        setupSelectionBar()
         observeState()
 
         val targetMsgId = intent.getStringExtra(EXTRA_TARGET_MESSAGE_ID)
@@ -1472,6 +1476,9 @@ class ChatRoomActivity : AppCompatActivity() {
                     }
                 }
                 MessageActionBottomSheet.Action.EDIT -> viewModel.setEditingMessage(message)
+                MessageActionBottomSheet.Action.EXPORT -> {
+                    showExportChatBottomSheet(targetMessages = listOf(message))
+                }
                 MessageActionBottomSheet.Action.DELETE -> {
                     AlertDialog.Builder(this)
                         .setTitle(getString(R.string.dialog_delete_message_title))
@@ -1642,7 +1649,7 @@ class ChatRoomActivity : AppCompatActivity() {
 
         menuItems.add(getString(R.string.option_export_chat))
         actions.add {
-            Toast.makeText(this, getString(R.string.toast_option_selected), Toast.LENGTH_SHORT).show()
+            showExportChatBottomSheet()
         }
 
         AlertDialog.Builder(this)
@@ -1873,11 +1880,76 @@ class ChatRoomActivity : AppCompatActivity() {
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
+        if (messageAdapter.isSelectionMode) {
+            exitSelectionMode()
+            return
+        }
         if (binding.layoutInChatSearch.visibility == View.VISIBLE) {
             closeInChatSearch()
             return
         }
         super.onBackPressed()
+    }
+
+    private fun enterSelectionMode(initialSelectedMessage: Message? = null) {
+        messageAdapter.isSelectionMode = true
+        if (initialSelectedMessage != null) {
+            messageAdapter.toggleSelection(initialSelectedMessage.id)
+        }
+        binding.layoutSelectionBar.visibility = View.VISIBLE
+        binding.toolbarChatRoom.visibility = View.GONE
+        updateSelectionUI(messageAdapter.selectedMessageIds.size)
+    }
+
+    private fun exitSelectionMode() {
+        messageAdapter.isSelectionMode = false
+        messageAdapter.clearSelection()
+        binding.layoutSelectionBar.visibility = View.GONE
+        binding.toolbarChatRoom.visibility = View.VISIBLE
+    }
+
+    private fun updateSelectionUI(count: Int) {
+        binding.tvSelectionCount.text = getString(R.string.export_selection_count, count)
+        binding.btnExportSelectionAction.isEnabled = count > 0
+    }
+
+    private fun setupSelectionBar() {
+        messageAdapter.onSelectionChanged = { count ->
+            updateSelectionUI(count)
+        }
+
+        binding.btnCloseSelection.setOnClickListener {
+            exitSelectionMode()
+        }
+
+        binding.btnSelectAll.setOnClickListener {
+            messageAdapter.selectAll()
+        }
+
+        binding.btnExportSelectionAction.setOnClickListener {
+            val selected = messageAdapter.getSelectedMessages()
+            if (selected.isEmpty()) {
+                Toast.makeText(this, "Select at least 1 message to export", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            showExportChatBottomSheet(targetMessages = selected)
+        }
+    }
+
+    private fun showExportChatBottomSheet(targetMessages: List<Message>? = null) {
+        val convId = viewModel.conversationId.value.ifBlank { intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty() }
+        val title = intent.getStringExtra(EXTRA_CONVERSATION_TITLE) ?: "Chat"
+
+        val sheet = ExportChatBottomSheet(
+            conversationId = convId,
+            conversationTitle = title,
+            chatRepository = chatRepository,
+            targetMessages = targetMessages,
+            onSelectMessagesRequested = {
+                enterSelectionMode()
+            }
+        )
+        sheet.show(supportFragmentManager, ExportChatBottomSheet.TAG)
     }
 
     override fun onDestroy() {

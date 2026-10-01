@@ -110,6 +110,57 @@ class MessageAdapter(
         }
     }
 
+    // ── Multi-Message Selection Support ────────────────────────
+    var isSelectionMode: Boolean = false
+        set(value) {
+            field = value
+            if (!value) {
+                selectedMessageIds.clear()
+            }
+            notifyDataSetChanged()
+        }
+
+    val selectedMessageIds = mutableSetOf<String>()
+    var onSelectionChanged: ((count: Int) -> Unit)? = null
+
+    fun toggleSelection(messageId: String) {
+        if (selectedMessageIds.contains(messageId)) {
+            selectedMessageIds.remove(messageId)
+        } else {
+            selectedMessageIds.add(messageId)
+        }
+        val pos = (0 until itemCount).indexOfFirst { peek(it)?.id == messageId }
+        if (pos != -1) {
+            notifyItemChanged(pos)
+        }
+        onSelectionChanged?.invoke(selectedMessageIds.size)
+    }
+
+    fun selectAll() {
+        for (i in 0 until itemCount) {
+            peek(i)?.let { selectedMessageIds.add(it.id) }
+        }
+        notifyDataSetChanged()
+        onSelectionChanged?.invoke(selectedMessageIds.size)
+    }
+
+    fun clearSelection() {
+        selectedMessageIds.clear()
+        notifyDataSetChanged()
+        onSelectionChanged?.invoke(0)
+    }
+
+    fun getSelectedMessages(): List<Message> {
+        val list = mutableListOf<Message>()
+        for (i in 0 until itemCount) {
+            val msg = peek(i)
+            if (msg != null && selectedMessageIds.contains(msg.id)) {
+                list.add(msg)
+            }
+        }
+        return list.sortedBy { it.createdAt }
+    }
+
     private fun bindDisappearingBadge(
         message: Message,
         layoutBadge: View,
@@ -977,9 +1028,23 @@ class MessageAdapter(
                     layoutVoiceNote.visibility = View.GONE
                 }
 
+                // Multi-Selection Mode support
+                val isSelected = selectedMessageIds.contains(message.id)
+                if (isSelectionMode) {
+                    root.setOnClickListener {
+                        toggleSelection(message.id)
+                    }
+                    root.setBackgroundColor(if (isSelected) 0x3300A884.toInt() else android.graphics.Color.TRANSPARENT)
+                } else {
+                    root.setOnClickListener(null)
+                    root.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                }
+
                 // Long Click / Swipe to reply
                 root.setOnLongClickListener {
-                    if (!message.isDeleted) {
+                    if (isSelectionMode) {
+                        toggleSelection(message.id)
+                    } else if (!message.isDeleted) {
                         onMessageLongClicked?.invoke(message)
                     }
                     true
@@ -1364,9 +1429,23 @@ class MessageAdapter(
                     layoutVoiceNote.visibility = View.GONE
                 }
 
+                // Multi-Selection Mode support
+                val isSelected = selectedMessageIds.contains(message.id)
+                if (isSelectionMode) {
+                    root.setOnClickListener {
+                        toggleSelection(message.id)
+                    }
+                    root.setBackgroundColor(if (isSelected) 0x3300A884.toInt() else android.graphics.Color.TRANSPARENT)
+                } else {
+                    root.setOnClickListener(null)
+                    root.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                }
+
                 // Long Click / Swipe to reply
                 root.setOnLongClickListener {
-                    if (!message.isDeleted) {
+                    if (isSelectionMode) {
+                        toggleSelection(message.id)
+                    } else if (!message.isDeleted) {
                         onMessageLongClicked?.invoke(message)
                     }
                     true

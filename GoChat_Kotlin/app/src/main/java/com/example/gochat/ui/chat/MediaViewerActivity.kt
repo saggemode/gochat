@@ -175,7 +175,7 @@ class MediaViewerActivity : AppCompatActivity() {
             if (shareFile != null && shareFile.exists()) {
                 val contentUri = FileProvider.getUriForFile(
                     this@MediaViewerActivity,
-                    "${applicationContext.packageName}.provider",
+                    "${applicationContext.packageName}.fileprovider",
                     shareFile
                 )
                 val shareIntent = Intent(Intent.ACTION_SEND).apply {

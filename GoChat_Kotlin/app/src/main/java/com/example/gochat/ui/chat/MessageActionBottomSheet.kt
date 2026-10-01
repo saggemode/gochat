@@ -17,7 +17,7 @@ class MessageActionBottomSheet(
     private val binding get() = _binding!!
 
     enum class Action {
-        REPLY, FORWARD, STAR, TRANSLATE, PIN, EDIT, DELETE, REACT_LIKE, REACT_HEART, REACT_LAUGH, REACT_WOW, REACT_SAD, REACT_PRAY
+        REPLY, FORWARD, STAR, TRANSLATE, PIN, EDIT, EXPORT, DELETE, REACT_LIKE, REACT_HEART, REACT_LAUGH, REACT_WOW, REACT_SAD, REACT_PRAY
     }
 
     override fun onCreateView(
@@ -57,6 +57,7 @@ class MessageActionBottomSheet(
         binding.btnTranslate.setOnClickListener { dismiss(); onAction(Action.TRANSLATE) }
         binding.btnPin.setOnClickListener { dismiss(); onAction(Action.PIN) }
         binding.btnEdit.setOnClickListener { dismiss(); onAction(Action.EDIT) }
+        binding.btnExport.setOnClickListener { dismiss(); onAction(Action.EXPORT) }
         binding.btnDelete.setOnClickListener { dismiss(); onAction(Action.DELETE) }
 
         // Reactions

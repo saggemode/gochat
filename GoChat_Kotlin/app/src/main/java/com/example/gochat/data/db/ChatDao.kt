@@ -146,6 +146,13 @@ interface ChatDao {
     @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND isViewOnce = 0 AND (type = 'IMAGE' OR type = 'VIDEO') AND mediaUrl IS NOT NULL AND mediaUrl != '' ORDER BY createdAt DESC LIMIT 10")
     fun getRecentMediaPreviews(convId: String): Flow<List<Message>>
 
+    // ── Export Chat ─────────────────────────────────────────────
+    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 ORDER BY createdAt ASC")
+    suspend fun getMessagesForExport(convId: String): List<Message>
+
+    @Query("SELECT * FROM messages WHERE id IN (:messageIds) AND isDeleted = 0 ORDER BY createdAt ASC")
+    suspend fun getMessagesByIds(messageIds: List<String>): List<Message>
+
     // ── Calls ──────────────────────────────────────────────────
     @Query("SELECT * FROM calls ORDER BY timestamp DESC")
     fun getAllCalls(): Flow<List<CallRecord>>

@@ -136,6 +136,16 @@ class GroupInfoActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
+        // Export group chat button
+        binding.btnExportGroupChat.setOnClickListener {
+            val sheet = ExportChatBottomSheet(
+                conversationId = convId,
+                conversationTitle = currentName,
+                chatRepository = chatRepository
+            )
+            sheet.show(supportFragmentManager, ExportChatBottomSheet.TAG)
+        }
+
         // Exit group button
         binding.btnExitGroup.setOnClickListener {
             AlertDialog.Builder(this)
