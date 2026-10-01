@@ -583,4 +583,7 @@
     <string name="no_docs_desc">Documents shared in this chat will appear here.</string>
     <string name="no_links_title">No links yet</string>
     <string name="no_links_desc">Links shared in this chat will appear here.</string>
+    <!-- Export Chat Selection -->
+    <string name="export_selection_count">%d selected</string>
+
 </resources>
