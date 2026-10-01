@@ -12,6 +12,7 @@ import com.example.gochat.data.model.GroupMember
 import com.example.gochat.databinding.ItemGroupMemberBinding
 
 class GroupMemberAdapter(
+    private val currentUserId: String = "",
     private val onItemClicked: (GroupMember) -> Unit,
     private val onItemLongClicked: ((GroupMember) -> Unit)? = null
 ) : ListAdapter<GroupMember, GroupMemberAdapter.MemberViewHolder>(DiffCallback) {
@@ -30,8 +31,9 @@ class GroupMemberAdapter(
 
         fun bind(member: GroupMember) {
             with(binding) {
-                tvName.text = member.displayName.ifBlank { "User ${member.id.takeLast(4)}" }
-                tvStatus.text = if (member.isOnline) "Online" else "Offline"
+                val isMe = currentUserId.isNotBlank() && member.id == currentUserId
+                tvName.text = if (isMe) "You" else member.displayName.ifBlank { "User ${member.id.takeLast(4)}" }
+                tvStatus.text = if (member.isOnline) "Online" else "Hey there! I am using GoChat."
                 
                 MediaImageHelper.loadSafeImage(
                     imageView = ivAvatar,
@@ -41,14 +43,16 @@ class GroupMemberAdapter(
                     errorRes = R.drawable.ic_account
                 )
 
-                // Show role badge
+                // Show role badge: Group Admin for owner or admin
+                val isOwner = member.role.equals("owner", ignoreCase = true)
+                val isAdmin = member.role.equals("admin", ignoreCase = true)
                 if (member.isBot) {
                     tvRole.visibility = View.VISIBLE
                     tvRole.text = "BOT"
                     tvRole.setBackgroundResource(R.drawable.bg_role_bot)
-                } else if (member.role.equals("admin", ignoreCase = true) || member.role.equals("owner", ignoreCase = true)) {
+                } else if (isOwner || isAdmin) {
                     tvRole.visibility = View.VISIBLE
-                    tvRole.text = "Group Admin"
+                    tvRole.text = binding.root.context.getString(R.string.role_admin)
                     tvRole.setBackgroundResource(R.drawable.bg_role_admin)
                 } else {
                     tvRole.visibility = View.GONE

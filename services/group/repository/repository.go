@@ -140,24 +140,47 @@ type GroupMemberData struct {
 
 func (r *GroupRepository) ListMembers(ctx context.Context, convID uuid.UUID) ([]GroupMemberData, error) {
 	rows, err := r.db.Query(ctx, `
-		SELECT cm.user_id,
-		       CASE 
-		           WHEN c.created_by = cm.user_id THEN 'owner'
-		           WHEN cm.role = 'owner' THEN 'owner'
-		           WHEN cm.role = 'admin' THEN 'admin'
-		           ELSE COALESCE(NULLIF(cm.role, ''), 'member')
-		       END AS role,
-		       cm.joined_at
-		FROM chat.conversation_members cm
-		JOIN chat.conversations c ON c.id = cm.conversation_id
-		WHERE cm.conversation_id = $1
+		WITH combined AS (
+			SELECT cm.user_id,
+			       CASE 
+			           WHEN c.created_by = cm.user_id THEN 'owner'
+			           WHEN cm.role = 'owner' THEN 'owner'
+			           WHEN cm.role = 'admin' THEN 'admin'
+			           ELSE COALESCE(NULLIF(cm.role, ''), 'member')
+			       END AS role,
+			       cm.joined_at
+			FROM chat.conversation_members cm
+			JOIN chat.conversations c ON c.id = cm.conversation_id
+			WHERE cm.conversation_id = $1
+
+			UNION
+
+			SELECT c.created_by AS user_id,
+			       'owner' AS role,
+			       c.created_at AS joined_at
+			FROM chat.conversations c
+			WHERE c.id = $1 AND c.created_by IS NOT NULL
+		),
+		deduped AS (
+			SELECT DISTINCT ON (user_id) user_id, role, joined_at
+			FROM combined
+			ORDER BY user_id,
+				CASE 
+					WHEN role = 'owner' THEN 1
+					WHEN role = 'admin' THEN 2
+					ELSE 3
+				END,
+				joined_at ASC
+		)
+		SELECT user_id, role, joined_at
+		FROM deduped
 		ORDER BY 
 			CASE 
-				WHEN c.created_by = cm.user_id OR cm.role = 'owner' THEN 1
-				WHEN cm.role = 'admin' THEN 2
+				WHEN role = 'owner' THEN 1
+				WHEN role = 'admin' THEN 2
 				ELSE 3
 			END,
-			cm.joined_at ASC
+			joined_at ASC
 	`, convID)
 	if err != nil {
 		return nil, fmt.Errorf("list members query: %w", err)
