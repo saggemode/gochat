@@ -52,7 +52,7 @@ class GroupMemberAdapter(
                     tvRole.setBackgroundResource(R.drawable.bg_role_bot)
                 } else if (isOwner || isAdmin) {
                     tvRole.visibility = View.VISIBLE
-                    tvRole.text = binding.root.context.getString(R.string.role_admin)
+                    tvRole.text = "Group Admin"
                     tvRole.setBackgroundResource(R.drawable.bg_role_admin)
                 } else {
                     tvRole.visibility = View.GONE

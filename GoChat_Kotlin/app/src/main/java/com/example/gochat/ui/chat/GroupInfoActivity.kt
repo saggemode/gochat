@@ -183,6 +183,7 @@ class GroupInfoActivity : AppCompatActivity() {
 
     private fun observeViewModel() {
         memberAdapter = GroupMemberAdapter(
+            currentUserId = viewModel.currentUserId,
             onItemClicked = { member ->
                 openDirectChat(member)
             },

@@ -439,7 +439,7 @@ class ChatRoomActivity : AppCompatActivity() {
                         putExtra(GroupInfoActivity.EXTRA_GROUP_NAME, title)
                         putExtra(GroupInfoActivity.EXTRA_GROUP_AVATAR, avatarUrl)
                         
-                        val memberIds = viewModel.mentionSuggestions.value.map { it.id }
+                        val memberIds = viewModel.members.value.map { it.id }
                         if (memberIds.isNotEmpty()) {
                             putStringArrayListExtra(GroupInfoActivity.EXTRA_MEMBER_IDS, ArrayList(memberIds))
                         }
@@ -1632,7 +1632,7 @@ class ChatRoomActivity : AppCompatActivity() {
                     putExtra(GroupInfoActivity.EXTRA_CONVERSATION_ID, viewModel.conversationId.value)
                     putExtra(GroupInfoActivity.EXTRA_GROUP_NAME, title)
                     putExtra(GroupInfoActivity.EXTRA_GROUP_AVATAR, avatarUrl)
-                    val memberIds = viewModel.mentionSuggestions.value.map { it.id }
+                    val memberIds = viewModel.members.value.map { it.id }
                     if (memberIds.isNotEmpty()) {
                         putStringArrayListExtra(GroupInfoActivity.EXTRA_MEMBER_IDS, ArrayList(memberIds))
                     }

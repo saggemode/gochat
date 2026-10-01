@@ -7,6 +7,7 @@ import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.model.GroupMember
 import com.example.gochat.data.model.GroupMetadata
 import com.example.gochat.data.repository.AuthRepository
+import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.data.repository.GroupRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +21,7 @@ class GroupInfoViewModel @Inject constructor(
     application: Application,
     private val groupRepo: GroupRepository,
     private val authRepo: AuthRepository,
+    private val chatRepository: ChatRepository,
     private val tokenManager: TokenManager
 ) : AndroidViewModel(application) {
 
@@ -45,31 +47,71 @@ class GroupInfoViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
 
-            // Load Metadata
+            val myId = currentUserId
+
+            // 1. Immediately load from local database for instant offline display
+            val localConv = chatRepository.getConversationById(convId)
+            val combinedIds = (localConv?.memberIds ?: emptyList()).ifEmpty { memberIds }
+
+            if (combinedIds.isNotEmpty() && _members.value.isEmpty()) {
+                val initialList = combinedIds.map { id ->
+                    val isMe = id == myId
+                    GroupMember(
+                        id = id,
+                        displayName = if (isMe) "You" else "User ${id.takeLast(4)}",
+                        role = "member"
+                    )
+                }.sortedBy { if (it.id == myId) 0 else 1 }
+                _members.value = initialList
+            }
+
+            // 2. Load Metadata
             groupRepo.getGroupMetadata(convId).onSuccess {
                 _metadata.value = it
             }
 
-            // Load Member Details from backend
+            // 3. Load Member Details from backend
             val membersResult = groupRepo.getGroupMembers(convId)
             val fetchedList: List<GroupMember>? = membersResult.getOrNull()
             if (membersResult.isSuccess && !fetchedList.isNullOrEmpty()) {
-                _members.value = fetchedList
-
-                val myId = currentUserId
-                val myMember = fetchedList.firstOrNull { m -> m.id == myId }
-                val role = myMember?.role ?: "member"
-                _currentUserRole.value = role
-                _isAdminOrOwner.value = (role == "owner" || role == "admin")
-            } else {
-                // Fallback to placeholder if backend listing is empty
-                val fallbackList = memberIds.map { id ->
+                val fetchedIds = fetchedList.map { it.id }.toSet()
+                val missingLocalMembers = combinedIds.filterNot { fetchedIds.contains(it) }.map { id ->
                     GroupMember(
                         id = id,
-                        displayName = "User ${id.takeLast(4)}",
+                        displayName = if (id == myId) "You" else "User ${id.takeLast(4)}",
                         role = "member"
                     )
                 }
+                val allMembers = (fetchedList + missingLocalMembers).map { m ->
+                    if (m.displayName.isBlank()) {
+                        m.copy(displayName = if (m.id == myId) "You" else "User ${m.id.takeLast(4)}")
+                    } else m
+                }.sortedWith(
+                    compareBy<GroupMember> { member ->
+                        when {
+                            member.id == myId -> 0
+                            member.role.equals("owner", ignoreCase = true) -> 1
+                            member.role.equals("admin", ignoreCase = true) -> 2
+                            else -> 3
+                        }
+                    }.thenBy { it.displayName.lowercase() }
+                )
+                _members.value = allMembers
+
+                val myMember = allMembers.firstOrNull { m -> m.id == myId }
+                val role = myMember?.role ?: "member"
+                _currentUserRole.value = role
+                _isAdminOrOwner.value = (role.equals("owner", ignoreCase = true) || role.equals("admin", ignoreCase = true))
+            } else if (_members.value.isEmpty() && combinedIds.isNotEmpty()) {
+                // Fallback to placeholder if backend listing is empty/failed
+                val fallbackList = combinedIds.map { id ->
+                    val isMe = id == myId
+                    GroupMember(
+                        id = id,
+                        displayName = if (isMe) "You" else "User ${id.takeLast(4)}",
+                        role = "member"
+                    )
+                }.sortedBy { if (it.id == myId) 0 else 1 }
                 _members.value = fallbackList
             }
 
