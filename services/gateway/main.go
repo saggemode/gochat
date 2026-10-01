@@ -362,7 +362,6 @@ func main() {
 		authRequired.DELETE("/auth/devices", authHandler.TerminateAllOtherSessions)
 		authRequired.GET("/auth/audit-logs", authHandler.GetSecurityAuditLogs)
 		authRequired.POST("/users/report", authHandler.ReportUser)
-		authRequired.PUT("/users/privacy", authHandler.UpdatePrivacySettings)
 
 		// 2FA & PIN
 		authRequired.POST("/auth/2fa", authHandler.SetTwoStepPIN)

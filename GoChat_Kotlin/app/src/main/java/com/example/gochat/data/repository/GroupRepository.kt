@@ -64,7 +64,14 @@ class GroupRepository @Inject constructor(
             if (response.isSuccessful) {
                 Result.success(response.body()!!)
             } else {
-                Result.failure(Exception("Failed to update group metadata"))
+                val errorBodyStr = response.errorBody()?.string().orEmpty()
+                val errMsg = try {
+                    if (errorBodyStr.isNotBlank()) {
+                        val obj = Json.parseToJsonElement(errorBodyStr).jsonObject
+                        obj["error"]?.jsonPrimitive?.contentOrNull ?: errorBodyStr
+                    } else null
+                } catch (e: Exception) { null } ?: "Failed to update group metadata"
+                Result.failure(Exception(errMsg))
             }
         } catch (e: Exception) {
             Result.failure(e)

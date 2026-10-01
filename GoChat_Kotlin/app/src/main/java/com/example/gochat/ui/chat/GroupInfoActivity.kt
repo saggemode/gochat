@@ -321,13 +321,13 @@ class GroupInfoActivity : AppCompatActivity() {
 
             val uploadedUrl = chatRepository.uploadMedia(bytes, mimeType, fileName)
             if (!uploadedUrl.isNullOrBlank()) {
-                viewModel.updateGroupDetails(convId, avatarUrl = uploadedUrl) { success, _ ->
+                viewModel.updateGroupDetails(convId, avatarUrl = uploadedUrl) { success, err ->
                     if (success) {
                         currentAvatar = uploadedUrl
                         renderAvatar(uploadedUrl)
                         Toast.makeText(this@GroupInfoActivity, getString(R.string.toast_group_updated), Toast.LENGTH_SHORT).show()
                     } else {
-                        Toast.makeText(this@GroupInfoActivity, getString(R.string.toast_group_update_failed), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@GroupInfoActivity, err ?: getString(R.string.toast_group_update_failed), Toast.LENGTH_SHORT).show()
                     }
                 }
             } else {
