@@ -333,6 +333,72 @@ func (h *ChatHandler) AddMember(c *gin.Context) {
 		return
 	}
 
+	// ── Notify the newly added member ──────────────────────────────────────
+	go func(adderID, newMemberID, conversationID string) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		// Resolve the adder's display name
+		adderName := "Someone"
+		if h.authClient != nil {
+			uResp, err := h.authClient.GetUser(ctx, &authpb.GetUserRequest{UserId: adderID})
+			if err == nil && uResp != nil && uResp.User != nil {
+				adderName = uResp.User.DisplayName
+				if adderName == "" {
+					adderName = uResp.User.Phone
+				}
+				if adderName == "" {
+					adderName = uResp.User.Email
+				}
+			}
+		}
+
+		// Resolve the group conversation name & avatar
+		groupName := "a group"
+		groupAvatar := ""
+		convResp, err := h.client.GetConversation(ctx, &chatpb.GetConversationRequest{
+			ConversationId: conversationID,
+			UserId:         adderID,
+		})
+		if err == nil && convResp != nil && convResp.Conversation != nil {
+			if convResp.Conversation.Name != "" {
+				groupName = convResp.Conversation.Name
+			}
+			groupAvatar = convResp.Conversation.AvatarUrl
+		}
+
+		title := groupName
+		body := fmt.Sprintf("%s added you to %s", adderName, groupName)
+
+		// 1. Real-time WebSocket notification
+		if h.hub != nil {
+			wsPayload, _ := json.Marshal(map[string]interface{}{
+				"type":            "added_to_group",
+				"conversation_id": conversationID,
+				"group_name":      groupName,
+				"group_avatar":    groupAvatar,
+				"added_by":        adderID,
+				"added_by_name":   adderName,
+				"user_id":         newMemberID,
+			})
+			h.hub.SendToUser(newMemberID, wsPayload)
+		}
+
+		// 2. FCM push notification (for when the user is offline)
+		fcm.SendToUser(ctx, newMemberID, title, body, map[string]string{
+			"type":            "added_to_group",
+			"event_type":      "added_to_group",
+			"conversation_id": conversationID,
+			"group_name":      groupName,
+			"group_avatar":    groupAvatar,
+			"added_by":        adderID,
+			"added_by_name":   adderName,
+			"is_group":        "true",
+			"title":           title,
+			"body":            body,
+		})
+	}(userID, req.NewMemberId, convID)
+
 	c.JSON(http.StatusOK, gin.H{"success": resp.Success})
 }
 
@@ -1451,3 +1517,4 @@ func (h *ChatHandler) fanOutEvent(eventType string, messageID string, convID str
 		}
 	}()
 }
+

@@ -46,6 +46,13 @@ class SelectContactActivity : AppCompatActivity() {
     private lateinit var adapter: SelectContactAdapter
 
     companion object {
+        const val EXTRA_ACTION = "action"
+        const val ACTION_CREATE_GROUP = "create_group"
+        const val EXTRA_PRESELECT_USER_ID = "preselect_user_id"
+        const val EXTRA_PRESELECT_NAME = "preselect_contact_name"
+        const val EXTRA_PRESELECT_AVATAR = "preselect_avatar"
+        const val EXTRA_PRESELECT_PHONE = "preselect_phone"
+
         fun start(context: Context) {
             val intent = Intent(context, SelectContactActivity::class.java)
             context.startActivity(intent)
@@ -57,10 +64,13 @@ class SelectContactActivity : AppCompatActivity() {
         binding = ActivitySelectContactBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val action = intent.getStringExtra("action")
-        val preselectName = intent.getStringExtra("preselect_contact_name")
+        val action = intent.getStringExtra(EXTRA_ACTION)
+        val preselectUserId = intent.getStringExtra(EXTRA_PRESELECT_USER_ID).orEmpty()
+        val preselectName = intent.getStringExtra(EXTRA_PRESELECT_NAME).orEmpty()
+        val preselectAvatar = intent.getStringExtra(EXTRA_PRESELECT_AVATAR).orEmpty()
+        val preselectPhone = intent.getStringExtra(EXTRA_PRESELECT_PHONE).orEmpty()
         
-        if (action == "create_group") {
+        if (action == ACTION_CREATE_GROUP) {
             viewModel.setMultiSelectMode(true)
         }
 
@@ -70,17 +80,13 @@ class SelectContactActivity : AppCompatActivity() {
         setupListeners()
         observeViewModel()
         
-        if (!preselectName.isNullOrBlank()) {
-            lifecycleScope.launch {
-                repeatOnLifecycle(Lifecycle.State.STARTED) {
-                    viewModel.allContacts.collect { contacts ->
-                        val contact = contacts.firstOrNull { it.displayName.equals(preselectName, ignoreCase = true) }
-                        if (contact != null) {
-                            viewModel.toggleContactSelection(contact.finalUserId)
-                        }
-                    }
-                }
-            }
+        if (preselectUserId.isNotBlank() || preselectName.isNotBlank() || preselectPhone.isNotBlank()) {
+            viewModel.preselectContact(
+                userId = preselectUserId,
+                name = preselectName,
+                phone = preselectPhone,
+                avatarUrl = preselectAvatar
+            )
         }
     }
 

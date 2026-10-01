@@ -17,9 +17,16 @@ data class GroupMember(
 @Serializable
 data class GroupMetadata(
     @SerialName("conversation_id") val conversationId: String,
+    val name: String? = null,
+    @SerialName("avatar_url") val avatarUrl: String? = null,
     val description: String = "",
     @SerialName("announcements_only") val announcementsOnly: Boolean = false,
     @SerialName("admins_only_edit_info") val adminsOnlyEditInfo: Boolean = false,
     @SerialName("invite_code") val inviteCode: String? = null,
     @SerialName("join_approval_required") val joinApprovalRequired: Boolean = false
+)
+
+@Serializable
+data class GroupMembersResponse(
+    val members: List<GroupMember> = emptyList()
 )

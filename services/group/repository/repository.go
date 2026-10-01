@@ -84,9 +84,12 @@ func New(db *pgxpool.Pool) *GroupRepository {
 func (r *GroupRepository) GetMetadata(ctx context.Context, convID uuid.UUID) (*GroupMetadata, error) {
 	m := &GroupMetadata{}
 	err := r.db.QueryRow(ctx, `
-		SELECT conversation_id, description, announcements_only, admins_only_edit_info, invite_code, join_approval_required
-		FROM group_metadata WHERE conversation_id = $1
-	`, convID).Scan(&m.ConversationID, &m.Description, &m.AnnouncementsOnly, &m.AdminsOnlyEditInfo, &m.InviteCode, &m.JoinApprovalRequired)
+		SELECT gm.conversation_id, gm.description, gm.announcements_only, gm.admins_only_edit_info, gm.invite_code, gm.join_approval_required,
+		       COALESCE(c.name, ''), COALESCE(c.avatar_url, '')
+		FROM group_metadata gm
+		LEFT JOIN chat.conversations c ON c.id = gm.conversation_id
+		WHERE gm.conversation_id = $1
+	`, convID).Scan(&m.ConversationID, &m.Description, &m.AnnouncementsOnly, &m.AdminsOnlyEditInfo, &m.InviteCode, &m.JoinApprovalRequired, &m.Name, &m.AvatarURL)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			// Auto-create default metadata record
@@ -120,19 +123,60 @@ func (r *GroupRepository) UpdateMetadata(ctx context.Context, m *GroupMetadata) 
 	}
 
 	if m.Name != "" {
-		_, _ = r.db.Exec(ctx, `UPDATE chat.conversations SET name = $1 WHERE id = $2`, m.Name, m.ConversationID)
+		_, _ = r.db.Exec(ctx, `UPDATE chat.conversations SET name = $1, updated_at = NOW() WHERE id = $2`, m.Name, m.ConversationID)
 	}
 	if m.AvatarURL != "" {
-		_, _ = r.db.Exec(ctx, `UPDATE chat.conversations SET avatar_url = $1 WHERE id = $2`, m.AvatarURL, m.ConversationID)
+		_, _ = r.db.Exec(ctx, `UPDATE chat.conversations SET avatar_url = $1, updated_at = NOW() WHERE id = $2`, m.AvatarURL, m.ConversationID)
 	}
 
 	return nil
 }
 
+type GroupMemberData struct {
+	UserID   uuid.UUID
+	Role     string
+	JoinedAt time.Time
+}
+
+func (r *GroupRepository) ListMembers(ctx context.Context, convID uuid.UUID) ([]GroupMemberData, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT cm.user_id,
+		       COALESCE(NULLIF(cm.role, ''), CASE WHEN c.created_by = cm.user_id THEN 'owner' ELSE 'member' END) AS role,
+		       cm.joined_at
+		FROM chat.conversation_members cm
+		JOIN chat.conversations c ON c.id = cm.conversation_id
+		WHERE cm.conversation_id = $1
+		ORDER BY 
+			CASE 
+				WHEN cm.role = 'owner' OR c.created_by = cm.user_id THEN 1
+				WHEN cm.role = 'admin' THEN 2
+				ELSE 3
+			END,
+			cm.joined_at ASC
+	`, convID)
+	if err != nil {
+		return nil, fmt.Errorf("list members query: %w", err)
+	}
+	defer rows.Close()
+
+	var members []GroupMemberData
+	for rows.Next() {
+		var m GroupMemberData
+		if err := rows.Scan(&m.UserID, &m.Role, &m.JoinedAt); err != nil {
+			return nil, fmt.Errorf("scan member: %w", err)
+		}
+		members = append(members, m)
+	}
+	return members, nil
+}
+
 func (r *GroupRepository) GetUserRole(ctx context.Context, convID, userID uuid.UUID) (string, error) {
 	var role string
 	err := r.db.QueryRow(ctx, `
-		SELECT role FROM chat.conversation_members WHERE conversation_id = $1 AND user_id = $2
+		SELECT COALESCE(NULLIF(cm.role, ''), CASE WHEN c.created_by = cm.user_id THEN 'owner' ELSE 'member' END)
+		FROM chat.conversation_members cm
+		JOIN chat.conversations c ON c.id = cm.conversation_id
+		WHERE cm.conversation_id = $1 AND cm.user_id = $2
 	`, convID, userID).Scan(&role)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

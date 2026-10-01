@@ -413,9 +413,23 @@
     <string name="member_count_format">%1$d Members</string>
     <string name="option_message_user">Message %1$s</string>
     <string name="option_promote_admin">Promote to Admin</string>
+    <string name="option_demote_admin">Dismiss as Admin</string>
     <string name="option_remove_group">Remove from Group</string>
     <string name="btn_copy">Copy</string>
     <string name="btn_close">Close</string>
+    <string name="dialog_edit_group_name">Edit Group Name</string>
+    <string name="dialog_edit_group_desc">Edit Group Description</string>
+    <string name="toast_group_updated">Group details updated</string>
+    <string name="toast_group_update_failed">Failed to update group details</string>
+    <string name="dialog_change_avatar">Change Group Icon</string>
+    <string name="action_choose_photo">Choose from Gallery</string>
+    <string name="action_enter_url">Enter Image URL</string>
+    <string name="label_group_name">Group Name</string>
+    <string name="label_group_description">Group Description</string>
+    <string name="dialog_add_member_title">Add Member</string>
+    <string name="dialog_add_member_hint">Enter User ID or Phone</string>
+    <string name="toast_member_added">Member added successfully</string>
+    <string name="toast_member_add_failed">Failed to add member</string>
 
     <!-- MessageAdapter Kotlin -->
     <string name="message_deleted_notice">🚫 This message was deleted</string>
@@ -505,6 +519,8 @@
     <!-- Contact Profile -->
     <string name="profile">Profile</string>
     <string name="gochat_pin">GoChat PIN</string>
+    <string name="option_view_contact">View contact</string>
+    <string name="action_group">Group</string>
     <string name="create_group_with_format">Create group with %1$s</string>
     <string name="encryption_title">Encryption</string>
     <string name="encryption_desc">Messages and calls are end-to-end encrypted. Tap to verify.</string>

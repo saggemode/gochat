@@ -2,22 +2,88 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	authpb "gochat/gen/auth"
 	grouppb "gochat/gen/group"
+	"gochat/services/gateway/ws"
 )
 
 type GroupHandler struct {
-	client grouppb.GroupServiceClient
-	log    *zap.Logger
+	client     grouppb.GroupServiceClient
+	authClient authpb.AuthServiceClient
+	hub        *ws.Hub
+	log        *zap.Logger
 }
 
-func NewGroupHandler(client grouppb.GroupServiceClient, log *zap.Logger) *GroupHandler {
-	return &GroupHandler{client: client, log: log}
+func NewGroupHandler(client grouppb.GroupServiceClient, authClient authpb.AuthServiceClient, hub *ws.Hub, log *zap.Logger) *GroupHandler {
+	return &GroupHandler{client: client, authClient: authClient, hub: hub, log: log}
+}
+
+// ListGroupMembers returns enriched group member details including roles.
+func (h *GroupHandler) ListGroupMembers(c *gin.Context) {
+	convID := c.Param("id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+
+	resp, err := h.client.ListGroupMembers(c.Request.Context(), &grouppb.ListGroupMembersRequest{
+		ConversationId: convID,
+		RequesterId:    userID,
+	})
+	if err != nil {
+		h.handleGrpcError(c, err, "failed to list group members")
+		return
+	}
+
+	type MemberInfo struct {
+		ID          string `json:"id"`
+		DisplayName string `json:"display_name"`
+		AvatarURL   string `json:"avatar_url"`
+		Role        string `json:"role"`
+		IsOnline    bool   `json:"is_online"`
+		LastSeen    string `json:"last_seen,omitempty"`
+	}
+
+	members := make([]MemberInfo, 0, len(resp.Members))
+	for _, m := range resp.Members {
+		info := MemberInfo{
+			ID:   m.UserId,
+			Role: m.Role,
+		}
+
+		if h.authClient != nil {
+			uResp, err := h.authClient.GetUser(c.Request.Context(), &authpb.GetUserRequest{UserId: m.UserId})
+			if err == nil && uResp != nil && uResp.User != nil {
+				info.DisplayName = uResp.User.DisplayName
+				if info.DisplayName == "" {
+					info.DisplayName = uResp.User.Phone
+				}
+				if info.DisplayName == "" {
+					info.DisplayName = uResp.User.Email
+				}
+				info.AvatarURL = uResp.User.AvatarUrl
+				info.IsOnline = uResp.User.IsOnline
+				if uResp.User.LastSeen > 0 {
+					info.LastSeen = time.Unix(uResp.User.LastSeen, 0).Format(time.RFC3339)
+				}
+			}
+		}
+
+		if h.hub != nil && h.hub.IsUserOnline(m.UserId) {
+			info.IsOnline = true
+		}
+
+		members = append(members, info)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"members": members})
 }
 
 func (h *GroupHandler) UpdateGroupMetadata(c *gin.Context) {

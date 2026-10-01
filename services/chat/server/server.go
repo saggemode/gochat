@@ -846,6 +846,10 @@ func convToProto(c *repository.Conversation, lastMsg *chatpb.Message, unread int
 	if c.Type == repository.ConversationGroup {
 		convType = chatpb.ConversationType_GROUP
 	}
+	var creatorID string
+	if c.CreatedBy != uuid.Nil {
+		creatorID = c.CreatedBy.String()
+	}
 	return &chatpb.Conversation{
 		Id:          c.ID.String(),
 		Type:        convType,
@@ -856,6 +860,7 @@ func convToProto(c *repository.Conversation, lastMsg *chatpb.Message, unread int
 		UnreadCount: int32(unread),
 		CreatedAt:   c.CreatedAt.Unix(),
 		UpdatedAt:   c.UpdatedAt.Unix(),
+		CreatorId:   creatorID,
 	}
 }
 

@@ -256,7 +256,7 @@ func main() {
 	chatHandler := handlers.NewChatHandler(chatClient, authClient, hub, log)
 	aiHandler := handlers.NewAIHandler(aiClient, log)
 	mediaHandler := handlers.NewMediaHandler(mediaClient, cfg.TelegramBotToken, log)
-	groupHandler := handlers.NewGroupHandler(groupClient, log)
+	groupHandler := handlers.NewGroupHandler(groupClient, authClient, hub, log)
 	storyHandler := handlers.NewStoryHandler(storyClient, log)
 	callHandler := handlers.NewCallHandler(callClient, log)
 	channelHandler := handlers.NewChannelHandler(channelClient, log)
@@ -471,6 +471,8 @@ func main() {
 		authRequired.GET("/media/download/:fileId", mediaHandler.DownloadTelegram)
 
 		// Group management
+		authRequired.GET("/groups/:id/members", groupHandler.ListGroupMembers)
+		authRequired.GET("/chat/conversations/:id/members", groupHandler.ListGroupMembers)
 		authRequired.POST("/groups/:id/metadata", groupHandler.UpdateGroupMetadata)
 		authRequired.GET("/groups/:id/metadata", groupHandler.GetGroupMetadata)
 		authRequired.POST("/groups/:id/invite-link", groupHandler.GenerateInviteLink)

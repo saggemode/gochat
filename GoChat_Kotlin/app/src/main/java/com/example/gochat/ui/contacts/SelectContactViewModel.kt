@@ -148,6 +148,56 @@ class SelectContactViewModel @Inject constructor(
         }
     }
 
+    fun selectContact(contactId: String) {
+        if (contactId.isBlank()) return
+        val current = _selectedContactIds.value.toMutableSet()
+        current.add(contactId)
+        _selectedContactIds.value = current
+    }
+
+    fun preselectContact(
+        userId: String?,
+        name: String?,
+        phone: String?,
+        avatarUrl: String?
+    ) {
+        val cleanUserId = userId?.trim().orEmpty()
+        val cleanName = name?.trim().orEmpty()
+        val cleanPhone = phone?.trim().orEmpty()
+        val cleanAvatar = avatarUrl?.trim().orEmpty()
+
+        if (cleanUserId.isBlank() && cleanName.isBlank() && cleanPhone.isBlank()) return
+
+        val currentList = _allContacts.value.toMutableList()
+        val existing = currentList.firstOrNull { c ->
+            (cleanUserId.isNotBlank() && (c.finalUserId == cleanUserId || c.id == cleanUserId || c.userId == cleanUserId)) ||
+            (cleanPhone.isNotBlank() && c.phone == cleanPhone) ||
+            (cleanName.isNotBlank() && c.displayName.equals(cleanName, ignoreCase = true))
+        }
+
+        val targetId = if (existing != null) {
+            existing.finalUserId
+        } else {
+            val fallbackId = cleanUserId.ifBlank { "user_${System.currentTimeMillis()}" }
+            val synthetic = SyncedContact(
+                id = fallbackId,
+                phonebookName = cleanName.ifBlank { "Contact" },
+                phone = cleanPhone,
+                isRegistered = true,
+                userId = fallbackId,
+                name = cleanName.ifBlank { "Contact" },
+                avatarUrl = cleanAvatar
+            )
+            currentList.add(0, synthetic)
+            _allContacts.value = currentList
+            fallbackId
+        }
+
+        val currentSelected = _selectedContactIds.value.toMutableSet()
+        currentSelected.add(targetId)
+        _selectedContactIds.value = currentSelected
+    }
+
     fun toggleContactSelection(contactId: String) {
         val current = _selectedContactIds.value.toMutableSet()
         if (current.contains(contactId)) {
@@ -175,7 +225,11 @@ class SelectContactViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             val synced = syncManager.scanAndSyncContacts(force = force)
-            _allContacts.value = synced
+            val selectedIds = _selectedContactIds.value
+            val syntheticToPreserve = _allContacts.value.filter { contact ->
+                selectedIds.contains(contact.finalUserId) && synced.none { it.finalUserId == contact.finalUserId }
+            }
+            _allContacts.value = syntheticToPreserve + synced
             _isLoading.value = false
         }
     }

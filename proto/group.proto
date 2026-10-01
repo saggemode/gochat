@@ -13,6 +13,7 @@ service GroupService {
   rpc ResolvePendingApproval(ResolvePendingApprovalRequest) returns (ResolvePendingApprovalResponse);
   rpc PromoteMember(PromoteMemberRequest) returns (PromoteMemberResponse);
   rpc DemoteMember(DemoteMemberRequest) returns (DemoteMemberResponse);
+  rpc ListGroupMembers(ListGroupMembersRequest) returns (ListGroupMembersResponse);
 
   // Communities
   rpc CreateCommunity(CreateCommunityRequest) returns (CreateCommunityResponse);
@@ -142,6 +143,21 @@ message DemoteMemberRequest {
 
 message DemoteMemberResponse {
   bool success = 1;
+}
+
+message GroupMemberItem {
+  string user_id = 1;
+  string role = 2; // "owner", "admin", "member"
+  int64 joined_at = 3;
+}
+
+message ListGroupMembersRequest {
+  string conversation_id = 1;
+  string requester_id = 2;
+}
+
+message ListGroupMembersResponse {
+  repeated GroupMemberItem members = 1;
 }
 
 message Community {

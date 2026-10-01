@@ -44,6 +44,7 @@ import coil.load
 import com.example.gochat.R
 import com.example.gochat.ui.marketplace.OrdersActivity
 import com.example.gochat.ui.marketplace.ProductDetailsActivity
+import com.example.gochat.ui.contacts.SelectContactActivity
 import com.example.gochat.core.media.AudioPlayerManager
 import com.example.gochat.core.media.AudioRecorderManager
 import com.example.gochat.core.media.ImageCompressor
@@ -1519,71 +1520,135 @@ class ChatRoomActivity : AppCompatActivity() {
         val convId = viewModel.conversationId.value.ifBlank { intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty() }
         val isLocked = com.example.gochat.core.security.ChatLockManager.isLocked(this, convId)
         val lockOption = if (isLocked) "Unlock Chat (Remove Lock)" else "Lock Chat (Require Biometric)"
+        val isGroup = intent.getBooleanExtra(EXTRA_IS_GROUP, false)
+        val title = intent.getStringExtra(EXTRA_CONVERSATION_TITLE) ?: getString(R.string.message_hint)
+        val avatarUrl = intent.getStringExtra(EXTRA_CONVERSATION_AVATAR).orEmpty()
+        val resolvedPartnerId = currentPartnerId?.ifBlank { null }
+            ?: viewModel.partnerId?.ifBlank { null }
+            ?: ""
 
-        val items = arrayOf(
-            "Search",
-            "Media, links, and docs",
-            "Starred Messages",
-            lockOption,
-            getString(R.string.option_wallpaper_theme),
-            getString(R.string.option_disappearing_messages),
-            if (viewModel.screenshotNotificationsEnabled.value) "Disable Screenshot Alerts" else "Enable Screenshot Alerts",
-            getString(R.string.option_mute_notifications),
-            getString(R.string.option_clear_chat),
-            getString(R.string.option_export_chat)
-        )
+        val menuItems = mutableListOf<String>()
+        val actions = mutableListOf<() -> Unit>()
+
+        if (!isGroup) {
+            menuItems.add(getString(R.string.option_view_contact))
+            actions.add {
+                val intent = Intent(this@ChatRoomActivity, ContactProfileActivity::class.java).apply {
+                    putExtra(ContactProfileActivity.EXTRA_CONVERSATION_ID, viewModel.conversationId.value)
+                    putExtra(ContactProfileActivity.EXTRA_USER_NAME, title)
+                    putExtra(ContactProfileActivity.EXTRA_USER_AVATAR, avatarUrl)
+                    putExtra(ContactProfileActivity.EXTRA_IS_ONLINE, viewModel.isPartnerOnline.value)
+                    putExtra(ContactProfileActivity.EXTRA_LAST_SEEN, viewModel.partnerLastSeen.value ?: 0L)
+                    putExtra(ContactProfileActivity.EXTRA_TARGET_USER_ID, resolvedPartnerId)
+                }
+                contactProfileLauncher.launch(intent)
+            }
+
+            menuItems.add(getString(R.string.create_group_with_format, title))
+            actions.add {
+                val intent = Intent(this@ChatRoomActivity, SelectContactActivity::class.java).apply {
+                    putExtra(SelectContactActivity.EXTRA_ACTION, SelectContactActivity.ACTION_CREATE_GROUP)
+                    putExtra(SelectContactActivity.EXTRA_PRESELECT_USER_ID, resolvedPartnerId)
+                    putExtra(SelectContactActivity.EXTRA_PRESELECT_NAME, title)
+                    putExtra(SelectContactActivity.EXTRA_PRESELECT_AVATAR, avatarUrl)
+                }
+                startActivity(intent)
+            }
+        } else {
+            menuItems.add("Group info")
+            actions.add {
+                val intent = Intent(this@ChatRoomActivity, GroupInfoActivity::class.java).apply {
+                    putExtra(GroupInfoActivity.EXTRA_CONVERSATION_ID, viewModel.conversationId.value)
+                    putExtra(GroupInfoActivity.EXTRA_GROUP_NAME, title)
+                    putExtra(GroupInfoActivity.EXTRA_GROUP_AVATAR, avatarUrl)
+                    val memberIds = viewModel.mentionSuggestions.value.map { it.id }
+                    if (memberIds.isNotEmpty()) {
+                        putStringArrayListExtra(GroupInfoActivity.EXTRA_MEMBER_IDS, ArrayList(memberIds))
+                    }
+                }
+                startActivity(intent)
+            }
+        }
+
+        menuItems.add("Search")
+        actions.add { openInChatSearch() }
+
+        menuItems.add("Media, links, and docs")
+        actions.add {
+            val intent = Intent(this, SharedMediaActivity::class.java).apply {
+                putExtra(SharedMediaActivity.EXTRA_CONVERSATION_ID, convId)
+                putExtra(SharedMediaActivity.EXTRA_CONVERSATION_TITLE, title)
+            }
+            startActivity(intent)
+        }
+
+        menuItems.add("Starred Messages")
+        actions.add {
+            val intent = Intent(this, StarredMessagesActivity::class.java).apply {
+                putExtra(StarredMessagesActivity.EXTRA_CONVERSATION_ID, convId)
+                putExtra(StarredMessagesActivity.EXTRA_CONVERSATION_TITLE, title)
+            }
+            startActivity(intent)
+        }
+
+        menuItems.add(lockOption)
+        actions.add {
+            com.example.gochat.core.security.ChatLockManager.authenticate(
+                activity = this,
+                title = if (isLocked) "Unlock Chat" else "Lock Chat",
+                subtitle = "Confirm biometric or device credential to modify chat lock",
+                onSuccess = {
+                    com.example.gochat.core.security.ChatLockManager.setLocked(this, convId, !isLocked)
+                    val status = if (!isLocked) "locked" else "unlocked"
+                    Toast.makeText(this, "Chat $status", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
+
+        menuItems.add(getString(R.string.option_wallpaper_theme))
+        actions.add {
+            val sheet = ChatWallpaperBottomSheet(
+                conversationId = convId,
+                conversationTitle = title,
+                onThemeChanged = { updatedTheme ->
+                    applyTheme(updatedTheme)
+                }
+            )
+            sheet.show(supportFragmentManager, ChatWallpaperBottomSheet.TAG)
+        }
+
+        menuItems.add(getString(R.string.option_disappearing_messages))
+        actions.add {
+            showDisappearingMessagesDialog()
+        }
+
+        menuItems.add(if (viewModel.screenshotNotificationsEnabled.value) "Disable Screenshot Alerts" else "Enable Screenshot Alerts")
+        actions.add {
+            val current = viewModel.screenshotNotificationsEnabled.value
+            viewModel.toggleScreenshotNotifications(!current)
+            val status = if (!current) "enabled" else "disabled"
+            Toast.makeText(this, "Screenshot alerts $status", Toast.LENGTH_SHORT).show()
+        }
+
+        menuItems.add(getString(R.string.option_mute_notifications))
+        actions.add {
+            Toast.makeText(this, getString(R.string.toast_option_selected), Toast.LENGTH_SHORT).show()
+        }
+
+        menuItems.add(getString(R.string.option_clear_chat))
+        actions.add {
+            Toast.makeText(this, getString(R.string.toast_option_selected), Toast.LENGTH_SHORT).show()
+        }
+
+        menuItems.add(getString(R.string.option_export_chat))
+        actions.add {
+            Toast.makeText(this, getString(R.string.toast_option_selected), Toast.LENGTH_SHORT).show()
+        }
+
         AlertDialog.Builder(this)
-            .setItems(items) { _, which ->
-                when (which) {
-                    0 -> openInChatSearch()
-                    1 -> {
-                        val title = intent.getStringExtra(EXTRA_CONVERSATION_TITLE) ?: getString(R.string.message_hint)
-                        val intent = Intent(this, SharedMediaActivity::class.java).apply {
-                            putExtra(SharedMediaActivity.EXTRA_CONVERSATION_ID, convId)
-                            putExtra(SharedMediaActivity.EXTRA_CONVERSATION_TITLE, title)
-                        }
-                        startActivity(intent)
-                    }
-                    2 -> {
-                        val intent = Intent(this, StarredMessagesActivity::class.java).apply {
-                            putExtra(StarredMessagesActivity.EXTRA_CONVERSATION_ID, convId)
-                            putExtra(StarredMessagesActivity.EXTRA_CONVERSATION_TITLE, intent.getStringExtra(EXTRA_CONVERSATION_TITLE) ?: "Chat")
-                        }
-                        startActivity(intent)
-                    }
-                    3 -> {
-                        com.example.gochat.core.security.ChatLockManager.authenticate(
-                            activity = this,
-                            title = if (isLocked) "Unlock Chat" else "Lock Chat",
-                            subtitle = "Confirm biometric or device credential to modify chat lock",
-                            onSuccess = {
-                                com.example.gochat.core.security.ChatLockManager.setLocked(this, convId, !isLocked)
-                                val status = if (!isLocked) "locked" else "unlocked"
-                                Toast.makeText(this, "Chat $status", Toast.LENGTH_SHORT).show()
-                            }
-                        )
-                    }
-                    4 -> {
-                        val title = intent.getStringExtra(EXTRA_CONVERSATION_TITLE) ?: getString(R.string.message_hint)
-                        val sheet = ChatWallpaperBottomSheet(
-                            conversationId = convId,
-                            conversationTitle = title,
-                            onThemeChanged = { updatedTheme ->
-                                applyTheme(updatedTheme)
-                            }
-                        )
-                        sheet.show(supportFragmentManager, ChatWallpaperBottomSheet.TAG)
-                    }
-                    5 -> {
-                        showDisappearingMessagesDialog()
-                    }
-                    6 -> {
-                        val current = viewModel.screenshotNotificationsEnabled.value
-                        viewModel.toggleScreenshotNotifications(!current)
-                        val status = if (!current) "enabled" else "disabled"
-                        Toast.makeText(this, "Screenshot alerts $status", Toast.LENGTH_SHORT).show()
-                    }
-                    else -> Toast.makeText(this, getString(R.string.toast_option_selected), Toast.LENGTH_SHORT).show()
+            .setItems(menuItems.toTypedArray()) { _, which ->
+                if (which in actions.indices) {
+                    actions[which].invoke()
                 }
             }
             .show()

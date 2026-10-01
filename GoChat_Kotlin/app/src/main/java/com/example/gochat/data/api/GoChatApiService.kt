@@ -176,6 +176,11 @@ interface GoChatApiService {
     // ── Group Management ─────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════
 
+    @GET("api/v1/groups/{id}/members")
+    suspend fun getGroupMembers(
+        @Path("id") convId: String
+    ): Response<GroupMembersResponse>
+
     @GET("api/v1/groups/{id}/metadata")
     suspend fun getGroupMetadata(
         @Path("id") convId: String

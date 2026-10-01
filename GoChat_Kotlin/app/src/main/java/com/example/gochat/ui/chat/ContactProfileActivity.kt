@@ -195,6 +195,18 @@ class ContactProfileActivity : AppCompatActivity() {
             setResult(RESULT_OK, Intent().apply { putExtra("action", "search") })
             finish()
         }
+
+        // 4. Create Group
+        binding.btnActionGroup.setOnClickListener {
+            val intent = Intent(this, SelectContactActivity::class.java).apply {
+                putExtra(SelectContactActivity.EXTRA_ACTION, SelectContactActivity.ACTION_CREATE_GROUP)
+                putExtra(SelectContactActivity.EXTRA_PRESELECT_USER_ID, targetUserId)
+                putExtra(SelectContactActivity.EXTRA_PRESELECT_NAME, userName)
+                putExtra(SelectContactActivity.EXTRA_PRESELECT_AVATAR, userAvatar)
+                putExtra(SelectContactActivity.EXTRA_PRESELECT_PHONE, this@ContactProfileActivity.intent.getStringExtra(EXTRA_USER_PHONE).orEmpty())
+            }
+            startActivity(intent)
+        }
     }
 
     private fun setupSettingsRows(userName: String, convId: String) {
@@ -247,8 +259,11 @@ class ContactProfileActivity : AppCompatActivity() {
         // 6. Create group with person
         binding.layoutCreateGroupWith.setOnClickListener {
             val intent = Intent(this, SelectContactActivity::class.java).apply {
-                putExtra("action", "create_group")
-                putExtra("preselect_contact_name", userName)
+                putExtra(SelectContactActivity.EXTRA_ACTION, SelectContactActivity.ACTION_CREATE_GROUP)
+                putExtra(SelectContactActivity.EXTRA_PRESELECT_USER_ID, intent.getStringExtra(EXTRA_TARGET_USER_ID).orEmpty())
+                putExtra(SelectContactActivity.EXTRA_PRESELECT_NAME, userName)
+                putExtra(SelectContactActivity.EXTRA_PRESELECT_AVATAR, intent.getStringExtra(EXTRA_USER_AVATAR).orEmpty())
+                putExtra(SelectContactActivity.EXTRA_PRESELECT_PHONE, intent.getStringExtra(EXTRA_USER_PHONE).orEmpty())
             }
             startActivity(intent)
         }

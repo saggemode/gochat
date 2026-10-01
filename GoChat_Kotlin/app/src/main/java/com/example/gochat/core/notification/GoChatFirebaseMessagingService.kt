@@ -207,6 +207,35 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
             return
         }
 
+        // Handle "Added to Group" notifications
+        if (eventType == "added_to_group") {
+            val groupName = data["group_name"] ?: "a group"
+            val groupAvatar = data["group_avatar"] ?: data["sender_avatar"] ?: ""
+            val addedByName = data["added_by_name"] ?: "Someone"
+
+            val addedWakeLock = powerManager?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "GoChat:FCMAddedToGroupWakeLock")?.apply {
+                try { acquire(15000L) } catch (_: Exception) {}
+            }
+
+            serviceScope.launch {
+                try {
+                    NotificationHelper.showChatNotificationAsync(
+                        context = applicationContext,
+                        conversationId = conversationId,
+                        title = groupName,
+                        body = "$addedByName added you to $groupName",
+                        senderAvatar = groupAvatar,
+                        isGroup = true
+                    )
+                } finally {
+                    try {
+                        if (addedWakeLock?.isHeld == true) addedWakeLock.release()
+                    } catch (_: Exception) {}
+                }
+            }
+            return
+        }
+
         // 1. WhatsApp-Style Background Ingestion: Persist message into Room DB immediately
         val isChatMessage = eventType == "chat_message" ||
                 eventType == "new_message" ||

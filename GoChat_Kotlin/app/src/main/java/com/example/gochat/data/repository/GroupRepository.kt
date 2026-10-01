@@ -1,7 +1,9 @@
 package com.example.gochat.data.repository
 
-import android.content.Context
+
+
 import com.example.gochat.data.api.GoChatApiService
+import com.example.gochat.data.model.GroupMember
 import com.example.gochat.data.model.GroupMetadata
 import kotlinx.serialization.json.*
 import javax.inject.Inject
@@ -11,6 +13,20 @@ import javax.inject.Singleton
 class GroupRepository @Inject constructor(
     private val api: GoChatApiService
 ) {
+
+    suspend fun getGroupMembers(convId: String): Result<List<GroupMember>> {
+        return try {
+            val response = api.getGroupMembers(convId)
+            if (response.isSuccessful) {
+                val list = response.body()?.members ?: emptyList()
+                Result.success(list)
+            } else {
+                Result.failure(Exception("Failed to fetch group members"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
     suspend fun getGroupMetadata(convId: String): Result<GroupMetadata> {
         return try {
@@ -112,6 +128,16 @@ class GroupRepository @Inject constructor(
             val response = api.promoteMember(convId, userId, body)
             if (response.isSuccessful) Result.success(Unit)
             else Result.failure(Exception("Failed to promote member"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun demoteMember(convId: String, userId: String): Result<Unit> {
+        return try {
+            val response = api.demoteMember(convId, userId)
+            if (response.isSuccessful) Result.success(Unit)
+            else Result.failure(Exception("Failed to demote member"))
         } catch (e: Exception) {
             Result.failure(e)
         }

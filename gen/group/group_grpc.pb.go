@@ -27,6 +27,7 @@ const (
 	GroupService_ResolvePendingApproval_FullMethodName   = "/group.GroupService/ResolvePendingApproval"
 	GroupService_PromoteMember_FullMethodName            = "/group.GroupService/PromoteMember"
 	GroupService_DemoteMember_FullMethodName             = "/group.GroupService/DemoteMember"
+	GroupService_ListGroupMembers_FullMethodName         = "/group.GroupService/ListGroupMembers"
 	GroupService_CreateCommunity_FullMethodName          = "/group.GroupService/CreateCommunity"
 	GroupService_AddGroupToCommunity_FullMethodName      = "/group.GroupService/AddGroupToCommunity"
 	GroupService_RemoveGroupFromCommunity_FullMethodName = "/group.GroupService/RemoveGroupFromCommunity"
@@ -56,6 +57,7 @@ type GroupServiceClient interface {
 	ResolvePendingApproval(ctx context.Context, in *ResolvePendingApprovalRequest, opts ...grpc.CallOption) (*ResolvePendingApprovalResponse, error)
 	PromoteMember(ctx context.Context, in *PromoteMemberRequest, opts ...grpc.CallOption) (*PromoteMemberResponse, error)
 	DemoteMember(ctx context.Context, in *DemoteMemberRequest, opts ...grpc.CallOption) (*DemoteMemberResponse, error)
+	ListGroupMembers(ctx context.Context, in *ListGroupMembersRequest, opts ...grpc.CallOption) (*ListGroupMembersResponse, error)
 	// Communities
 	CreateCommunity(ctx context.Context, in *CreateCommunityRequest, opts ...grpc.CallOption) (*CreateCommunityResponse, error)
 	AddGroupToCommunity(ctx context.Context, in *AddGroupToCommunityRequest, opts ...grpc.CallOption) (*AddGroupToCommunityResponse, error)
@@ -158,6 +160,16 @@ func (c *groupServiceClient) DemoteMember(ctx context.Context, in *DemoteMemberR
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DemoteMemberResponse)
 	err := c.cc.Invoke(ctx, GroupService_DemoteMember_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupServiceClient) ListGroupMembers(ctx context.Context, in *ListGroupMembersRequest, opts ...grpc.CallOption) (*ListGroupMembersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListGroupMembersResponse)
+	err := c.cc.Invoke(ctx, GroupService_ListGroupMembers_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -326,6 +338,7 @@ type GroupServiceServer interface {
 	ResolvePendingApproval(context.Context, *ResolvePendingApprovalRequest) (*ResolvePendingApprovalResponse, error)
 	PromoteMember(context.Context, *PromoteMemberRequest) (*PromoteMemberResponse, error)
 	DemoteMember(context.Context, *DemoteMemberRequest) (*DemoteMemberResponse, error)
+	ListGroupMembers(context.Context, *ListGroupMembersRequest) (*ListGroupMembersResponse, error)
 	// Communities
 	CreateCommunity(context.Context, *CreateCommunityRequest) (*CreateCommunityResponse, error)
 	AddGroupToCommunity(context.Context, *AddGroupToCommunityRequest) (*AddGroupToCommunityResponse, error)
@@ -377,6 +390,9 @@ func (UnimplementedGroupServiceServer) PromoteMember(context.Context, *PromoteMe
 }
 func (UnimplementedGroupServiceServer) DemoteMember(context.Context, *DemoteMemberRequest) (*DemoteMemberResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DemoteMember not implemented")
+}
+func (UnimplementedGroupServiceServer) ListGroupMembers(context.Context, *ListGroupMembersRequest) (*ListGroupMembersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListGroupMembers not implemented")
 }
 func (UnimplementedGroupServiceServer) CreateCommunity(context.Context, *CreateCommunityRequest) (*CreateCommunityResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateCommunity not implemented")
@@ -584,6 +600,24 @@ func _GroupService_DemoteMember_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GroupServiceServer).DemoteMember(ctx, req.(*DemoteMemberRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GroupService_ListGroupMembers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListGroupMembersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupServiceServer).ListGroupMembers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupService_ListGroupMembers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupServiceServer).ListGroupMembers(ctx, req.(*ListGroupMembersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -896,6 +930,10 @@ var GroupService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DemoteMember",
 			Handler:    _GroupService_DemoteMember_Handler,
+		},
+		{
+			MethodName: "ListGroupMembers",
+			Handler:    _GroupService_ListGroupMembers_Handler,
 		},
 		{
 			MethodName: "CreateCommunity",

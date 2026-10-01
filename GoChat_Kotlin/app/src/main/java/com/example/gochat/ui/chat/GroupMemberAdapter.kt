@@ -46,9 +46,9 @@ class GroupMemberAdapter(
                     tvRole.visibility = View.VISIBLE
                     tvRole.text = "BOT"
                     tvRole.setBackgroundResource(R.drawable.bg_role_bot)
-                } else if (member.role == "admin" || member.role == "owner") {
+                } else if (member.role.equals("admin", ignoreCase = true) || member.role.equals("owner", ignoreCase = true)) {
                     tvRole.visibility = View.VISIBLE
-                    tvRole.text = member.role.replaceFirstChar { it.uppercase() }
+                    tvRole.text = "Group Admin"
                     tvRole.setBackgroundResource(R.drawable.bg_role_admin)
                 } else {
                     tvRole.visibility = View.GONE

@@ -45,21 +45,36 @@ func (s *GroupServer) UpdateGroupMetadata(ctx context.Context, req *grouppb.Upda
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "check user role: %v", err)
 	}
+	if role == "" {
+		return nil, status.Error(codes.PermissionDenied, "user is not a member of this group")
+	}
+
+	existing, _ := s.repo.GetMetadata(ctx, convID)
 	if role != "owner" && role != "admin" {
-		return nil, status.Error(codes.PermissionDenied, "only group admins or owners can update metadata")
+		if existing != nil && existing.AdminsOnlyEditInfo {
+			return nil, status.Error(codes.PermissionDenied, "only group admins or owners can update group info")
+		}
 	}
 
 	meta := &repository.GroupMetadata{
 		ConversationID:       convID,
+		Name:                 req.Name,
+		AvatarURL:            req.AvatarUrl,
 		Description:          req.Description,
 		AnnouncementsOnly:    req.AnnouncementsOnly,
 		AdminsOnlyEditInfo:   req.AdminsOnlyEditInfo,
 		JoinApprovalRequired: req.JoinApprovalRequired,
 	}
 
+	// Preserving existing settings if requester is not admin/owner
+	if role != "owner" && role != "admin" && existing != nil {
+		meta.AnnouncementsOnly = existing.AnnouncementsOnly
+		meta.AdminsOnlyEditInfo = existing.AdminsOnlyEditInfo
+		meta.JoinApprovalRequired = existing.JoinApprovalRequired
+	}
+
 	// Preserving existing invite code
-	existing, err := s.repo.GetMetadata(ctx, convID)
-	if err == nil && existing.InviteCode.Valid {
+	if existing != nil && existing.InviteCode.Valid {
 		meta.InviteCode = existing.InviteCode
 	}
 
@@ -68,9 +83,16 @@ func (s *GroupServer) UpdateGroupMetadata(ctx context.Context, req *grouppb.Upda
 		return nil, status.Errorf(codes.Internal, "update metadata: %v", err)
 	}
 
+	fresh, err := s.repo.GetMetadata(ctx, convID)
+	if err == nil && fresh != nil {
+		meta = fresh
+	}
+
 	return &grouppb.UpdateGroupMetadataResponse{
 		Metadata: &grouppb.GroupMetadata{
 			ConversationId:       meta.ConversationID.String(),
+			Name:                 meta.Name,
+			AvatarUrl:            meta.AvatarURL,
 			Description:          meta.Description,
 			AnnouncementsOnly:    meta.AnnouncementsOnly,
 			AdminsOnlyEditInfo:   meta.AdminsOnlyEditInfo,
@@ -106,12 +128,51 @@ func (s *GroupServer) GetGroupMetadata(ctx context.Context, req *grouppb.GetGrou
 	return &grouppb.GetGroupMetadataResponse{
 		Metadata: &grouppb.GroupMetadata{
 			ConversationId:       meta.ConversationID.String(),
+			Name:                 meta.Name,
+			AvatarUrl:            meta.AvatarURL,
 			Description:          meta.Description,
 			AnnouncementsOnly:    meta.AnnouncementsOnly,
 			AdminsOnlyEditInfo:   meta.AdminsOnlyEditInfo,
 			InviteCode:           meta.InviteCode.String,
 			JoinApprovalRequired: meta.JoinApprovalRequired,
 		},
+	}, nil
+}
+
+func (s *GroupServer) ListGroupMembers(ctx context.Context, req *grouppb.ListGroupMembersRequest) (*grouppb.ListGroupMembersResponse, error) {
+	convID, err := uuid.Parse(req.ConversationId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid conversation_id")
+	}
+	reqID, err := uuid.Parse(req.RequesterId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid requester_id")
+	}
+
+	role, err := s.repo.GetUserRole(ctx, convID, reqID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "check user role: %v", err)
+	}
+	if role == "" {
+		return nil, status.Error(codes.PermissionDenied, "user is not a member of this group")
+	}
+
+	members, err := s.repo.ListMembers(ctx, convID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list members: %v", err)
+	}
+
+	items := make([]*grouppb.GroupMemberItem, 0, len(members))
+	for _, m := range members {
+		items = append(items, &grouppb.GroupMemberItem{
+			UserId:   m.UserID.String(),
+			Role:     m.Role,
+			JoinedAt: m.JoinedAt.Unix(),
+		})
+	}
+
+	return &grouppb.ListGroupMembersResponse{
+		Members: items,
 	}, nil
 }
 
