@@ -19,6 +19,7 @@ import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.data.repository.StoryRepository
 import com.example.gochat.data.websocket.GoChatWebSocket
 import com.example.gochat.core.network.NetworkMonitor
+import com.example.gochat.core.notification.NotificationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -182,9 +183,30 @@ class ChatListViewModel @Inject constructor(
 
         viewModelScope.launch {
             webSocket.events.collect { event ->
-                val type = event["type"]?.jsonPrimitive?.contentOrNull
+                val type = (event["type"] ?: event["event_type"] ?: event["eventType"])
+                    ?.jsonPrimitive?.contentOrNull.orEmpty().lowercase()
                 if (type == "new_product") {
                     marketplaceRepository.handleIncomingWebSocketEvent(event)
+                } else if (type == "added_to_group") {
+                    val groupName = event["group_name"]?.jsonPrimitive?.contentOrNull ?: "a group"
+                    val groupAvatar = (event["group_avatar"] ?: event["sender_avatar"])?.jsonPrimitive?.contentOrNull ?: ""
+                    val addedByName = event["added_by_name"]?.jsonPrimitive?.contentOrNull ?: "Someone"
+                    val convId = event["conversation_id"]?.jsonPrimitive?.contentOrNull ?: ""
+
+                    chatRepository.refreshConversations()
+
+                    if (convId.isNotEmpty() && chatRepository.activeConversationId != convId) {
+                        try {
+                            NotificationHelper.showChatNotificationAsync(
+                                context = getApplication(),
+                                conversationId = convId,
+                                title = groupName,
+                                body = "$addedByName added you to $groupName",
+                                senderAvatar = groupAvatar,
+                                isGroup = true
+                            )
+                        } catch (_: Exception) {}
+                    }
                 } else {
                     val msg = chatRepository.handleIncomingWebSocketEvent(event)
                     if (msg != null) {

@@ -1,4 +1,4 @@
-package handlers
+﻿package handlers
 
 import (
 	"context"
@@ -123,6 +123,90 @@ func (h *ChatHandler) CreateConversation(c *gin.Context) {
 				break
 			}
 		}
+	}
+
+	// If it's a group conversation, notify all added members and post a system message
+	if convType == chatpb.ConversationType_GROUP && conv != nil {
+		go func(creatorID string, groupConv *chatpb.Conversation) {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			creatorName := "Someone"
+			if h.authClient != nil {
+				uResp, err := h.authClient.GetUser(ctx, &authpb.GetUserRequest{UserId: creatorID})
+				if err == nil && uResp != nil && uResp.User != nil {
+					creatorName = uResp.User.DisplayName
+					if creatorName == "" {
+						creatorName = uResp.User.Phone
+					}
+					if creatorName == "" {
+						creatorName = uResp.User.Email
+					}
+				}
+			}
+
+			groupName := groupConv.Name
+			if groupName == "" {
+				groupName = "a group"
+			}
+			groupAvatar := groupConv.AvatarUrl
+			title := groupName
+			body := fmt.Sprintf("%s added you to %s", creatorName, groupName)
+
+			// 1. Post a system message in the chat
+			sysMsgResp, sysErr := h.client.SendMessage(ctx, &chatpb.SendMessageRequest{
+				ConversationId: groupConv.Id,
+				SenderId:       creatorID,
+				Content:        fmt.Sprintf("SYSTEM: %s created group \"%s\"", creatorName, groupName),
+				Type:           chatpb.MessageType_TEXT,
+			})
+			if sysErr == nil && sysMsgResp != nil && sysMsgResp.Message != nil {
+				h.fanOutEvent("new_message", sysMsgResp.Message.Id, groupConv.Id, creatorID, map[string]interface{}{
+					"message": map[string]interface{}{
+						"id":              sysMsgResp.Message.Id,
+						"conversation_id": sysMsgResp.Message.ConversationId,
+						"sender_id":       sysMsgResp.Message.SenderId,
+						"content":         sysMsgResp.Message.Content,
+						"type":            "system",
+						"created_at":      sysMsgResp.Message.CreatedAt,
+					},
+				})
+			}
+
+			// 2. Notify all members (excluding creator) via WebSocket and FCM
+			for _, mID := range groupConv.MemberIds {
+				if mID == "" || mID == creatorID {
+					continue
+				}
+
+				if h.hub != nil {
+					wsPayload, _ := json.Marshal(map[string]interface{}{
+						"type":            "added_to_group",
+						"event_type":      "added_to_group",
+						"conversation_id": groupConv.Id,
+						"group_name":      groupName,
+						"group_avatar":    groupAvatar,
+						"added_by":        creatorID,
+						"added_by_name":   creatorName,
+						"user_id":         mID,
+					})
+					h.hub.SendToUser(mID, wsPayload)
+				}
+
+				fcm.SendToUser(ctx, mID, title, body, map[string]string{
+					"type":            "added_to_group",
+					"event_type":      "added_to_group",
+					"conversation_id": groupConv.Id,
+					"group_name":      groupName,
+					"group_avatar":    groupAvatar,
+					"added_by":        creatorID,
+					"added_by_name":   creatorName,
+					"is_group":        "true",
+					"title":           title,
+					"body":            body,
+				})
+			}
+		}(userID, conv)
 	}
 
 	c.JSON(http.StatusCreated, conv)
@@ -316,25 +400,52 @@ func (h *ChatHandler) AddMember(c *gin.Context) {
 	convID := c.Param("id")
 
 	var req struct {
-		NewMemberId string `json:"new_member_id" binding:"required"`
+		NewMemberId string `json:"new_member_id"`
+		MemberId    string `json:"member_id"`
+		UserId      string `json:"user_id"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	targetMemberID := strings.TrimSpace(req.NewMemberId)
+	if targetMemberID == "" {
+		targetMemberID = strings.TrimSpace(req.MemberId)
+	}
+	if targetMemberID == "" {
+		targetMemberID = strings.TrimSpace(req.UserId)
+	}
+	if targetMemberID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "new_member_id is required"})
+		return
+	}
+
+	// Resolve identifier (UUID, PIN, email, or phone)
+	resolvedTargetID := targetMemberID
+	var resolvedMemberUser *authpb.User
+	if h.authClient != nil {
+		usersResp, err := h.authClient.GetUsers(c.Request.Context(), &authpb.GetUsersRequest{UserIds: []string{targetMemberID}})
+		if err == nil && usersResp != nil && len(usersResp.Users) > 0 {
+			resolvedMemberUser = usersResp.Users[0]
+			if resolvedMemberUser.Id != "" {
+				resolvedTargetID = resolvedMemberUser.Id
+			}
+		}
+	}
+
 	resp, err := h.client.AddMember(c.Request.Context(), &chatpb.AddMemberRequest{
 		ConversationId: convID,
 		RequesterId:    userID,
-		NewMemberId:    req.NewMemberId,
+		NewMemberId:    resolvedTargetID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to add member")
 		return
 	}
 
-	// ── Notify the newly added member ──────────────────────────────────────
-	go func(adderID, newMemberID, conversationID string) {
+	// ── Notify the newly added member and group conversation ───────────────
+	go func(adderID, newMemberID, conversationID string, initialMemberUser *authpb.User) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
@@ -349,6 +460,29 @@ func (h *ChatHandler) AddMember(c *gin.Context) {
 				}
 				if adderName == "" {
 					adderName = uResp.User.Email
+				}
+			}
+		}
+
+		// Resolve the new member's display name
+		newMemberName := "Someone"
+		if initialMemberUser != nil {
+			newMemberName = initialMemberUser.DisplayName
+			if newMemberName == "" {
+				newMemberName = initialMemberUser.Phone
+			}
+			if newMemberName == "" {
+				newMemberName = initialMemberUser.Email
+			}
+		} else if h.authClient != nil {
+			uResp, err := h.authClient.GetUser(ctx, &authpb.GetUserRequest{UserId: newMemberID})
+			if err == nil && uResp != nil && uResp.User != nil {
+				newMemberName = uResp.User.DisplayName
+				if newMemberName == "" {
+					newMemberName = uResp.User.Phone
+				}
+				if newMemberName == "" {
+					newMemberName = uResp.User.Email
 				}
 			}
 		}
@@ -370,10 +504,11 @@ func (h *ChatHandler) AddMember(c *gin.Context) {
 		title := groupName
 		body := fmt.Sprintf("%s added you to %s", adderName, groupName)
 
-		// 1. Real-time WebSocket notification
+		// 1. Real-time WebSocket notification to the new member
 		if h.hub != nil {
 			wsPayload, _ := json.Marshal(map[string]interface{}{
 				"type":            "added_to_group",
+				"event_type":      "added_to_group",
 				"conversation_id": conversationID,
 				"group_name":      groupName,
 				"group_avatar":    groupAvatar,
@@ -384,7 +519,7 @@ func (h *ChatHandler) AddMember(c *gin.Context) {
 			h.hub.SendToUser(newMemberID, wsPayload)
 		}
 
-		// 2. FCM push notification (for when the user is offline)
+		// 2. FCM push notification (for when the user is offline/background)
 		fcm.SendToUser(ctx, newMemberID, title, body, map[string]string{
 			"type":            "added_to_group",
 			"event_type":      "added_to_group",
@@ -397,7 +532,28 @@ func (h *ChatHandler) AddMember(c *gin.Context) {
 			"title":           title,
 			"body":            body,
 		})
-	}(userID, req.NewMemberId, convID)
+
+		// 3. Post a SYSTEM message to the conversation so all group members receive push & live update
+		sysMsgResp, sysErr := h.client.SendMessage(ctx, &chatpb.SendMessageRequest{
+			ConversationId: conversationID,
+			SenderId:       adderID,
+			Content:        fmt.Sprintf("SYSTEM: %s added %s", adderName, newMemberName),
+			Type:           chatpb.MessageType_TEXT,
+		})
+		if sysErr == nil && sysMsgResp != nil && sysMsgResp.Message != nil {
+			h.fanOutEvent("new_message", sysMsgResp.Message.Id, conversationID, adderID, map[string]interface{}{
+				"message": map[string]interface{}{
+					"id":              sysMsgResp.Message.Id,
+					"conversation_id": sysMsgResp.Message.ConversationId,
+					"sender_id":       sysMsgResp.Message.SenderId,
+					"content":         sysMsgResp.Message.Content,
+					"type":            "system",
+					"created_at":      sysMsgResp.Message.CreatedAt,
+				},
+				"skip_fcm_user_id": newMemberID,
+			})
+		}
+	}(userID, resolvedTargetID, convID, resolvedMemberUser)
 
 	c.JSON(http.StatusOK, gin.H{"success": resp.Success})
 }
@@ -411,22 +567,145 @@ func (h *ChatHandler) RemoveMember(c *gin.Context) {
 	convID := c.Param("id")
 
 	var req struct {
-		MemberId string `json:"member_id" binding:"required"`
+		MemberId string `json:"member_id"`
+		UserId   string `json:"user_id"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	targetMemberID := strings.TrimSpace(req.MemberId)
+	if targetMemberID == "" {
+		targetMemberID = strings.TrimSpace(req.UserId)
+	}
+	if targetMemberID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "member_id is required"})
+		return
+	}
+
+	// Fetch conversation info before removal to have member list and group name
+	convResp, _ := h.client.GetConversation(c.Request.Context(), &chatpb.GetConversationRequest{
+		ConversationId: convID,
+		UserId:         userID,
+	})
+
 	resp, err := h.client.RemoveMember(c.Request.Context(), &chatpb.RemoveMemberRequest{
 		ConversationId: convID,
 		RequesterId:    userID,
-		MemberId:       req.MemberId,
+		MemberId:       targetMemberID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to remove member")
 		return
 	}
+
+	// ── Notify remaining group members and the removed member ───────────────
+	go func(removerID, removedID, conversationID string, prevConv *chatpb.GetConversationResponse) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		removerName := "Someone"
+		if h.authClient != nil {
+			uResp, err := h.authClient.GetUser(ctx, &authpb.GetUserRequest{UserId: removerID})
+			if err == nil && uResp != nil && uResp.User != nil {
+				removerName = uResp.User.DisplayName
+				if removerName == "" {
+					removerName = uResp.User.Phone
+				}
+				if removerName == "" {
+					removerName = uResp.User.Email
+				}
+			}
+		}
+
+		removedName := "Someone"
+		if h.authClient != nil {
+			uResp, err := h.authClient.GetUser(ctx, &authpb.GetUserRequest{UserId: removedID})
+			if err == nil && uResp != nil && uResp.User != nil {
+				removedName = uResp.User.DisplayName
+				if removedName == "" {
+					removedName = uResp.User.Phone
+				}
+				if removedName == "" {
+					removedName = uResp.User.Email
+				}
+			}
+		}
+
+		groupName := "a group"
+		if prevConv != nil && prevConv.Conversation != nil {
+			if prevConv.Conversation.Name != "" {
+				groupName = prevConv.Conversation.Name
+			}
+		}
+
+		isSelfLeave := removerID == removedID
+		var sysText string
+		if isSelfLeave {
+			sysText = fmt.Sprintf("%s left the group", removerName)
+		} else {
+			sysText = fmt.Sprintf("%s removed %s", removerName, removedName)
+		}
+
+		// 1. If someone else removed the user, send a dedicated push notification and WS event to the removed user
+		if !isSelfLeave {
+			if h.hub != nil {
+				wsPayload, _ := json.Marshal(map[string]interface{}{
+					"type":            "removed_from_group",
+					"event_type":      "removed_from_group",
+					"conversation_id": conversationID,
+					"group_name":      groupName,
+					"removed_by":      removerID,
+					"removed_by_name": removerName,
+					"user_id":         removedID,
+				})
+				h.hub.SendToUser(removedID, wsPayload)
+			}
+			fcm.SendToUser(ctx, removedID, groupName, fmt.Sprintf("%s removed you from %s", removerName, groupName), map[string]string{
+				"type":            "removed_from_group",
+				"event_type":      "removed_from_group",
+				"conversation_id": conversationID,
+				"group_name":      groupName,
+				"removed_by":      removerID,
+				"removed_by_name": removerName,
+				"is_group":        "true",
+				"title":           groupName,
+				"body":            fmt.Sprintf("%s removed you from %s", removerName, groupName),
+			})
+		} else {
+			if h.hub != nil {
+				wsPayload, _ := json.Marshal(map[string]interface{}{
+					"type":            "left_group",
+					"event_type":      "left_group",
+					"conversation_id": conversationID,
+					"user_id":         removedID,
+				})
+				h.hub.SendToUser(removedID, wsPayload)
+			}
+		}
+
+		// 2. Post a SYSTEM message to the group conversation and fan out to all remaining members
+		sysMsgResp, sysErr := h.client.SendMessage(ctx, &chatpb.SendMessageRequest{
+			ConversationId: conversationID,
+			SenderId:       removerID,
+			Content:        "SYSTEM: " + sysText,
+			Type:           chatpb.MessageType_TEXT,
+		})
+		if sysErr == nil && sysMsgResp != nil && sysMsgResp.Message != nil {
+			h.fanOutEvent("new_message", sysMsgResp.Message.Id, conversationID, removerID, map[string]interface{}{
+				"message": map[string]interface{}{
+					"id":              sysMsgResp.Message.Id,
+					"conversation_id": sysMsgResp.Message.ConversationId,
+					"sender_id":       sysMsgResp.Message.SenderId,
+					"content":         sysMsgResp.Message.Content,
+					"type":            "system",
+					"created_at":      sysMsgResp.Message.CreatedAt,
+				},
+				"skip_fcm_user_id": removedID,
+			})
+		}
+	}(userID, targetMemberID, convID, convResp)
 
 	c.JSON(http.StatusOK, gin.H{"success": resp.Success})
 }
@@ -1478,8 +1757,20 @@ func (h *ChatHandler) fanOutEvent(eventType string, messageID string, convID str
 					contentBody = "👤 Contact"
 				} else if strings.Contains(strings.ToUpper(typeStr), "STICKER") {
 					contentBody = "🏷️ Sticker"
-				} else if strings.Contains(strings.ToUpper(typeStr), "ORDER") {
-					contentBody = "📦 Order"
+				}
+
+				// Handle SYSTEM messages cleanly so push notification reads like "John added Alice"
+				isSystemMessage := strings.HasPrefix(strings.TrimSpace(contentBody), "SYSTEM:") ||
+					strings.HasPrefix(strings.TrimSpace(contentBody), "system:") ||
+					strings.EqualFold(typeStr, "system")
+				if isSystemMessage {
+					colonIdx := strings.Index(contentBody, ":")
+					if colonIdx != -1 {
+						contentBody = strings.TrimSpace(contentBody[colonIdx+1:])
+					}
+					if isGroup && groupName != "" {
+						pushTitle = groupName
+					}
 				}
 
 				// Fallback: if contentBody is still raw JSON, replace with generic label
@@ -1488,8 +1779,10 @@ func (h *ChatHandler) fanOutEvent(eventType string, messageID string, convID str
 				}
 			}
 
+			skipUserID, _ := extra["skip_fcm_user_id"].(string)
+
 			for _, memberID := range convResp.Conversation.MemberIds {
-				if memberID != userID && memberID != "" {
+				if memberID != userID && memberID != "" && memberID != skipUserID {
 					targetID := memberID
 					go func() {
 						pushCtx, pCancel := context.WithTimeout(context.Background(), 8*time.Second)

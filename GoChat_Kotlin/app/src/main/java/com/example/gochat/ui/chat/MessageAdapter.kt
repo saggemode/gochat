@@ -559,11 +559,21 @@ class MessageAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(message: Message) {
-            binding.tvSystemMessageContent.text = message.content
+            val rawContent = message.content
+            val displayText = when {
+                rawContent.startsWith("SYSTEM:", ignoreCase = true) -> rawContent.substring(7).trim()
+                rawContent.startsWith("system:", ignoreCase = true) -> rawContent.substring(7).trim()
+                else -> rawContent
+            }
+            binding.tvSystemMessageContent.text = displayText
             binding.tvSystemMessageTime.text = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(message.createdAt))
 
-            val contentLower = message.content.lowercase(Locale.ROOT)
+            val contentLower = rawContent.lowercase(Locale.ROOT)
             when {
+                contentLower.contains("added") || contentLower.contains("created group") || contentLower.contains("group") -> {
+                    binding.ivSystemMessageIcon.setImageResource(R.drawable.ic_group_add)
+                    binding.ivSystemMessageIcon.imageTintList = ColorStateList.valueOf(0xFF00A884.toInt())
+                }
                 contentLower.contains("shipped") || contentLower.contains("transit") -> {
                     binding.ivSystemMessageIcon.setImageResource(R.drawable.ic_forward)
                     binding.ivSystemMessageIcon.imageTintList = ColorStateList.valueOf(0xFF00B4D8.toInt())

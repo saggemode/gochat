@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -10,19 +13,141 @@ import (
 	"google.golang.org/grpc/status"
 
 	authpb "gochat/gen/auth"
+	chatpb "gochat/gen/chat"
 	grouppb "gochat/gen/group"
+	"gochat/pkg/fcm"
 	"gochat/services/gateway/ws"
 )
 
 type GroupHandler struct {
 	client     grouppb.GroupServiceClient
 	authClient authpb.AuthServiceClient
+	chatClient chatpb.ChatServiceClient
 	hub        *ws.Hub
 	log        *zap.Logger
 }
 
 func NewGroupHandler(client grouppb.GroupServiceClient, authClient authpb.AuthServiceClient, hub *ws.Hub, log *zap.Logger) *GroupHandler {
 	return &GroupHandler{client: client, authClient: authClient, hub: hub, log: log}
+}
+
+func (h *GroupHandler) WithChatClient(chatClient chatpb.ChatServiceClient) *GroupHandler {
+	h.chatClient = chatClient
+	return h
+}
+
+func (h *GroupHandler) resolveUserName(ctx context.Context, userID string) string {
+	if h.authClient == nil || userID == "" {
+		return "Someone"
+	}
+	uResp, err := h.authClient.GetUser(ctx, &authpb.GetUserRequest{UserId: userID})
+	if err == nil && uResp != nil && uResp.User != nil {
+		if uResp.User.DisplayName != "" {
+			return uResp.User.DisplayName
+		}
+		if uResp.User.Phone != "" {
+			return uResp.User.Phone
+		}
+		if uResp.User.Email != "" {
+			return uResp.User.Email
+		}
+	}
+	return "Someone"
+}
+
+func (h *GroupHandler) notifyGroupEvent(actorID, convID, systemText, eventType string, extraData map[string]string) {
+	if h.chatClient == nil {
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		convResp, err := h.chatClient.GetConversation(ctx, &chatpb.GetConversationRequest{
+			ConversationId: convID,
+			UserId:         actorID,
+		})
+		if err != nil || convResp == nil || convResp.Conversation == nil {
+			return
+		}
+
+		conv := convResp.Conversation
+		groupName := conv.Name
+		if groupName == "" {
+			groupName = "Group"
+		}
+
+		// 1. Post system message to the chat
+		sysResp, sysErr := h.chatClient.SendMessage(ctx, &chatpb.SendMessageRequest{
+			ConversationId: convID,
+			SenderId:       actorID,
+			Content:        "SYSTEM: " + systemText,
+			Type:           chatpb.MessageType_TEXT,
+		})
+
+		// 2. Broadcast WebSocket event to all connected group members
+		if h.hub != nil {
+			wsPayloadMap := map[string]interface{}{
+				"type":            eventType,
+				"event_type":      eventType,
+				"conversation_id": convID,
+				"group_name":      groupName,
+				"group_avatar":    conv.AvatarUrl,
+				"actor_id":        actorID,
+				"content":         systemText,
+				"created_at":      time.Now().Unix(),
+			}
+			for k, v := range extraData {
+				wsPayloadMap[k] = v
+			}
+			if sysErr == nil && sysResp != nil && sysResp.Message != nil {
+				wsPayloadMap["msg_id"] = sysResp.Message.Id
+				wsPayloadMap["message"] = map[string]interface{}{
+					"id":              sysResp.Message.Id,
+					"conversation_id": convID,
+					"sender_id":       actorID,
+					"content":         "SYSTEM: " + systemText,
+					"type":            "system",
+					"created_at":      sysResp.Message.CreatedAt,
+				}
+			}
+			wsBytes, _ := json.Marshal(wsPayloadMap)
+			for _, mID := range conv.MemberIds {
+				if mID != "" {
+					h.hub.SendToUser(mID, wsBytes)
+				}
+			}
+		}
+
+		// 3. Dispatch high-priority FCM Push Notification to all group members (except actor)
+		pushTitle := groupName
+		pushBody := systemText
+		fcmData := map[string]string{
+			"type":            eventType,
+			"event_type":      eventType,
+			"conversation_id": convID,
+			"group_name":      groupName,
+			"group_avatar":    conv.AvatarUrl,
+			"actor_id":        actorID,
+			"is_group":        "true",
+			"title":           pushTitle,
+			"body":            pushBody,
+		}
+		for k, v := range extraData {
+			fcmData[k] = v
+		}
+
+		for _, mID := range conv.MemberIds {
+			if mID != "" && mID != actorID {
+				targetID := mID
+				go func() {
+					pCtx, pCancel := context.WithTimeout(context.Background(), 8*time.Second)
+					defer pCancel()
+					_ = fcm.SendToUser(pCtx, targetID, pushTitle, pushBody, fcmData)
+				}()
+			}
+		}
+	}()
 }
 
 // ListGroupMembers returns enriched group member details including roles.
@@ -121,6 +246,19 @@ func (h *GroupHandler) UpdateGroupMetadata(c *gin.Context) {
 		return
 	}
 
+	actorName := h.resolveUserName(c.Request.Context(), userID)
+	if req.Name != "" {
+		h.notifyGroupEvent(userID, convID, fmt.Sprintf("%s changed the group subject to \"%s\"", actorName, req.Name), "group_updated", map[string]string{
+			"group_name": req.Name,
+		})
+	} else if req.AvatarUrl != "" {
+		h.notifyGroupEvent(userID, convID, fmt.Sprintf("%s changed this group's icon", actorName), "group_updated", map[string]string{
+			"group_avatar": req.AvatarUrl,
+		})
+	} else if req.Description != "" {
+		h.notifyGroupEvent(userID, convID, fmt.Sprintf("%s changed the group description", actorName), "group_updated", nil)
+	}
+
 	c.JSON(http.StatusOK, resp.Metadata)
 }
 
@@ -184,6 +322,9 @@ func (h *GroupHandler) JoinByInviteCode(c *gin.Context) {
 		h.handleGrpcError(c, err, "failed to join group via invite link")
 		return
 	}
+
+	userName := h.resolveUserName(c.Request.Context(), userID)
+	h.notifyGroupEvent(userID, resp.ConversationId, fmt.Sprintf("%s joined using this group's invite link", userName), "member_joined", nil)
 
 	c.JSON(http.StatusOK, gin.H{
 		"conversation_id": resp.ConversationId,
@@ -269,6 +410,13 @@ func (h *GroupHandler) PromoteMember(c *gin.Context) {
 		return
 	}
 
+	actorName := h.resolveUserName(c.Request.Context(), userID)
+	targetName := h.resolveUserName(c.Request.Context(), targetID)
+	h.notifyGroupEvent(userID, convID, fmt.Sprintf("%s made %s a group admin", actorName, targetName), "member_promoted", map[string]string{
+		"target_user_id": targetID,
+		"role":           req.Role,
+	})
+
 	c.JSON(http.StatusOK, gin.H{"success": resp.Success})
 }
 
@@ -289,6 +437,12 @@ func (h *GroupHandler) DemoteMember(c *gin.Context) {
 		h.handleGrpcError(c, err, "failed to demote group member")
 		return
 	}
+
+	actorName := h.resolveUserName(c.Request.Context(), userID)
+	targetName := h.resolveUserName(c.Request.Context(), targetID)
+	h.notifyGroupEvent(userID, convID, fmt.Sprintf("%s dismissed %s as group admin", actorName, targetName), "member_demoted", map[string]string{
+		"target_user_id": targetID,
+	})
 
 	c.JSON(http.StatusOK, gin.H{"success": resp.Success})
 }

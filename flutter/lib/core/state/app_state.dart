@@ -597,6 +597,16 @@ class AppState extends ChangeNotifier {
         notifyListeners();
       }
     }
+    // Incoming Added To Group Event
+    else if (eventType == 'added_to_group' ||
+        data['type'] == 'added_to_group') {
+      final convId = (data['conversation_id'] ?? data['conversationId'] ?? '').toString();
+      fetchConversations();
+      if (convId.isNotEmpty) {
+        fetchMessagesFor(convId);
+      }
+      notifyListeners();
+    }
     // 4. Incoming Story Event
     else if (eventType == 'story_created' ||
         eventType == 'chat:stories' ||
