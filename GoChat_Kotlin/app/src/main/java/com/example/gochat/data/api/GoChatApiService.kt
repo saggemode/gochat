@@ -508,7 +508,7 @@ interface GoChatApiService {
     ): Response<JsonObject>
 
     @GET(ApiConstants.BLOCKED_USERS)
-    suspend fun getBlockedUsers(): Response<JsonObject>
+    suspend fun getBlockedUsers(): Response<JsonElement>
 
     @POST(ApiConstants.REPORT_USER)
     suspend fun reportUser(

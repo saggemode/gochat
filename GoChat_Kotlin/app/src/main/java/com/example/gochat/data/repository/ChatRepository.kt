@@ -1359,19 +1359,33 @@ class ChatRepository @Inject constructor(
             if (response.isSuccessful) {
                 val body = response.body()
                 val list = mutableListOf<BlockedUser>()
-                val rawArray = body?.get("blocked_users")?.jsonArray
-                    ?: body?.get("blocked")?.jsonArray
+                val rawArray = when (body) {
+                    is JsonArray -> body
+                    is JsonObject -> body["blocked_users"]?.jsonArray
+                        ?: body["blockedUsers"]?.jsonArray
+                        ?: body["blocked"]?.jsonArray
+                    else -> null
+                }
                 rawArray?.forEach { element ->
-                    if (element is JsonObject) {
-                        val uId = element["user_id"]?.jsonPrimitive?.contentOrNull
-                            ?: element["userId"]?.jsonPrimitive?.contentOrNull
-                            ?: element["id"]?.jsonPrimitive?.contentOrNull.orEmpty()
-                        val uName = element["user_name"]?.jsonPrimitive?.contentOrNull
-                            ?: element["userName"]?.jsonPrimitive?.contentOrNull
-                            ?: element["name"]?.jsonPrimitive?.contentOrNull.orEmpty()
-                        if (uId.isNotEmpty()) {
-                            list.add(BlockedUser(userId = uId, userName = uName))
+                    when (element) {
+                        is JsonPrimitive -> {
+                            val uId = element.contentOrNull.orEmpty()
+                            if (uId.isNotEmpty()) {
+                                list.add(BlockedUser(userId = uId, userName = ""))
+                            }
                         }
+                        is JsonObject -> {
+                            val uId = element["user_id"]?.jsonPrimitive?.contentOrNull
+                                ?: element["userId"]?.jsonPrimitive?.contentOrNull
+                                ?: element["id"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                            val uName = element["user_name"]?.jsonPrimitive?.contentOrNull
+                                ?: element["userName"]?.jsonPrimitive?.contentOrNull
+                                ?: element["name"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                            if (uId.isNotEmpty()) {
+                                list.add(BlockedUser(userId = uId, userName = uName))
+                            }
+                        }
+                        else -> {}
                     }
                 }
                 list.forEach { dao.insertBlockedUser(it) }

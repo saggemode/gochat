@@ -948,7 +948,14 @@ func (h *AuthHandler) GetBlockedUsers(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, resp.BlockedUserIds)
+	blocked := resp.BlockedUserIds
+	if blocked == nil {
+		blocked = []string{}
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"blocked_users": blocked,
+		"blockedUsers":  blocked,
+	})
 }
 
 // RegisterPhone registers a user's phone number and initiates OTP dispatch.
