@@ -104,6 +104,7 @@ class ChatRoomActivity : AppCompatActivity() {
     @Inject lateinit var tokenManager: com.example.gochat.data.api.TokenManager
     private lateinit var messageAdapter: MessageAdapter
     private lateinit var mentionAdapter: GroupMemberAdapter
+    private lateinit var commandAdapter: BotCommandAdapter
     private lateinit var audioRecorderManager: AudioRecorderManager
 
     private var unreadNewMessagesCount = 0
@@ -629,6 +630,15 @@ class ChatRoomActivity : AppCompatActivity() {
         )
         binding.rvMentionSuggestions.layoutManager = LinearLayoutManager(this)
         binding.rvMentionSuggestions.adapter = mentionAdapter
+
+        // Bot command suggestions
+        commandAdapter = BotCommandAdapter { command ->
+            binding.etMessageInput.setText(command.template)
+            binding.etMessageInput.setSelection(command.template.length)
+            viewModel.onInputTextChanged(command.template, command.template.length)
+        }
+        binding.rvCommandSuggestions.layoutManager = LinearLayoutManager(this)
+        binding.rvCommandSuggestions.adapter = commandAdapter
     }
 
     private fun updateScrollToBottomVisibility() {
@@ -1272,6 +1282,17 @@ class ChatRoomActivity : AppCompatActivity() {
                             mentionAdapter.submitList(suggestions)
                         } else {
                             binding.rvMentionSuggestions.visibility = View.GONE
+                        }
+                    }
+                }
+
+                launch {
+                    viewModel.commandSuggestions.collect { suggestions ->
+                        if (suggestions.isNotEmpty()) {
+                            binding.rvCommandSuggestions.visibility = View.VISIBLE
+                            commandAdapter.submitList(suggestions)
+                        } else {
+                            binding.rvCommandSuggestions.visibility = View.GONE
                         }
                     }
                 }

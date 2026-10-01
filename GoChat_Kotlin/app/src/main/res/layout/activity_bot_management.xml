@@ -94,11 +94,248 @@
                     android:inputType="textMultiLine"/>
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Bot Usage Guide & Admin Commands Reference -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="How to Use &amp; Command Formats"
+                android:textColor="@color/gochat_emerald_light"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="8dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_card_dark"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <!-- Instructions Header -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:background="@drawable/bg_username_chip"
+                        android:gravity="center"
+                        android:text="🤖"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:text="Bot Moderation Instructions"
+                        android:textColor="@color/white"
+                        android:textSize="14.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="1. Automated Rules: Enter prohibited words/phrases above (one per line). The bot will automatically delete violating messages.\n2. Live Chat Commands: Group admins can type slash commands directly into the group chat input. Typing '/' will display live suggestions."
+                    android:textColor="@color/gochat_text_secondary"
+                    android:textSize="12.5sp"
+                    android:lineSpacingExtra="3dp" />
+
+                <!-- Divider -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginVertical="12dp"
+                    android:background="#2A3942" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Admin Command Formats (Chat Input)"
+                    android:textColor="@color/gochat_emerald_light"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="10dp" />
+
+                <!-- /ban -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginBottom="10dp">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="/ban @user [reason]"
+                        android:textColor="@color/gochat_emerald_light"
+                        android:textStyle="bold"
+                        android:textSize="13.5sp" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Permanently bans and removes member from group\nFormat: /ban @username [reason]\nExample: /ban @john spamming links"
+                        android:textColor="@color/gochat_text_secondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- /kick -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginBottom="10dp">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="/kick @user"
+                        android:textColor="@color/gochat_emerald_light"
+                        android:textStyle="bold"
+                        android:textSize="13.5sp" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Removes member from group (can rejoin via link)\nFormat: /kick @username\nExample: /kick @john"
+                        android:textColor="@color/gochat_text_secondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- /mute -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginBottom="10dp">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="/mute @user [duration]"
+                        android:textColor="@color/gochat_emerald_light"
+                        android:textStyle="bold"
+                        android:textSize="13.5sp" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Temporarily mutes member (e.g. 10m, 1h, 1d)\nFormat: /mute @username [duration]\nExample: /mute @john 10m"
+                        android:textColor="@color/gochat_text_secondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- /unmute -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginBottom="10dp">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="/unmute @user"
+                        android:textColor="@color/gochat_emerald_light"
+                        android:textStyle="bold"
+                        android:textSize="13.5sp" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Restores member ability to send messages\nFormat: /unmute @username\nExample: /unmute @john"
+                        android:textColor="@color/gochat_text_secondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- /warn -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginBottom="10dp">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="/warn @user [reason]"
+                        android:textColor="@color/gochat_emerald_light"
+                        android:textStyle="bold"
+                        android:textSize="13.5sp" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Issues a formal strike / warning to member in chat\nFormat: /warn @username [reason]\nExample: /warn @john advertising in group"
+                        android:textColor="@color/gochat_text_secondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- /unban -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginBottom="10dp">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="/unban @user"
+                        android:textColor="@color/gochat_emerald_light"
+                        android:textStyle="bold"
+                        android:textSize="13.5sp" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Lifts ban allowing user to rejoin group\nFormat: /unban @username\nExample: /unban @john"
+                        android:textColor="@color/gochat_text_secondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- /slowmode -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginBottom="10dp">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="/slowmode [seconds]"
+                        android:textColor="@color/gochat_emerald_light"
+                        android:textStyle="bold"
+                        android:textSize="13.5sp" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Enforces cooldown between member messages\nFormat: /slowmode [seconds or off]\nExample: /slowmode 30s"
+                        android:textColor="@color/gochat_text_secondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- /rules & /help -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="/rules and /help"
+                        android:textColor="@color/gochat_emerald_light"
+                        android:textStyle="bold"
+                        android:textSize="13.5sp" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="/rules posts group rules in chat\n/help lists all moderation commands"
+                        android:textColor="@color/gochat_text_secondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+            </LinearLayout>
+
             <Button
                 android:id="@+id/btnSave"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
+                android:layout_marginTop="24dp"
                 android:text="@string/save_config"
                 android:backgroundTint="@color/gochat_emerald_primary"/>
 

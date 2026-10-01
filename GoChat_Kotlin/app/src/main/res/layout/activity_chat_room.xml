@@ -660,6 +660,17 @@
                 android:src="@drawable/ic_close" />
         </LinearLayout>
 
+        <!-- Bot Moderation Command Suggestions -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvCommandSuggestions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="8dp"
+            android:background="@drawable/bg_card_dark"
+            android:elevation="4dp"
+            android:visibility="gone"
+            tools:listitem="@layout/item_bot_command_suggestion" />
+
         <!-- Mentions Suggestions -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvMentionSuggestions"

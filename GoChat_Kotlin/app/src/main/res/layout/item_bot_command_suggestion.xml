@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="14dp"
+    android:paddingVertical="10dp">
+
+    <!-- Command Icon Circle -->
+    <TextView
+        android:id="@+id/tvCommandPrefixBadge"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:background="@drawable/bg_username_chip"
+        android:gravity="center"
+        android:text="/"
+        android:textColor="@color/gochat_emerald_light"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <!-- Command Syntax (e.g. /ban @user [reason]) -->
+        <TextView
+            android:id="@+id/tvCommandSyntax"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/gochat_emerald_light"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            tools:text="/ban @user [reason]" />
+
+        <!-- Description (e.g. Permanently ban member from group) -->
+        <TextView
+            android:id="@+id/tvCommandDescription"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="@color/gochat_text_secondary"
+            android:textSize="12sp"
+            tools:text="Permanently ban member from group" />
+    </LinearLayout>
+
+    <!-- Example Chip (e.g. /ban @john spam) -->
+    <TextView
+        android:id="@+id/tvCommandExample"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/bg_card_dark"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="3dp"
+        android:textColor="@color/gochat_text_muted"
+        android:textSize="11sp"
+        tools:text="e.g. /ban @john spam" />
+
+</LinearLayout>

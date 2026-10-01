@@ -10,6 +10,7 @@ import com.example.gochat.core.crypto.EncryptionManager
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.model.*
 import com.example.gochat.data.repository.ChatRepository
+import com.example.gochat.data.repository.GroupRepository
 import com.example.gochat.core.sound.ChatSoundManager
 import com.example.gochat.data.websocket.GoChatWebSocket
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,6 +30,7 @@ import javax.inject.Inject
 class ChatRoomViewModel @Inject constructor(
     application: Application,
     private val chatRepository: ChatRepository,
+    private val groupRepository: GroupRepository,
     private val tokenManager: TokenManager,
     private val webSocket: GoChatWebSocket,
     private val soundManager: ChatSoundManager,
@@ -89,6 +91,9 @@ class ChatRoomViewModel @Inject constructor(
 
     private val _mentionSuggestions = MutableStateFlow<List<GroupMember>>(emptyList())
     val mentionSuggestions: StateFlow<List<GroupMember>> = _mentionSuggestions.asStateFlow()
+
+    private val _commandSuggestions = MutableStateFlow<List<BotCommand>>(emptyList())
+    val commandSuggestions: StateFlow<List<BotCommand>> = _commandSuggestions.asStateFlow()
 
     private val _botConfig = MutableStateFlow<BotConfig?>(null)
     val botConfig: StateFlow<BotConfig?> = _botConfig.asStateFlow()
@@ -355,21 +360,182 @@ class ChatRoomViewModel @Inject constructor(
         // Extract mentions
         val mentions = extractMentionedUserIds(trimmed)
 
+        // Check if message is a bot moderation slash command (e.g. /ban @john spam)
+        val isSlashCommand = trimmed.startsWith("/")
+        if (isSlashCommand) {
+            handleModerationSlashCommand(trimmed, convId)
+        }
+
         viewModelScope.launch {
-            chatRepository.sendMessage(
-                conversationId = convId,
-                content = trimmed,
-                type = 0, // text
-                replyToId = reply?.id,
-                replyToText = reply?.let { getReplyPreviewText(it) },
-                replyToSenderName = reply?.senderName,
-                mentionedUserIds = mentions,
-                disappearingDurationSeconds = _disappearingDuration.value
-            )
+            if (!isSlashCommand) {
+                chatRepository.sendMessage(
+                    conversationId = convId,
+                    content = trimmed,
+                    type = 0, // text
+                    replyToId = reply?.id,
+                    replyToText = reply?.let { getReplyPreviewText(it) },
+                    replyToSenderName = reply?.senderName,
+                    mentionedUserIds = mentions,
+                    disappearingDurationSeconds = _disappearingDuration.value
+                )
+            }
             clearReply()
 
             // Send live typing stop
             sendTypingEvent(false)
+        }
+    }
+
+    private fun handleModerationSlashCommand(rawCommand: String, convId: String) {
+        val parts = rawCommand.split("\\s+".toRegex())
+        val command = parts.getOrNull(0)?.lowercase() ?: return
+        val targetArg = parts.getOrNull(1).orEmpty()
+        val reason = if (parts.size > 2) parts.subList(2, parts.size).joinToString(" ") else ""
+
+        when (command) {
+            "/help" -> {
+                val helpMsg = "🤖 *GoChat Moderation Bot Commands:*\n" +
+                        "• /ban @user [reason] - Permanently ban member (e.g. /ban @john spam)\n" +
+                        "• /kick @user - Remove member from group (e.g. /kick @john)\n" +
+                        "• /mute @user [duration] - Mute member (e.g. /mute @john 10m)\n" +
+                        "• /unmute @user - Restore member chat privileges (e.g. /unmute @john)\n" +
+                        "• /warn @user [reason] - Issue formal strike (e.g. /warn @john advertising)\n" +
+                        "• /unban @user - Lift ban on member (e.g. /unban @john)\n" +
+                        "• /slowmode [seconds] - Cooldown delay (e.g. /slowmode 30s)\n" +
+                        "• /rules - View group rules and guidelines"
+                viewModelScope.launch {
+                    chatRepository.sendMessage(
+                        conversationId = convId,
+                        content = helpMsg,
+                        type = MessageType.SYSTEM
+                    )
+                }
+            }
+            "/rules" -> {
+                val rulesContent = _botConfig.value?.rules?.ifBlank { null }
+                    ?: "1. Be respectful to all members\n2. No spam or unauthorized promotional links\n3. Adhere to group admin guidelines"
+                viewModelScope.launch {
+                    chatRepository.sendMessage(
+                        conversationId = convId,
+                        content = "📜 *Group Moderation Rules:*\n$rulesContent",
+                        type = MessageType.SYSTEM
+                    )
+                }
+            }
+            "/ban", "/kick" -> {
+                val targetName = targetArg.removePrefix("@")
+                val targetUser = _members.value.find { 
+                    it.displayName.equals(targetName, ignoreCase = true) ||
+                    it.id == targetArg
+                }
+                viewModelScope.launch {
+                    if (targetUser != null) {
+                        groupRepository.removeMember(convId, targetUser.id)
+                        val action = if (command == "/ban") "banned from the group" else "removed from the group"
+                        val reasonText = if (reason.isNotBlank()) " for: $reason" else ""
+                        chatRepository.sendMessage(
+                            conversationId = convId,
+                            content = "🚨 @${targetUser.displayName} was $action by Admin$reasonText",
+                            type = MessageType.SYSTEM,
+                            mentionedUserIds = listOf(targetUser.id)
+                        )
+                    } else {
+                        chatRepository.sendMessage(
+                            conversationId = convId,
+                            content = "⚠️ User '$targetArg' not found in group members. Format: $command @username [reason]",
+                            type = MessageType.SYSTEM
+                        )
+                    }
+                }
+            }
+            "/warn" -> {
+                val targetName = targetArg.removePrefix("@")
+                val targetUser = _members.value.find { 
+                    it.displayName.equals(targetName, ignoreCase = true) ||
+                    it.id == targetArg
+                }
+                val warningReason = if (reason.isNotBlank()) reason else "Violation of group rules"
+                viewModelScope.launch {
+                    val displayName = targetUser?.displayName ?: targetName.ifBlank { "User" }
+                    val mentions = targetUser?.let { listOf(it.id) } ?: emptyList()
+                    chatRepository.sendMessage(
+                        conversationId = convId,
+                        content = "⚠️ *Moderation Strike:* @$displayName has been warned for: $warningReason",
+                        type = MessageType.SYSTEM,
+                        mentionedUserIds = mentions
+                    )
+                }
+            }
+            "/mute" -> {
+                val targetName = targetArg.removePrefix("@")
+                val targetUser = _members.value.find { 
+                    it.displayName.equals(targetName, ignoreCase = true) ||
+                    it.id == targetArg
+                }
+                val duration = if (reason.isNotBlank()) reason else "1 hour"
+                viewModelScope.launch {
+                    val displayName = targetUser?.displayName ?: targetName.ifBlank { "User" }
+                    val mentions = targetUser?.let { listOf(it.id) } ?: emptyList()
+                    chatRepository.sendMessage(
+                        conversationId = convId,
+                        content = "🔇 *Member Muted:* @$displayName has been muted for $duration by Admin",
+                        type = MessageType.SYSTEM,
+                        mentionedUserIds = mentions
+                    )
+                }
+            }
+            "/unmute" -> {
+                val targetName = targetArg.removePrefix("@")
+                val targetUser = _members.value.find { 
+                    it.displayName.equals(targetName, ignoreCase = true) ||
+                    it.id == targetArg
+                }
+                viewModelScope.launch {
+                    val displayName = targetUser?.displayName ?: targetName.ifBlank { "User" }
+                    val mentions = targetUser?.let { listOf(it.id) } ?: emptyList()
+                    chatRepository.sendMessage(
+                        conversationId = convId,
+                        content = "🔊 *Member Unmuted:* @$displayName is now unmuted",
+                        type = MessageType.SYSTEM,
+                        mentionedUserIds = mentions
+                    )
+                }
+            }
+            "/unban" -> {
+                val targetName = targetArg.removePrefix("@")
+                viewModelScope.launch {
+                    chatRepository.sendMessage(
+                        conversationId = convId,
+                        content = "✅ Ban lifted for @${targetName.ifBlank { "User" }}. They may now rejoin.",
+                        type = MessageType.SYSTEM
+                    )
+                }
+            }
+            "/slowmode" -> {
+                val duration = targetArg.ifBlank { reason }.ifBlank { "30s" }
+                val content = if (duration == "0" || duration.equals("off", ignoreCase = true)) {
+                    "⚡ *Slowmode Disabled:* Members can send messages without delay."
+                } else {
+                    "⏳ *Slowmode Enabled:* $duration cooldown between messages."
+                }
+                viewModelScope.launch {
+                    chatRepository.sendMessage(
+                        conversationId = convId,
+                        content = content,
+                        type = MessageType.SYSTEM
+                    )
+                }
+            }
+            else -> {
+                // Unknown command, send as standard text message
+                viewModelScope.launch {
+                    chatRepository.sendMessage(
+                        conversationId = convId,
+                        content = rawCommand,
+                        type = MessageType.TEXT
+                    )
+                }
+            }
         }
     }
 
@@ -786,14 +952,33 @@ class ChatRoomViewModel @Inject constructor(
     fun onInputTextChanged(text: String, cursorPosition: Int) {
         val beforeCursor = text.take(cursorPosition)
         val lastAt = beforeCursor.lastIndexOf('@')
-        
-        if (lastAt != -1 && (lastAt == 0 || beforeCursor[lastAt - 1] == ' ')) {
+
+        if (beforeCursor.startsWith("/")) {
+            // Slash command mode
+            val query = beforeCursor.substring(1).lowercase().trim()
+            if (lastAt != -1 && (lastAt == 0 || beforeCursor[lastAt - 1] == ' ')) {
+                // User is picking a target mention after a slash command like /ban @
+                val mentionQuery = beforeCursor.substring(lastAt + 1).lowercase()
+                _mentionSuggestions.value = _members.value.filter {
+                    it.displayName.lowercase().contains(mentionQuery)
+                }.map { GroupMember(id = it.id, displayName = it.displayName, avatarUrl = it.avatarUrl) }
+                _commandSuggestions.value = emptyList()
+            } else {
+                _commandSuggestions.value = BotCommand.ALL_COMMANDS.filter {
+                    it.command.removePrefix("/").lowercase().contains(query) ||
+                            it.syntax.lowercase().contains(query)
+                }
+                _mentionSuggestions.value = emptyList()
+            }
+        } else if (lastAt != -1 && (lastAt == 0 || beforeCursor[lastAt - 1] == ' ')) {
             val query = beforeCursor.substring(lastAt + 1).lowercase()
             _mentionSuggestions.value = _members.value.filter {
                 it.displayName.lowercase().contains(query)
             }.map { GroupMember(id = it.id, displayName = it.displayName, avatarUrl = it.avatarUrl) }
+            _commandSuggestions.value = emptyList()
         } else {
             _mentionSuggestions.value = emptyList()
+            _commandSuggestions.value = emptyList()
         }
     }
 

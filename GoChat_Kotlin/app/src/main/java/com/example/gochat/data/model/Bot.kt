@@ -53,3 +53,81 @@ data class BotAction(
     @SerialName("reason") val reason: String?,
     @SerialName("timestamp") val timestamp: Long = System.currentTimeMillis()
 )
+
+@Serializable
+data class BotCommand(
+    val command: String,
+    val syntax: String,
+    val description: String,
+    val example: String,
+    val template: String = "$command @"
+) {
+    companion object {
+        val ALL_COMMANDS = listOf(
+            BotCommand(
+                command = "/ban",
+                syntax = "/ban @user [reason]",
+                description = "Permanently ban member from group",
+                example = "e.g. /ban @john spam",
+                template = "/ban @"
+            ),
+            BotCommand(
+                command = "/kick",
+                syntax = "/kick @user",
+                description = "Remove a member from the group",
+                example = "e.g. /kick @john",
+                template = "/kick @"
+            ),
+            BotCommand(
+                command = "/mute",
+                syntax = "/mute @user [duration]",
+                description = "Temporarily mute member (e.g. 10m, 1h, 1d)",
+                example = "e.g. /mute @john 1h",
+                template = "/mute @"
+            ),
+            BotCommand(
+                command = "/unmute",
+                syntax = "/unmute @user",
+                description = "Restore member's ability to chat",
+                example = "e.g. /unmute @john",
+                template = "/unmute @"
+            ),
+            BotCommand(
+                command = "/warn",
+                syntax = "/warn @user [reason]",
+                description = "Issue a formal moderation strike / warning",
+                example = "e.g. /warn @john advertising",
+                template = "/warn @"
+            ),
+            BotCommand(
+                command = "/unban",
+                syntax = "/unban @user",
+                description = "Lift ban and allow user to rejoin",
+                example = "e.g. /unban @john",
+                template = "/unban @"
+            ),
+            BotCommand(
+                command = "/slowmode",
+                syntax = "/slowmode [seconds]",
+                description = "Set message delay (e.g. 30s, 0 to disable)",
+                example = "e.g. /slowmode 30s",
+                template = "/slowmode 30s"
+            ),
+            BotCommand(
+                command = "/rules",
+                syntax = "/rules",
+                description = "Display group rules and guidelines",
+                example = "e.g. /rules",
+                template = "/rules"
+            ),
+            BotCommand(
+                command = "/help",
+                syntax = "/help",
+                description = "List all moderation commands & formats",
+                example = "e.g. /help",
+                template = "/help"
+            )
+        )
+    }
+}
+
