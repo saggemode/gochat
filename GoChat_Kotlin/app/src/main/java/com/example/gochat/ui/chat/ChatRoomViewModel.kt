@@ -401,7 +401,48 @@ class ChatRoomViewModel @Inject constructor(
 
     fun deleteMessageForEveryone(messageId: String) {
         viewModelScope.launch {
-            chatRepository.deleteMessageLocally(messageId)
+            chatRepository.deleteMessageForEveryone(messageId)
+        }
+    }
+
+    fun deleteMessageForMe(messageId: String) {
+        viewModelScope.launch {
+            chatRepository.deleteMessageForMe(messageId)
+        }
+    }
+
+    fun deleteMessagesForMe(messageIds: List<String>) {
+        viewModelScope.launch {
+            chatRepository.deleteMessagesForMe(messageIds)
+        }
+    }
+
+    fun deleteMessagesForEveryone(messageIds: List<String>) {
+        viewModelScope.launch {
+            messageIds.forEach { chatRepository.deleteMessageForEveryone(it) }
+        }
+    }
+
+    fun clearChat(deleteStarred: Boolean, onComplete: (() -> Unit)? = null) {
+        val convId = _conversationId.value
+        if (convId.isEmpty()) return
+        viewModelScope.launch {
+            val result = chatRepository.clearChat(convId, deleteStarred)
+            if (result.isSuccess) {
+                onComplete?.invoke()
+            }
+        }
+    }
+
+    fun getStarredMessagesCount(onResult: (Int) -> Unit) {
+        val convId = _conversationId.value
+        if (convId.isEmpty()) {
+            onResult(0)
+            return
+        }
+        viewModelScope.launch {
+            val count = chatRepository.getStarredMessagesCount(convId)
+            onResult(count)
         }
     }
 

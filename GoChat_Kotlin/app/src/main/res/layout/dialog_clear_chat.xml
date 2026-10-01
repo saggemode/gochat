@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="24dp"
+    android:paddingTop="22dp"
+    android:paddingEnd="24dp"
+    android:paddingBottom="16dp">
+
+    <!-- Dialog Title -->
+    <TextView
+        android:id="@+id/tvClearChatTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/clear_chat_dialog_title"
+        android:textColor="@color/gochat_text_primary"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <!-- Description -->
+    <TextView
+        android:id="@+id/tvClearChatDesc"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:lineSpacingExtra="3dp"
+        android:text="@string/clear_chat_dialog_desc"
+        android:textColor="@color/gochat_text_secondary"
+        android:textSize="14sp" />
+
+    <!-- Checkbox 1: Delete Media -->
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/cbDeleteMedia"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:buttonTint="@color/gochat_emerald_primary"
+        android:text="@string/clear_chat_delete_media"
+        android:textColor="@color/gochat_text_primary"
+        android:textSize="14sp"
+        app:useMaterialThemeColors="false" />
+
+    <!-- Checkbox 2: Delete Starred Messages -->
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/cbDeleteStarred"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:buttonTint="@color/gochat_emerald_primary"
+        android:text="@string/clear_chat_delete_starred"
+        android:textColor="@color/gochat_text_primary"
+        android:textSize="14sp"
+        app:useMaterialThemeColors="false" />
+
+    <!-- Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:gravity="end|center_vertical"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnClearChatCancel"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_cancel"
+            android:textColor="@color/gochat_emerald_primary"
+            android:textSize="14sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnClearChatConfirm"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/clear_chat_action"
+            android:textColor="@color/gochat_error"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+</LinearLayout>

@@ -226,24 +226,31 @@ class ChatRepository @Inject constructor(
                     else -> JsonArray(emptyList())
                 }
                 val currentUserId = tokenManager.userId ?: ""
+                val conv = dao.getConversationById(convId)
+                val clearedAt = conv?.clearedAt ?: 0L
                 val messages = rawList.mapNotNull { element ->
                     if (element is JsonObject) {
                         val msg = Message.fromJson(element, currentUserId)
+                        val localExisting = dao.getMessageById(msg.id)
+                        val isDeletedForMe = (localExisting?.deletedForMe == true) ||
+                                (clearedAt > 0L && msg.createdAt <= clearedAt && !msg.isStarred && localExisting?.isStarred != true)
                         // For ALL messages (sent or received), check if we already have
                         // a local decrypted version. Signal Protocol ratcheting means we
                         // can't decrypt the same ciphertext twice, so we must preserve
                         // locally-stored plaintext content.
-                        val localExisting = dao.getMessageById(msg.id)
-                        if (localExisting != null && localExisting.content.isNotBlank() && !isBase64Ciphertext(localExisting.content)) {
-                            // Local DB has readable plaintext — preserve it
-                            msg.copy(content = localExisting.content)
+                        val contentToUse = if (localExisting != null && localExisting.content.isNotBlank() && !isBase64Ciphertext(localExisting.content)) {
+                            localExisting.content
                         } else if (msg.isMe) {
-                            // Own message with no local plaintext — keep server content as-is
-                            msg
+                            msg.content
                         } else {
-                            // Received message not yet decrypted locally — try decrypting
-                            tryDecryptMessage(msg)
+                            tryDecryptMessage(msg).content
                         }
+                        msg.copy(
+                            content = contentToUse,
+                            deletedForMe = isDeletedForMe,
+                            isStarred = localExisting?.isStarred ?: msg.isStarred,
+                            isPinned = localExisting?.isPinned ?: msg.isPinned
+                        )
                     } else null
                 }
                 dao.insertMessages(messages)
@@ -809,8 +816,13 @@ class ChatRepository @Inject constructor(
 
     suspend fun insertWebSocketMessage(message: Message) {
         val decrypted = tryDecryptMessage(message)
+        val conv = if (decrypted.conversationId.isNotEmpty()) dao.getConversationById(decrypted.conversationId) else null
+        val clearedAt = conv?.clearedAt ?: 0L
+        val isDeletedForMe = decrypted.deletedForMe || 
+                (clearedAt > 0L && decrypted.createdAt <= clearedAt && !decrypted.isStarred)
         val finalMsg = decrypted.copy(
-            isMe = decrypted.senderId == (tokenManager.userId ?: "")
+            isMe = decrypted.senderId == (tokenManager.userId ?: ""),
+            deletedForMe = isDeletedForMe
         )
         dao.insertMessage(finalMsg)
 
@@ -914,6 +926,48 @@ class ChatRepository @Inject constructor(
 
     fun getPinnedMessages(conversationId: String): Flow<List<Message>> {
         return dao.getPinnedMessagesForConversation(conversationId)
+    }
+
+    suspend fun clearChat(convId: String, deleteStarred: Boolean): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val now = System.currentTimeMillis()
+            if (deleteStarred) {
+                dao.clearAllMessagesForConversation(convId)
+            } else {
+                dao.clearNonStarredMessagesForConversation(convId)
+            }
+            val remainingLatest = dao.getLatestActiveMessage(convId)
+            val lastText = remainingLatest?.let {
+                when (it.type) {
+                    MessageType.IMAGE -> "📷 Photo"
+                    MessageType.VIDEO -> "📹 Video"
+                    MessageType.AUDIO, MessageType.VOICE -> "🎙️ Voice note"
+                    MessageType.FILE -> "📄 Document"
+                    else -> it.content
+                }
+            }
+            val lastTime = remainingLatest?.createdAt ?: now
+            dao.updateConversationCleared(convId, now, lastText, lastTime)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteMessageForMe(messageId: String) = withContext(Dispatchers.IO) {
+        dao.markMessageDeletedForMe(messageId)
+    }
+
+    suspend fun deleteMessagesForMe(messageIds: List<String>) = withContext(Dispatchers.IO) {
+        dao.markMessagesDeletedForMe(messageIds)
+    }
+
+    suspend fun deleteMessageForEveryone(messageId: String) = withContext(Dispatchers.IO) {
+        dao.markMessageAsDeleted(messageId)
+    }
+
+    suspend fun getStarredMessagesCount(convId: String): Int = withContext(Dispatchers.IO) {
+        dao.getStarredMessagesCount(convId)
     }
 
     suspend fun deleteMessageLocally(messageId: String) {

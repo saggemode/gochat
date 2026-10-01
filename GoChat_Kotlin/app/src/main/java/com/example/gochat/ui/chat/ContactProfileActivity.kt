@@ -287,6 +287,16 @@ class ContactProfileActivity : AppCompatActivity() {
             )
             sheet.show(supportFragmentManager, ExportChatBottomSheet.TAG)
         }
+
+        // 10. Clear chat
+        binding.layoutClearChat.setOnClickListener {
+            ClearChatHelper.showClearChatDialog(
+                context = this,
+                coroutineScope = lifecycleScope,
+                chatRepository = chatRepository,
+                conversationId = convId
+            )
+        }
     }
 
     private fun showNotificationDialog() {

@@ -1480,12 +1480,31 @@ class ChatRoomActivity : AppCompatActivity() {
                     showExportChatBottomSheet(targetMessages = listOf(message))
                 }
                 MessageActionBottomSheet.Action.DELETE -> {
-                    AlertDialog.Builder(this)
-                        .setTitle(getString(R.string.dialog_delete_message_title))
-                        .setMessage(getString(R.string.dialog_delete_message_desc))
-                        .setPositiveButton(getString(R.string.action_delete)) { _, _ -> viewModel.deleteMessageForEveryone(message.id) }
-                        .setNegativeButton(getString(R.string.btn_cancel), null)
-                        .show()
+                    if (message.isMe) {
+                        val deleteOptions = arrayOf(
+                            getString(R.string.action_delete_for_everyone),
+                            getString(R.string.action_delete_for_me)
+                        )
+                        AlertDialog.Builder(this)
+                            .setTitle(getString(R.string.dialog_delete_message_title))
+                            .setItems(deleteOptions) { _, which ->
+                                when (which) {
+                                    0 -> viewModel.deleteMessageForEveryone(message.id)
+                                    1 -> viewModel.deleteMessageForMe(message.id)
+                                }
+                            }
+                            .setNegativeButton(getString(R.string.btn_cancel), null)
+                            .show()
+                    } else {
+                        AlertDialog.Builder(this)
+                            .setTitle(getString(R.string.dialog_delete_message_title))
+                            .setMessage("Delete this message for yourself?")
+                            .setPositiveButton(getString(R.string.action_delete_for_me)) { _, _ ->
+                                viewModel.deleteMessageForMe(message.id)
+                            }
+                            .setNegativeButton(getString(R.string.btn_cancel), null)
+                            .show()
+                    }
                 }
                 MessageActionBottomSheet.Action.REACT_LIKE -> viewModel.addReaction(message.id, "👍")
                 MessageActionBottomSheet.Action.REACT_HEART -> viewModel.addReaction(message.id, "❤️")
@@ -1644,7 +1663,12 @@ class ChatRoomActivity : AppCompatActivity() {
 
         menuItems.add(getString(R.string.option_clear_chat))
         actions.add {
-            Toast.makeText(this, getString(R.string.toast_option_selected), Toast.LENGTH_SHORT).show()
+            ClearChatHelper.showClearChatDialog(
+                context = this,
+                coroutineScope = lifecycleScope,
+                chatRepository = chatRepository,
+                conversationId = convId
+            )
         }
 
         menuItems.add(getString(R.string.option_export_chat))
@@ -1933,6 +1957,43 @@ class ChatRoomActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
             showExportChatBottomSheet(targetMessages = selected)
+        }
+
+        binding.btnDeleteSelectionAction.setOnClickListener {
+            val selected = messageAdapter.getSelectedMessages()
+            if (selected.isEmpty()) {
+                Toast.makeText(this, "Select at least 1 message to delete", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            val allMine = selected.all { it.isMe }
+            if (allMine) {
+                val deleteOptions = arrayOf(
+                    getString(R.string.action_delete_for_everyone),
+                    getString(R.string.action_delete_for_me)
+                )
+                AlertDialog.Builder(this)
+                    .setTitle(getString(R.string.dialog_delete_multiple_messages_title, selected.size))
+                    .setItems(deleteOptions) { _, which ->
+                        val ids = selected.map { it.id }
+                        when (which) {
+                            0 -> viewModel.deleteMessagesForEveryone(ids)
+                            1 -> viewModel.deleteMessagesForMe(ids)
+                        }
+                        exitSelectionMode()
+                    }
+                    .setNegativeButton(getString(R.string.btn_cancel), null)
+                    .show()
+            } else {
+                AlertDialog.Builder(this)
+                    .setTitle(getString(R.string.dialog_delete_multiple_messages_title, selected.size))
+                    .setMessage(getString(R.string.dialog_delete_messages_desc))
+                    .setPositiveButton(getString(R.string.action_delete_for_me)) { _, _ ->
+                        viewModel.deleteMessagesForMe(selected.map { it.id })
+                        exitSelectionMode()
+                    }
+                    .setNegativeButton(getString(R.string.btn_cancel), null)
+                    .show()
+            }
         }
     }
 

@@ -42,6 +42,7 @@ data class Conversation(
     @SerialName("last_message_time") val lastMessageTime: Long? = null,
     @SerialName("screenshot_notifications_enabled") val screenshotNotificationsEnabled: Boolean = false,
     @SerialName("disappearing_messages_duration") val disappearingMessagesDuration: Int = 0,
+    @SerialName("cleared_at") val clearedAt: Long? = null,
     @SerialName("updated_at") val updatedAt: Long = System.currentTimeMillis()
 ) {
     val isGroup: Boolean get() = type == ConversationType.GROUP
@@ -126,6 +127,8 @@ data class Conversation(
             val disappearingDuration = (json["disappearing_messages_duration"] ?: json["disappearingMessagesDuration"] ?: json["disappearing_duration"])
                 ?.jsonPrimitive?.intOrNull ?: 0
 
+            val clearedAt = parseOptionalTimestamp(json["cleared_at"] ?: json["clearedAt"])
+
             val updatedAt = parseTimestamp(json["updated_at"] ?: json["updatedAt"] ?: json["UpdatedAt"])
 
             return Conversation(
@@ -146,6 +149,7 @@ data class Conversation(
                 lastMessageTime = lastTime,
                 screenshotNotificationsEnabled = screenshotNotificationsEnabled,
                 disappearingMessagesDuration = disappearingDuration,
+                clearedAt = clearedAt,
                 updatedAt = updatedAt
             )
         }

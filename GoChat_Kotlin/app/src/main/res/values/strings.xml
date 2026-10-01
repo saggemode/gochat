@@ -406,8 +406,18 @@
     <string name="export_complete">Export ready!</string>
     <string name="export_empty">No messages to export in this conversation</string>
     <string name="export_share_chooser">Export chat via</string>
-    <string name="export_selection_count">%1$d selected</string>
     <string name="action_export">Export</string>
+    <string name="clear_chat_dialog_title">Clear this chat?</string>
+    <string name="clear_chat_dialog_desc">Messages will be removed from this device, but the chat will remain in your chat list.</string>
+    <string name="clear_chat_delete_starred">Delete starred messages</string>
+    <string name="clear_chat_delete_starred_with_count">Delete starred messages (%1$d)</string>
+    <string name="clear_chat_delete_media">Also delete media received in this chat from device gallery</string>
+    <string name="clear_chat_action">Clear chat</string>
+    <string name="toast_chat_cleared">Chat cleared</string>
+    <string name="action_delete_for_me">Delete for me</string>
+    <string name="action_delete_for_everyone">Delete for everyone</string>
+    <string name="dialog_delete_multiple_messages_title">Delete %1$d messages?</string>
+    <string name="dialog_delete_messages_desc">Do you want to delete selected messages?</string>
     <string name="toast_option_selected">Option selected</string>
 
     <!-- ChatWallpaperBottomSheet Kotlin -->

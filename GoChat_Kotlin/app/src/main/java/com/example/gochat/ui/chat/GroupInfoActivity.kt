@@ -146,6 +146,15 @@ class GroupInfoActivity : AppCompatActivity() {
             sheet.show(supportFragmentManager, ExportChatBottomSheet.TAG)
         }
 
+        binding.btnClearGroupChat.setOnClickListener {
+            ClearChatHelper.showClearChatDialog(
+                context = this,
+                coroutineScope = lifecycleScope,
+                chatRepository = chatRepository,
+                conversationId = convId
+            )
+        }
+
         // Exit group button
         binding.btnExitGroup.setOnClickListener {
             AlertDialog.Builder(this)

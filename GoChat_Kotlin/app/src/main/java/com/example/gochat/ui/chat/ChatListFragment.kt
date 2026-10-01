@@ -476,6 +476,7 @@ class ChatListFragment : Fragment() {
             getString(R.string.option_pin_conversation),
             lockOption,
             getString(R.string.option_mute_notifications),
+            getString(R.string.option_clear_chat),
             getString(R.string.option_delete_conversation)
         )
         AlertDialog.Builder(requireContext())
@@ -498,7 +499,29 @@ class ChatListFragment : Fragment() {
                         )
                     }
                     3 -> Toast.makeText(requireContext(), getString(R.string.toast_notifications_muted), Toast.LENGTH_SHORT).show()
-                    4 -> Toast.makeText(requireContext(), getString(R.string.toast_conversation_deleted), Toast.LENGTH_SHORT).show()
+                    4 -> {
+                        ClearChatHelper.showClearChatDialog(
+                            context = requireContext(),
+                            coroutineScope = viewLifecycleOwner.lifecycleScope,
+                            chatRepository = viewModel.repository,
+                            conversationId = conversation.id,
+                            onCleared = {
+                                conversationAdapter.refresh()
+                            }
+                        )
+                    }
+                    5 -> {
+                        AlertDialog.Builder(requireContext())
+                            .setTitle(getString(R.string.option_delete_conversation))
+                            .setMessage("Delete this conversation? Messages and this chat will be removed from your chat list.")
+                            .setPositiveButton(getString(R.string.action_delete)) { _, _ ->
+                                viewModel.deleteConversation(conversation.id)
+                                Toast.makeText(requireContext(), getString(R.string.toast_conversation_deleted), Toast.LENGTH_SHORT).show()
+                                conversationAdapter.refresh()
+                            }
+                            .setNegativeButton(getString(R.string.btn_cancel), null)
+                            .show()
+                    }
                 }
             }
             .show()

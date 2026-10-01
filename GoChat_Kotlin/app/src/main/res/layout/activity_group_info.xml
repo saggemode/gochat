@@ -326,6 +326,16 @@
                 android:textSize="16sp" />
 
             <TextView
+                android:id="@+id/btnClearGroupChat"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:text="@string/option_clear_chat"
+                android:textColor="@color/white"
+                android:textSize="16sp" />
+
+            <TextView
                 android:id="@+id/btnExitGroup"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"

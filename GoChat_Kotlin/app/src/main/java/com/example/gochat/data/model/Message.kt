@@ -128,6 +128,7 @@ data class Message(
     val reactions: List<Reaction> = emptyList(),
     @SerialName("is_edited") val isEdited: Boolean = false,
     @SerialName("is_deleted") val isDeleted: Boolean = false,
+    @SerialName("deleted_for_me") val deletedForMe: Boolean = false,
     @SerialName("is_starred") val isStarred: Boolean = false,
     @SerialName("is_pinned") val isPinned: Boolean = false,
     @SerialName("is_forwarded") val isForwarded: Boolean = false,
@@ -270,6 +271,7 @@ data class Message(
 
             val isEdited = json["is_edited"]?.jsonPrimitive?.booleanOrNull ?: false
             val isDeleted = json["is_deleted"]?.jsonPrimitive?.booleanOrNull ?: false
+            val deletedForMe = json["deleted_for_me"]?.jsonPrimitive?.booleanOrNull ?: false
             val isStarred = json["is_starred"]?.jsonPrimitive?.booleanOrNull ?: false
             val isPinned = json["is_pinned"]?.jsonPrimitive?.booleanOrNull ?: false
             
@@ -314,6 +316,7 @@ data class Message(
                 reactions = reactions,
                 isEdited = isEdited,
                 isDeleted = isDeleted,
+                deletedForMe = deletedForMe,
                 isStarred = isStarred,
                 isPinned = isPinned,
                 isForwarded = isForwarded,

@@ -368,4 +368,18 @@ class ChatListViewModel @Inject constructor(
             onResult(createResult)
         }
     }
+
+    val repository: ChatRepository get() = chatRepository
+
+    fun deleteConversation(convId: String) {
+        viewModelScope.launch {
+            chatRepository.deleteConversation(convId)
+        }
+    }
+
+    fun clearChat(convId: String, deleteStarred: Boolean) {
+        viewModelScope.launch {
+            chatRepository.clearChat(convId, deleteStarred)
+        }
+    }
 }

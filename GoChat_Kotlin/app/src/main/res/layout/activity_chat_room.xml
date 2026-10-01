@@ -317,6 +317,19 @@
                 app:icon="@drawable/ic_export_chat"
                 app:iconSize="16dp"
                 app:iconTint="@color/gochat_emerald_light" />
+
+            <ImageView
+                android:id="@+id/btnDeleteSelectionAction"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:layout_marginStart="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="@string/action_delete"
+                android:focusable="true"
+                android:padding="8dp"
+                android:src="@drawable/ic_delete"
+                app:tint="@color/gochat_error" />
         </LinearLayout>
 
         <!-- Linked Order Sticky Header Banner -->

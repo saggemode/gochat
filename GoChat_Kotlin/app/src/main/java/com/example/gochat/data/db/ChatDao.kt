@@ -65,13 +65,13 @@ interface ChatDao {
     suspend fun clearAllMessages(): Int
 
     // ── Messages ───────────────────────────────────────────────
-    @Query("SELECT * FROM messages WHERE conversationId = :convId ORDER BY createdAt DESC")
+    @Query("SELECT * FROM messages WHERE conversationId = :convId AND deletedForMe = 0 ORDER BY createdAt DESC")
     fun getMessagesForConversation(convId: String): Flow<List<Message>>
 
-    @Query("SELECT * FROM messages WHERE conversationId = :convId ORDER BY createdAt DESC")
+    @Query("SELECT * FROM messages WHERE conversationId = :convId AND deletedForMe = 0 ORDER BY createdAt DESC")
     fun getMessagesForConversationPaged(convId: String): PagingSource<Int, Message>
 
-    @Query("SELECT * FROM messages WHERE conversationId = :convId ORDER BY createdAt DESC LIMIT :limit")
+    @Query("SELECT * FROM messages WHERE conversationId = :convId AND deletedForMe = 0 ORDER BY createdAt DESC LIMIT :limit")
     suspend fun getLatestMessages(convId: String, limit: Int = 50): List<Message>
 
     @Query("SELECT * FROM messages WHERE id = :id LIMIT 1")
@@ -95,6 +95,12 @@ interface ChatDao {
     @Query("UPDATE messages SET isDeleted = 1, content = 'This message was deleted' WHERE id = :messageId")
     suspend fun markMessageAsDeleted(messageId: String): Int
 
+    @Query("UPDATE messages SET deletedForMe = 1 WHERE id = :messageId")
+    suspend fun markMessageDeletedForMe(messageId: String): Int
+
+    @Query("UPDATE messages SET deletedForMe = 1 WHERE id IN (:messageIds)")
+    suspend fun markMessagesDeletedForMe(messageIds: List<String>): Int
+
     @Query("UPDATE messages SET isStarred = :isStarred WHERE id = :messageId")
     suspend fun updateMessageStarred(messageId: String, isStarred: Boolean): Int
 
@@ -104,16 +110,16 @@ interface ChatDao {
     @Query("UPDATE messages SET isViewed = 1 WHERE id = :messageId")
     suspend fun markMessageAsViewed(messageId: String): Int
 
-    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isPinned = 1 ORDER BY createdAt DESC")
+    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isPinned = 1 AND deletedForMe = 0 ORDER BY createdAt DESC")
     fun getPinnedMessagesForConversation(convId: String): Flow<List<Message>>
 
     @Query("UPDATE messages SET reactions = :reactions WHERE id = :messageId")
     suspend fun updateMessageReactions(messageId: String, reactions: List<Reaction>): Int
 
-    @Query("SELECT * FROM messages WHERE isStarred = 1 ORDER BY createdAt DESC")
+    @Query("SELECT * FROM messages WHERE isStarred = 1 AND deletedForMe = 0 ORDER BY createdAt DESC")
     fun getStarredMessages(): Flow<List<Message>>
 
-    @Query("SELECT * FROM messages WHERE isStarred = 1 AND conversationId = :convId ORDER BY createdAt DESC")
+    @Query("SELECT * FROM messages WHERE isStarred = 1 AND conversationId = :convId AND deletedForMe = 0 ORDER BY createdAt DESC")
     fun getStarredMessagesForConversation(convId: String): Flow<List<Message>>
 
     @Query("DELETE FROM messages WHERE id = :messageId")
@@ -122,35 +128,50 @@ interface ChatDao {
     @Query("DELETE FROM messages WHERE conversationId = :convId")
     suspend fun clearMessagesForConversation(convId: String): Int
 
+    @Query("UPDATE messages SET deletedForMe = 1 WHERE conversationId = :convId")
+    suspend fun clearAllMessagesForConversation(convId: String): Int
+
+    @Query("UPDATE messages SET deletedForMe = 1 WHERE conversationId = :convId AND isStarred = 0")
+    suspend fun clearNonStarredMessagesForConversation(convId: String): Int
+
+    @Query("UPDATE conversations SET clearedAt = :clearedAt, lastMessageText = :lastMessageText, lastMessageTime = :lastMessageTime, unreadCount = 0 WHERE id = :convId")
+    suspend fun updateConversationCleared(convId: String, clearedAt: Long, lastMessageText: String?, lastMessageTime: Long?): Int
+
+    @Query("SELECT COUNT(*) FROM messages WHERE conversationId = :convId AND isStarred = 1 AND deletedForMe = 0")
+    suspend fun getStarredMessagesCount(convId: String): Int
+
+    @Query("SELECT * FROM messages WHERE conversationId = :convId AND deletedForMe = 0 ORDER BY createdAt DESC LIMIT 1")
+    suspend fun getLatestActiveMessage(convId: String): Message?
+
     @Query("DELETE FROM messages WHERE expiresAt IS NOT NULL AND expiresAt < :currentTime")
     suspend fun deleteExpiredMessages(currentTime: Long): Int
 
-    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND content LIKE '%' || :query || '%' ORDER BY createdAt ASC")
+    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND deletedForMe = 0 AND content LIKE '%' || :query || '%' ORDER BY createdAt ASC")
     suspend fun searchMessagesInConversation(convId: String, query: String): List<Message>
 
-    @Query("SELECT * FROM messages WHERE isDeleted = 0 AND content LIKE '%' || :query || '%' ORDER BY createdAt DESC LIMIT 100")
+    @Query("SELECT * FROM messages WHERE isDeleted = 0 AND deletedForMe = 0 AND content LIKE '%' || :query || '%' ORDER BY createdAt DESC LIMIT 100")
     suspend fun searchAllMessages(query: String): List<Message>
 
-    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND isViewOnce = 0 AND (type = 'IMAGE' OR type = 'VIDEO') AND mediaUrl IS NOT NULL AND mediaUrl != '' ORDER BY createdAt DESC")
+    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND deletedForMe = 0 AND isViewOnce = 0 AND (type = 'IMAGE' OR type = 'VIDEO') AND mediaUrl IS NOT NULL AND mediaUrl != '' ORDER BY createdAt DESC")
     fun getMediaMessagesForConversation(convId: String): Flow<List<Message>>
 
-    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND type = 'FILE' AND mediaUrl IS NOT NULL AND mediaUrl != '' ORDER BY createdAt DESC")
+    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND deletedForMe = 0 AND type = 'FILE' AND mediaUrl IS NOT NULL AND mediaUrl != '' ORDER BY createdAt DESC")
     fun getDocumentMessagesForConversation(convId: String): Flow<List<Message>>
 
-    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND (content LIKE '%http://%' OR content LIKE '%https://%' OR content LIKE '%www.%') ORDER BY createdAt DESC")
+    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND deletedForMe = 0 AND (content LIKE '%http://%' OR content LIKE '%https://%' OR content LIKE '%www.%') ORDER BY createdAt DESC")
     fun getLinkMessagesForConversation(convId: String): Flow<List<Message>>
 
-    @Query("SELECT COUNT(*) FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND ((isViewOnce = 0 AND (type = 'IMAGE' OR type = 'VIDEO' OR type = 'FILE') AND mediaUrl IS NOT NULL AND mediaUrl != '') OR content LIKE '%http://%' OR content LIKE '%https://%' OR content LIKE '%www.%')")
+    @Query("SELECT COUNT(*) FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND deletedForMe = 0 AND ((isViewOnce = 0 AND (type = 'IMAGE' OR type = 'VIDEO' OR type = 'FILE') AND mediaUrl IS NOT NULL AND mediaUrl != '') OR content LIKE '%http://%' OR content LIKE '%https://%' OR content LIKE '%www.%')")
     fun getSharedMediaCount(convId: String): Flow<Int>
 
-    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND isViewOnce = 0 AND (type = 'IMAGE' OR type = 'VIDEO') AND mediaUrl IS NOT NULL AND mediaUrl != '' ORDER BY createdAt DESC LIMIT 10")
+    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND deletedForMe = 0 AND isViewOnce = 0 AND (type = 'IMAGE' OR type = 'VIDEO') AND mediaUrl IS NOT NULL AND mediaUrl != '' ORDER BY createdAt DESC LIMIT 10")
     fun getRecentMediaPreviews(convId: String): Flow<List<Message>>
 
     // ── Export Chat ─────────────────────────────────────────────
-    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 ORDER BY createdAt ASC")
+    @Query("SELECT * FROM messages WHERE conversationId = :convId AND isDeleted = 0 AND deletedForMe = 0 ORDER BY createdAt ASC")
     suspend fun getMessagesForExport(convId: String): List<Message>
 
-    @Query("SELECT * FROM messages WHERE id IN (:messageIds) AND isDeleted = 0 ORDER BY createdAt ASC")
+    @Query("SELECT * FROM messages WHERE id IN (:messageIds) AND isDeleted = 0 AND deletedForMe = 0 ORDER BY createdAt ASC")
     suspend fun getMessagesByIds(messageIds: List<String>): List<Message>
 
     // ── Calls ──────────────────────────────────────────────────
