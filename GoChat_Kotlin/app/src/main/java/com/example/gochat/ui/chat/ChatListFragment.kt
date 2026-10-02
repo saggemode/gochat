@@ -216,6 +216,23 @@ class ChatListFragment : Fragment() {
                 com.example.gochat.ui.contacts.SelectContactActivity.start(requireContext())
             }
         }
+
+        binding.btnMoreOptions.setOnClickListener {
+            val options = arrayOf(
+                "New group",
+                "Starred messages",
+                "Settings"
+            )
+            AlertDialog.Builder(requireContext())
+                .setItems(options) { _, which ->
+                    when (which) {
+                        0 -> com.example.gochat.ui.contacts.SelectContactActivity.start(requireContext())
+                        1 -> startActivity(Intent(requireContext(), StarredMessagesActivity::class.java))
+                        2 -> (activity as? com.example.gochat.MainActivity)?.navigateToTab(com.example.gochat.MainActivity.TAG_SETTINGS)
+                    }
+                }
+                .show()
+        }
     }
 
     private fun observeState() {
@@ -475,7 +492,7 @@ class ChatListFragment : Fragment() {
             getString(R.string.option_mark_as_read),
             getString(R.string.option_pin_conversation),
             lockOption,
-            getString(R.string.option_mute_notifications),
+            if (conversation.isMuted) "Unmute notifications" else getString(R.string.option_mute_notifications),
             getString(R.string.option_clear_chat),
             getString(R.string.option_delete_conversation)
         )
@@ -498,7 +515,28 @@ class ChatListFragment : Fragment() {
                             }
                         )
                     }
-                    3 -> Toast.makeText(requireContext(), getString(R.string.toast_notifications_muted), Toast.LENGTH_SHORT).show()
+                    3 -> {
+                        if (conversation.isMuted) {
+                            viewLifecycleOwner.lifecycleScope.launch {
+                                viewModel.repository.setConversationMuted(conversation.id, false)
+                                Toast.makeText(requireContext(), "Notifications unmuted", Toast.LENGTH_SHORT).show()
+                                conversationAdapter.refresh()
+                            }
+                        } else {
+                            val muteOptions = arrayOf("8 hours", "1 week", "Always")
+                            AlertDialog.Builder(requireContext())
+                                .setTitle(getString(R.string.option_mute_notifications))
+                                .setItems(muteOptions) { _, _ ->
+                                    viewLifecycleOwner.lifecycleScope.launch {
+                                        viewModel.repository.setConversationMuted(conversation.id, true)
+                                        Toast.makeText(requireContext(), getString(R.string.toast_notifications_muted), Toast.LENGTH_SHORT).show()
+                                        conversationAdapter.refresh()
+                                    }
+                                }
+                                .setNegativeButton(getString(R.string.btn_cancel), null)
+                                .show()
+                        }
+                    }
                     4 -> {
                         ClearChatHelper.showClearChatDialog(
                             context = requireContext(),

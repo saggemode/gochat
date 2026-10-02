@@ -107,6 +107,9 @@ class ChatRoomViewModel @Inject constructor(
     private val _screenshotNotificationsEnabled = MutableStateFlow(false)
     val screenshotNotificationsEnabled: StateFlow<Boolean> = _screenshotNotificationsEnabled.asStateFlow()
 
+    private val _isMuted = MutableStateFlow(false)
+    val isMuted: StateFlow<Boolean> = _isMuted.asStateFlow()
+
     private val _screenShakeEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val screenShakeEvent: SharedFlow<Unit> = _screenShakeEvent.asSharedFlow()
 
@@ -224,6 +227,7 @@ class ChatRoomViewModel @Inject constructor(
             val currentUserId = tokenManager.userId ?: ""
             if (conv != null) {
                 _screenshotNotificationsEnabled.value = conv.screenshotNotificationsEnabled
+                _isMuted.value = conv.isMuted
                 _disappearingDuration.value = conv.disappearingMessagesDuration
                 if (conv.isDirect) {
                     val partner = conv.memberIds.find { it != currentUserId }
@@ -1330,6 +1334,17 @@ class ChatRoomViewModel @Inject constructor(
                 // In a real bot, this would trigger a warning/deletion on the server
                 // Client-side, we just show a mock indication or log it
                 Log.d("BotModerator", "Detected spam in message: ${message.id}")
+            }
+        }
+    }
+
+    fun setConversationMuted(muted: Boolean) {
+        val convId = _conversationId.value
+        if (convId.isEmpty()) return
+        viewModelScope.launch {
+            val result = chatRepository.setConversationMuted(convId, muted)
+            if (result.isSuccess) {
+                _isMuted.value = muted
             }
         }
     }

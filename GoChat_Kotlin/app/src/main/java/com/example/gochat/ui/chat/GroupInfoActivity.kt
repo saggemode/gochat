@@ -137,6 +137,46 @@ class GroupInfoActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
+        // Starred messages button
+        binding.btnStarredMessages.setOnClickListener {
+            val intent = Intent(this, StarredMessagesActivity::class.java).apply {
+                putExtra(StarredMessagesActivity.EXTRA_CONVERSATION_ID, convId)
+                putExtra(StarredMessagesActivity.EXTRA_CONVERSATION_TITLE, currentName)
+            }
+            startActivity(intent)
+        }
+
+        // Mute notifications button
+        lifecycleScope.launch {
+            val conv = chatRepository.getConversationById(convId)
+            val muted = conv?.isMuted ?: false
+            binding.btnMuteNotifications.text = if (muted) "Unmute notifications" else getString(R.string.option_mute_notifications)
+        }
+        binding.btnMuteNotifications.setOnClickListener {
+            lifecycleScope.launch {
+                val conv = chatRepository.getConversationById(convId)
+                val currentlyMuted = conv?.isMuted ?: false
+                if (currentlyMuted) {
+                    chatRepository.setConversationMuted(convId, false)
+                    binding.btnMuteNotifications.text = getString(R.string.option_mute_notifications)
+                    Toast.makeText(this@GroupInfoActivity, "Notifications unmuted", Toast.LENGTH_SHORT).show()
+                } else {
+                    val options = arrayOf("8 hours", "1 week", "Always")
+                    AlertDialog.Builder(this@GroupInfoActivity)
+                        .setTitle(getString(R.string.option_mute_notifications))
+                        .setItems(options) { _, _ ->
+                            lifecycleScope.launch {
+                                chatRepository.setConversationMuted(convId, true)
+                                binding.btnMuteNotifications.text = "Unmute notifications"
+                                Toast.makeText(this@GroupInfoActivity, "Notifications muted", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        .setNegativeButton(getString(R.string.btn_cancel), null)
+                        .show()
+                }
+            }
+        }
+
         // Export group chat button
         binding.btnExportGroupChat.setOnClickListener {
             val sheet = ExportChatBottomSheet(

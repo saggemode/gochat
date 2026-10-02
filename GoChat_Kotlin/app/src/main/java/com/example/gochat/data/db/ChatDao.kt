@@ -46,6 +46,9 @@ interface ChatDao {
     @Query("UPDATE conversations SET screenshotNotificationsEnabled = :enabled WHERE id = :convId")
     suspend fun updateScreenshotNotifications(convId: String, enabled: Boolean): Int
 
+    @Query("UPDATE conversations SET isMuted = :isMuted WHERE id = :convId")
+    suspend fun updateConversationMuted(convId: String, isMuted: Boolean): Int
+
     @Query("UPDATE conversations SET disappearingMessagesDuration = :durationSeconds WHERE id = :convId")
     suspend fun updateDisappearingMessagesDuration(convId: String, durationSeconds: Int): Int
 
@@ -92,7 +95,7 @@ interface ChatDao {
     @Query("UPDATE messages SET content = :newContent, isEdited = 1 WHERE id = :messageId")
     suspend fun updateMessageContent(messageId: String, newContent: String): Int
 
-    @Query("UPDATE messages SET isDeleted = 1, content = 'This message was deleted' WHERE id = :messageId")
+    @Query("UPDATE messages SET isDeleted = 1, content = 'This message was deleted', isStarred = 0 WHERE id = :messageId")
     suspend fun markMessageAsDeleted(messageId: String): Int
 
     @Query("UPDATE messages SET deletedForMe = 1 WHERE id = :messageId")
@@ -116,10 +119,10 @@ interface ChatDao {
     @Query("UPDATE messages SET reactions = :reactions WHERE id = :messageId")
     suspend fun updateMessageReactions(messageId: String, reactions: List<Reaction>): Int
 
-    @Query("SELECT * FROM messages WHERE isStarred = 1 AND deletedForMe = 0 ORDER BY createdAt DESC")
+    @Query("SELECT * FROM messages WHERE isStarred = 1 AND deletedForMe = 0 AND isDeleted = 0 ORDER BY createdAt DESC")
     fun getStarredMessages(): Flow<List<Message>>
 
-    @Query("SELECT * FROM messages WHERE isStarred = 1 AND conversationId = :convId AND deletedForMe = 0 ORDER BY createdAt DESC")
+    @Query("SELECT * FROM messages WHERE isStarred = 1 AND conversationId = :convId AND deletedForMe = 0 AND isDeleted = 0 ORDER BY createdAt DESC")
     fun getStarredMessagesForConversation(convId: String): Flow<List<Message>>
 
     @Query("DELETE FROM messages WHERE id = :messageId")
@@ -137,7 +140,7 @@ interface ChatDao {
     @Query("UPDATE conversations SET clearedAt = :clearedAt, lastMessageText = :lastMessageText, lastMessageTime = :lastMessageTime, unreadCount = 0 WHERE id = :convId")
     suspend fun updateConversationCleared(convId: String, clearedAt: Long, lastMessageText: String?, lastMessageTime: Long?): Int
 
-    @Query("SELECT COUNT(*) FROM messages WHERE conversationId = :convId AND isStarred = 1 AND deletedForMe = 0")
+    @Query("SELECT COUNT(*) FROM messages WHERE conversationId = :convId AND isStarred = 1 AND deletedForMe = 0 AND isDeleted = 0")
     suspend fun getStarredMessagesCount(convId: String): Int
 
     @Query("SELECT * FROM messages WHERE conversationId = :convId AND deletedForMe = 0 ORDER BY createdAt DESC LIMIT 1")

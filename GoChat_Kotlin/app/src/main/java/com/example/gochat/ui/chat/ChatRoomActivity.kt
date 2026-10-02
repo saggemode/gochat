@@ -307,16 +307,7 @@ class ChatRoomActivity : AppCompatActivity() {
 
         val targetMsgId = intent.getStringExtra(EXTRA_TARGET_MESSAGE_ID)
         if (!targetMsgId.isNullOrEmpty()) {
-            lifecycleScope.launch {
-                viewModel.messages.collect { list ->
-                    val idx = list.indexOfFirst { it.id == targetMsgId }
-                    if (idx != -1) {
-                        binding.rvMessages.post {
-                            binding.rvMessages.scrollToPosition(idx)
-                        }
-                    }
-                }
-            }
+            jumpToAndHighlightMessage(targetMsgId)
         }
 
         if (convId.isNotEmpty()) {
@@ -1736,9 +1727,23 @@ class ChatRoomActivity : AppCompatActivity() {
             Toast.makeText(this, "Screenshot alerts $status", Toast.LENGTH_SHORT).show()
         }
 
-        menuItems.add(getString(R.string.option_mute_notifications))
+        menuItems.add(if (viewModel.isMuted.value) "Unmute notifications" else getString(R.string.option_mute_notifications))
         actions.add {
-            Toast.makeText(this, getString(R.string.toast_option_selected), Toast.LENGTH_SHORT).show()
+            val currentlyMuted = viewModel.isMuted.value
+            if (currentlyMuted) {
+                viewModel.setConversationMuted(false)
+                Toast.makeText(this, "Notifications unmuted", Toast.LENGTH_SHORT).show()
+            } else {
+                val options = arrayOf("8 hours", "1 week", "Always")
+                AlertDialog.Builder(this)
+                    .setTitle(getString(R.string.option_mute_notifications))
+                    .setItems(options) { _, _ ->
+                        viewModel.setConversationMuted(true)
+                        Toast.makeText(this, "Notifications muted", Toast.LENGTH_SHORT).show()
+                    }
+                    .setNegativeButton(getString(R.string.btn_cancel), null)
+                    .show()
+            }
         }
 
         menuItems.add(getString(R.string.option_clear_chat))
@@ -2081,6 +2086,33 @@ class ChatRoomActivity : AppCompatActivity() {
         imm?.hideSoftInputFromWindow(binding.etSearchQuery.windowToken, 0)
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val targetMsgId = intent.getStringExtra(EXTRA_TARGET_MESSAGE_ID)
+        if (!targetMsgId.isNullOrEmpty()) {
+            jumpToAndHighlightMessage(targetMsgId)
+        }
+    }
+
+    private var targetMessageJumpJob: kotlinx.coroutines.Job? = null
+
+    private fun jumpToAndHighlightMessage(targetMsgId: String) {
+        targetMessageJumpJob?.cancel()
+        targetMessageJumpJob = lifecycleScope.launch {
+            viewModel.messages.collect { list ->
+                val idx = list.indexOfFirst { it.id == targetMsgId }
+                if (idx != -1) {
+                    binding.rvMessages.post {
+                        binding.rvMessages.smoothScrollToPosition(idx)
+                        messageAdapter.highlightMessage(targetMsgId)
+                    }
+                    targetMessageJumpJob?.cancel()
+                }
+            }
+        }
+    }
+
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         if (messageAdapter.isSelectionMode) {
@@ -2114,6 +2146,8 @@ class ChatRoomActivity : AppCompatActivity() {
     private fun updateSelectionUI(count: Int) {
         binding.tvSelectionCount.text = getString(R.string.export_selection_count, count)
         binding.btnExportSelectionAction.isEnabled = count > 0
+        binding.btnStarSelectionAction.isEnabled = count > 0
+        binding.btnDeleteSelectionAction.isEnabled = count > 0
     }
 
     private fun setupSelectionBar() {
@@ -2127,6 +2161,21 @@ class ChatRoomActivity : AppCompatActivity() {
 
         binding.btnSelectAll.setOnClickListener {
             messageAdapter.selectAll()
+        }
+
+        binding.btnStarSelectionAction.setOnClickListener {
+            val selected = messageAdapter.getSelectedMessages()
+            if (selected.isEmpty()) {
+                Toast.makeText(this, "Select at least 1 message to star", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            val shouldStar = selected.any { !it.isStarred }
+            selected.forEach { msg ->
+                viewModel.toggleStar(msg.id, shouldStar)
+            }
+            val actionText = if (shouldStar) "starred" else "unstarred"
+            Toast.makeText(this, "${selected.size} message(s) $actionText", Toast.LENGTH_SHORT).show()
+            exitSelectionMode()
         }
 
         binding.btnExportSelectionAction.setOnClickListener {

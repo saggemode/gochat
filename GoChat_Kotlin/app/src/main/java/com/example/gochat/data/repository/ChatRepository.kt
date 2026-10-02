@@ -105,11 +105,13 @@ class ChatRepository @Inject constructor(
                 val currentUserId = tokenManager.userId ?: ""
                 val existingLocal = dao.getConversationById(convId)
                 val hasRemoteScreenshot = convObj.containsKey("screenshot_notifications_enabled") || convObj.containsKey("screenshotNotificationsEnabled")
+                val hasRemoteMuted = convObj.containsKey("is_muted") || convObj.containsKey("isMuted") || convObj.containsKey("IsMuted")
                 val parsedConv = Conversation.fromJson(convObj, currentUserId)
                 val conv = parsedConv.copy(
                     isOnline = isOnline,
                     lastSeen = lastSeen,
-                    screenshotNotificationsEnabled = if (hasRemoteScreenshot) parsedConv.screenshotNotificationsEnabled else (existingLocal?.screenshotNotificationsEnabled ?: parsedConv.screenshotNotificationsEnabled)
+                    screenshotNotificationsEnabled = if (hasRemoteScreenshot) parsedConv.screenshotNotificationsEnabled else (existingLocal?.screenshotNotificationsEnabled ?: parsedConv.screenshotNotificationsEnabled),
+                    isMuted = if (hasRemoteMuted) parsedConv.isMuted else (existingLocal?.isMuted ?: parsedConv.isMuted)
                 )
                 dao.insertConversation(conv)
                 Result.success(conv)
@@ -138,8 +140,11 @@ class ChatRepository @Inject constructor(
                         val parsed = Conversation.fromJson(it, currentUserId)
                         val existing = existingMap[parsed.id]
                         val hasRemoteScreenshot = it.containsKey("screenshot_notifications_enabled") || it.containsKey("screenshotNotificationsEnabled")
-                        if (!hasRemoteScreenshot && existing != null) {
-                            parsed.copy(screenshotNotificationsEnabled = existing.screenshotNotificationsEnabled)
+                        val hasRemoteMuted = it.containsKey("is_muted") || it.containsKey("isMuted") || it.containsKey("IsMuted")
+                        val preservedScreenshot = if (!hasRemoteScreenshot && existing != null) existing.screenshotNotificationsEnabled else parsed.screenshotNotificationsEnabled
+                        val preservedMuted = if (!hasRemoteMuted && existing != null) existing.isMuted else parsed.isMuted
+                        if (preservedScreenshot != parsed.screenshotNotificationsEnabled || preservedMuted != parsed.isMuted) {
+                            parsed.copy(screenshotNotificationsEnabled = preservedScreenshot, isMuted = preservedMuted)
                         } else {
                             parsed
                         }
@@ -201,6 +206,15 @@ class ChatRepository @Inject constructor(
     suspend fun toggleScreenshotNotifications(convId: String, enabled: Boolean): Result<Unit> {
         return try {
             dao.updateScreenshotNotifications(convId, enabled)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun setConversationMuted(convId: String, isMuted: Boolean): Result<Unit> {
+        return try {
+            dao.updateConversationMuted(convId, isMuted)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -431,6 +445,7 @@ class ChatRepository @Inject constructor(
                 val data = response.body() ?: buildJsonObject {}
                 val msgJson = data["message"]?.jsonObject ?: data
                 val parsed = Message.fromJson(msgJson, tokenManager.userId ?: "")
+                val localExisting = dao.getMessageById(localMsg.id)
                 val finalMsg = parsed.copy(
                     isMe = true,
                     content = content, // Preserve local plaintext
@@ -439,7 +454,9 @@ class ChatRepository @Inject constructor(
                     status = MessageStatus.SENT,
                     isViewOnce = isViewOnce || parsed.isViewOnce,
                     disappearingDurationSeconds = parsed.disappearingDurationSeconds ?: localMsg.disappearingDurationSeconds,
-                    expiresAt = parsed.expiresAt ?: localMsg.expiresAt
+                    expiresAt = parsed.expiresAt ?: localMsg.expiresAt,
+                    isStarred = localExisting?.isStarred ?: localMsg.isStarred,
+                    isPinned = localExisting?.isPinned ?: localMsg.isPinned
                 )
 
 
@@ -842,13 +859,18 @@ class ChatRepository @Inject constructor(
             return
         }
 
+        val localExisting = dao.getMessageById(decrypted.id)
         val conv = if (decrypted.conversationId.isNotEmpty()) dao.getConversationById(decrypted.conversationId) else null
         val clearedAt = conv?.clearedAt ?: 0L
-        val isDeletedForMe = decrypted.deletedForMe || 
-                (clearedAt > 0L && decrypted.createdAt <= clearedAt && !decrypted.isStarred)
+        val isStarred = localExisting?.isStarred ?: decrypted.isStarred
+        val isPinned = localExisting?.isPinned ?: decrypted.isPinned
+        val isDeletedForMe = (localExisting?.deletedForMe == true) || decrypted.deletedForMe || 
+                (clearedAt > 0L && decrypted.createdAt <= clearedAt && !isStarred)
         val finalMsg = decrypted.copy(
             isMe = decrypted.senderId == (tokenManager.userId ?: ""),
-            deletedForMe = isDeletedForMe
+            deletedForMe = isDeletedForMe,
+            isStarred = isStarred,
+            isPinned = isPinned
         )
         dao.insertMessage(finalMsg)
 

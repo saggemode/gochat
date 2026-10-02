@@ -70,8 +70,20 @@ class StarredMessagesActivity : AppCompatActivity() {
         binding.rvStarredMessages.adapter = adapter
     }
 
+    private var conversationTitlesMap: Map<String, String> = emptyMap()
+
     private fun observeStarredMessages() {
         binding.pbLoading.visibility = View.VISIBLE
+
+        if (conversationId.isBlank()) {
+            lifecycleScope.launch {
+                chatRepo.observeConversations().collectLatest { convs ->
+                    conversationTitlesMap = convs.associate { it.id to it.title }
+                    adapter.conversationTitles = conversationTitlesMap
+                }
+            }
+        }
+
         lifecycleScope.launch {
             val flow = if (conversationId.isNotBlank()) {
                 chatRepo.observeStarredMessagesForConversation(conversationId)
@@ -95,11 +107,17 @@ class StarredMessagesActivity : AppCompatActivity() {
 
     private fun openMessageInChat(message: Message) {
         val targetConvId = if (message.conversationId.isNotBlank()) message.conversationId else conversationId
+        val resolvedTitle = if (conversationTitle.isNotBlank()) {
+            conversationTitle
+        } else {
+            conversationTitlesMap[targetConvId].orEmpty()
+        }
         val intent = Intent(this, ChatRoomActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, targetConvId)
             putExtra(ChatRoomActivity.EXTRA_TARGET_MESSAGE_ID, message.id)
-            if (conversationTitle.isNotBlank()) {
-                putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, conversationTitle)
+            if (resolvedTitle.isNotBlank()) {
+                putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, resolvedTitle)
             }
         }
         startActivity(intent)

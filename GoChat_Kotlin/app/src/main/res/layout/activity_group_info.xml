@@ -328,6 +328,26 @@
                 tools:visibility="visible" />
 
             <TextView
+                android:id="@+id/btnStarredMessages"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:text="Starred messages"
+                android:textColor="@color/white"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/btnMuteNotifications"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:text="@string/option_mute_notifications"
+                android:textColor="@color/white"
+                android:textSize="16sp" />
+
+            <TextView
                 android:id="@+id/btnExportGroupChat"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"

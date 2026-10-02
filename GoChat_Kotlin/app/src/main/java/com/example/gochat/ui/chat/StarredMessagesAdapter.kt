@@ -19,6 +19,12 @@ class StarredMessagesAdapter(
     private val onUnstarClick: (Message) -> Unit
 ) : ListAdapter<Message, StarredMessagesAdapter.ViewHolder>(DiffCallback) {
 
+    var conversationTitles: Map<String, String> = emptyMap()
+        set(value) {
+            field = value
+            notifyDataSetChanged()
+        }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val binding = ItemStarredMessageBinding.inflate(
             LayoutInflater.from(parent.context), parent, false
@@ -36,23 +42,34 @@ class StarredMessagesAdapter(
 
         fun bind(message: Message) {
             val author = if (message.isMe) "You" else message.senderName.ifBlank { "Contact" }
-            binding.tvSenderName.text = author
+            val chatTitle = conversationTitles[message.conversationId]
+            if (!chatTitle.isNullOrBlank() && !chatTitle.equals(author, ignoreCase = true)) {
+                binding.tvSenderName.text = "$author • $chatTitle"
+            } else {
+                binding.tvSenderName.text = author
+            }
             binding.tvMessageTime.text = formatTimestamp(message.createdAt)
 
-            val snippet = when (message.type) {
-                MessageType.TEXT -> message.content
-                MessageType.IMAGE -> if (message.content.isNotBlank() && !message.content.startsWith("http")) message.content else "📷 Photo"
-                MessageType.VIDEO -> if (message.content.isNotBlank() && !message.content.startsWith("http")) message.content else "🎥 Video"
-                MessageType.VOICE, MessageType.AUDIO -> "🎵 Voice note"
-                MessageType.FILE -> "📄 Document: ${message.content}"
-                MessageType.POLL -> "📊 Poll: ${message.content}"
-                MessageType.CATALOG -> "🛍️ Product Catalog"
-                MessageType.PRODUCT -> "🛒 Product inquiry"
-                MessageType.ORDER -> "📦 Order update"
-                MessageType.PAYMENT_REQUEST -> "💳 Payment Request"
-                MessageType.LOCATION -> "📍 Location"
-                MessageType.CONTACT -> "👤 Contact card"
-                else -> message.content.ifBlank { "Message" }
+            val snippet = if (message.isDeleted) {
+                "🚫 This message was deleted"
+            } else if (isBase64Ciphertext(message.content)) {
+                "🔒 Encrypted message"
+            } else {
+                when (message.type) {
+                    MessageType.TEXT -> message.content
+                    MessageType.IMAGE -> if (message.content.isNotBlank() && !message.content.startsWith("http")) message.content else "📷 Photo"
+                    MessageType.VIDEO -> if (message.content.isNotBlank() && !message.content.startsWith("http")) message.content else "🎥 Video"
+                    MessageType.VOICE, MessageType.AUDIO -> "🎵 Voice note"
+                    MessageType.FILE -> "📄 Document: ${message.content}"
+                    MessageType.POLL -> "📊 Poll: ${message.content}"
+                    MessageType.CATALOG -> "🛍️ Product Catalog"
+                    MessageType.PRODUCT -> "🛒 Product inquiry"
+                    MessageType.ORDER -> "📦 Order update"
+                    MessageType.PAYMENT_REQUEST -> "💳 Payment Request"
+                    MessageType.LOCATION -> "📍 Location"
+                    MessageType.CONTACT -> "👤 Contact card"
+                    else -> message.content.ifBlank { "Message" }
+                }
             }
             binding.tvMessageSnippet.text = snippet
 
@@ -82,6 +99,18 @@ class StarredMessagesAdapter(
         private fun formatTimestamp(timeMs: Long): String {
             val sdf = SimpleDateFormat("MMM d, yyyy • h:mm a", Locale.getDefault())
             return sdf.format(Date(timeMs))
+        }
+
+        private fun isBase64Ciphertext(text: String): Boolean {
+            val trimmed = text.trim()
+            if (trimmed.length < 44 || trimmed.contains(" ") || trimmed.contains("\n")) return false
+            if (!trimmed.matches(Regex("^[A-Za-z0-9+/=]+$"))) return false
+            return try {
+                android.util.Base64.decode(trimmed, android.util.Base64.DEFAULT)
+                true
+            } catch (_: Exception) {
+                false
+            }
         }
     }
 

@@ -211,9 +211,16 @@ class ContactProfileActivity : AppCompatActivity() {
     }
 
     private fun setupSettingsRows(userName: String, convId: String, targetUserId: String) {
+        // Load mute state from database
+        lifecycleScope.launch {
+            val conv = chatRepository.getConversationById(convId)
+            isMuted = conv?.isMuted ?: false
+            binding.tvNotificationStatus.text = if (isMuted) "Muted" else "Mute notifications, custom tones"
+        }
+
         // 1. Notification
         binding.layoutNotification.setOnClickListener {
-            showNotificationDialog()
+            showNotificationDialog(convId)
         }
 
         // 2. Media visibility
@@ -363,19 +370,22 @@ class ContactProfileActivity : AppCompatActivity() {
         }
     }
 
-    private fun showNotificationDialog() {
+    private fun showNotificationDialog(convId: String) {
         val options = arrayOf("8 hours", "1 week", "Always", "Unmute")
         AlertDialog.Builder(this)
             .setTitle("Mute notifications")
             .setItems(options) { _, which ->
-                if (which == 3) {
-                    isMuted = false
-                    binding.tvNotificationStatus.text = "Notifications enabled"
-                    Toast.makeText(this, "Notifications unmuted", Toast.LENGTH_SHORT).show()
-                } else {
-                    isMuted = true
-                    binding.tvNotificationStatus.text = "Muted until ${options[which]}"
-                    Toast.makeText(this, "Muted for ${options[which]}", Toast.LENGTH_SHORT).show()
+                val newMuted = which != 3
+                lifecycleScope.launch {
+                    chatRepository.setConversationMuted(convId, newMuted)
+                    isMuted = newMuted
+                    if (newMuted) {
+                        binding.tvNotificationStatus.text = "Muted until ${options[which]}"
+                        Toast.makeText(this@ContactProfileActivity, "Muted for ${options[which]}", Toast.LENGTH_SHORT).show()
+                    } else {
+                        binding.tvNotificationStatus.text = "Mute notifications, custom tones"
+                        Toast.makeText(this@ContactProfileActivity, "Notifications unmuted", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
             .setNegativeButton(getString(R.string.btn_cancel), null)

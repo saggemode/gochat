@@ -48,12 +48,12 @@ class MainActivity : AppCompatActivity() {
     lateinit var callRepository: com.example.gochat.data.repository.CallRepository
 
     companion object {
-        private const val KEY_ACTIVE_TAB = "key_active_tab"
-        private const val TAG_CHATS = "tab_chats"
-        private const val TAG_STATUS = "tab_status"
-        private const val TAG_MARKETPLACE = "tab_marketplace"
-        private const val TAG_CALLS = "tab_calls"
-        private const val TAG_SETTINGS = "tab_settings"
+        const val KEY_ACTIVE_TAB = "key_active_tab"
+        const val TAG_CHATS = "tab_chats"
+        const val TAG_STATUS = "tab_status"
+        const val TAG_MARKETPLACE = "tab_marketplace"
+        const val TAG_CALLS = "tab_calls"
+        const val TAG_SETTINGS = "tab_settings"
     }
 
     private var currentTabTag: String = TAG_CHATS
@@ -228,6 +228,16 @@ class MainActivity : AppCompatActivity() {
 
         currentTabTag = tag
         transaction.commit()
+    }
+
+    fun navigateToTab(tag: String) {
+        when (tag) {
+            TAG_CHATS -> binding.bottomNav.selectedItemId = R.id.nav_chats
+            TAG_STATUS -> binding.bottomNav.selectedItemId = R.id.nav_status
+            TAG_CALLS -> binding.bottomNav.selectedItemId = R.id.nav_calls
+            TAG_SETTINGS -> binding.bottomNav.selectedItemId = R.id.nav_settings
+            else -> switchTab(tag)
+        }
     }
 
     private fun showBiometricPrompt() {

@@ -330,6 +330,19 @@
                 app:iconTint="@color/gochat_emerald_light" />
 
             <ImageView
+                android:id="@+id/btnStarSelectionAction"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:layout_marginStart="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="Star"
+                android:focusable="true"
+                android:padding="8dp"
+                android:src="@drawable/ic_star"
+                app:tint="#F59E0B" />
+
+            <ImageView
                 android:id="@+id/btnDeleteSelectionAction"
                 android:layout_width="38dp"
                 android:layout_height="38dp"
