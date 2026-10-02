@@ -262,11 +262,12 @@ class ChatRepository @Inject constructor(
                         val localExisting = dao.getMessageById(msg.id)
                         val isDeletedForMe = (localExisting?.deletedForMe == true) ||
                                 (clearedAt > 0L && msg.createdAt <= clearedAt && !msg.isStarred && localExisting?.isStarred != true)
-                        // For ALL messages (sent or received), check if we already have
-                        // a local decrypted version. Signal Protocol ratcheting means we
-                        // can't decrypt the same ciphertext twice, so we must preserve
-                        // locally-stored plaintext content.
-                        val contentToUse = if (localExisting != null && localExisting.content.isNotBlank() && !isBase64Ciphertext(localExisting.content)) {
+                        val isDeleted = (localExisting?.isDeleted == true) || msg.isDeleted
+                        val isStarred = if (isDeleted) false else (localExisting?.isStarred ?: msg.isStarred)
+                        val isPinned = if (isDeleted) false else (localExisting?.isPinned ?: msg.isPinned)
+                        val contentToUse = if (isDeleted) {
+                            "This message was deleted"
+                        } else if (localExisting != null && localExisting.content.isNotBlank() && !isBase64Ciphertext(localExisting.content)) {
                             localExisting.content
                         } else if (msg.isMe) {
                             msg.content
@@ -275,9 +276,12 @@ class ChatRepository @Inject constructor(
                         }
                         msg.copy(
                             content = contentToUse,
+                            isDeleted = isDeleted,
+                            mediaUrl = if (isDeleted) null else msg.mediaUrl,
+                            mediaThumbnail = if (isDeleted) null else msg.mediaThumbnail,
                             deletedForMe = isDeletedForMe,
-                            isStarred = localExisting?.isStarred ?: msg.isStarred,
-                            isPinned = localExisting?.isPinned ?: msg.isPinned
+                            isStarred = isStarred,
+                            isPinned = isPinned
                         )
                     } else null
                 }
@@ -508,7 +512,7 @@ class ChatRepository @Inject constructor(
     }
 
     suspend fun handleIncomingWebSocketEvent(event: JsonObject): Message? {
-        val eventType = (event["type"] ?: event["event_type"] ?: event["eventType"])
+        val eventType = (event["type"] ?: event["event_type"] ?: event["eventType"] ?: event["event"])
             ?.jsonPrimitive?.contentOrNull.orEmpty().lowercase()
 
         if (eventType == "presence") {
@@ -526,6 +530,19 @@ class ChatRepository @Inject constructor(
         }
 
         val rawMsg = event["message"] ?: event["Message"] ?: event["payload"] ?: event["data"]
+
+        if (eventType == "message_deleted" || eventType == "event_message_deleted" || eventType == "2") {
+            val msgId = (event["msg_id"] ?: event["message_id"] ?: event["id"]
+                ?: if (rawMsg is JsonObject) rawMsg["id"] ?: rawMsg["message_id"] ?: rawMsg["msg_id"] else null)
+                ?.jsonPrimitive?.contentOrNull.orEmpty()
+            val convId = (event["conversation_id"] ?: event["conversationId"] ?: event["conv_id"]
+                ?: if (rawMsg is JsonObject) rawMsg["conversation_id"] ?: rawMsg["conv_id"] else null)
+                ?.jsonPrimitive?.contentOrNull.orEmpty()
+            if (msgId.isNotEmpty()) {
+                deleteMessageLocally(msgId, convId)
+            }
+            return null
+        }
 
         val isMessageEvent = eventType == "0" ||
                 eventType == "1" ||
@@ -862,12 +879,18 @@ class ChatRepository @Inject constructor(
         val localExisting = dao.getMessageById(decrypted.id)
         val conv = if (decrypted.conversationId.isNotEmpty()) dao.getConversationById(decrypted.conversationId) else null
         val clearedAt = conv?.clearedAt ?: 0L
-        val isStarred = localExisting?.isStarred ?: decrypted.isStarred
-        val isPinned = localExisting?.isPinned ?: decrypted.isPinned
+        val isDeleted = (localExisting?.isDeleted == true) || decrypted.isDeleted
+        val isStarred = if (isDeleted) false else (localExisting?.isStarred ?: decrypted.isStarred)
+        val isPinned = if (isDeleted) false else (localExisting?.isPinned ?: decrypted.isPinned)
         val isDeletedForMe = (localExisting?.deletedForMe == true) || decrypted.deletedForMe || 
                 (clearedAt > 0L && decrypted.createdAt <= clearedAt && !isStarred)
+        val contentToUse = if (isDeleted) "This message was deleted" else decrypted.content
         val finalMsg = decrypted.copy(
             isMe = decrypted.senderId == (tokenManager.userId ?: ""),
+            content = contentToUse,
+            isDeleted = isDeleted,
+            mediaUrl = if (isDeleted) null else decrypted.mediaUrl,
+            mediaThumbnail = if (isDeleted) null else decrypted.mediaThumbnail,
             deletedForMe = isDeletedForMe,
             isStarred = isStarred,
             isPinned = isPinned
@@ -1002,24 +1025,76 @@ class ChatRepository @Inject constructor(
         }
     }
 
-    suspend fun deleteMessageForMe(messageId: String) = withContext(Dispatchers.IO) {
+    suspend fun updateConversationLastMessageFromDb(convId: String) = withContext(Dispatchers.IO) {
+        val remainingLatest = dao.getLatestActiveMessage(convId)
+        val lastText = remainingLatest?.let {
+            if (it.isDeleted) "🚫 This message was deleted"
+            else when (it.type) {
+                MessageType.IMAGE -> "📷 Photo"
+                MessageType.VIDEO -> "📹 Video"
+                MessageType.AUDIO, MessageType.VOICE -> "🎙️ Voice note"
+                MessageType.FILE -> "📄 Document"
+                else -> it.content
+            }
+        } ?: ""
+        val lastTime = remainingLatest?.createdAt ?: System.currentTimeMillis()
+        dao.updateLastMessage(convId, lastText, lastTime, System.currentTimeMillis())
+    }
+
+    suspend fun deleteMessageForMe(messageId: String, convId: String = "") = withContext(Dispatchers.IO) {
+        val targetConvId = if (convId.isNotEmpty()) convId else dao.getMessageById(messageId)?.conversationId.orEmpty()
         dao.markMessageDeletedForMe(messageId)
+        if (targetConvId.isNotEmpty()) {
+            updateConversationLastMessageFromDb(targetConvId)
+        }
     }
 
-    suspend fun deleteMessagesForMe(messageIds: List<String>) = withContext(Dispatchers.IO) {
+    suspend fun deleteMessagesForMe(messageIds: List<String>, convId: String = "") = withContext(Dispatchers.IO) {
+        val targetConvId = if (convId.isNotEmpty()) convId else messageIds.firstNotNullOfOrNull { dao.getMessageById(it)?.conversationId }.orEmpty()
         dao.markMessagesDeletedForMe(messageIds)
+        if (targetConvId.isNotEmpty()) {
+            updateConversationLastMessageFromDb(targetConvId)
+        }
     }
 
-    suspend fun deleteMessageForEveryone(messageId: String) = withContext(Dispatchers.IO) {
+    suspend fun deleteMessageForEveryone(messageId: String, convId: String = "") = withContext(Dispatchers.IO) {
+        val targetConvId = if (convId.isNotEmpty()) convId else dao.getMessageById(messageId)?.conversationId.orEmpty()
         dao.markMessageAsDeleted(messageId)
+        if (targetConvId.isNotEmpty()) {
+            updateConversationLastMessageFromDb(targetConvId)
+        }
+        try {
+            api.deleteMessage(messageId)
+        } catch (e: Exception) {
+            Log.w("ChatRepository", "Failed to sync deleteMessage to remote server", e)
+        }
+    }
+
+    suspend fun deleteMessagesForEveryone(messageIds: List<String>, convId: String = "") = withContext(Dispatchers.IO) {
+        val targetConvId = if (convId.isNotEmpty()) convId else messageIds.firstNotNullOfOrNull { dao.getMessageById(it)?.conversationId }.orEmpty()
+        dao.markMessagesAsDeleted(messageIds)
+        if (targetConvId.isNotEmpty()) {
+            updateConversationLastMessageFromDb(targetConvId)
+        }
+        messageIds.forEach { msgId ->
+            try {
+                api.deleteMessage(msgId)
+            } catch (e: Exception) {
+                Log.w("ChatRepository", "Failed to sync deleteMessage to remote server for $msgId", e)
+            }
+        }
+    }
+
+    suspend fun deleteMessageLocally(messageId: String, convId: String = "") = withContext(Dispatchers.IO) {
+        dao.markMessageAsDeleted(messageId)
+        val targetConvId = if (convId.isNotEmpty()) convId else dao.getMessageById(messageId)?.conversationId.orEmpty()
+        if (targetConvId.isNotEmpty()) {
+            updateConversationLastMessageFromDb(targetConvId)
+        }
     }
 
     suspend fun getStarredMessagesCount(convId: String): Int = withContext(Dispatchers.IO) {
         dao.getStarredMessagesCount(convId)
-    }
-
-    suspend fun deleteMessageLocally(messageId: String) {
-        dao.markMessageAsDeleted(messageId)
     }
 
     suspend fun markMessageAsViewed(messageId: String) {

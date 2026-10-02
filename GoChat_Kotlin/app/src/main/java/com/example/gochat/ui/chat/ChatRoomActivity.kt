@@ -1551,7 +1551,9 @@ class ChatRoomActivity : AppCompatActivity() {
                     showExportChatBottomSheet(targetMessages = listOf(message))
                 }
                 MessageActionBottomSheet.Action.DELETE -> {
-                    if (message.isMe) {
+                    val isGroup = intent.getBooleanExtra(EXTRA_IS_GROUP, false)
+                    val canDeleteForEveryone = message.isMe || (isGroup && viewModel.isGroupAdmin.value)
+                    if (canDeleteForEveryone) {
                         val deleteOptions = arrayOf(
                             getString(R.string.action_delete_for_everyone),
                             getString(R.string.action_delete_for_me)
@@ -1560,8 +1562,14 @@ class ChatRoomActivity : AppCompatActivity() {
                             .setTitle(getString(R.string.dialog_delete_message_title))
                             .setItems(deleteOptions) { _, which ->
                                 when (which) {
-                                    0 -> viewModel.deleteMessageForEveryone(message.id)
-                                    1 -> viewModel.deleteMessageForMe(message.id)
+                                    0 -> {
+                                        viewModel.deleteMessageForEveryone(message.id)
+                                        Toast.makeText(this, "Message deleted for everyone", Toast.LENGTH_SHORT).show()
+                                    }
+                                    1 -> {
+                                        viewModel.deleteMessageForMe(message.id)
+                                        Toast.makeText(this, "Message deleted for me", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             }
                             .setNegativeButton(getString(R.string.btn_cancel), null)
@@ -1572,6 +1580,7 @@ class ChatRoomActivity : AppCompatActivity() {
                             .setMessage("Delete this message for yourself?")
                             .setPositiveButton(getString(R.string.action_delete_for_me)) { _, _ ->
                                 viewModel.deleteMessageForMe(message.id)
+                                Toast.makeText(this, "Message deleted for me", Toast.LENGTH_SHORT).show()
                             }
                             .setNegativeButton(getString(R.string.btn_cancel), null)
                             .show()
@@ -2193,8 +2202,9 @@ class ChatRoomActivity : AppCompatActivity() {
                 Toast.makeText(this, "Select at least 1 message to delete", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            val allMine = selected.all { it.isMe }
-            if (allMine) {
+            val isGroup = intent.getBooleanExtra(EXTRA_IS_GROUP, false)
+            val canDeleteForEveryone = selected.all { it.isMe || (isGroup && viewModel.isGroupAdmin.value) }
+            if (canDeleteForEveryone) {
                 val deleteOptions = arrayOf(
                     getString(R.string.action_delete_for_everyone),
                     getString(R.string.action_delete_for_me)
@@ -2204,8 +2214,14 @@ class ChatRoomActivity : AppCompatActivity() {
                     .setItems(deleteOptions) { _, which ->
                         val ids = selected.map { it.id }
                         when (which) {
-                            0 -> viewModel.deleteMessagesForEveryone(ids)
-                            1 -> viewModel.deleteMessagesForMe(ids)
+                            0 -> {
+                                viewModel.deleteMessagesForEveryone(ids)
+                                Toast.makeText(this, "${selected.size} messages deleted for everyone", Toast.LENGTH_SHORT).show()
+                            }
+                            1 -> {
+                                viewModel.deleteMessagesForMe(ids)
+                                Toast.makeText(this, "${selected.size} messages deleted for me", Toast.LENGTH_SHORT).show()
+                            }
                         }
                         exitSelectionMode()
                     }
@@ -2217,6 +2233,7 @@ class ChatRoomActivity : AppCompatActivity() {
                     .setMessage(getString(R.string.dialog_delete_messages_desc))
                     .setPositiveButton(getString(R.string.action_delete_for_me)) { _, _ ->
                         viewModel.deleteMessagesForMe(selected.map { it.id })
+                        Toast.makeText(this, "${selected.size} messages deleted for me", Toast.LENGTH_SHORT).show()
                         exitSelectionMode()
                     }
                     .setNegativeButton(getString(R.string.btn_cancel), null)

@@ -172,6 +172,11 @@ interface GoChatApiService {
         @Body body: JsonObject
     ): Response<JsonObject>
 
+    @DELETE("api/v1/chat/messages/{id}")
+    suspend fun deleteMessage(
+        @Path("id") messageId: String
+    ): Response<JsonObject>
+
     // ═══════════════════════════════════════════════════════════════
     // ── Group Management ─────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════

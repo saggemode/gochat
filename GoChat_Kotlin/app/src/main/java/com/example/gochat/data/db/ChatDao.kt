@@ -95,8 +95,11 @@ interface ChatDao {
     @Query("UPDATE messages SET content = :newContent, isEdited = 1 WHERE id = :messageId")
     suspend fun updateMessageContent(messageId: String, newContent: String): Int
 
-    @Query("UPDATE messages SET isDeleted = 1, content = 'This message was deleted', isStarred = 0 WHERE id = :messageId")
+    @Query("UPDATE messages SET isDeleted = 1, content = 'This message was deleted', isStarred = 0, isPinned = 0, mediaUrl = NULL, mediaThumbnail = NULL WHERE id = :messageId")
     suspend fun markMessageAsDeleted(messageId: String): Int
+
+    @Query("UPDATE messages SET isDeleted = 1, content = 'This message was deleted', isStarred = 0, isPinned = 0, mediaUrl = NULL, mediaThumbnail = NULL WHERE id IN (:messageIds)")
+    suspend fun markMessagesAsDeleted(messageIds: List<String>): Int
 
     @Query("UPDATE messages SET deletedForMe = 1 WHERE id = :messageId")
     suspend fun markMessageDeletedForMe(messageId: String): Int

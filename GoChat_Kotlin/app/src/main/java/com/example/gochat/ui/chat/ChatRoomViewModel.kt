@@ -610,26 +610,30 @@ class ChatRoomViewModel @Inject constructor(
     }
 
     fun deleteMessageForEveryone(messageId: String) {
+        val convId = _conversationId.value
         viewModelScope.launch {
-            chatRepository.deleteMessageForEveryone(messageId)
+            chatRepository.deleteMessageForEveryone(messageId, convId)
         }
     }
 
     fun deleteMessageForMe(messageId: String) {
+        val convId = _conversationId.value
         viewModelScope.launch {
-            chatRepository.deleteMessageForMe(messageId)
+            chatRepository.deleteMessageForMe(messageId, convId)
         }
     }
 
     fun deleteMessagesForMe(messageIds: List<String>) {
+        val convId = _conversationId.value
         viewModelScope.launch {
-            chatRepository.deleteMessagesForMe(messageIds)
+            chatRepository.deleteMessagesForMe(messageIds, convId)
         }
     }
 
     fun deleteMessagesForEveryone(messageIds: List<String>) {
+        val convId = _conversationId.value
         viewModelScope.launch {
-            messageIds.forEach { chatRepository.deleteMessageForEveryone(it) }
+            chatRepository.deleteMessagesForEveryone(messageIds, convId)
         }
     }
 
@@ -1286,7 +1290,18 @@ class ChatRoomViewModel @Inject constructor(
                     }
                 }
             }
-            type == "new_message" || type == "message_deleted" || 
+            type == "message_deleted" || type == "event_message_deleted" -> {
+                val msgId = (event["msg_id"] ?: event["message_id"] ?: event["id"]
+                    ?: if (rawMsg is JsonObject) rawMsg["id"] ?: rawMsg["message_id"] ?: rawMsg["msg_id"] else null)
+                    ?.jsonPrimitive?.contentOrNull.orEmpty()
+                val targetConvId = _conversationId.value
+                if (msgId.isNotEmpty()) {
+                    viewModelScope.launch {
+                        chatRepository.deleteMessageLocally(msgId, targetConvId)
+                    }
+                }
+            }
+            type == "new_message" || 
             type == "reaction_added" || type == "reaction_removed" || 
             type == "event_new_message" || type == "message" || type == "chat_message" || event.containsKey("message") -> {
                 try {
