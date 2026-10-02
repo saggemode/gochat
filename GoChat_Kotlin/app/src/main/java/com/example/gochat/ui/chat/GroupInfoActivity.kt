@@ -216,10 +216,12 @@ class GroupInfoActivity : AppCompatActivity() {
             }
         }
 
-        // Role & Admin status
+        // Role & Admin status – show/hide admin-only controls
         lifecycleScope.launch {
             viewModel.currentUserRole.collect { role ->
-                if (role.equals("owner", ignoreCase = true) || role.equals("admin", ignoreCase = true)) {
+                val isAdminOrOwner = role.equals("owner", ignoreCase = true) || role.equals("admin", ignoreCase = true)
+
+                if (isAdminOrOwner) {
                     binding.tvUserRoleBadge.visibility = View.VISIBLE
                     binding.tvUserRoleBadge.text = if (role.equals("owner", ignoreCase = true)) {
                         "Group Creator • Admin"
@@ -229,6 +231,20 @@ class GroupInfoActivity : AppCompatActivity() {
                 } else {
                     binding.tvUserRoleBadge.visibility = View.GONE
                 }
+
+                // Admin-only controls: edit group info, avatar, add member, invite link, bot management
+                val adminVisibility = if (isAdminOrOwner) View.VISIBLE else View.GONE
+                binding.btnChangeAvatar.visibility = adminVisibility
+                binding.ivEditGroupName.visibility = adminVisibility
+                binding.ivEditDescription.visibility = adminVisibility
+                binding.btnAddMember.visibility = adminVisibility
+                binding.btnInviteLink.visibility = adminVisibility
+                binding.btnManageBot.visibility = adminVisibility
+
+                // Disable click listeners for non-admins on editable rows
+                binding.layoutGroupName.isClickable = isAdminOrOwner
+                binding.layoutDescription.isClickable = isAdminOrOwner
+                binding.ivGroupAvatar.isClickable = isAdminOrOwner
             }
         }
 
@@ -242,6 +258,7 @@ class GroupInfoActivity : AppCompatActivity() {
     }
 
     private fun showEditGroupNameDialog() {
+        if (!viewModel.isAdminOrOwner.value) return
         val input = EditText(this).apply {
             setText(currentName)
             setSelection(text.length)
@@ -276,6 +293,7 @@ class GroupInfoActivity : AppCompatActivity() {
     }
 
     private fun showEditDescriptionDialog() {
+        if (!viewModel.isAdminOrOwner.value) return
         val input = EditText(this).apply {
             setText(currentDesc)
             setSelection(text.length)
@@ -308,6 +326,7 @@ class GroupInfoActivity : AppCompatActivity() {
     }
 
     private fun uploadAndSetAvatar(uri: Uri) {
+        if (!viewModel.isAdminOrOwner.value) return
         lifecycleScope.launch {
             Toast.makeText(this@GroupInfoActivity, "Uploading group photo...", Toast.LENGTH_SHORT).show()
             val compressed = withContext(Dispatchers.IO) {
@@ -359,6 +378,7 @@ class GroupInfoActivity : AppCompatActivity() {
     }
 
     private fun showAddMemberDialog() {
+        if (!viewModel.isAdminOrOwner.value) return
         val input = EditText(this).apply {
             hint = getString(R.string.dialog_add_member_hint)
         }

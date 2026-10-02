@@ -98,6 +98,9 @@ class ChatRoomViewModel @Inject constructor(
     private val _botConfig = MutableStateFlow<BotConfig?>(null)
     val botConfig: StateFlow<BotConfig?> = _botConfig.asStateFlow()
 
+    private val _isGroupAdmin = MutableStateFlow(false)
+    val isGroupAdmin: StateFlow<Boolean> = _isGroupAdmin.asStateFlow()
+
     private val _disappearingDuration = MutableStateFlow(0) // Seconds, 0 means off
     val disappearingDuration: StateFlow<Int> = _disappearingDuration.asStateFlow()
 
@@ -286,14 +289,28 @@ class ChatRoomViewModel @Inject constructor(
     }
 
     private suspend fun loadMembersFromLocal(convId: String) {
-        // Heuristic: extract unique senders from recent messages
-        val recentMessages = messages.value
-        val users = recentMessages.map { 
-            User(id = it.senderId, displayName = it.senderName)
-        }.distinctBy { it.id }
-        
-        if (users.isNotEmpty()) {
-            _members.value = users
+        // Try to load members from backend (includes role info)
+        val membersResult = groupRepository.getGroupMembers(convId)
+        val fetchedList = membersResult.getOrNull()
+        if (membersResult.isSuccess && !fetchedList.isNullOrEmpty()) {
+            _members.value = fetchedList.map {
+                User(id = it.id, displayName = it.displayName, avatarUrl = it.avatarUrl)
+            }
+            // Check if current user is admin or owner
+            val myId = tokenManager.userId.orEmpty()
+            val myMember = fetchedList.firstOrNull { it.id == myId }
+            val role = myMember?.role ?: "member"
+            _isGroupAdmin.value = role.equals("owner", ignoreCase = true) || role.equals("admin", ignoreCase = true)
+        } else {
+            // Fallback: extract unique senders from recent messages
+            val recentMessages = messages.value
+            val users = recentMessages.map {
+                User(id = it.senderId, displayName = it.senderName)
+            }.distinctBy { it.id }
+
+            if (users.isNotEmpty()) {
+                _members.value = users
+            }
         }
     }
 
@@ -387,10 +404,44 @@ class ChatRoomViewModel @Inject constructor(
     }
 
     private fun handleModerationSlashCommand(rawCommand: String, convId: String) {
+        // Only admins can execute moderation commands
+        if (!_isGroupAdmin.value) {
+            viewModelScope.launch {
+                chatRepository.sendMessage(
+                    conversationId = convId,
+                    content = "⛔ You don't have permission to use moderation commands. Only group admins can use slash commands.",
+                    type = 12, // system message
+                    mentionedUserIds = emptyList()
+                )
+            }
+            return
+        }
         val parts = rawCommand.split("\\s+".toRegex())
         val command = parts.getOrNull(0)?.lowercase() ?: return
         val targetArg = parts.getOrNull(1).orEmpty()
-        val reason = if (parts.size > 2) parts.subList(2, parts.size).joinToString(" ") else ""
+
+        // Robust member resolution: matches @mention with or without spaces, or member ID
+        val targetUser = _members.value.find { member ->
+            val cleanName = member.displayName.trim()
+            cleanName.isNotBlank() && (
+                rawCommand.contains("@$cleanName", ignoreCase = true) ||
+                rawCommand.contains("@${cleanName.replace(" ", "_")}", ignoreCase = true) ||
+                member.id == targetArg.removePrefix("@") ||
+                member.displayName.equals(targetArg.removePrefix("@"), ignoreCase = true)
+            )
+        }
+        val targetDisplayName = targetUser?.displayName ?: targetArg.removePrefix("@").ifBlank { "User" }
+
+        // Extract reason or duration (anything typed after the @mention)
+        val afterMention = if (targetUser != null && rawCommand.contains("@${targetUser.displayName}", ignoreCase = true)) {
+            val idx = rawCommand.indexOf("@${targetUser.displayName}", ignoreCase = true)
+            rawCommand.substring(idx + targetUser.displayName.length + 1).trim()
+        } else if (parts.size > 2) {
+            parts.subList(2, parts.size).joinToString(" ").trim()
+        } else {
+            ""
+        }
+        val reason = afterMention
 
         when (command) {
             "/help" -> {
@@ -407,7 +458,7 @@ class ChatRoomViewModel @Inject constructor(
                     chatRepository.sendMessage(
                         conversationId = convId,
                         content = helpMsg,
-                        type = MessageType.SYSTEM
+                        type = 12 // MessageType.SYSTEM
                     )
                 }
             }
@@ -418,16 +469,11 @@ class ChatRoomViewModel @Inject constructor(
                     chatRepository.sendMessage(
                         conversationId = convId,
                         content = "📜 *Group Moderation Rules:*\n$rulesContent",
-                        type = MessageType.SYSTEM
+                        type = 12 // MessageType.SYSTEM
                     )
                 }
             }
             "/ban", "/kick" -> {
-                val targetName = targetArg.removePrefix("@")
-                val targetUser = _members.value.find { 
-                    it.displayName.equals(targetName, ignoreCase = true) ||
-                    it.id == targetArg
-                }
                 viewModelScope.launch {
                     if (targetUser != null) {
                         groupRepository.removeMember(convId, targetUser.id)
@@ -436,78 +482,59 @@ class ChatRoomViewModel @Inject constructor(
                         chatRepository.sendMessage(
                             conversationId = convId,
                             content = "🚨 @${targetUser.displayName} was $action by Admin$reasonText",
-                            type = MessageType.SYSTEM,
+                            type = 12, // MessageType.SYSTEM
                             mentionedUserIds = listOf(targetUser.id)
                         )
                     } else {
                         chatRepository.sendMessage(
                             conversationId = convId,
                             content = "⚠️ User '$targetArg' not found in group members. Format: $command @username [reason]",
-                            type = MessageType.SYSTEM
+                            type = 12 // MessageType.SYSTEM
                         )
                     }
                 }
             }
             "/warn" -> {
-                val targetName = targetArg.removePrefix("@")
-                val targetUser = _members.value.find { 
-                    it.displayName.equals(targetName, ignoreCase = true) ||
-                    it.id == targetArg
-                }
                 val warningReason = if (reason.isNotBlank()) reason else "Violation of group rules"
                 viewModelScope.launch {
-                    val displayName = targetUser?.displayName ?: targetName.ifBlank { "User" }
                     val mentions = targetUser?.let { listOf(it.id) } ?: emptyList()
                     chatRepository.sendMessage(
                         conversationId = convId,
-                        content = "⚠️ *Moderation Strike:* @$displayName has been warned for: $warningReason",
-                        type = MessageType.SYSTEM,
+                        content = "⚠️ *Moderation Strike:* @$targetDisplayName has been warned for: $warningReason",
+                        type = 12, // MessageType.SYSTEM
                         mentionedUserIds = mentions
                     )
                 }
             }
             "/mute" -> {
-                val targetName = targetArg.removePrefix("@")
-                val targetUser = _members.value.find { 
-                    it.displayName.equals(targetName, ignoreCase = true) ||
-                    it.id == targetArg
-                }
                 val duration = if (reason.isNotBlank()) reason else "1 hour"
                 viewModelScope.launch {
-                    val displayName = targetUser?.displayName ?: targetName.ifBlank { "User" }
                     val mentions = targetUser?.let { listOf(it.id) } ?: emptyList()
                     chatRepository.sendMessage(
                         conversationId = convId,
-                        content = "🔇 *Member Muted:* @$displayName has been muted for $duration by Admin",
-                        type = MessageType.SYSTEM,
+                        content = "🔇 *Member Muted:* @$targetDisplayName has been muted for $duration by Admin",
+                        type = 12, // MessageType.SYSTEM
                         mentionedUserIds = mentions
                     )
                 }
             }
             "/unmute" -> {
-                val targetName = targetArg.removePrefix("@")
-                val targetUser = _members.value.find { 
-                    it.displayName.equals(targetName, ignoreCase = true) ||
-                    it.id == targetArg
-                }
                 viewModelScope.launch {
-                    val displayName = targetUser?.displayName ?: targetName.ifBlank { "User" }
                     val mentions = targetUser?.let { listOf(it.id) } ?: emptyList()
                     chatRepository.sendMessage(
                         conversationId = convId,
-                        content = "🔊 *Member Unmuted:* @$displayName is now unmuted",
-                        type = MessageType.SYSTEM,
+                        content = "🔊 *Member Unmuted:* @$targetDisplayName is now unmuted",
+                        type = 12, // MessageType.SYSTEM
                         mentionedUserIds = mentions
                     )
                 }
             }
             "/unban" -> {
-                val targetName = targetArg.removePrefix("@")
                 viewModelScope.launch {
                     chatRepository.sendMessage(
                         conversationId = convId,
-                        content = "✅ Ban lifted for @${targetName.ifBlank { "User" }}. They may now rejoin.",
-                        type = MessageType.SYSTEM
+                        content = "✅ Ban lifted for @$targetDisplayName. They may now rejoin.",
+                        type = 12 // MessageType.SYSTEM
                     )
                 }
             }
@@ -522,7 +549,7 @@ class ChatRoomViewModel @Inject constructor(
                     chatRepository.sendMessage(
                         conversationId = convId,
                         content = content,
-                        type = MessageType.SYSTEM
+                        type = 12 // MessageType.SYSTEM
                     )
                 }
             }
@@ -532,7 +559,7 @@ class ChatRoomViewModel @Inject constructor(
                     chatRepository.sendMessage(
                         conversationId = convId,
                         content = rawCommand,
-                        type = MessageType.TEXT
+                        type = 0 // MessageType.TEXT
                     )
                 }
             }
@@ -954,14 +981,26 @@ class ChatRoomViewModel @Inject constructor(
         val lastAt = beforeCursor.lastIndexOf('@')
 
         if (beforeCursor.startsWith("/")) {
+            // Only admins can use slash commands
+            if (!_isGroupAdmin.value) {
+                _commandSuggestions.value = emptyList()
+                _mentionSuggestions.value = emptyList()
+                return
+            }
             // Slash command mode
             val query = beforeCursor.substring(1).lowercase().trim()
             if (lastAt != -1 && (lastAt == 0 || beforeCursor[lastAt - 1] == ' ')) {
                 // User is picking a target mention after a slash command like /ban @
                 val mentionQuery = beforeCursor.substring(lastAt + 1).lowercase()
-                _mentionSuggestions.value = _members.value.filter {
-                    it.displayName.lowercase().contains(mentionQuery)
-                }.map { GroupMember(id = it.id, displayName = it.displayName, avatarUrl = it.avatarUrl) }
+                val allMembers = _members.value.map {
+                    GroupMember(id = it.id, displayName = it.displayName, avatarUrl = it.avatarUrl)
+                }
+                _mentionSuggestions.value = if (mentionQuery.isEmpty()) {
+                    // Show ALL members when admin just typed '@' with no filter
+                    allMembers
+                } else {
+                    allMembers.filter { it.displayName.lowercase().contains(mentionQuery) }
+                }
                 _commandSuggestions.value = emptyList()
             } else {
                 _commandSuggestions.value = BotCommand.ALL_COMMANDS.filter {
@@ -972,9 +1011,14 @@ class ChatRoomViewModel @Inject constructor(
             }
         } else if (lastAt != -1 && (lastAt == 0 || beforeCursor[lastAt - 1] == ' ')) {
             val query = beforeCursor.substring(lastAt + 1).lowercase()
-            _mentionSuggestions.value = _members.value.filter {
-                it.displayName.lowercase().contains(query)
-            }.map { GroupMember(id = it.id, displayName = it.displayName, avatarUrl = it.avatarUrl) }
+            val allMembers = _members.value.map {
+                GroupMember(id = it.id, displayName = it.displayName, avatarUrl = it.avatarUrl)
+            }
+            _mentionSuggestions.value = if (query.isEmpty()) {
+                allMembers
+            } else {
+                allMembers.filter { it.displayName.lowercase().contains(query) }
+            }
             _commandSuggestions.value = emptyList()
         } else {
             _mentionSuggestions.value = emptyList()
@@ -984,6 +1028,10 @@ class ChatRoomViewModel @Inject constructor(
 
     fun setMembers(membersList: List<User>) {
         _members.value = membersList
+    }
+
+    fun setGroupAdmin(isAdmin: Boolean) {
+        _isGroupAdmin.value = isAdmin
     }
 
     fun setDisappearingMessages(durationSeconds: Int) {
