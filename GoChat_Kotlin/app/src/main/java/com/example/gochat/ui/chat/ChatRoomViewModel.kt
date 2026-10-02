@@ -1065,6 +1065,8 @@ class ChatRoomViewModel @Inject constructor(
         }
     }
 
+    private var lastScreenshotTimestamp: Long = 0L
+
     fun toggleScreenshotNotifications(enabled: Boolean) {
         val convId = _conversationId.value
         if (convId.isEmpty()) return
@@ -1073,13 +1075,30 @@ class ChatRoomViewModel @Inject constructor(
             val result = chatRepository.toggleScreenshotNotifications(convId, enabled)
             if (result.isSuccess) {
                 _screenshotNotificationsEnabled.value = enabled
-                
+
+                val myName = tokenManager.userDisplayName?.ifBlank { null } ?: "Someone"
+                val noticeText = if (enabled) {
+                    "📸 $myName enabled screenshot alerts. Both participants will be notified if a screenshot is taken."
+                } else {
+                    "📸 $myName disabled screenshot alerts."
+                }
+
+                // Send system notification message in chat
+                chatRepository.sendMessage(
+                    conversationId = convId,
+                    content = noticeText,
+                    type = 12 // MessageType.SYSTEM
+                )
+
                 // Notify partner about setting change via WebSocket
                 val payload = buildJsonObject {
                     put("type", "screenshot_setting_changed")
                     put("conversation_id", convId)
                     put("enabled", enabled)
-                    put("sender_name", tokenManager.userDisplayName ?: "Someone")
+                    put("sender_name", myName)
+                    if (!currentPartnerId.isNullOrEmpty()) {
+                        put("recipient_id", currentPartnerId)
+                    }
                 }
                 webSocket.send(payload)
             }
@@ -1090,19 +1109,27 @@ class ChatRoomViewModel @Inject constructor(
         val convId = _conversationId.value
         if (convId.isEmpty() || !_screenshotNotificationsEnabled.value) return
 
+        // Debounce: prevent multiple triggers within 2 seconds
+        val now = System.currentTimeMillis()
+        if (now - lastScreenshotTimestamp < 2000L) return
+        lastScreenshotTimestamp = now
+
         viewModelScope.launch {
-            // Send special message or just a WS event
-            // Sending as a message so it persists in history
+            val myName = tokenManager.userDisplayName?.ifBlank { null } ?: "Someone"
+            // Sending as a system message so it persists in history and displays prominently
             chatRepository.sendMessage(
                 conversationId = convId,
-                content = "📸 Took a screenshot",
-                type = 0 // Using text for now, but could be a specific type
+                content = "📸 $myName took a screenshot",
+                type = 12 // MessageType.SYSTEM
             )
 
             val payload = buildJsonObject {
                 put("type", "screenshot_taken")
                 put("conversation_id", convId)
-                put("sender_name", tokenManager.userDisplayName ?: "Someone")
+                put("sender_name", myName)
+                if (!currentPartnerId.isNullOrEmpty()) {
+                    put("recipient_id", currentPartnerId)
+                }
             }
             webSocket.send(payload)
         }
@@ -1166,11 +1193,13 @@ class ChatRoomViewModel @Inject constructor(
                 }
             }
             type == "screenshot_setting_changed" -> {
-                val enabled = event["enabled"]?.jsonPrimitive?.booleanOrNull ?: false
-                _screenshotNotificationsEnabled.value = enabled
-                // Optionally update local DB if we want settings to sync across devices via WS
-                viewModelScope.launch {
-                    chatRepository.toggleScreenshotNotifications(convId, enabled)
+                val eventConvId = (event["conversation_id"] ?: event["conversationId"])?.jsonPrimitive?.contentOrNull.orEmpty()
+                if (eventConvId.isEmpty() || eventConvId == convId) {
+                    val enabled = event["enabled"]?.jsonPrimitive?.booleanOrNull ?: false
+                    _screenshotNotificationsEnabled.value = enabled
+                    viewModelScope.launch {
+                        chatRepository.toggleScreenshotNotifications(convId, enabled)
+                    }
                 }
             }
             type == "disappearing_messages_changed" || type == "disappearing_duration_changed" -> {
@@ -1182,8 +1211,11 @@ class ChatRoomViewModel @Inject constructor(
                 }
             }
             type == "screenshot_taken" -> {
-                val name = event["sender_name"]?.jsonPrimitive?.contentOrNull ?: "Someone"
-                _toastEvent.tryEmit("📸 $name took a screenshot!")
+                val eventConvId = (event["conversation_id"] ?: event["conversationId"])?.jsonPrimitive?.contentOrNull.orEmpty()
+                if (eventConvId.isEmpty() || eventConvId == convId) {
+                    val name = event["sender_name"]?.jsonPrimitive?.contentOrNull ?: "Someone"
+                    _toastEvent.tryEmit("📸 $name took a screenshot!")
+                }
             }
             type == "typing" -> {
                 val isTyping = event["is_typing"]?.jsonPrimitive?.booleanOrNull ?: false

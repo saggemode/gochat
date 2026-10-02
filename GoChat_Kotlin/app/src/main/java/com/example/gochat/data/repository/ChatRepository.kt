@@ -103,9 +103,13 @@ class ChatRepository @Inject constructor(
                 val isOnline = (body["is_online"] ?: body["isOnline"])?.jsonPrimitive?.booleanOrNull ?: false
                 val lastSeen = (body["last_seen"] ?: body["lastSeen"])?.jsonPrimitive?.longOrNull
                 val currentUserId = tokenManager.userId ?: ""
-                val conv = Conversation.fromJson(convObj, currentUserId).copy(
+                val existingLocal = dao.getConversationById(convId)
+                val hasRemoteScreenshot = convObj.containsKey("screenshot_notifications_enabled") || convObj.containsKey("screenshotNotificationsEnabled")
+                val parsedConv = Conversation.fromJson(convObj, currentUserId)
+                val conv = parsedConv.copy(
                     isOnline = isOnline,
-                    lastSeen = lastSeen
+                    lastSeen = lastSeen,
+                    screenshotNotificationsEnabled = if (hasRemoteScreenshot) parsedConv.screenshotNotificationsEnabled else (existingLocal?.screenshotNotificationsEnabled ?: parsedConv.screenshotNotificationsEnabled)
                 )
                 dao.insertConversation(conv)
                 Result.success(conv)
@@ -128,8 +132,18 @@ class ChatRepository @Inject constructor(
                     else -> JsonArray(emptyList())
                 }
                 val currentUserId = tokenManager.userId ?: ""
+                val existingMap = dao.getAllConversationsList().associateBy { it.id }
                 val conversations = rawList.mapNotNull {
-                    if (it is JsonObject) Conversation.fromJson(it, currentUserId) else null
+                    if (it is JsonObject) {
+                        val parsed = Conversation.fromJson(it, currentUserId)
+                        val existing = existingMap[parsed.id]
+                        val hasRemoteScreenshot = it.containsKey("screenshot_notifications_enabled") || it.containsKey("screenshotNotificationsEnabled")
+                        if (!hasRemoteScreenshot && existing != null) {
+                            parsed.copy(screenshotNotificationsEnabled = existing.screenshotNotificationsEnabled)
+                        } else {
+                            parsed
+                        }
+                    } else null
                 }
                 if (conversations.isNotEmpty()) {
                     dao.insertConversations(conversations)

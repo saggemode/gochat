@@ -621,6 +621,10 @@ class MessageAdapter(
 
             val contentLower = rawContent.lowercase(Locale.ROOT)
             when {
+                contentLower.contains("screenshot") -> {
+                    binding.ivSystemMessageIcon.setImageResource(R.drawable.ic_camera_status)
+                    binding.ivSystemMessageIcon.imageTintList = ColorStateList.valueOf(0xFFF59E0B.toInt()) // Amber/warning
+                }
                 contentLower.contains("invite link") -> {
                     // Joined via invite link
                     binding.ivSystemMessageIcon.setImageResource(R.drawable.ic_link)
