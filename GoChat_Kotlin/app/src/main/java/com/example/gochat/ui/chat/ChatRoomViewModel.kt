@@ -289,27 +289,40 @@ class ChatRoomViewModel @Inject constructor(
     }
 
     private suspend fun loadMembersFromLocal(convId: String) {
+        val myId = tokenManager.userId.orEmpty()
         // Try to load members from backend (includes role info)
         val membersResult = groupRepository.getGroupMembers(convId)
         val fetchedList = membersResult.getOrNull()
         if (membersResult.isSuccess && !fetchedList.isNullOrEmpty()) {
             _members.value = fetchedList.map {
-                User(id = it.id, displayName = it.displayName, avatarUrl = it.avatarUrl)
+                val name = if (it.displayName.isNotBlank()) it.displayName else "User_${it.id.takeLast(4)}"
+                User(id = it.id, displayName = name, avatarUrl = it.avatarUrl)
             }
             // Check if current user is admin or owner
-            val myId = tokenManager.userId.orEmpty()
             val myMember = fetchedList.firstOrNull { it.id == myId }
             val role = myMember?.role ?: "member"
             _isGroupAdmin.value = role.equals("owner", ignoreCase = true) || role.equals("admin", ignoreCase = true)
         } else {
-            // Fallback: extract unique senders from recent messages
+            // Fallback: extract from conversation memberIds and recent messages
+            val conv = chatRepository.getConversationById(convId)
             val recentMessages = messages.value
-            val users = recentMessages.map {
-                User(id = it.senderId, displayName = it.senderName)
-            }.distinctBy { it.id }
+            val senderMap = recentMessages.associate { it.senderId to it.senderName }
 
-            if (users.isNotEmpty()) {
-                _members.value = users
+            val fallbackUsers = (conv?.memberIds.orEmpty()).map { id ->
+                val senderName = senderMap[id]
+                val name = if (!senderName.isNullOrBlank()) senderName else if (id == myId) "You" else "User_${id.takeLast(4)}"
+                User(id = id, displayName = name)
+            }.toMutableList()
+
+            if (fallbackUsers.isEmpty()) {
+                recentMessages.map {
+                    val name = it.senderName.ifBlank { "User_${it.senderId.takeLast(4)}" }
+                    User(id = it.senderId, displayName = name)
+                }.distinctBy { it.id }.forEach { fallbackUsers.add(it) }
+            }
+
+            if (fallbackUsers.isNotEmpty()) {
+                _members.value = fallbackUsers
             }
         }
     }

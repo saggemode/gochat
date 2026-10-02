@@ -625,7 +625,8 @@ class ChatRoomActivity : AppCompatActivity() {
         // Mention suggestions
         mentionAdapter = GroupMemberAdapter(
             onItemClicked = { user ->
-                insertMention(user.displayName)
+                val targetName = user.displayName.ifBlank { "User_${user.id.takeLast(4)}" }
+                insertMention(targetName)
             }
         )
         binding.rvMentionSuggestions.layoutManager = LinearLayoutManager(this)
