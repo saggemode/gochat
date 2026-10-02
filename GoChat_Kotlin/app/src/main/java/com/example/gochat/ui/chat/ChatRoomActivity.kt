@@ -1186,8 +1186,10 @@ class ChatRoomActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.botConfig.collect { config ->
-                        binding.tvBotBanner.visibility = if (config?.isActive == true) View.VISIBLE else View.GONE
+                    combine(viewModel.botConfig, viewModel.isGroupAdmin) { config, isAdmin ->
+                        config?.isActive == true && isAdmin
+                    }.collect { showBanner ->
+                        binding.tvBotBanner.visibility = if (showBanner) View.VISIBLE else View.GONE
                     }
                 }
 

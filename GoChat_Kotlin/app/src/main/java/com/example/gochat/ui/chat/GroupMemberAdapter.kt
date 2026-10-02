@@ -13,6 +13,7 @@ import com.example.gochat.databinding.ItemGroupMemberBinding
 
 class GroupMemberAdapter(
     private val currentUserId: String = "",
+    var isCurrentUserAdmin: Boolean = false,
     private val onItemClicked: (GroupMember) -> Unit,
     private val onItemLongClicked: ((GroupMember) -> Unit)? = null
 ) : ListAdapter<GroupMember, GroupMemberAdapter.MemberViewHolder>(DiffCallback) {
@@ -46,7 +47,8 @@ class GroupMemberAdapter(
                 // Show role badge: Group Admin for owner or admin
                 val isOwner = member.role.equals("owner", ignoreCase = true)
                 val isAdmin = member.role.equals("admin", ignoreCase = true)
-                if (member.isBot) {
+                if (member.isBot && isCurrentUserAdmin) {
+                    // Only admins can see the BOT badge
                     tvRole.visibility = View.VISIBLE
                     tvRole.text = "BOT"
                     tvRole.setBackgroundResource(R.drawable.bg_role_bot)

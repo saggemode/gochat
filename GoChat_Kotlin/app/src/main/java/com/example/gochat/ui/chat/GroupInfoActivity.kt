@@ -24,6 +24,7 @@ import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.databinding.ActivityGroupInfoBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -225,6 +226,7 @@ class GroupInfoActivity : AppCompatActivity() {
     private fun observeViewModel() {
         memberAdapter = GroupMemberAdapter(
             currentUserId = viewModel.currentUserId,
+            isCurrentUserAdmin = viewModel.isAdminOrOwner.value,
             onItemClicked = { member ->
                 openDirectChat(member)
             },
@@ -285,12 +287,22 @@ class GroupInfoActivity : AppCompatActivity() {
                 binding.layoutGroupName.isClickable = isAdminOrOwner
                 binding.layoutDescription.isClickable = isAdminOrOwner
                 binding.ivGroupAvatar.isClickable = isAdminOrOwner
+
+                memberAdapter.isCurrentUserAdmin = isAdminOrOwner
+                memberAdapter.notifyDataSetChanged()
             }
         }
 
-        // Members list
+        // Members list – hide moderation bot from non-admins
         lifecycleScope.launch {
-            viewModel.members.collect { memberList ->
+            combine(viewModel.members, viewModel.currentUserRole) { memberList, role ->
+                val isAdminOrOwner = role.equals("owner", ignoreCase = true) || role.equals("admin", ignoreCase = true)
+                if (isAdminOrOwner) {
+                    memberList
+                } else {
+                    memberList.filter { !it.isBot }
+                }
+            }.collect { memberList ->
                 binding.tvMemberCount.text = getString(R.string.member_count_format, memberList.size)
                 memberAdapter.submitList(memberList)
             }

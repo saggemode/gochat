@@ -298,14 +298,17 @@ class ChatRoomViewModel @Inject constructor(
         val membersResult = groupRepository.getGroupMembers(convId)
         val fetchedList = membersResult.getOrNull()
         if (membersResult.isSuccess && !fetchedList.isNullOrEmpty()) {
-            _members.value = fetchedList.map {
-                val name = if (it.displayName.isNotBlank()) it.displayName else "User_${it.id.takeLast(4)}"
-                User(id = it.id, displayName = name, avatarUrl = it.avatarUrl)
-            }
             // Check if current user is admin or owner
             val myMember = fetchedList.firstOrNull { it.id == myId }
             val role = myMember?.role ?: "member"
-            _isGroupAdmin.value = role.equals("owner", ignoreCase = true) || role.equals("admin", ignoreCase = true)
+            val isAdmin = role.equals("owner", ignoreCase = true) || role.equals("admin", ignoreCase = true)
+            _isGroupAdmin.value = isAdmin
+
+            val visibleList = if (isAdmin) fetchedList else fetchedList.filter { !it.isBot }
+            _members.value = visibleList.map {
+                val name = if (it.displayName.isNotBlank()) it.displayName else "User_${it.id.takeLast(4)}"
+                User(id = it.id, displayName = name, avatarUrl = it.avatarUrl)
+            }
         } else {
             // Fallback: extract from conversation memberIds and recent messages
             val conv = chatRepository.getConversationById(convId)
@@ -395,7 +398,9 @@ class ChatRoomViewModel @Inject constructor(
         val mentions = extractMentionedUserIds(trimmed)
 
         // Check if message is a bot moderation slash command (e.g. /ban @john spam)
-        val isSlashCommand = trimmed.startsWith("/")
+        val isSlashCommand = _isGroupAdmin.value && trimmed.startsWith("/") && BotCommand.ALL_COMMANDS.any {
+            trimmed.substringBefore(" ").equals(it.command, ignoreCase = true)
+        }
         if (isSlashCommand) {
             handleModerationSlashCommand(trimmed, convId)
         }
@@ -422,17 +427,7 @@ class ChatRoomViewModel @Inject constructor(
 
     private fun handleModerationSlashCommand(rawCommand: String, convId: String) {
         // Only admins can execute moderation commands
-        if (!_isGroupAdmin.value) {
-            viewModelScope.launch {
-                chatRepository.sendMessage(
-                    conversationId = convId,
-                    content = "⛔ You don't have permission to use moderation commands. Only group admins can use slash commands.",
-                    type = 12, // system message
-                    mentionedUserIds = emptyList()
-                )
-            }
-            return
-        }
+        if (!_isGroupAdmin.value) return
         val parts = rawCommand.split("\\s+".toRegex())
         val command = parts.getOrNull(0)?.lowercase() ?: return
         val targetArg = parts.getOrNull(1).orEmpty()
