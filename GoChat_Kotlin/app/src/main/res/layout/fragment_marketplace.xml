@@ -307,6 +307,167 @@
         </LinearLayout>
 
         <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- TAB 2: FOLLOWING – STORES YOU FOLLOW                         -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <LinearLayout
+            android:id="@+id/layoutFollowingTab"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+                android:id="@+id/swipeRefreshFollowing"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <androidx.core.widget.NestedScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fillViewport="true">
+
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <!-- Main Following Content -->
+                        <LinearLayout
+                            android:id="@+id/layoutFollowingContent"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:paddingBottom="40dp">
+
+                            <!-- Section: Followed Stores Header -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal"
+                                android:paddingHorizontal="16dp"
+                                android:paddingTop="16dp"
+                                android:paddingBottom="10dp">
+
+                                <TextView
+                                    android:id="@+id/tvFollowedStoresHeader"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="Stores You Follow"
+                                    android:textColor="@color/gochat_text_primary"
+                                    android:textSize="17sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/tvFollowedCount"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:background="@drawable/bg_unread_badge"
+                                    android:paddingHorizontal="8dp"
+                                    android:paddingVertical="2dp"
+                                    android:textColor="@color/gochat_bg_dark"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold"
+                                    android:visibility="gone"
+                                    tools:text="3"
+                                    tools:visibility="visible" />
+                            </LinearLayout>
+
+                            <!-- Followed Stores List -->
+                            <androidx.recyclerview.widget.RecyclerView
+                                android:id="@+id/rvFollowedStores"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:nestedScrollingEnabled="false"
+                                tools:itemCount="2"
+                                tools:listitem="@layout/item_followed_store" />
+
+                            <!-- Products Header -->
+                            <LinearLayout
+                                android:id="@+id/layoutFollowedProductsHeader"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal"
+                                android:paddingHorizontal="16dp"
+                                android:paddingTop="20dp"
+                                android:paddingBottom="10dp">
+
+                                <TextView
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="Latest from Stores You Follow"
+                                    android:textColor="@color/gochat_text_primary"
+                                    android:textSize="16sp"
+                                    android:textStyle="bold" />
+                            </LinearLayout>
+
+                            <!-- Followed Store Products Grid -->
+                            <androidx.recyclerview.widget.RecyclerView
+                                android:id="@+id/rvFollowedProducts"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:clipToPadding="false"
+                                android:nestedScrollingEnabled="false"
+                                android:padding="6dp"
+                                app:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
+                                app:spanCount="2"
+                                tools:itemCount="4"
+                                tools:listitem="@layout/item_product" />
+
+                        </LinearLayout>
+
+                        <!-- Empty State: No Followed Stores -->
+                        <LinearLayout
+                            android:id="@+id/layoutNoFollowedStores"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:gravity="center"
+                            android:orientation="vertical"
+                            android:padding="32dp"
+                            android:visibility="gone"
+                            tools:visibility="gone">
+
+                            <ImageView
+                                android:layout_width="72dp"
+                                android:layout_height="72dp"
+                                android:src="@drawable/ic_storefront"
+                                app:tint="@color/whatsapp_teal_light" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="16dp"
+                                android:text="No followed stores yet"
+                                android:textColor="@color/gochat_text_primary"
+                                android:textSize="18sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:gravity="center"
+                                android:text="Follow your favorite stores to see their latest products and updates right here."
+                                android:textColor="@color/gochat_text_muted"
+                                android:textSize="13.5sp" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnExploreStores"
+                                style="@style/Widget.Material3.Button.TonalButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="20dp"
+                                android:text="Explore Marketplace"
+                                app:icon="@drawable/ic_cart" />
+                        </LinearLayout>
+
+                    </FrameLayout>
+                </androidx.core.widget.NestedScrollView>
+            </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+        </LinearLayout>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
         <!-- TAB 2: SELLER HUB & STORE MANAGEMENT                       -->
         <!-- ═══════════════════════════════════════════════════════════ -->
         <androidx.core.widget.NestedScrollView

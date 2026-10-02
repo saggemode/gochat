@@ -62,7 +62,7 @@
                     android:layout_width="16dp"
                     android:layout_height="16dp"
                     android:layout_marginStart="4dp"
-                    android:src="@drawable/ic_verified"
+                    android:src="@drawable/ic_verified_badge"
                     android:visibility="gone"
                     tools:visibility="visible" />
             </LinearLayout>

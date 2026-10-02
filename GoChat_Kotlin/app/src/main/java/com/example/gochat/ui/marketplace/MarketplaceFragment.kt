@@ -34,6 +34,7 @@ import com.example.gochat.data.model.Store
 import com.example.gochat.databinding.DialogAddProductBinding
 import com.example.gochat.databinding.DialogEditStoreBinding
 import androidx.paging.LoadState
+import androidx.paging.PagingData
 import com.example.gochat.databinding.FragmentMarketplaceBinding
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.tabs.TabLayout
@@ -55,6 +56,8 @@ class MarketplaceFragment : Fragment() {
     private lateinit var categoryAdapter: CategoryAdapter
     private lateinit var storeProductAdapter: StoreProductAdapter
     private lateinit var searchSuggestionAdapter: SearchSuggestionAdapter
+    private lateinit var followedStoreAdapter: FollowedStoreAdapter
+    private lateinit var followedProductAdapter: ProductAdapter
 
     private var selectedStoreLogoUri: Uri? = null
 
@@ -115,7 +118,10 @@ class MarketplaceFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         viewModel.refreshCartCount()
-        viewModel.loadMyStore()
+        when (binding.tabLayoutMain.selectedTabPosition) {
+            1 -> viewModel.loadFollowedStores()
+            2 -> viewModel.loadMyStore()
+        }
     }
 
     private fun setupAdapters() {
@@ -193,27 +199,85 @@ class MarketplaceFragment : Fragment() {
             adapter = searchSuggestionAdapter
             layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
         }
+
+        // 5. Followed Stores Adapter
+        followedStoreAdapter = FollowedStoreAdapter(
+            onClick = { store ->
+                val intent = Intent(requireContext(), StorefrontActivity::class.java).apply {
+                    putExtra("store_id", store.id)
+                    putExtra("store_name", store.name)
+                    putExtra("store_logo", store.logoUrl)
+                }
+                startActivity(intent)
+            },
+            onToggleFollow = { store ->
+                viewModel.toggleFollowStore(store)
+            }
+        )
+        binding.rvFollowedStores.apply {
+            adapter = followedStoreAdapter
+            layoutManager = LinearLayoutManager(requireContext())
+        }
+
+        // 6. Followed Products Adapter
+        followedProductAdapter = ProductAdapter { product, sharedView ->
+            val intent = Intent(requireContext(), ProductDetailsActivity::class.java).apply {
+                putExtra("product_id", product.id)
+                putExtra("product_name", product.displayTitle)
+                putExtra("product_image", product.primaryImage)
+                putExtra("product_price", product.price)
+                putExtra("store_id", product.storeId)
+                putExtra("store_name", product.storeName)
+                putExtra("seller_pin", product.sellerPin)
+                putExtra("seller_id", product.sellerId)
+            }
+            val options = ActivityOptionsCompat.makeSceneTransitionAnimation(
+                requireActivity(),
+                sharedView,
+                "product_image_${product.id}"
+            )
+            startActivity(intent, options.toBundle())
+        }
+        binding.rvFollowedProducts.apply {
+            adapter = followedProductAdapter
+            layoutManager = GridLayoutManager(requireContext(), 2)
+        }
     }
 
 
     private fun setupListeners() {
-        // Tab switching: Marketplace (0) vs Seller Hub (1)
+        // Tab switching: Marketplace (0), Following (1), Seller Hub (2)
         binding.tabLayoutMain.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
-                val index = tab?.position ?: 0
-                if (index == 2) {
-                    binding.viewFlipper.displayedChild = 1
-                    viewModel.loadMyStore()
-                } else {
-                    binding.viewFlipper.displayedChild = 0
-                    viewModel.loadData(index)
+                when (tab?.position ?: 0) {
+                    0 -> {
+                        binding.viewFlipper.displayedChild = 0
+                        viewModel.loadData(0)
+                    }
+                    1 -> {
+                        binding.viewFlipper.displayedChild = 1
+                        viewModel.loadFollowedStores()
+                    }
+                    2 -> {
+                        binding.viewFlipper.displayedChild = 2
+                        viewModel.loadMyStore()
+                    }
                 }
             }
-
 
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
             override fun onTabReselected(tab: TabLayout.Tab?) {}
         })
+
+        // SwipeRefresh for Following tab
+        binding.swipeRefreshFollowing.setOnRefreshListener {
+            viewModel.loadFollowedStores()
+        }
+
+        // Explore button in empty state
+        binding.btnExploreStores.setOnClickListener {
+            binding.tabLayoutMain.getTabAt(0)?.select()
+        }
 
         // Search text watcher
         binding.etSearch.addTextChangedListener(object : TextWatcher {
@@ -944,6 +1008,45 @@ class MarketplaceFragment : Fragment() {
                         error?.let {
                             Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
                         }
+                    }
+                }
+
+                // 9. Followed Stores
+                launch {
+                    viewModel.followedStores.collect { stores ->
+                        if (stores.isEmpty()) {
+                            binding.layoutNoFollowedStores.visibility = View.VISIBLE
+                            binding.layoutFollowingContent.visibility = View.GONE
+                            binding.tvFollowedCount.visibility = View.GONE
+                        } else {
+                            binding.layoutNoFollowedStores.visibility = View.GONE
+                            binding.layoutFollowingContent.visibility = View.VISIBLE
+                            binding.tvFollowedCount.visibility = View.VISIBLE
+                            binding.tvFollowedCount.text = stores.size.toString()
+                            binding.tvFollowedStoresHeader.text = "Stores You Follow (${stores.size})"
+                            followedStoreAdapter.submitList(stores.map { FollowedStoreAdapter.FollowedStoreItem(it, isFollowing = true) })
+                        }
+                    }
+                }
+
+                // 10. Followed Store Products
+                launch {
+                    viewModel.followedProducts.collect { products ->
+                        if (products.isEmpty()) {
+                            binding.layoutFollowedProductsHeader.visibility = View.GONE
+                            binding.rvFollowedProducts.visibility = View.GONE
+                        } else {
+                            binding.layoutFollowedProductsHeader.visibility = View.VISIBLE
+                            binding.rvFollowedProducts.visibility = View.VISIBLE
+                            followedProductAdapter.submitData(lifecycle, PagingData.from(products))
+                        }
+                    }
+                }
+
+                // 11. Following Loading State
+                launch {
+                    viewModel.isFollowingLoading.collect { loading ->
+                        binding.swipeRefreshFollowing.isRefreshing = loading
                     }
                 }
             }

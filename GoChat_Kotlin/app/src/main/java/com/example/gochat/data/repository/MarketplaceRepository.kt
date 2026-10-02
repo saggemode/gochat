@@ -727,6 +727,24 @@ class MarketplaceRepository @Inject constructor(
         }
     }
 
+    suspend fun getFollowedProducts(page: Int = 1, limit: Int = 50): Result<List<Product>> {
+        return try {
+            val response = api.getFollowedProducts(page, limit)
+            if (response.isSuccessful) {
+                val list = when (val data = response.body()) {
+                    is JsonArray -> data.mapNotNull { parseSingleProductJson(it) }
+                    is JsonObject -> data["products"]?.jsonArray?.mapNotNull { parseSingleProductJson(it) } ?: emptyList()
+                    else -> emptyList()
+                }
+                Result.success(list)
+            } else {
+                Result.failure(Exception("Failed to fetch products from followed stores"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     // ── Review Operations ───────────────────────────────────────────────────
     suspend fun getReviews(productId: String): Result<List<Review>> {
         return try {

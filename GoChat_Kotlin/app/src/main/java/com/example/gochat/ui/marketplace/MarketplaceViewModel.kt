@@ -75,6 +75,15 @@ class MarketplaceViewModel @Inject constructor(
     private val _sellerOrders = MutableStateFlow<List<Order>>(emptyList())
     val sellerOrders: StateFlow<List<Order>> = _sellerOrders.asStateFlow()
 
+    private val _followedStores = MutableStateFlow<List<Store>>(emptyList())
+    val followedStores: StateFlow<List<Store>> = _followedStores.asStateFlow()
+
+    private val _followedProducts = MutableStateFlow<List<Product>>(emptyList())
+    val followedProducts: StateFlow<List<Product>> = _followedProducts.asStateFlow()
+
+    private val _isFollowingLoading = MutableStateFlow(false)
+    val isFollowingLoading: StateFlow<Boolean> = _isFollowingLoading.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -148,11 +157,13 @@ class MarketplaceViewModel @Inject constructor(
                 }
             }
 
-            if (tabIndex == 2) {
-                loadMyStore()
-            } else {
-                // Background sync store inventory as well
-                launch { repository.getMyProducts() }
+            when (tabIndex) {
+                1 -> loadFollowedStores()
+                2 -> loadMyStore()
+                else -> {
+                    // Background sync store inventory as well
+                    launch { repository.getMyProducts() }
+                }
             }
             
             loadCategories()
@@ -164,25 +175,47 @@ class MarketplaceViewModel @Inject constructor(
 
     private var currentTabIndex: Int = 0
 
+    fun loadFollowedStores() {
+        viewModelScope.launch {
+            _isFollowingLoading.value = true
+            val followedRes = repository.getFollowedStores()
+            if (followedRes.isSuccess) {
+                val stores = followedRes.getOrDefault(emptyList())
+                _followedStores.value = stores
 
-    private suspend fun loadFollowingProducts() {
-        val followedRes = repository.getFollowedStores()
-        if (followedRes.isSuccess) {
-            val followedStores = followedRes.getOrThrow()
-            val allFollowedProducts = mutableListOf<Product>()
-            
-            followedStores.forEach { store ->
-                val prodRes = repository.getStoreProducts(store.id)
-                if (prodRes.isSuccess) {
-                    allFollowedProducts.addAll(prodRes.getOrThrow())
+                val prodRes = repository.getFollowedProducts()
+                if (prodRes.isSuccess && prodRes.getOrDefault(emptyList()).isNotEmpty()) {
+                    _followedProducts.value = prodRes.getOrDefault(emptyList())
+                } else if (stores.isNotEmpty()) {
+                    val fallbackProducts = mutableListOf<Product>()
+                    stores.forEach { store ->
+                        val spRes = repository.getStoreProducts(store.id)
+                        if (spRes.isSuccess) {
+                            fallbackProducts.addAll(spRes.getOrDefault(emptyList()))
+                        }
+                    }
+                    _followedProducts.value = fallbackProducts.sortedByDescending { it.createdAt }
+                } else {
+                    _followedProducts.value = emptyList()
                 }
+            } else {
+                _followedStores.value = emptyList()
+                _followedProducts.value = emptyList()
             }
-            
-            // Sort by newest
-            _products.value = allFollowedProducts.sortedByDescending { it.createdAt }
-        } else {
-            _error.value = "Failed to load followed stores"
-            _products.value = emptyList()
+            _isFollowingLoading.value = false
+        }
+    }
+
+    fun toggleFollowStore(store: Store, onComplete: ((Boolean) -> Unit)? = null) {
+        viewModelScope.launch {
+            val res = repository.toggleFollowStore(store.id)
+            if (res.isSuccess) {
+                val isNowFollowing = res.getOrDefault(false)
+                loadFollowedStores()
+                onComplete?.invoke(isNowFollowing)
+            } else {
+                _error.value = res.exceptionOrNull()?.message ?: "Failed to update follow status"
+            }
         }
     }
 
