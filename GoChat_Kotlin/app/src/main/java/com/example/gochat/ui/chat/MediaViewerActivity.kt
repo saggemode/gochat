@@ -26,6 +26,9 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.example.gochat.R
 import com.example.gochat.core.media.MediaImageHelper
+import com.example.gochat.core.ui.applyEdgeToEdge
+import com.example.gochat.core.ui.applyStatusBarInset
+import com.example.gochat.core.ui.applySystemBarMargins
 import com.example.gochat.databinding.ActivityMediaViewerBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -52,6 +55,7 @@ class MediaViewerActivity : AppCompatActivity() {
     private var isOverlayVisible = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         
         isViewOnce = intent.getBooleanExtra(EXTRA_IS_VIEW_ONCE, false)
@@ -68,6 +72,9 @@ class MediaViewerActivity : AppCompatActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         binding = ActivityMediaViewerBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        binding.layoutTopBar.applyStatusBarInset()
+        binding.tvMediaCaption.applySystemBarMargins(bottom = true)
 
         val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
         windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE

@@ -27,6 +27,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.example.gochat.core.ui.applyEdgeToEdge
+import com.example.gochat.core.ui.applyStatusBarInset
+import com.example.gochat.core.ui.applySystemBarInsets
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -56,9 +59,13 @@ class GroupInfoActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         binding = ActivityGroupInfoBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        binding.toolbar.applyStatusBarInset()
+        binding.root.applySystemBarInsets(applyTop = false, applyBottom = true)
 
         currentName = intent.getStringExtra(EXTRA_GROUP_NAME) ?: getString(R.string.group_info_title)
         currentAvatar = intent.getStringExtra(EXTRA_GROUP_AVATAR).orEmpty()

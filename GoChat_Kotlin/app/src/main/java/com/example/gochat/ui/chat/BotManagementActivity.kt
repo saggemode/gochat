@@ -14,6 +14,9 @@ import com.example.gochat.data.model.BotConfig
 import com.example.gochat.data.model.BotPermission
 import com.example.gochat.databinding.ActivityBotManagementBinding
 import com.example.gochat.databinding.ItemBotPermissionBinding
+import com.example.gochat.core.ui.applyEdgeToEdge
+import com.example.gochat.core.ui.applyStatusBarInset
+import com.example.gochat.core.ui.applySystemBarInsets
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -30,9 +33,13 @@ class BotManagementActivity : AppCompatActivity() {
     private lateinit var adapter: BotPermissionAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         binding = ActivityBotManagementBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        binding.toolbar.applyStatusBarInset()
+        binding.root.applySystemBarInsets(applyTop = false, applyBottom = true)
 
         setupToolbar()
         setupPermissionsList()

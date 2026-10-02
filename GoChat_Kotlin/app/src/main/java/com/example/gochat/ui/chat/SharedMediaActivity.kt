@@ -23,6 +23,9 @@ import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.databinding.ActivitySharedMediaBinding
 import com.example.gochat.databinding.FragmentSharedMediaTabBinding
 import com.google.android.material.tabs.TabLayoutMediator
+import com.example.gochat.core.ui.applyEdgeToEdge
+import com.example.gochat.core.ui.applyStatusBarInset
+import com.example.gochat.core.ui.applySystemBarInsets
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -50,9 +53,13 @@ class SharedMediaActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         binding = ActivitySharedMediaBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        binding.toolbar.applyStatusBarInset()
+        binding.root.applySystemBarInsets(applyTop = false, applyBottom = true)
 
         setupToolbar()
         setupViewPager()

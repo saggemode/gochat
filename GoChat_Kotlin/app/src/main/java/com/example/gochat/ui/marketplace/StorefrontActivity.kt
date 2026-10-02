@@ -25,6 +25,9 @@ import com.example.gochat.databinding.DialogStoreQrBinding
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.zxing.BarcodeFormat
 import com.journeyapps.barcodescanner.BarcodeEncoder
+import com.example.gochat.core.ui.applyEdgeToEdge
+import com.example.gochat.core.ui.applyStatusBarInset
+import com.example.gochat.core.ui.applySystemBarInsets
 import dagger.hilt.android.AndroidEntryPoint
 
 import kotlinx.coroutines.Dispatchers
@@ -51,9 +54,13 @@ class StorefrontActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         binding = ActivityStorefrontBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        binding.toolbar.applyStatusBarInset()
+        binding.root.applySystemBarInsets(applyTop = false, applyBottom = true)
 
         val storeId = intent.getStringExtra("store_id") ?: return finish()
 

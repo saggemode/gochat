@@ -13,6 +13,9 @@ import com.example.gochat.core.haptic.HapticEngine
 import com.example.gochat.data.model.CartItem
 import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.databinding.ActivityCheckoutBinding
+import com.example.gochat.core.ui.applyEdgeToEdge
+import com.example.gochat.core.ui.applyStatusBarInset
+import com.example.gochat.core.ui.applySystemBarMargins
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -37,9 +40,13 @@ class CheckoutActivity : AppCompatActivity() {
     private var cartItems: List<CartItem> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         binding = ActivityCheckoutBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        binding.toolbar.applyStatusBarInset()
+        binding.btnPlaceOrder.applySystemBarMargins(bottom = true)
 
         setupListeners()
         loadSummary()

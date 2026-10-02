@@ -23,6 +23,8 @@ import com.example.gochat.R
 import com.example.gochat.databinding.ActivityLoginBinding
 import com.example.gochat.databinding.DialogAccountRecoveryBinding
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.example.gochat.core.ui.applyEdgeToEdge
+import com.example.gochat.core.ui.applySystemBarAndImeInsets
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
@@ -37,6 +39,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var countryAdapter: CountryAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
 
         // If user already has a valid session, skip login directly to MainActivity
@@ -47,6 +50,8 @@ class LoginActivity : AppCompatActivity() {
 
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        binding.root.applySystemBarAndImeInsets()
 
         setupCountryList()
         setupListeners()

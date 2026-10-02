@@ -22,6 +22,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.example.gochat.core.ui.applyEdgeToEdge
+import com.example.gochat.core.ui.applyStatusBarInset
+import com.example.gochat.core.ui.applySystemBarInsets
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -35,9 +38,13 @@ class StorageManagementActivity : AppCompatActivity() {
     private lateinit var storageAdapter: StorageChatAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         binding = ActivityStorageManagementBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        binding.toolbarStorage.applyStatusBarInset()
+        binding.root.applySystemBarInsets(applyTop = false, applyBottom = true)
 
         binding.btnBackStorage.setOnClickListener { finish() }
 

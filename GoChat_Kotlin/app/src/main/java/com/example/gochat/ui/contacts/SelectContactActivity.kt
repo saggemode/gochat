@@ -21,6 +21,11 @@ import com.example.gochat.core.media.MediaImageHelper
 import com.example.gochat.data.model.Conversation
 import com.example.gochat.data.model.SyncedContact
 import com.example.gochat.data.model.User
+import com.example.gochat.core.ui.applyEdgeToEdge
+import com.example.gochat.core.ui.applyNavigationBarInset
+import com.example.gochat.core.ui.applyStatusBarInset
+import com.example.gochat.core.ui.applySystemBarInsets
+import com.example.gochat.core.ui.applySystemBarMargins
 import com.example.gochat.databinding.ActivitySelectContactBinding
 import com.example.gochat.databinding.DialogNewChatByPinBinding
 import com.example.gochat.ui.chat.ChatRoomActivity
@@ -60,9 +65,14 @@ class SelectContactActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         binding = ActivitySelectContactBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        binding.toolbar.applyStatusBarInset()
+        binding.root.applySystemBarInsets(applyTop = false, applyBottom = true)
+        binding.fabNext.applySystemBarMargins(bottom = true)
 
         val action = intent.getStringExtra(EXTRA_ACTION)
         val preselectUserId = intent.getStringExtra(EXTRA_PRESELECT_USER_ID).orEmpty()

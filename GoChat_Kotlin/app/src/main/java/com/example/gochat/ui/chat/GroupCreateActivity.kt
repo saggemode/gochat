@@ -17,6 +17,10 @@ import coil.transform.CircleCropTransformation
 import com.example.gochat.R
 import com.example.gochat.databinding.ActivityGroupCreateBinding
 import com.example.gochat.databinding.ItemSelectedMemberBinding
+import com.example.gochat.core.ui.applyEdgeToEdge
+import com.example.gochat.core.ui.applyStatusBarInset
+import com.example.gochat.core.ui.applySystemBarInsets
+import com.example.gochat.core.ui.applySystemBarMargins
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -42,9 +46,14 @@ class GroupCreateActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         binding = ActivityGroupCreateBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        binding.toolbar.applyStatusBarInset()
+        binding.root.applySystemBarInsets(applyTop = false, applyBottom = true)
+        binding.fabCreate.applySystemBarMargins(bottom = true)
 
         val memberIds = intent.getStringArrayExtra(EXTRA_MEMBER_IDS)?.toList() ?: emptyList()
         val memberNames = intent.getStringArrayExtra(EXTRA_MEMBER_NAMES)?.toList() ?: emptyList()

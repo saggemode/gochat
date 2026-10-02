@@ -30,6 +30,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.gochat.core.contacts.ContactSyncManager
 import com.example.gochat.data.repository.MarketplaceRepository
 
+import com.example.gochat.core.ui.applyEdgeToEdge
+import com.example.gochat.core.ui.applyStatusBarInset
+import com.example.gochat.core.ui.applySystemBarInsets
+
 @AndroidEntryPoint
 class ContactProfileActivity : AppCompatActivity() {
 
@@ -65,9 +69,13 @@ class ContactProfileActivity : AppCompatActivity() {
     private var screenshotAlertsEnabled = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         binding = ActivityContactProfileBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        binding.toolbar.applyStatusBarInset()
+        binding.root.applySystemBarInsets(applyTop = false, applyBottom = true)
 
         val convId = intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty()
         val userName = intent.getStringExtra(EXTRA_USER_NAME) ?: "Contact"

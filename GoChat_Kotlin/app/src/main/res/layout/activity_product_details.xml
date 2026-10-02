@@ -426,6 +426,7 @@
 
     <!-- Bottom Action Bar (Chat with Seller, Add to Cart, Buy Now) -->
     <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardBottomActions"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"

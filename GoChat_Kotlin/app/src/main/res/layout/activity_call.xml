@@ -24,11 +24,12 @@
 
     <!-- Call Info Overlay -->
     <LinearLayout
+        android:id="@+id/layoutCallInfo"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_horizontal"
         android:orientation="vertical"
-        android:paddingTop="60dp">
+        android:paddingTop="24dp">
 
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/ivCallerAvatar"
@@ -59,12 +60,13 @@
 
     <!-- Controls Overlay -->
     <LinearLayout
+        android:id="@+id/layoutCallControls"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:gravity="center"
         android:orientation="horizontal"
-        android:paddingBottom="40dp">
+        android:paddingBottom="24dp">
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/btnMute"

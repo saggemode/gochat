@@ -12,6 +12,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
+import android.view.View
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
@@ -243,23 +244,41 @@ class MainActivity : AppCompatActivity() {
      * manufacturers (Samsung, Pixel, Xiaomi, OnePlus, etc.).
      */
     private fun setupWindowInsets() {
+        val initialFragmentTop = binding.fragmentContainer.paddingTop
+        val initialFragmentBottom = binding.fragmentContainer.paddingBottom
+        val initialBottomNavBottom = binding.bottomNav.paddingBottom
+        val initialMainLeft = binding.main.paddingLeft
+        val initialMainRight = binding.main.paddingRight
+
         ViewCompat.setOnApplyWindowInsetsListener(binding.main) { view, windowInsets ->
             val insets = windowInsets.getInsets(
                 WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
             )
-            // Pad the fragment container at the top so content clears the status bar
-            binding.fragmentContainer.updatePadding(top = insets.top)
+            val imeInsets = windowInsets.getInsets(WindowInsetsCompat.Type.ime())
 
-            // Pad the bottom navigation at the bottom so it clears the system nav bar
-            binding.bottomNav.updatePadding(bottom = insets.bottom)
+            // When keyboard is open, hide bottom navigation so it doesn't jump above keyboard
+            val isKeyboardOpen = imeInsets.bottom > 0
+            binding.bottomNav.visibility = if (isKeyboardOpen) View.GONE else View.VISIBLE
+            binding.bottomNavDivider.visibility = if (isKeyboardOpen) View.GONE else View.VISIBLE
+
+            // Pad the fragment container at top (status bar/notch) and bottom (IME if open)
+            val bottomPadding = if (isKeyboardOpen) imeInsets.bottom else initialFragmentBottom
+            binding.fragmentContainer.updatePadding(
+                top = initialFragmentTop + insets.top,
+                bottom = bottomPadding
+            )
+
+            // Pad the bottom navigation at the bottom so it clears Samsung 3-button nav / gesture bar
+            binding.bottomNav.updatePadding(bottom = initialBottomNavBottom + insets.bottom)
 
             // Handle side insets for landscape / foldables
             view.updatePadding(
-                left = insets.left,
-                right = insets.right
+                left = initialMainLeft + insets.left,
+                right = initialMainRight + insets.right
             )
-            WindowInsetsCompat.CONSUMED
+            windowInsets
         }
+        ViewCompat.requestApplyInsets(binding.main)
     }
 
     fun navigateToTab(tag: String) {

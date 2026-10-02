@@ -11,6 +11,9 @@ import com.example.gochat.R
 import com.example.gochat.data.model.CartItem
 import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.databinding.ActivityCartBinding
+import com.example.gochat.core.ui.applyEdgeToEdge
+import com.example.gochat.core.ui.applyNavigationBarInset
+import com.example.gochat.core.ui.applyStatusBarInset
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -26,9 +29,13 @@ class CartActivity : AppCompatActivity() {
     private lateinit var cartAdapter: CartAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         binding = ActivityCartBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        binding.toolbar.applyStatusBarInset()
+        binding.cardCheckout.applyNavigationBarInset()
 
         setupAdapter()
         setupListeners()

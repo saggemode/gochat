@@ -355,7 +355,9 @@ class ChatRoomActivity : AppCompatActivity() {
     private fun setupWindowInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(binding.chatRoot) { _, windowInsets ->
             val imeInsets = windowInsets.getInsets(WindowInsetsCompat.Type.ime())
-            val systemBarsInsets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val systemBarsInsets = windowInsets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
 
             // Top inset ensures toolbar content doesn't collide with status bar / camera notch
             binding.toolbarChatRoom.updatePadding(
@@ -390,7 +392,9 @@ class ChatRoomActivity : AppCompatActivity() {
                     runningAnimations: MutableList<WindowInsetsAnimationCompat>
                 ): WindowInsetsCompat {
                     val imeInsets = insets.getInsets(WindowInsetsCompat.Type.ime())
-                    val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+                    val systemBars = insets.getInsets(
+                        WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+                    )
                     val bottomInset = if (imeInsets.bottom > 0) imeInsets.bottom else systemBars.bottom
 
                     binding.chatContentContainer.updatePadding(bottom = bottomInset)
@@ -398,6 +402,7 @@ class ChatRoomActivity : AppCompatActivity() {
                 }
             }
         )
+        ViewCompat.requestApplyInsets(binding.chatRoot)
     }
 
     private fun setupToolbar(title: String, avatarUrl: String) {

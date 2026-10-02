@@ -32,6 +32,9 @@ import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.example.gochat.core.ui.applyEdgeToEdge
+import com.example.gochat.core.ui.applyStatusBarInset
+import com.example.gochat.core.ui.applySystemBarInsets
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -58,9 +61,13 @@ class OrderDetailsActivity : AppCompatActivity() {
     private val colorIconInactive = Color.parseColor("#6B7280")
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         binding = ActivityOrderDetailsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        binding.toolbar.applyStatusBarInset()
+        binding.root.applySystemBarInsets(applyTop = false, applyBottom = true)
 
         val orderJson = intent.getStringExtra("order_json") ?: return finish()
         var currentOrder = try {

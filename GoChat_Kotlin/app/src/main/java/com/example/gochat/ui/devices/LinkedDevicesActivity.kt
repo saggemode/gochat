@@ -17,6 +17,9 @@ import com.example.gochat.databinding.ActivityLinkedDevicesBinding
 import com.example.gochat.databinding.ItemLinkedDeviceBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import com.example.gochat.core.ui.applyEdgeToEdge
+import com.example.gochat.core.ui.applyStatusBarInset
+import com.example.gochat.core.ui.applySystemBarInsets
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -30,9 +33,13 @@ class LinkedDevicesActivity : AppCompatActivity() {
     private val devicesAdapter = DevicesAdapter()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         binding = ActivityLinkedDevicesBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        binding.toolbarLinkedDevices.applyStatusBarInset()
+        binding.root.applySystemBarInsets(applyTop = false, applyBottom = true)
 
         setupToolbar()
         setupRecyclerView()

@@ -40,6 +40,9 @@ import javax.inject.Inject
 import android.transition.TransitionInflater
 import androidx.transition.TransitionManager
 import androidx.transition.AutoTransition
+import com.example.gochat.core.ui.applyEdgeToEdge
+import com.example.gochat.core.ui.applyNavigationBarInset
+import com.example.gochat.core.ui.applyStatusBarInset
 
 @AndroidEntryPoint
 class ProductDetailsActivity : AppCompatActivity() {
@@ -79,6 +82,7 @@ class ProductDetailsActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyEdgeToEdge()
         window.sharedElementEnterTransition = TransitionInflater.from(this)
             .inflateTransition(android.R.transition.move)
         window.sharedElementReturnTransition = TransitionInflater.from(this)
@@ -87,6 +91,9 @@ class ProductDetailsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityProductDetailsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        binding.toolbar.applyStatusBarInset()
+        binding.cardBottomActions.applyNavigationBarInset()
 
         val productId = intent.getStringExtra("product_id") ?: return finish()
         binding.ivProductImage.transitionName = "product_image_$productId"

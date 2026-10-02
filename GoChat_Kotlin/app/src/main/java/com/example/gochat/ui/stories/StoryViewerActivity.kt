@@ -28,6 +28,10 @@ import com.example.gochat.data.model.UserStories
 import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.data.repository.StoryRepository
 import com.example.gochat.databinding.ActivityStoryViewerBinding
+import com.example.gochat.core.ui.applyEdgeToEdge
+import com.example.gochat.core.ui.applyStatusBarInset
+import com.example.gochat.core.ui.applySystemBarAndImeInsets
+import com.example.gochat.core.ui.applySystemBarMargins
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -68,9 +72,15 @@ class StoryViewerActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         binding = ActivityStoryViewerBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        binding.layoutTopHeader.applyStatusBarInset()
+        binding.layoutReplyStoryFooter.applySystemBarAndImeInsets(applyTop = false, applyBottom = true)
+        binding.layoutOwnStoryFooter.applySystemBarMargins(bottom = true)
+        binding.layoutProductPill.applySystemBarMargins(bottom = true)
 
         userStories = activeUserStories
         if (userStories == null) {

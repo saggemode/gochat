@@ -20,6 +20,10 @@ import com.example.gochat.data.model.CallType
 import com.example.gochat.data.repository.CallRepository
 import com.example.gochat.data.websocket.GoChatWebSocket
 import com.example.gochat.databinding.ActivityCallBinding
+import com.example.gochat.core.ui.applyEdgeToEdge
+import com.example.gochat.core.ui.applyNavigationBarInset
+import com.example.gochat.core.ui.applyStatusBarInset
+import com.example.gochat.core.ui.applySystemBarMargins
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.contentOrNull
@@ -66,9 +70,14 @@ class CallActivity : AppCompatActivity() {
     private var isCallEnded = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         binding = ActivityCallBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        binding.layoutCallInfo.applyStatusBarInset()
+        binding.layoutCallControls.applyNavigationBarInset()
+        binding.localVideoView.applySystemBarMargins(top = true, right = true)
 
         setupWebRTC()
         setupUI()

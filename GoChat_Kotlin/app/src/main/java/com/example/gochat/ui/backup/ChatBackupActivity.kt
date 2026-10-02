@@ -20,6 +20,9 @@ import com.example.gochat.databinding.ActivityChatBackupBinding
 import com.example.gochat.databinding.DialogBackupPasswordBinding
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
+import com.example.gochat.core.ui.applyEdgeToEdge
+import com.example.gochat.core.ui.applyStatusBarInset
+import com.example.gochat.core.ui.applySystemBarInsets
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.io.File
@@ -53,9 +56,13 @@ class ChatBackupActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         binding = ActivityChatBackupBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        binding.toolbarBackup.applyStatusBarInset()
+        binding.root.applySystemBarInsets(applyTop = false, applyBottom = true)
 
         setupToolbar()
         setupActions()
