@@ -129,6 +129,17 @@
                             android:visibility="gone"
                             app:tint="@color/gochat_emerald_light"
                             tools:visibility="visible" />
+
+                        <ImageView
+                            android:id="@+id/ivHeaderScreenshotBadge"
+                            android:layout_width="14dp"
+                            android:layout_height="14dp"
+                            android:layout_marginStart="5dp"
+                            android:contentDescription="Screenshot Alerts Active"
+                            android:src="@drawable/ic_camera_status"
+                            android:visibility="gone"
+                            app:tint="#F59E0B"
+                            tools:visibility="visible" />
                     </LinearLayout>
 
                     <TextView

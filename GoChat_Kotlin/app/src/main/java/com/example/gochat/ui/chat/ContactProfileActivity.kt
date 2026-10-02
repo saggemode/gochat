@@ -62,6 +62,7 @@ class ContactProfileActivity : AppCompatActivity() {
     private var mediaVisibilityOption = "Default (Yes)"
     private var ipProtectionEnabled = true
     private var linkPreviewsDisabled = false
+    private var screenshotAlertsEnabled = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -252,8 +253,12 @@ class ContactProfileActivity : AppCompatActivity() {
         }
 
         // 5. Advanced chat privacy
+        lifecycleScope.launch {
+            val conv = chatRepository.getConversationById(convId)
+            screenshotAlertsEnabled = conv?.screenshotNotificationsEnabled ?: false
+        }
         binding.layoutAdvancedPrivacy.setOnClickListener {
-            showAdvancedPrivacyDialog()
+            showAdvancedPrivacyDialog(convId)
         }
 
         // 6. Create group with person
@@ -448,15 +453,23 @@ class ContactProfileActivity : AppCompatActivity() {
         }
     }
 
-    private fun showAdvancedPrivacyDialog() {
-        val options = booleanArrayOf(ipProtectionEnabled, linkPreviewsDisabled)
-        val items = arrayOf("Protect IP address in calls", "Disable link previews")
+    private fun showAdvancedPrivacyDialog(convId: String) {
+        val options = booleanArrayOf(ipProtectionEnabled, linkPreviewsDisabled, screenshotAlertsEnabled)
+        val items = arrayOf("Protect IP address in calls", "Disable link previews", "Screenshot alerts")
 
         AlertDialog.Builder(this)
             .setTitle("Advanced Chat Privacy")
             .setMultiChoiceItems(items, options) { _, which, isChecked ->
-                if (which == 0) ipProtectionEnabled = isChecked
-                if (which == 1) linkPreviewsDisabled = isChecked
+                when (which) {
+                    0 -> ipProtectionEnabled = isChecked
+                    1 -> linkPreviewsDisabled = isChecked
+                    2 -> {
+                        screenshotAlertsEnabled = isChecked
+                        lifecycleScope.launch {
+                            chatRepository.toggleScreenshotNotifications(convId, isChecked)
+                        }
+                    }
+                }
             }
             .setPositiveButton("Save") { _, _ ->
                 Toast.makeText(this, "Advanced privacy settings updated", Toast.LENGTH_SHORT).show()

@@ -232,6 +232,9 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     } else null
 
+    // Android < 14 Screenshot Detection fallback using MediaStore ContentObserver
+    private var screenshotObserver: android.database.ContentObserver? = null
+
     private val requestNotificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -299,6 +302,7 @@ class ChatRoomActivity : AppCompatActivity() {
         setupWindowInsets()
         setupInChatSearch()
         setupSelectionBar()
+        setupScreenshotDetection()
         observeState()
 
         val targetMsgId = intent.getStringExtra(EXTRA_TARGET_MESSAGE_ID)
@@ -1308,6 +1312,15 @@ class ChatRoomActivity : AppCompatActivity() {
                 }
 
                 launch {
+                    viewModel.screenshotNotificationsEnabled.collect { enabled ->
+                        binding.ivHeaderScreenshotBadge.visibility = if (enabled) View.VISIBLE else View.GONE
+                        binding.ivHeaderScreenshotBadge.setOnClickListener {
+                            Toast.makeText(this@ChatRoomActivity, "📸 Screenshot alerts are active in this chat", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+
+                launch {
                     viewModel.pinnedMessages.collect { pinnedList ->
                         updatePinnedMessageHeader(pinnedList)
                     }
@@ -1964,6 +1977,14 @@ class ChatRoomActivity : AppCompatActivity() {
             screenCaptureCallback?.let {
                 registerScreenCaptureCallback(mainExecutor, it)
             }
+        } else {
+            screenshotObserver?.let {
+                contentResolver.registerContentObserver(
+                    android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    true,
+                    it
+                )
+            }
         }
     }
 
@@ -1973,6 +1994,53 @@ class ChatRoomActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             screenCaptureCallback?.let {
                 unregisterScreenCaptureCallback(it)
+            }
+        } else {
+            screenshotObserver?.let {
+                contentResolver.unregisterContentObserver(it)
+            }
+        }
+    }
+
+    private fun setupScreenshotDetection() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            screenshotObserver = object : android.database.ContentObserver(Handler(Looper.getMainLooper())) {
+                private var lastCheckedId: Long = -1L
+
+                override fun onChange(selfChange: Boolean, uri: Uri?) {
+                    super.onChange(selfChange, uri)
+                    if (!viewModel.screenshotNotificationsEnabled.value) return
+
+                    try {
+                        val projection = arrayOf(
+                            android.provider.MediaStore.Images.Media._ID,
+                            android.provider.MediaStore.Images.Media.DATA,
+                            android.provider.MediaStore.Images.Media.DATE_ADDED
+                        )
+                        val sortOrder = "${android.provider.MediaStore.Images.Media.DATE_ADDED} DESC"
+                        contentResolver.query(
+                            android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                            projection,
+                            null,
+                            null,
+                            sortOrder
+                        )?.use { cursor ->
+                            if (cursor.moveToFirst()) {
+                                val id = cursor.getLong(cursor.getColumnIndexOrThrow(android.provider.MediaStore.Images.Media._ID))
+                                val data = cursor.getString(cursor.getColumnIndexOrThrow(android.provider.MediaStore.Images.Media.DATA)).orEmpty().lowercase()
+                                val dateAdded = cursor.getLong(cursor.getColumnIndexOrThrow(android.provider.MediaStore.Images.Media.DATE_ADDED))
+
+                                if (id != lastCheckedId) {
+                                    lastCheckedId = id
+                                    val nowSec = System.currentTimeMillis() / 1000L
+                                    if (Math.abs(nowSec - dateAdded) <= 10 && (data.contains("screenshot") || data.contains("screen_shot") || data.contains("capture"))) {
+                                        viewModel.sendScreenshotNotification()
+                                    }
+                                }
+                            }
+                        }
+                    } catch (_: Exception) {}
+                }
             }
         }
     }
