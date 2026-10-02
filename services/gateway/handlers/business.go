@@ -1,10 +1,14 @@
 package handlers
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	pb "gochat/gen/business"
+	"gochat/pkg/fcm"
 	"gochat/services/gateway/ws"
 
 	"github.com/gin-gonic/gin"
@@ -98,6 +102,25 @@ func (h *BusinessHandler) UpdateBusinessProfile(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	if resp != nil && resp.Profile != nil {
+		go func() {
+			pushCtx, pCancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer pCancel()
+			name := resp.Profile.BusinessName
+			if name == "" {
+				name = "A store you follow"
+			}
+			_ = fcm.NotifyStoreFollowersStoreEvent(pushCtx, userID, name,
+				fmt.Sprintf("📢 %s updated their store!", name),
+				fmt.Sprintf("Check out new store information, hours, and catalog from %s.", name),
+				map[string]string{
+					"event": "store_profile_updated",
+				},
+			)
+		}()
+	}
+
 	c.JSON(http.StatusOK, resp)
 }
 

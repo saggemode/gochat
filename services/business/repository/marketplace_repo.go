@@ -72,11 +72,12 @@ type Review struct {
 }
 
 type Store struct {
-	Profile      *BusinessProfile
-	Products     []*MarketplaceProduct
-	ProductCount int32
-	AvgRating    float64
-	TotalReviews int32
+	Profile        *BusinessProfile
+	Products       []*MarketplaceProduct
+	ProductCount   int32
+	AvgRating      float64
+	TotalReviews   int32
+	FollowersCount int32
 }
 
 // ── Products CRUD ────────────────────────────────────────────────────────────
@@ -656,12 +657,18 @@ func (r *BusinessRepository) GetStore(ctx context.Context, slug, userID string) 
 		`SELECT COALESCE(AVG(p.rating_avg), 0), COALESCE(SUM(p.review_count), 0)
 		 FROM business.products p WHERE p.business_id = $1`, profile.UserID).Scan(&avgRating, &totalReviews)
 
+	var followersCount int64
+	_ = r.db.QueryRow(ctx,
+		`SELECT COUNT(*) FROM business.store_followers WHERE store_id = $1`, profile.UserID).Scan(&followersCount)
+	profile.FollowersCount = followersCount
+
 	return &Store{
-		Profile:      profile,
-		Products:     products,
-		ProductCount: total,
-		AvgRating:    avgRating,
-		TotalReviews: totalReviews,
+		Profile:        profile,
+		Products:       products,
+		ProductCount:   total,
+		AvgRating:      avgRating,
+		TotalReviews:   totalReviews,
+		FollowersCount: int32(followersCount),
 	}, nil
 }
 
@@ -842,7 +849,8 @@ func (r *BusinessRepository) GetFollowedStores(ctx context.Context, userID strin
 		SELECT bp.user_id, bp.business_name, COALESCE(bp.category,''), COALESCE(bp.description,''),
 		       COALESCE(bp.address,''), COALESCE(bp.website,''), COALESCE(bp.email,''), COALESCE(bp.phone,''),
 		       COALESCE(bp.hours_json::text,'{}'), bp.is_verified, COALESCE(bp.logo_url,''), COALESCE(bp.banner_url,''),
-		       COALESCE(bp.state,''), COALESCE(bp.country_code,''), COALESCE(bp.slug,'')
+		       COALESCE(bp.state,''), COALESCE(bp.country_code,''), COALESCE(bp.slug,''),
+		       COALESCE((SELECT COUNT(*) FROM business.store_followers sf2 WHERE sf2.store_id = bp.user_id), 0)
 		FROM business.business_profiles bp
 		JOIN business.store_followers sf ON sf.store_id = bp.user_id
 		WHERE sf.user_id = $1
@@ -858,7 +866,7 @@ func (r *BusinessRepository) GetFollowedStores(ctx context.Context, userID strin
 		p := &BusinessProfile{}
 		err := rows.Scan(&p.UserID, &p.BusinessName, &p.Category, &p.Description,
 			&p.Address, &p.Website, &p.Email, &p.Phone, &p.HoursJSON, &p.IsVerified,
-			&p.LogoURL, &p.BannerURL, &p.State, &p.CountryCode, &p.Slug)
+			&p.LogoURL, &p.BannerURL, &p.State, &p.CountryCode, &p.Slug, &p.FollowersCount)
 		if err == nil {
 			profiles = append(profiles, p)
 		}

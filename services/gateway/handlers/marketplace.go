@@ -262,6 +262,41 @@ func (h *BusinessHandler) UpdateMarketplaceProduct(c *gin.Context) {
 		return
 	}
 
+	if resp != nil && resp.Product != nil {
+		evt := map[string]interface{}{
+			"type":    "product_updated",
+			"product": formatProductItem(resp.Product),
+		}
+		evtJSON, _ := json.Marshal(evt)
+		if h.redis != nil {
+			h.redis.Publish(c.Request.Context(), "marketplace:global", evtJSON)
+		} else if h.hub != nil {
+			h.hub.Broadcast(evtJSON, "")
+		}
+
+		storeID := resp.Product.BusinessId
+		if storeID == "" {
+			storeID = userID
+		}
+		storeName := resp.Product.SellerName
+		if storeName == "" {
+			storeName = "Official Store"
+		}
+		prodID := resp.Product.Id
+		prodName := resp.Product.Name
+		prodPrice := resp.Product.Price
+		primaryImage := ""
+		if len(resp.Product.ImageUrls) > 0 {
+			primaryImage = resp.Product.ImageUrls[0]
+		}
+
+		go func() {
+			pushCtx, pCancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer pCancel()
+			_ = fcm.NotifyStoreFollowersProductUpdated(pushCtx, storeID, storeName, prodID, prodName, primaryImage, prodPrice)
+		}()
+	}
+
 	c.JSON(http.StatusOK, formatProductItem(resp.Product))
 }
 
@@ -279,6 +314,17 @@ func (h *BusinessHandler) DeleteMarketplaceProduct(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	evt := map[string]interface{}{
+		"type":       "product_deleted",
+		"product_id": productID,
+	}
+	evtJSON, _ := json.Marshal(evt)
+	if h.redis != nil {
+		h.redis.Publish(c.Request.Context(), "marketplace:global", evtJSON)
+	} else if h.hub != nil {
+		h.hub.Broadcast(evtJSON, "")
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true})

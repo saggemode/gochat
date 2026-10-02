@@ -38,6 +38,7 @@ type BusinessProfile struct {
 	State         string                 `protobuf:"bytes,13,opt,name=state,proto3" json:"state,omitempty"`
 	CountryCode   string                 `protobuf:"bytes,14,opt,name=country_code,json=countryCode,proto3" json:"country_code,omitempty"`
 	Slug          string                 `protobuf:"bytes,15,opt,name=slug,proto3" json:"slug,omitempty"`
+	FollowersCount int64                 `protobuf:"varint,16,opt,name=followers_count,json=followers_count,proto3" json:"followers_count"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -175,6 +176,13 @@ func (x *BusinessProfile) GetSlug() string {
 		return x.Slug
 	}
 	return ""
+}
+
+func (x *BusinessProfile) GetFollowersCount() int64 {
+	if x != nil {
+		return x.FollowersCount
+	}
+	return 0
 }
 
 type MarketplaceProduct struct {
@@ -712,6 +720,7 @@ type Store struct {
 	ProductCount  int32                  `protobuf:"varint,3,opt,name=product_count,json=productCount,proto3" json:"product_count,omitempty"`
 	AvgRating     float64                `protobuf:"fixed64,4,opt,name=avg_rating,json=avgRating,proto3" json:"avg_rating,omitempty"`
 	TotalReviews  int32                  `protobuf:"varint,5,opt,name=total_reviews,json=totalReviews,proto3" json:"total_reviews,omitempty"`
+	FollowersCount int64                 `protobuf:"varint,6,opt,name=followers_count,json=followers_count,proto3" json:"followers_count"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -777,6 +786,13 @@ func (x *Store) GetAvgRating() float64 {
 func (x *Store) GetTotalReviews() int32 {
 	if x != nil {
 		return x.TotalReviews
+	}
+	return 0
+}
+
+func (x *Store) GetFollowersCount() int64 {
+	if x != nil {
+		return x.FollowersCount
 	}
 	return 0
 }

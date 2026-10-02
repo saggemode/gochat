@@ -51,21 +51,22 @@ func (r *BusinessRepository) ensureSchema() {
 }
 
 type BusinessProfile struct {
-	UserID       string
-	BusinessName string
-	Category     string
-	Description  string
-	Address      string
-	Website      string
-	Email        string
-	Phone        string
-	HoursJSON    string
-	IsVerified   bool
-	LogoURL      string
-	BannerURL    string
-	State        string
-	CountryCode  string
-	Slug         string
+	UserID         string
+	BusinessName   string
+	Category       string
+	Description    string
+	Address        string
+	Website        string
+	Email          string
+	Phone          string
+	HoursJSON      string
+	IsVerified     bool
+	LogoURL        string
+	BannerURL      string
+	State          string
+	CountryCode    string
+	Slug           string
+	FollowersCount int64
 }
 
 func (r *BusinessRepository) CreateBusinessProfile(ctx context.Context, p *BusinessProfile) (*BusinessProfile, error) {
@@ -123,13 +124,14 @@ func (r *BusinessRepository) GetBusinessProfile(ctx context.Context, userID stri
 		`SELECT bp.user_id, bp.business_name, COALESCE(bp.category,''), COALESCE(bp.description,''),
 		 COALESCE(bp.address,''), COALESCE(bp.website,''), COALESCE(bp.email, u.email, ''), COALESCE(bp.phone, u.phone, ''),
 		 COALESCE(bp.hours_json::text,'{}'), bp.is_verified, COALESCE(bp.logo_url,''), COALESCE(bp.banner_url,''),
-		 COALESCE(bp.state,''), COALESCE(NULLIF(bp.country_code,''), u.country_code, ''), COALESCE(bp.slug,'')
+		 COALESCE(bp.state,''), COALESCE(NULLIF(bp.country_code,''), u.country_code, ''), COALESCE(bp.slug,''),
+		 COALESCE((SELECT COUNT(*) FROM business.store_followers sf WHERE sf.store_id = bp.user_id), 0)
 		 FROM business.business_profiles bp
 		 LEFT JOIN core.users u ON u.id = bp.user_id
 		 WHERE bp.user_id = $1`, userID).
 		Scan(&p.UserID, &p.BusinessName, &p.Category, &p.Description,
 			&p.Address, &p.Website, &p.Email, &p.Phone, &p.HoursJSON, &p.IsVerified,
-			&p.LogoURL, &p.BannerURL, &p.State, &p.CountryCode, &p.Slug)
+			&p.LogoURL, &p.BannerURL, &p.State, &p.CountryCode, &p.Slug, &p.FollowersCount)
 	if err != nil {
 		return nil, err
 	}
@@ -142,11 +144,12 @@ func (r *BusinessRepository) GetBusinessProfileBySlug(ctx context.Context, slug 
 		`SELECT user_id, business_name, COALESCE(category,''), COALESCE(description,''),
 		 COALESCE(address,''), COALESCE(website,''), COALESCE(email,''), COALESCE(phone,''),
 		 COALESCE(hours_json::text,'{}'), is_verified, COALESCE(logo_url,''), COALESCE(banner_url,''),
-		 COALESCE(state,''), COALESCE(country_code,''), COALESCE(slug,'')
+		 COALESCE(state,''), COALESCE(country_code,''), COALESCE(slug,''),
+		 COALESCE((SELECT COUNT(*) FROM business.store_followers sf WHERE sf.store_id = business.business_profiles.user_id), 0)
 		 FROM business.business_profiles WHERE slug = $1`, slug).
 		Scan(&p.UserID, &p.BusinessName, &p.Category, &p.Description,
 			&p.Address, &p.Website, &p.Email, &p.Phone, &p.HoursJSON, &p.IsVerified,
-			&p.LogoURL, &p.BannerURL, &p.State, &p.CountryCode, &p.Slug)
+			&p.LogoURL, &p.BannerURL, &p.State, &p.CountryCode, &p.Slug, &p.FollowersCount)
 	if err != nil {
 		return nil, err
 	}

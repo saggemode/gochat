@@ -525,11 +525,19 @@ class ProductDetailsActivity : AppCompatActivity() {
 
     private fun displayStore(store: Store) {
         binding.tvStoreName.text = store.name
+
+        val followers = store.followersCount
+        val followerText = when (followers) {
+            0 -> "0 followers"
+            1 -> "1 follower"
+            else -> if (followers >= 1000) String.format(Locale.US, "%.1fk followers", followers / 1000.0) else "$followers followers"
+        }
+
         binding.tvStoreRating.text = String.format(
             Locale.US,
-            "%s • PIN: %s",
-            store.address.ifBlank { "Lagos, Nigeria" },
-            store.ownerPin.ifBlank { "1P0YE4WZ" }
+            "%s • %s",
+            followerText,
+            store.address.ifBlank { "Lagos, Nigeria" }
         )
         binding.ivStoreVerified.visibility = if (store.isVerified) View.VISIBLE else View.GONE
         MediaImageHelper.loadSafeImage(binding.ivStoreLogo, store.logoUrl, isCircle = true)
@@ -564,9 +572,14 @@ class ProductDetailsActivity : AppCompatActivity() {
             if (res.isSuccess) {
                 val following = res.getOrThrow()
                 updateFollowButton(following)
+                store?.let { s ->
+                    val updatedCount = if (following) s.followersCount + 1 else maxOf(0, s.followersCount - 1)
+                    store = s.copy(followersCount = updatedCount)
+                    displayStore(store!!)
+                }
                 Toast.makeText(
                     this@ProductDetailsActivity,
-                    if (following) "🔔 Following ${store?.name ?: "store"}! You'll receive alerts on new products." else "Unfollowed store",
+                    if (following) "🔔 Following ${store?.name ?: "store"}! You'll receive alerts on new products and updates." else "Unfollowed store",
                     Toast.LENGTH_SHORT
                 ).show()
             } else {

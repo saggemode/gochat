@@ -159,11 +159,12 @@ func (s *BusinessServer) GetStore(ctx context.Context, req *pb.GetStoreRequest) 
 	}
 	return &pb.GetStoreResponse{
 		Store: &pb.Store{
-			Profile:      profileToPB(store.Profile),
-			Products:     pbProducts,
-			ProductCount: store.ProductCount,
-			AvgRating:    store.AvgRating,
-			TotalReviews: store.TotalReviews,
+			Profile:        profileToPB(store.Profile),
+			Products:       pbProducts,
+			ProductCount:   store.ProductCount,
+			AvgRating:      store.AvgRating,
+			TotalReviews:   store.TotalReviews,
+			FollowersCount: int64(store.FollowersCount),
 		},
 	}, nil
 }

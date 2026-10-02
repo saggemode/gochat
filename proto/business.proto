@@ -134,6 +134,7 @@ message BusinessProfile {
   string state         = 13;
   string country_code  = 14;
   string slug          = 15;
+  int64  followers_count = 16;
 }
 
 message MarketplaceProduct {
@@ -203,6 +204,7 @@ message Store {
   int32 product_count         = 3;
   double avg_rating           = 4;
   int32  total_reviews        = 5;
+  int64  followers_count      = 6;
 }
 
 // ── Legacy Types ─────────────────────────────────────────────────────────────

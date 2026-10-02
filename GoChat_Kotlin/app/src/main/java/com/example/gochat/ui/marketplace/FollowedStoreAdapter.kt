@@ -37,7 +37,17 @@ class FollowedStoreAdapter(
             val store = item.store
 
             binding.tvStoreName.text = store.name
+
+            val followers = store.followersCount
+            val followerText = when (followers) {
+                0 -> "0 followers"
+                1 -> "1 follower"
+                else -> if (followers >= 1000) String.format(java.util.Locale.US, "%.1fk followers", followers / 1000.0) else "$followers followers"
+            }
+            binding.tvStoreFollowers.text = followerText
+
             binding.tvStoreCategory.text = buildString {
+                append("• ")
                 append(store.category.ifBlank { "General Retail" })
                 if (store.address.isNotBlank()) {
                     append(" • ")

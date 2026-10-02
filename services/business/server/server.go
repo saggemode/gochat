@@ -185,6 +185,7 @@ func profileToPB(p *repository.BusinessProfile) *pb.BusinessProfile {
 		Description: p.Description, Address: p.Address, Website: p.Website,
 		Email: p.Email, Phone: p.Phone, HoursJson: p.HoursJSON, IsVerified: p.IsVerified,
 		LogoUrl: p.LogoURL, BannerUrl: p.BannerURL, State: p.State, CountryCode: p.CountryCode, Slug: p.Slug,
+		FollowersCount: p.FollowersCount,
 	}
 }
 

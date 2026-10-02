@@ -501,6 +501,7 @@ class MarketplaceRepository @Inject constructor(
         val bannerUrl = (target["banner_url"] ?: target["bannerUrl"] ?: target["banner"])?.jsonPrimitive?.contentOrNull?.ifBlank { null } ?: existing?.bannerUrl
         val verified = (target["is_verified"] ?: target["isVerified"])?.jsonPrimitive?.booleanOrNull ?: existing?.isVerified ?: true
         val rating = (target["avg_rating"] ?: target["rating"])?.jsonPrimitive?.doubleOrNull ?: existing?.rating ?: 4.9
+        val followers = (target["followers_count"] ?: data["followers_count"] ?: target["followersCount"])?.jsonPrimitive?.intOrNull ?: existing?.followersCount ?: 0
 
         return Store(
             id = id,
@@ -515,7 +516,8 @@ class MarketplaceRepository @Inject constructor(
             logoUrl = logoUrl,
             bannerUrl = bannerUrl,
             rating = rating,
-            isVerified = verified
+            isVerified = verified,
+            followersCount = followers
         )
     }
 

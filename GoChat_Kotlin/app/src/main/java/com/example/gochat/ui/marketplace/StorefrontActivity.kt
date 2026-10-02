@@ -129,6 +129,11 @@ class StorefrontActivity : AppCompatActivity() {
             if (res.isSuccess) {
                 val following = res.getOrThrow()
                 updateFollowButton(following)
+                currentStore?.let { s ->
+                    val updatedCount = if (following) s.followersCount + 1 else maxOf(0, s.followersCount - 1)
+                    currentStore = s.copy(followersCount = updatedCount)
+                    displayStore(currentStore!!)
+                }
                 Toast.makeText(this@StorefrontActivity, if (following) "Following store!" else "Unfollowed store", Toast.LENGTH_SHORT).show()
             } else {
                 val err = res.exceptionOrNull()?.message ?: "Failed to update follow status"
@@ -198,10 +203,18 @@ class StorefrontActivity : AppCompatActivity() {
 
     private fun displayStore(store: Store) {
         binding.tvStoreName.text = store.name
-        binding.tvStoreMeta.text = String.format("%s • %s • PIN: %s",
+
+        val followers = store.followersCount
+        val followerText = when (followers) {
+            0 -> "0 followers"
+            1 -> "1 follower"
+            else -> if (followers >= 1000) String.format(java.util.Locale.US, "%.1fk followers", followers / 1000.0) else "$followers followers"
+        }
+
+        binding.tvStoreMeta.text = String.format("%s • %s • %s",
+            followerText,
             store.category.ifBlank { "General Retail" },
-            store.address.ifBlank { "Lagos, Nigeria" },
-            store.ownerPin.ifBlank { "1P0YE4WZ" }
+            store.address.ifBlank { "Lagos, Nigeria" }
         )
         binding.tvStoreDescription.text = store.description.ifBlank {
             "Welcome to ${store.name}! Browse our curated collection on GoChat Marketplace."

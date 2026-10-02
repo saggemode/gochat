@@ -425,4 +425,75 @@ func NotifyStoreFollowersNewProduct(ctx context.Context, storeID, storeName, pro
 	return nil
 }
 
+// NotifyStoreFollowersProductUpdated dispatches push notifications to all users following a store when a product is modified.
+func NotifyStoreFollowersProductUpdated(ctx context.Context, storeID, storeName, productID, productName, imageURL string, price float64) error {
+	followers, err := GetFollowersForStore(ctx, storeID)
+	if err != nil {
+		return err
+	}
+	if len(followers) == 0 {
+		return nil
+	}
+
+	title := fmt.Sprintf("🏷️ %s updated an item!", storeName)
+	body := fmt.Sprintf("%s was updated (now $%.2f). Tap to check it out!", productName, price)
+	data := map[string]string{
+		"type":         "store_product_updated",
+		"event_type":   "store_product_updated",
+		"store_id":     storeID,
+		"store_name":   storeName,
+		"product_id":   productID,
+		"product_name": productName,
+		"price":        fmt.Sprintf("%.2f", price),
+		"image_url":    imageURL,
+		"title":        title,
+		"body":         body,
+	}
+
+	for _, uid := range followers {
+		targetUID := uid
+		go func() {
+			pushCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			_ = SendToUser(pushCtx, targetUID, title, body, data)
+		}()
+	}
+
+	return nil
+}
+
+// NotifyStoreFollowersStoreEvent dispatches push notifications when anything is happening in the store (e.g. announcements, updates).
+func NotifyStoreFollowersStoreEvent(ctx context.Context, storeID, storeName, eventTitle, eventBody string, extraData map[string]string) error {
+	followers, err := GetFollowersForStore(ctx, storeID)
+	if err != nil {
+		return err
+	}
+	if len(followers) == 0 {
+		return nil
+	}
+
+	data := map[string]string{
+		"type":       "store_event",
+		"event_type": "store_event",
+		"store_id":   storeID,
+		"store_name": storeName,
+		"title":      eventTitle,
+		"body":       eventBody,
+	}
+	for k, v := range extraData {
+		data[k] = v
+	}
+
+	for _, uid := range followers {
+		targetUID := uid
+		go func() {
+			pushCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			_ = SendToUser(pushCtx, targetUID, eventTitle, eventBody, data)
+		}()
+	}
+
+	return nil
+}
+
 

@@ -1003,7 +1003,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="@string/store_views"
+                                    android:text="Followers"
                                     android:textColor="@color/gochat_text_muted"
                                     android:textSize="11sp" />
 

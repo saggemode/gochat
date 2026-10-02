@@ -137,6 +137,7 @@ data class Store(
     @SerialName("is_verified") val isVerified: Boolean = true,
     @SerialName("total_sales") val totalSales: Int = 0,
     @SerialName("total_revenue") val totalRevenue: Double = 0.0,
+    @SerialName("followers_count") val followersCount: Int = 0,
     @SerialName("created_at") val createdAt: Long = System.currentTimeMillis()
 )
 

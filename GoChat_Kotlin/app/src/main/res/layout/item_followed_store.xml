@@ -67,16 +67,40 @@
                     tools:visibility="visible" />
             </LinearLayout>
 
-            <TextView
-                android:id="@+id/tvStoreCategory"
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@color/gochat_text_secondary"
-                android:textSize="12.5sp"
-                tools:text="Electronics • Lagos, Nigeria" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:src="@drawable/ic_account"
+                    app:tint="@color/whatsapp_teal_light" />
+
+                <TextView
+                    android:id="@+id/tvStoreFollowers"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="3dp"
+                    android:textColor="@color/whatsapp_teal_light"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    tools:text="148 followers" />
+
+                <TextView
+                    android:id="@+id/tvStoreCategory"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/gochat_text_secondary"
+                    android:textSize="12sp"
+                    tools:text="• Electronics • Lagos" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/tvStoreDescription"
