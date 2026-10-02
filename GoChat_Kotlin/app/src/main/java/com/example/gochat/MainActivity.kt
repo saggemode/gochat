@@ -12,10 +12,14 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.example.gochat.core.ui.EdgeToEdgeHelper.applyEdgeToEdge
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.databinding.ActivityMainBinding
 import com.example.gochat.ui.auth.LoginActivity
@@ -67,6 +71,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyEdgeToEdge()
         super.onCreate(savedInstanceState)
 
         if (!tokenManager.isLoggedIn) {
@@ -79,6 +84,8 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        setupWindowInsets()
 
         checkNotificationPermission()
 
@@ -228,6 +235,31 @@ class MainActivity : AppCompatActivity() {
 
         currentTabTag = tag
         transaction.commit()
+    }
+
+    /**
+     * Handles window insets so that the bottom navigation bar does not overlap
+     * with the system navigation bar (gesture handle / 3-button nav) on all
+     * manufacturers (Samsung, Pixel, Xiaomi, OnePlus, etc.).
+     */
+    private fun setupWindowInsets() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.main) { view, windowInsets ->
+            val insets = windowInsets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            // Pad the fragment container at the top so content clears the status bar
+            binding.fragmentContainer.updatePadding(top = insets.top)
+
+            // Pad the bottom navigation at the bottom so it clears the system nav bar
+            binding.bottomNav.updatePadding(bottom = insets.bottom)
+
+            // Handle side insets for landscape / foldables
+            view.updatePadding(
+                left = insets.left,
+                right = insets.right
+            )
+            WindowInsetsCompat.CONSUMED
+        }
     }
 
     fun navigateToTab(tag: String) {
