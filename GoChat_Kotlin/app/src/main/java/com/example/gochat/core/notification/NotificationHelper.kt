@@ -202,6 +202,7 @@ object NotificationHelper {
             putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, conversationId)
             putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, displayTitle)
             putExtra(ChatRoomActivity.EXTRA_CONVERSATION_AVATAR, senderAvatar)
+            putExtra(ChatRoomActivity.EXTRA_IS_GROUP, isGroup)
         }
 
         val tapPendingIntent = try {

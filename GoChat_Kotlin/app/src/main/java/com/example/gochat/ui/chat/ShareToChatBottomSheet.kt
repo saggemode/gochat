@@ -153,6 +153,7 @@ class ShareToChatBottomSheet(
             putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, conversation.id)
             putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, conversation.title)
             putExtra(ChatRoomActivity.EXTRA_CONVERSATION_AVATAR, conversation.avatarUrl)
+            putExtra(ChatRoomActivity.EXTRA_IS_GROUP, conversation.isGroup)
             putExtra(ChatRoomActivity.EXTRA_PRODUCT_ID, product.id)
             putExtra(ChatRoomActivity.EXTRA_PRODUCT_NAME, product.displayTitle)
             putExtra(ChatRoomActivity.EXTRA_PRODUCT_PRICE, product.price)

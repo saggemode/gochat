@@ -328,7 +328,11 @@ class ChatRoomActivity : AppCompatActivity() {
                     }
                 )
             }
-            viewModel.initConversation(convId)
+            val isGroupChat = intent.getBooleanExtra(EXTRA_IS_GROUP, false)
+            if (!isGroupChat) {
+                binding.tvBotBanner.visibility = View.GONE
+            }
+            viewModel.initConversation(convId, isGroupChat)
         }
 
         setupLinkedOrderBanner()
@@ -1192,8 +1196,10 @@ class ChatRoomActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    combine(viewModel.botConfig, viewModel.isGroupAdmin) { config, isAdmin ->
-                        config?.isActive == true && isAdmin
+                    val isGroupIntent = intent.getBooleanExtra(EXTRA_IS_GROUP, false)
+                    combine(viewModel.botConfig, viewModel.isGroupAdmin, viewModel.isGroup) { config, isAdmin, isGroupVm ->
+                        val isGroup = isGroupIntent || isGroupVm
+                        isGroup && config?.isActive == true && isAdmin
                     }.collect { showBanner ->
                         binding.tvBotBanner.visibility = if (showBanner) View.VISIBLE else View.GONE
                     }

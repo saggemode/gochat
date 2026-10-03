@@ -95,6 +95,9 @@ class ChatRoomViewModel @Inject constructor(
     private val _commandSuggestions = MutableStateFlow<List<BotCommand>>(emptyList())
     val commandSuggestions: StateFlow<List<BotCommand>> = _commandSuggestions.asStateFlow()
 
+    private val _isGroup = MutableStateFlow(false)
+    val isGroup: StateFlow<Boolean> = _isGroup.asStateFlow()
+
     private val _botConfig = MutableStateFlow<BotConfig?>(null)
     val botConfig: StateFlow<BotConfig?> = _botConfig.asStateFlow()
 
@@ -217,14 +220,22 @@ class ChatRoomViewModel @Inject constructor(
         chatRepository.activeConversationId = null
     }
 
-    fun initConversation(convId: String) {
+    fun initConversation(convId: String, isGroupChat: Boolean = false) {
         _conversationId.value = convId
         chatRepository.activeConversationId = convId
         isScreenResumed = true
+        _isGroup.value = isGroupChat
+        _isGroupAdmin.value = false
+        _botConfig.value = null
+        _commandSuggestions.value = emptyList()
+        _mentionSuggestions.value = emptyList()
 
         viewModelScope.launch {
             val conv = chatRepository.getConversationById(convId)
             val currentUserId = tokenManager.userId ?: ""
+            val isGroup = isGroupChat || (conv?.isGroup == true)
+            _isGroup.value = isGroup
+
             if (conv != null) {
                 _screenshotNotificationsEnabled.value = conv.screenshotNotificationsEnabled
                 _isMuted.value = conv.isMuted
@@ -253,6 +264,8 @@ class ChatRoomViewModel @Inject constructor(
             launch {
                 val remoteResult = chatRepository.fetchConversation(convId)
                 remoteResult.getOrNull()?.let { remoteConv ->
+                    val resolvedIsGroup = isGroup || remoteConv.isGroup
+                    _isGroup.value = resolvedIsGroup
                     _isPartnerOnline.value = remoteConv.isOnline
                     _disappearingDuration.value = remoteConv.disappearingMessagesDuration
                     if (remoteConv.lastSeen != null && remoteConv.lastSeen > 0L) {
@@ -274,15 +287,25 @@ class ChatRoomViewModel @Inject constructor(
             sendReadReceipt(convId)
             queryPresence()
             
-            // Populate members for mentions
-            loadMembersFromLocal(convId)
-
-            // Mock Bot Config loading
-            loadBotConfig(convId)
+            if (isGroup) {
+                // Populate members for mentions
+                loadMembersFromLocal(convId)
+                // Mock Bot Config loading only for group chats
+                loadBotConfig(convId)
+            } else {
+                _isGroupAdmin.value = false
+                _botConfig.value = null
+                _commandSuggestions.value = emptyList()
+                loadDirectChatMembers(convId, conv)
+            }
         }
     }
 
     private fun loadBotConfig(convId: String) {
+        if (!_isGroup.value) {
+            _botConfig.value = null
+            return
+        }
         // In a real app, this would fetch from a database or API
         _botConfig.value = BotConfig(
             botId = "bot_123",
@@ -290,6 +313,30 @@ class ChatRoomViewModel @Inject constructor(
             permissions = listOf(BotPermission.ANTI_SPAM, BotPermission.WELCOME_MEMBERS),
             rules = "No spamming allowed!"
         )
+    }
+
+    private suspend fun loadDirectChatMembers(convId: String, conv: Conversation?) {
+        val myId = tokenManager.userId.orEmpty()
+        val c = conv ?: chatRepository.getConversationById(convId)
+        val recentMessages = messages.value
+        val senderMap = recentMessages.associate { it.senderId to it.senderName }
+
+        val fallbackUsers = (c?.memberIds.orEmpty()).map { id ->
+            val senderName = senderMap[id]
+            val name = if (!senderName.isNullOrBlank()) senderName else if (id == myId) "You" else "User_${id.takeLast(4)}"
+            User(id = id, displayName = name)
+        }.toMutableList()
+
+        if (fallbackUsers.isEmpty()) {
+            recentMessages.map {
+                val name = it.senderName.ifBlank { "User_${it.senderId.takeLast(4)}" }
+                User(id = it.senderId, displayName = name)
+            }.distinctBy { it.id }.forEach { fallbackUsers.add(it) }
+        }
+
+        if (fallbackUsers.isNotEmpty()) {
+            _members.value = fallbackUsers
+        }
     }
 
     private suspend fun loadMembersFromLocal(convId: String) {
@@ -310,6 +357,7 @@ class ChatRoomViewModel @Inject constructor(
                 User(id = it.id, displayName = name, avatarUrl = it.avatarUrl)
             }
         } else {
+            _isGroupAdmin.value = false
             // Fallback: extract from conversation memberIds and recent messages
             val conv = chatRepository.getConversationById(convId)
             val recentMessages = messages.value
@@ -398,7 +446,7 @@ class ChatRoomViewModel @Inject constructor(
         val mentions = extractMentionedUserIds(trimmed)
 
         // Check if message is a bot moderation slash command (e.g. /ban @john spam)
-        val isSlashCommand = _isGroupAdmin.value && trimmed.startsWith("/") && BotCommand.ALL_COMMANDS.any {
+        val isSlashCommand = _isGroup.value && _isGroupAdmin.value && trimmed.startsWith("/") && BotCommand.ALL_COMMANDS.any {
             trimmed.substringBefore(" ").equals(it.command, ignoreCase = true)
         }
         if (isSlashCommand) {
@@ -426,8 +474,8 @@ class ChatRoomViewModel @Inject constructor(
     }
 
     private fun handleModerationSlashCommand(rawCommand: String, convId: String) {
-        // Only admins can execute moderation commands
-        if (!_isGroupAdmin.value) return
+        // Only admins in a group can execute moderation commands
+        if (!_isGroup.value || !_isGroupAdmin.value) return
         val parts = rawCommand.split("\\s+".toRegex())
         val command = parts.getOrNull(0)?.lowercase() ?: return
         val targetArg = parts.getOrNull(1).orEmpty()
@@ -997,8 +1045,8 @@ class ChatRoomViewModel @Inject constructor(
         val lastAt = beforeCursor.lastIndexOf('@')
 
         if (beforeCursor.startsWith("/")) {
-            // Only admins can use slash commands
-            if (!_isGroupAdmin.value) {
+            // Only group admins can use slash commands in groups
+            if (!_isGroup.value || !_isGroupAdmin.value) {
                 _commandSuggestions.value = emptyList()
                 _mentionSuggestions.value = emptyList()
                 return
@@ -1335,6 +1383,7 @@ class ChatRoomViewModel @Inject constructor(
     }
 
     private fun handleBotModeration(message: Message) {
+        if (!_isGroup.value) return
         val config = _botConfig.value ?: return
         if (!config.isActive) return
 
