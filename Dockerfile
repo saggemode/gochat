@@ -26,6 +26,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 FROM public.ecr.aws/docker/library/alpine:3.21
 RUN apk add --no-cache ca-certificates tzdata
 COPY --from=builder /out/service /service
+COPY --from=builder /src/migrations /migrations
 USER 65534:65534
 ENTRYPOINT ["/service"]
 
