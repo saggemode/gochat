@@ -873,9 +873,13 @@
 
                         <!-- Gross Revenue -->
                         <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/cardMetricRevenue"
                             android:layout_width="0dp"
                             android:layout_height="80dp"
                             android:layout_columnWeight="1"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?attr/selectableItemBackground"
                             app:cardBackgroundColor="@color/gochat_surface_dark"
                             app:cardCornerRadius="12dp"
                             app:cardElevation="0dp"
@@ -910,9 +914,13 @@
 
                         <!-- Store Orders -->
                         <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/cardMetricOrders"
                             android:layout_width="0dp"
                             android:layout_height="80dp"
                             android:layout_columnWeight="1"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?attr/selectableItemBackground"
                             app:cardBackgroundColor="@color/gochat_surface_dark"
                             app:cardCornerRadius="12dp"
                             app:cardElevation="0dp"
@@ -947,9 +955,13 @@
 
                         <!-- Listed Products -->
                         <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/cardMetricProducts"
                             android:layout_width="0dp"
                             android:layout_height="80dp"
                             android:layout_columnWeight="1"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?attr/selectableItemBackground"
                             app:cardBackgroundColor="@color/gochat_surface_dark"
                             app:cardCornerRadius="12dp"
                             app:cardElevation="0dp"
@@ -982,11 +994,15 @@
                             </LinearLayout>
                         </com.google.android.material.card.MaterialCardView>
 
-                        <!-- Store Views -->
+                        <!-- Store Followers -->
                         <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/cardMetricFollowers"
                             android:layout_width="0dp"
                             android:layout_height="80dp"
                             android:layout_columnWeight="1"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?attr/selectableItemBackground"
                             app:cardBackgroundColor="@color/gochat_surface_dark"
                             app:cardCornerRadius="12dp"
                             app:cardElevation="0dp"

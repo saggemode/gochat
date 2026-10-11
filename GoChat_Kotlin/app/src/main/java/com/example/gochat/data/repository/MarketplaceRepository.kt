@@ -600,7 +600,22 @@ class MarketplaceRepository @Inject constructor(
                 val targetObj = data["profile"]?.jsonObject ?: (if (data.containsKey("store_name") || data.containsKey("business_name")) data else null)
                 if (targetObj != null) {
                     val cached = marketplaceDao.getStoreByOwner(currentUserId)
-                    val store = parseStoreJson(targetObj, "my_store", cached)
+                    var store = parseStoreJson(targetObj, "my_store", cached)
+                    if (store.followersCount <= 0) {
+                        try {
+                            val storeId = store.id.ifBlank { currentUserId }
+                            val storeRes = api.getStore(storeId)
+                            if (storeRes.isSuccessful) {
+                                val sBody = storeRes.body()
+                                val fc = sBody?.get("followers_count")?.jsonPrimitive?.intOrNull
+                                    ?: sBody?.get("followersCount")?.jsonPrimitive?.intOrNull
+                                    ?: sBody?.get("profile")?.jsonObject?.get("followers_count")?.jsonPrimitive?.intOrNull
+                                if (fc != null && fc > 0) {
+                                    store = store.copy(followersCount = fc)
+                                }
+                            }
+                        } catch (_: Exception) {}
+                    }
                     marketplaceDao.insertStore(store)
                     Result.success(store)
                 } else {
@@ -1219,6 +1234,27 @@ class MarketplaceRepository @Inject constructor(
         val trackingCarrier = obj["tracking_carrier"]?.jsonPrimitive?.contentOrNull
         val trackingUrl = obj["tracking_url"]?.jsonPrimitive?.contentOrNull
 
+        val rawItems = obj["items"]?.let { if (it is JsonArray) it else null }
+        val itemsList = rawItems?.mapNotNull { itemEl ->
+            val itm = itemEl as? JsonObject ?: return@mapNotNull null
+            val itemId = itm["id"]?.jsonPrimitive?.contentOrNull ?: UUID.randomUUID().toString()
+            val prodId = (itm["product_id"] ?: itm["id"])?.jsonPrimitive?.contentOrNull ?: ""
+            val qty = itm["quantity"]?.jsonPrimitive?.intOrNull ?: 1
+            val pName = (itm["product_name"] ?: itm["name"])?.jsonPrimitive?.contentOrNull ?: "Product Item"
+            val pPrice = (itm["unit_price"] ?: itm["price"] ?: itm["subtotal"])?.jsonPrimitive?.doubleOrNull ?: 0.0
+            val pImg = (itm["image_url"] ?: itm["image"])?.jsonPrimitive?.contentOrNull
+            CartItem(
+                id = itemId,
+                productId = prodId,
+                quantity = qty,
+                productName = pName,
+                productPrice = pPrice,
+                productImage = pImg,
+                storeId = storeId,
+                storeName = storeName
+            )
+        } ?: emptyList()
+
         return Order(
             id = id,
             orderNumber = orderNum,
@@ -1228,6 +1264,7 @@ class MarketplaceRepository @Inject constructor(
             buyerAvatar = buyerAvatar,
             storeId = storeId,
             storeName = storeName,
+            items = itemsList,
             totalAmount = totalAmount,
             grandTotal = grandTotal,
             discountAmount = discount,

@@ -130,11 +130,41 @@ func (h *BusinessHandler) GetBusinessProfile(c *gin.Context) {
 		return
 	}
 	resp, err := h.client.GetBusinessProfile(c.Request.Context(), &pb.GetBusinessProfileRequest{UserId: userID})
-	if err != nil {
+	if err != nil || resp == nil || resp.Profile == nil {
 		c.JSON(http.StatusOK, gin.H{"profile": nil})
 		return
 	}
-	c.JSON(http.StatusOK, resp)
+	p := resp.Profile
+
+	followersCount := p.FollowersCount
+	if followersCount == 0 {
+		if storeResp, err := h.client.GetStore(c.Request.Context(), &pb.GetStoreRequest{UserId: userID}); err == nil && storeResp != nil && storeResp.Store != nil {
+			if storeResp.Store.FollowersCount > 0 {
+				followersCount = storeResp.Store.FollowersCount
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"profile": gin.H{
+			"user_id":         p.UserId,
+			"business_name":   p.BusinessName,
+			"category":        p.Category,
+			"description":     p.Description,
+			"address":         p.Address,
+			"website":         p.Website,
+			"email":           p.Email,
+			"phone":           p.Phone,
+			"hours_json":      p.HoursJson,
+			"is_verified":     p.IsVerified,
+			"logo_url":        p.LogoUrl,
+			"banner_url":      p.BannerUrl,
+			"state":           p.State,
+			"country_code":    p.CountryCode,
+			"slug":            p.Slug,
+			"followers_count": followersCount,
+		},
+	})
 }
 
 func (h *BusinessHandler) CreateCatalog(c *gin.Context) {

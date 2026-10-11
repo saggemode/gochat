@@ -161,8 +161,8 @@ class MarketplaceViewModel @Inject constructor(
                 1 -> loadFollowedStores()
                 2 -> loadMyStore()
                 else -> {
-                    // Background sync store inventory as well
-                    launch { repository.getMyProducts() }
+                    // Background sync store state, metrics & inventory as well
+                    launch { loadMyStore() }
                 }
             }
             

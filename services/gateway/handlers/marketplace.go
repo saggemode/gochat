@@ -476,7 +476,20 @@ func (h *BusinessHandler) GetStore(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, resp.Store)
+	st := resp.Store
+	followersCount := st.FollowersCount
+	if followersCount == 0 && st.Profile != nil && st.Profile.FollowersCount > 0 {
+		followersCount = st.Profile.FollowersCount
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"profile":         st.Profile,
+		"products":        st.Products,
+		"product_count":   st.ProductCount,
+		"avg_rating":      st.AvgRating,
+		"total_reviews":   st.TotalReviews,
+		"followers_count": followersCount,
+	})
 }
 
 func (h *BusinessHandler) GetStoreProducts(c *gin.Context) {

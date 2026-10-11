@@ -334,6 +334,28 @@ class MarketplaceFragment : Fragment() {
             startActivity(Intent(requireContext(), SellerInsightsActivity::class.java))
         }
 
+        binding.cardMetricRevenue.setOnClickListener {
+            val intent = Intent(requireContext(), OrdersActivity::class.java).apply {
+                putExtra("IS_SELLER_VIEW", true)
+            }
+            startActivity(intent)
+        }
+
+        binding.cardMetricOrders.setOnClickListener {
+            val intent = Intent(requireContext(), OrdersActivity::class.java).apply {
+                putExtra("IS_SELLER_VIEW", true)
+            }
+            startActivity(intent)
+        }
+
+        binding.cardMetricProducts.setOnClickListener {
+            binding.layoutStoreTab.smoothScrollTo(0, binding.tvInventoryTitle.top)
+        }
+
+        binding.cardMetricFollowers.setOnClickListener {
+            startActivity(Intent(requireContext(), SellerInsightsActivity::class.java))
+        }
+
         binding.layoutSelectStoreLogo.setOnClickListener {
             pickStoreLogoLauncher.launch("image/*")
         }

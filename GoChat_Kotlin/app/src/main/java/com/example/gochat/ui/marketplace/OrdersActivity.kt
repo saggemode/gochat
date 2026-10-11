@@ -53,6 +53,11 @@ class OrdersActivity : AppCompatActivity() {
         binding.root.applySystemBarInsets(applyTop = false, applyBottom = true)
 
         setupListeners()
+        val sellerRequested = intent.getBooleanExtra("IS_SELLER_VIEW", false)
+        if (sellerRequested) {
+            isSellerView = true
+            binding.tabLayoutOrders.getTabAt(1)?.select()
+        }
         loadOrders()
     }
 
