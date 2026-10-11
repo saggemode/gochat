@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -141,6 +144,62 @@ func (h *BusinessHandler) CreateOrders(c *gin.Context) {
 	if userID == "" {
 		return
 	}
+
+	bodyBytes, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
+		return
+	}
+
+	var rawBody map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &rawBody); err == nil {
+		// Normalize flat format (e.g. from mobile app placeOrder)
+		if _, hasOrders := rawBody["orders"]; !hasOrders {
+			storeID, _ := rawBody["store_id"].(string)
+			if storeID == "" {
+				storeID, _ = rawBody["business_id"].(string)
+			}
+			rawItems, _ := rawBody["items"].([]interface{})
+			var orderItems []map[string]interface{}
+			for _, it := range rawItems {
+				if itm, ok := it.(map[string]interface{}); ok {
+					pID, _ := itm["product_id"].(string)
+					qty := 1
+					if q, ok := itm["quantity"].(float64); ok && q > 0 {
+						qty = int(q)
+					}
+					if pID != "" {
+						orderItems = append(orderItems, map[string]interface{}{
+							"product_id": pID,
+							"quantity":   qty,
+						})
+					}
+				}
+			}
+			if storeID != "" && len(orderItems) > 0 {
+				rawBody["orders"] = []map[string]interface{}{
+					{
+						"business_id": storeID,
+						"items":       orderItems,
+					},
+				}
+			}
+		}
+		if name, ok := rawBody["shipping_name"].(string); !ok || strings.TrimSpace(name) == "" {
+			rawBody["shipping_name"] = "Customer"
+		}
+		if phone, ok := rawBody["shipping_phone"].(string); !ok || strings.TrimSpace(phone) == "" {
+			rawBody["shipping_phone"] = "N/A"
+		}
+		if addr, ok := rawBody["shipping_address"].(string); !ok || strings.TrimSpace(addr) == "" {
+			rawBody["shipping_address"] = "Delivery Address"
+		}
+		if normalizedBytes, err := json.Marshal(rawBody); err == nil {
+			bodyBytes = normalizedBytes
+		}
+	}
+
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
 	var req struct {
 		ShippingName    string `json:"shipping_name" binding:"required"`

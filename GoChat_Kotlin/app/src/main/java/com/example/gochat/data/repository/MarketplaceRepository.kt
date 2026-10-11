@@ -1134,8 +1134,10 @@ class MarketplaceRepository @Inject constructor(
                 if (list.isNotEmpty()) {
                     marketplaceDao.insertOrders(list)
                 }
+                Result.success(list)
+            } else {
+                Result.success(marketplaceDao.getBuyerOrders(currentUserId))
             }
-            Result.success(marketplaceDao.getBuyerOrders(currentUserId))
         } catch (e: Exception) {
             Result.success(marketplaceDao.getBuyerOrders(currentUserId))
         }
@@ -1151,37 +1153,112 @@ class MarketplaceRepository @Inject constructor(
                 if (list.isNotEmpty()) {
                     marketplaceDao.insertOrders(list)
                 }
-            }
-            // Usually seller hub shows orders for the store(s) owned by user.
-            // For now, we fetch all orders where storeId matches user's store
-            val myStore = marketplaceDao.getStoreByOwner(currentUserId)
-            if (myStore != null) {
-                Result.success(marketplaceDao.getSellerOrders(myStore.id))
+                Result.success(list)
             } else {
-                Result.success(emptyList())
+                val myStore = marketplaceDao.getStoreByOwner(currentUserId)
+                val storeId = myStore?.id ?: currentUserId
+                val local = marketplaceDao.getAllOrders().filter {
+                    it.storeId == storeId || it.storeId == currentUserId || (myStore != null && it.storeId == myStore.id)
+                }
+                Result.success(local)
             }
         } catch (e: Exception) {
             val myStore = marketplaceDao.getStoreByOwner(currentUserId)
-            if (myStore != null) {
-                Result.success(marketplaceDao.getSellerOrders(myStore.id))
-            } else {
-                Result.success(emptyList())
+            val storeId = myStore?.id ?: currentUserId
+            val local = marketplaceDao.getAllOrders().filter {
+                it.storeId == storeId || it.storeId == currentUserId || (myStore != null && it.storeId == myStore.id)
             }
+            Result.success(local)
         }
     }
 
     private fun parseOrdersJson(data: JsonElement?): List<Order> {
-        return when (data) {
-            is JsonArray -> data.mapNotNull {
-                try { json.decodeFromJsonElement<Order>(it) } catch (_: Exception) { null }
+        val array = when (data) {
+            is JsonArray -> data
+            is JsonObject -> data["orders"]?.jsonArray ?: data["data"]?.jsonArray
+            else -> null
+        } ?: return emptyList()
+
+        return array.mapNotNull { parseSingleOrderJson(it) }
+    }
+
+    private fun parseSingleOrderJson(element: JsonElement): Order? {
+        val obj = when (element) {
+            is JsonObject -> element
+            else -> return null
+        }
+        val id = obj["id"]?.jsonPrimitive?.contentOrNull ?: return null
+        val orderNum = obj["order_number"]?.jsonPrimitive?.contentOrNull ?: "ORD-${System.currentTimeMillis()}"
+        val buyerId = (obj["buyer_id"] ?: obj["user_id"])?.jsonPrimitive?.contentOrNull.orEmpty()
+        val buyerName = (obj["buyer_name"] ?: obj["shipping_name"])?.jsonPrimitive?.contentOrNull ?: "Customer"
+        val buyerPhone = (obj["buyer_phone"] ?: obj["shipping_phone"])?.jsonPrimitive?.contentOrNull.orEmpty()
+        val buyerAvatar = obj["buyer_avatar"]?.jsonPrimitive?.contentOrNull
+        val storeId = (obj["store_id"] ?: obj["business_id"])?.jsonPrimitive?.contentOrNull.orEmpty()
+        val storeName = (obj["store_name"] ?: obj["business_name"])?.jsonPrimitive?.contentOrNull ?: "Official Store"
+        val totalAmount = obj["total_amount"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+        val grandTotal = obj["grand_total"]?.jsonPrimitive?.doubleOrNull ?: totalAmount
+        val discount = obj["discount_amount"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+        val shipping = obj["shipping_fee"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+        val rawStatus = obj["status"]?.jsonPrimitive?.contentOrNull?.lowercase() ?: "paid"
+        val status = when (rawStatus) {
+            "pending" -> OrderStatus.PENDING
+            "paid" -> OrderStatus.PAID
+            "processing" -> OrderStatus.PROCESSING
+            "shipped" -> OrderStatus.SHIPPED
+            "out_for_delivery" -> OrderStatus.OUT_FOR_DELIVERY
+            "delivered" -> OrderStatus.DELIVERED
+            "cancelled" -> OrderStatus.CANCELLED
+            "refunded" -> OrderStatus.REFUNDED
+            else -> OrderStatus.PAID
+        }
+        val createdAt = parseTimestampElement(obj["created_at"])
+        val shippingAddr = obj["shipping_address"]?.jsonPrimitive?.contentOrNull
+        val shippingName = obj["shipping_name"]?.jsonPrimitive?.contentOrNull
+        val shippingPhone = obj["shipping_phone"]?.jsonPrimitive?.contentOrNull
+        val trackingNum = obj["tracking_number"]?.jsonPrimitive?.contentOrNull
+        val trackingCarrier = obj["tracking_carrier"]?.jsonPrimitive?.contentOrNull
+        val trackingUrl = obj["tracking_url"]?.jsonPrimitive?.contentOrNull
+
+        return Order(
+            id = id,
+            orderNumber = orderNum,
+            buyerId = buyerId,
+            buyerName = buyerName,
+            buyerPhone = buyerPhone,
+            buyerAvatar = buyerAvatar,
+            storeId = storeId,
+            storeName = storeName,
+            totalAmount = totalAmount,
+            grandTotal = grandTotal,
+            discountAmount = discount,
+            shippingFee = shipping,
+            status = status,
+            shippingAddress = shippingAddr,
+            shippingName = shippingName,
+            shippingPhone = shippingPhone,
+            trackingNumber = trackingNum,
+            trackingCarrier = trackingCarrier,
+            trackingUrl = trackingUrl,
+            createdAt = createdAt
+        )
+    }
+
+    private fun parseTimestampElement(element: JsonElement?): Long {
+        if (element == null) return System.currentTimeMillis()
+        val primitive = try { element.jsonPrimitive } catch (_: Exception) { return System.currentTimeMillis() }
+        val longVal = primitive.longOrNull
+        if (longVal != null) return longVal
+        val str = primitive.contentOrNull ?: return System.currentTimeMillis()
+        return try {
+            java.time.Instant.parse(str).toEpochMilli()
+        } catch (_: Exception) {
+            try {
+                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
+                sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                sdf.parse(str)?.time ?: System.currentTimeMillis()
+            } catch (_: Exception) {
+                System.currentTimeMillis()
             }
-            is JsonObject -> {
-                val array = data["orders"]?.jsonArray ?: data["data"]?.jsonArray
-                array?.mapNotNull {
-                    try { json.decodeFromJsonElement<Order>(it) } catch (_: Exception) { null }
-                } ?: emptyList()
-            }
-            else -> emptyList()
         }
     }
 
@@ -1191,9 +1268,15 @@ class MarketplaceRepository @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 val body = response.body()!!
                 val orderObj = body["order"]?.let { if (it is JsonObject) it else null } ?: body
-                val order = json.decodeFromJsonElement<Order>(orderObj)
-                marketplaceDao.insertOrder(order)
-                Result.success(order)
+                val order = parseSingleOrderJson(orderObj)
+                if (order != null) {
+                    marketplaceDao.insertOrder(order)
+                    Result.success(order)
+                } else {
+                    val localOrder = marketplaceDao.getOrderById(orderId)
+                    if (localOrder != null) Result.success(localOrder)
+                    else Result.failure(Exception("Order not found"))
+                }
             } else {
                 val localOrder = marketplaceDao.getOrderById(orderId)
                 if (localOrder != null) Result.success(localOrder)
@@ -1226,14 +1309,33 @@ class MarketplaceRepository @Inject constructor(
 
     suspend fun placeOrder(storeId: String, items: List<CartItem>, totalAmount: Double, address: String): Result<Order> {
         return try {
+            val customerName = tokenManager.userDisplayName ?: "Customer"
+            val customerPhone = tokenManager.userPhone ?: ""
             val body = buildJsonObject {
-                put("store_id", storeId)
-                put("items", JsonArray(items.map { json.encodeToJsonElement(it) }))
-                put("total_amount", totalAmount)
+                put("shipping_name", customerName)
+                put("shipping_phone", customerPhone.ifBlank { "N/A" })
                 put("shipping_address", address)
+                put("payment_method", "card")
+                put("store_id", storeId)
+                put("business_id", storeId)
+                put("total_amount", totalAmount)
+                put("orders", buildJsonArray {
+                    add(buildJsonObject {
+                        put("business_id", storeId)
+                        put("items", buildJsonArray {
+                            items.forEach { item ->
+                                add(buildJsonObject {
+                                    put("product_id", item.productId)
+                                    put("quantity", item.quantity)
+                                })
+                            }
+                        })
+                    })
+                })
+                put("items", JsonArray(items.map { json.encodeToJsonElement(it) }))
             }
             val response = api.placeOrder(body)
-            val newOrder = Order(
+            val fallbackOrder = Order(
                 id = UUID.randomUUID().toString(),
                 orderNumber = "ORD-${System.currentTimeMillis().toString().takeLast(6)}",
                 storeId = storeId,
@@ -1245,11 +1347,15 @@ class MarketplaceRepository @Inject constructor(
                 createdAt = System.currentTimeMillis()
             )
             val finalOrder = if (response.isSuccessful) {
-                val data = response.body() ?: buildJsonObject {}
-                val orderObj = data["order"]?.jsonObject ?: data
-                try { json.decodeFromJsonElement<Order>(orderObj) } catch (_: Exception) { newOrder }
+                val bodyEl = response.body()
+                val order = when (bodyEl) {
+                    is JsonArray -> bodyEl.firstOrNull()?.let { parseSingleOrderJson(it) }
+                    is JsonObject -> bodyEl["order"]?.let { parseSingleOrderJson(it) } ?: parseSingleOrderJson(bodyEl)
+                    else -> null
+                }
+                order ?: fallbackOrder
             } else {
-                newOrder
+                fallbackOrder
             }
             marketplaceDao.insertOrder(finalOrder)
             marketplaceDao.clearCart()

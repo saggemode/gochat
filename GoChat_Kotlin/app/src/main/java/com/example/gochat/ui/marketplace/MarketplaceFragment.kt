@@ -990,7 +990,7 @@ class MarketplaceFragment : Fragment() {
                 launch {
                     viewModel.sellerOrders.collect { orders ->
                         binding.tvMetricOrders.text = orders.size.toString()
-                        val revenue = orders.sumOf { it.totalAmount }
+                        val revenue = orders.sumOf { if (it.grandTotal > 0.0) it.grandTotal else it.totalAmount }
                         binding.tvMetricRevenue.text = String.format(Locale.US, "$%.2f", revenue)
                     }
                 }
@@ -1073,8 +1073,6 @@ class MarketplaceFragment : Fragment() {
     }
 
     private fun bindStoreState(store: Store?) {
-
-
         if (store != null) {
             binding.layoutNoStore.visibility = View.GONE
             binding.layoutHasStore.visibility = View.VISIBLE
@@ -1088,11 +1086,15 @@ class MarketplaceFragment : Fragment() {
             )
             MediaImageHelper.loadSafeImage(binding.ivHubStoreLogo, store.logoUrl, isCircle = true)
 
+            // Total Followers in Store Dashboard
+            binding.tvMetricViews.text = store.followersCount.toString()
+
             // Update store tab title
             binding.tabLayoutMain.getTabAt(2)?.text = store.name.take(12)
         } else {
             binding.layoutNoStore.visibility = View.VISIBLE
             binding.layoutHasStore.visibility = View.GONE
+            binding.tvMetricViews.text = "0"
             binding.tabLayoutMain.getTabAt(2)?.text = getString(R.string.tab_open_store)
         }
     }

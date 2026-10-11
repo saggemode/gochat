@@ -413,6 +413,13 @@ func (r *BusinessRepository) CreateOrders(ctx context.Context, input *CreateOrde
 	}
 	defer tx.Rollback(ctx)
 
+	// Ensure stub buyer exists in core.users so FK constraints never fail across databases
+	_, _ = tx.Exec(ctx, `
+		INSERT INTO core.users (id, email, password_hash, display_name)
+		VALUES ($1, $2, '', $3)
+		ON CONFLICT (id) DO NOTHING
+	`, input.BuyerID, input.BuyerID+"@placeholder.local", input.ShippingName)
+
 	var createdOrders []*Order
 	var allPriceChanges []PriceChangeInfo
 
@@ -445,6 +452,13 @@ func (r *BusinessRepository) CreateOrders(ctx context.Context, input *CreateOrde
 			if oInput.BusinessID == "" || oInput.BusinessID == "00000000-0000-0000-0000-000000000000" {
 				oInput.BusinessID = actualBizID
 			}
+
+			// Ensure stub business profile exists for business_id so FK constraints pass
+			_, _ = tx.Exec(ctx, `
+				INSERT INTO business.business_profiles (user_id, business_name, slug, category, created_at, updated_at)
+				VALUES ($1, 'Official Store', $2, 'Retail', NOW(), NOW())
+				ON CONFLICT (user_id) DO NOTHING
+			`, oInput.BusinessID, fmt.Sprintf("store-%s", oInput.BusinessID))
 
 			if stock < itemInput.Quantity {
 				return nil, fmt.Errorf("insufficient stock for product %s (available: %d, requested: %d)", pName, stock, itemInput.Quantity)

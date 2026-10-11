@@ -200,7 +200,7 @@ data class Order(
     @SerialName("actual_delivery_date") val actualDeliveryDate: String? = null,
     @SerialName("delivery_notes") val deliveryNotes: String? = null,
     @SerialName("shipped_at") val shippedAt: String? = null,
-    @SerialName("created_at") val createdAt: Long = System.currentTimeMillis()
+    @SerialName("created_at") @Serializable(with = TimestampSerializer::class) val createdAt: Long = System.currentTimeMillis()
 )
 
 @Serializable
