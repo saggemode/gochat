@@ -238,7 +238,25 @@ func (s *MediaServer) GetMediaFile(ctx context.Context, req *mediapb.GetMediaFil
 		return nil, status.Error(codes.InvalidArgument, "file_id is required")
 	}
 
-	// 1. Try DB storage
+	// 1. Try MinIO storage
+	if s.store != nil {
+		rc, size, mime, err := s.store.GetFile(ctx, req.FileId)
+		if err == nil {
+			defer rc.Close()
+			data, readErr := io.ReadAll(rc)
+			if readErr == nil {
+				return &mediapb.GetMediaFileResponse{
+					FileId:    req.FileId,
+					FileName:  req.FileId,
+					MimeType:  mime,
+					SizeBytes: size,
+					Data:      data,
+				}, nil
+			}
+		}
+	}
+
+	// 2. Try DB storage
 	if s.dbStore != nil && s.dbStore.IsConfigured() {
 		file, err := s.dbStore.GetFile(ctx, req.FileId)
 		if err == nil {

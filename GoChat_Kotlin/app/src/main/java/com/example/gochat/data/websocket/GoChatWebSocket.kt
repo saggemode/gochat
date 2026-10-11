@@ -105,6 +105,9 @@ class GoChatWebSocket(
                     handleDisconnect()
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) {
+                    return@launch
+                }
                 if (!manuallyDisconnected) {
                     val msg = e.message.orEmpty().lowercase()
                     Log.e(TAG, "WebSocket error: ${e.message}")

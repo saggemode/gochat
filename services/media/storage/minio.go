@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -137,10 +139,31 @@ func (s *MinIOStorage) Ping(ctx context.Context) error {
 	return err
 }
 
+// GetFile streams an object from MinIO into an io.ReadCloser along with its metadata.
+func (s *MinIOStorage) GetFile(ctx context.Context, objectKey string) (io.ReadCloser, int64, string, error) {
+	obj, err := s.client.GetObject(ctx, s.bucket, objectKey, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, 0, "", err
+	}
+	stat, err := obj.Stat()
+	if err != nil {
+		_ = obj.Close()
+		return nil, 0, "", err
+	}
+	return obj, stat.Size, stat.ContentType, nil
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 func (s *MinIOStorage) publicURL(objectKey string) string {
-	return fmt.Sprintf("http://%s/%s/%s", s.client.EndpointURL().Host, s.bucket, objectKey)
+	if custom := os.Getenv("MINIO_PUBLIC_URL"); custom != "" {
+		return fmt.Sprintf("%s/%s/%s", strings.TrimSuffix(custom, "/"), s.bucket, objectKey)
+	}
+	scheme := "http"
+	if s.client.EndpointURL().Scheme == "https" {
+		scheme = "https"
+	}
+	return fmt.Sprintf("%s://%s/%s/%s", scheme, s.client.EndpointURL().Host, s.bucket, objectKey)
 }
 
 func sanitizeFileName(name string) string {

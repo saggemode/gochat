@@ -56,6 +56,7 @@ class GoChatWebSocket(
                     if (!manuallyDisconnected) scheduleReconnect(wsUrl)
                 }
             } catch (e: Exception) {
+                if (e is CancellationException) return@launch
                 _isConnected.value = false
                 session = null
                 if (!manuallyDisconnected) scheduleReconnect(wsUrl)
