@@ -276,8 +276,12 @@ class MarketplaceRepository @Inject constructor(
                     if (local != null) Result.success(local)
                     else Result.failure(Exception("Product not found"))
                 }
+            } else if (response.code() == 404) {
+                // Product was deleted or wiped from server; delete from local cache so stale item isn't shown
+                marketplaceDao.deleteProduct(productId)
+                Result.failure(Exception("Product not found on server"))
             } else {
-                // Fallback to local DB
+                // Fallback to local DB for server errors / temporary outages
                 val local = marketplaceDao.getAllProducts().find { it.id == productId }
                 if (local != null) Result.success(local)
                 else Result.failure(Exception("Product not found"))
@@ -818,10 +822,17 @@ class MarketplaceRepository @Inject constructor(
                 }
                 val rawMsg = parsedMsg ?: "Failed to submit review (HTTP ${response.code()})"
                 val cleanMsg = when {
-                    rawMsg.contains("foreign key constraint", ignoreCase = true) || rawMsg.contains("product not found", ignoreCase = true) ->
+                    rawMsg.contains("product not found", ignoreCase = true) || response.code() == 404 ->
                         "This product is no longer available on the server."
                     rawMsg.contains("cannot review your own product", ignoreCase = true) ->
                         "You cannot review your own product."
+                    rawMsg.contains("foreign key constraint", ignoreCase = true) -> {
+                        if (rawMsg.contains("product", ignoreCase = true)) {
+                            "This product is no longer available on the server."
+                        } else {
+                            "User account sync error. Please try again."
+                        }
+                    }
                     rawMsg.startsWith("rpc error: code =") -> {
                         val desc = rawMsg.substringAfter("desc = ").substringBefore(" (SQLSTATE")
                         desc.ifBlank { rawMsg }

@@ -165,6 +165,13 @@ func (r *BusinessRepository) resolveSubCategoryID(ctx context.Context, subCatInp
 }
 
 func (r *BusinessRepository) CreateMarketplaceProduct(ctx context.Context, p *MarketplaceProduct) (*MarketplaceProduct, error) {
+	// Ensure stub user exists in core.users so FK constraints on owner_id/user_id don't fail
+	_, _ = r.db.Exec(ctx, `
+		INSERT INTO core.users (id, email, password_hash, display_name)
+		VALUES ($1, $2, '', 'Merchant Store')
+		ON CONFLICT (id) DO NOTHING
+	`, p.OwnerID, p.OwnerID+"@placeholder.local")
+
 	// Verify user has created a business profile, or auto-create a default one
 	var profileExists bool
 	_ = r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM business.business_profiles WHERE user_id = $1)`, p.OwnerID).Scan(&profileExists)
@@ -695,6 +702,13 @@ func (r *BusinessRepository) CreateReview(ctx context.Context, productID, userID
 	var actualID string
 	var actualCreatedAt time.Time
 
+	// Ensure stub user exists in core.users so any legacy FK constraint passes
+	_, _ = r.db.Exec(ctx, `
+		INSERT INTO core.users (id, email, password_hash, display_name)
+		VALUES ($1, $2, '', 'GoChat User')
+		ON CONFLICT (id) DO NOTHING
+	`, userID, userID+"@placeholder.local")
+
 	// Single review per user per product: ON CONFLICT updates the existing review
 	err = r.db.QueryRow(ctx,
 		`INSERT INTO business.reviews (id, product_id, user_id, rating, comment, image_urls)
@@ -742,6 +756,13 @@ func (r *BusinessRepository) ToggleReviewHelpful(ctx context.Context, reviewID, 
 		return false, err
 	}
 	defer tx.Rollback(ctx)
+
+	// Ensure stub user exists in core.users so any legacy FK constraint passes
+	_, _ = tx.Exec(ctx, `
+		INSERT INTO core.users (id, email, password_hash, display_name)
+		VALUES ($1, $2, '', 'GoChat User')
+		ON CONFLICT (id) DO NOTHING
+	`, userID, userID+"@placeholder.local")
 
 	var exists bool
 	_ = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM business.review_helpful_votes WHERE review_id = $1 AND user_id = $2)`, reviewID, userID).Scan(&exists)

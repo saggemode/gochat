@@ -70,6 +70,13 @@ type BusinessProfile struct {
 }
 
 func (r *BusinessRepository) CreateBusinessProfile(ctx context.Context, p *BusinessProfile) (*BusinessProfile, error) {
+	// Ensure stub user exists in core.users so FK constraints on user_id don't fail
+	_, _ = r.db.Exec(ctx, `
+		INSERT INTO core.users (id, email, password_hash, display_name)
+		VALUES ($1, $2, '', $3)
+		ON CONFLICT (id) DO NOTHING
+	`, p.UserID, p.UserID+"@placeholder.local", p.BusinessName)
+
 	if p.Slug == "" {
 		p.Slug = generateSlug(p.BusinessName, p.UserID)
 	}

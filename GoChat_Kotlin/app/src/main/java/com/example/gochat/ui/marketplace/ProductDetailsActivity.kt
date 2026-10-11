@@ -227,8 +227,10 @@ class ProductDetailsActivity : AppCompatActivity() {
                     addToCart(p, andProceedToCheckout = true)
                 }
             } ?: run {
+                val err = result.exceptionOrNull()?.message.orEmpty()
+                val isExplicit404 = err.contains("404") || err.contains("not found on server", ignoreCase = true)
                 val name = intent.getStringExtra("product_name")
-                if (!name.isNullOrBlank()) {
+                if (!name.isNullOrBlank() && !isExplicit404) {
                     val fallback = Product(
                         id = productId,
                         name = name,
