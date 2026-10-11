@@ -453,35 +453,44 @@ class MarketplaceViewModel @Inject constructor(
                 })
 
                 _refreshEvent.tryEmit(Unit)
+                loadMyStore()
                 _isLoading.value = false
                 onSuccess()
             } else {
-                // Offline fallback: optimistically insert into Room DB so the user sees it immediately
-                repository.insertProductLocally(newProduct)
+                val isOnline = networkMonitor.isOnline.value
+                val errorMsg = result.exceptionOrNull()?.message ?: "Failed to create product"
+                if (isOnline) {
+                    _isLoading.value = false
+                    _error.value = errorMsg
+                    onError(errorMsg)
+                } else {
+                    // Offline fallback: optimistically insert into Room DB so the user sees it immediately
+                    repository.insertProductLocally(newProduct)
 
-                _products.value = listOf(newProduct) + _products.value.filter { it.id != newProduct.id }
-                _myProducts.value = listOf(newProduct) + _myProducts.value.filter { it.id != newProduct.id }
+                    _products.value = listOf(newProduct) + _products.value.filter { it.id != newProduct.id }
+                    _myProducts.value = listOf(newProduct) + _myProducts.value.filter { it.id != newProduct.id }
 
-                // Optimistic broadcast
-                webSocket.send(buildJsonObject {
-                    put("type", JsonPrimitive("new_product"))
-                    put("product", json.encodeToJsonElement(newProduct))
-                })
+                    // Optimistic broadcast
+                    webSocket.send(buildJsonObject {
+                        put("type", JsonPrimitive("new_product"))
+                        put("product", json.encodeToJsonElement(newProduct))
+                    })
 
-                try {
-                    val workData = workDataOf(
-                        MarketplaceSyncWorker.KEY_PRODUCT_JSON to json.encodeToString(newProduct)
-                    )
-                    val workRequest = OneTimeWorkRequestBuilder<MarketplaceSyncWorker>()
-                        .setInputData(workData)
-                        .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-                        .build()
-                    workManager.enqueueUniqueWork("product_sync_${newProduct.id}", ExistingWorkPolicy.REPLACE, workRequest)
-                } catch (_: Exception) {}
+                    try {
+                        val workData = workDataOf(
+                            MarketplaceSyncWorker.KEY_PRODUCT_JSON to json.encodeToString(newProduct)
+                        )
+                        val workRequest = OneTimeWorkRequestBuilder<MarketplaceSyncWorker>()
+                            .setInputData(workData)
+                            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                            .build()
+                        workManager.enqueueUniqueWork("product_sync_${newProduct.id}", ExistingWorkPolicy.REPLACE, workRequest)
+                    } catch (_: Exception) {}
 
-                _refreshEvent.tryEmit(Unit)
-                _isLoading.value = false
-                onSuccess()
+                    _refreshEvent.tryEmit(Unit)
+                    _isLoading.value = false
+                    onSuccess()
+                }
             }
         }
     }

@@ -117,23 +117,47 @@ func deriveCurrencyFromCountry(country string) string {
 func (r *BusinessRepository) resolveOrCreateCategoryID(ctx context.Context, catInput string) string {
 	catInput = strings.TrimSpace(catInput)
 	if catInput == "" {
-		return ""
+		var defID string
+		_ = r.db.QueryRow(ctx, `SELECT id::text FROM business.categories WHERE name ILIKE 'Other' OR name ILIKE 'General' LIMIT 1`).Scan(&defID)
+		return defID
 	}
+
+	// 1. If valid UUID, check if it actually exists in business.categories!
 	if _, err := uuid.Parse(catInput); err == nil {
-		return catInput
+		var exists bool
+		_ = r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM business.categories WHERE id = $1)`, catInput).Scan(&exists)
+		if exists {
+			return catInput
+		}
 	}
+
 	var catID string
-	// 1. Try matching top-level category name
+	// 2. Try matching top-level category name exactly
 	err := r.db.QueryRow(ctx, `SELECT id::text FROM business.categories WHERE name ILIKE $1 LIMIT 1`, catInput).Scan(&catID)
 	if err == nil && catID != "" {
 		return catID
 	}
-	// 2. Try matching sub-category name
+
+	// 3. Try partial name match (e.g. "elect" matches "Electronics", "food" matches "Food & Drinks")
+	err = r.db.QueryRow(ctx, `SELECT id::text FROM business.categories WHERE name ILIKE $1 LIMIT 1`, "%"+catInput+"%").Scan(&catID)
+	if err == nil && catID != "" {
+		return catID
+	}
+
+	// 4. Try matching sub-category name
 	err = r.db.QueryRow(ctx, `SELECT category_id::text FROM business.sub_categories WHERE name ILIKE $1 LIMIT 1`, catInput).Scan(&catID)
 	if err == nil && catID != "" {
 		return catID
 	}
-	// 3. Auto-insert/upsert into business.categories so custom categories are NEVER lost
+
+	// 5. If catInput was an unresolvable UUID, fallback to a known default category so foreign key NEVER fails
+	if _, err := uuid.Parse(catInput); err == nil {
+		var defID string
+		_ = r.db.QueryRow(ctx, `SELECT id::text FROM business.categories WHERE name ILIKE 'Other' OR name ILIKE 'General' OR name ILIKE 'Electronics' LIMIT 1`).Scan(&defID)
+		return defID
+	}
+
+	// 6. Auto-insert/upsert into business.categories so custom categories are NEVER lost
 	titleName := strings.Title(strings.ToLower(catInput))
 	newID := uuid.New().String()
 	_ = r.db.QueryRow(ctx, `
@@ -497,6 +521,10 @@ func (r *BusinessRepository) ListMarketplaceProducts(ctx context.Context, catego
 	argIdx := 1
 
 	if categoryID != "" && categoryID != "all" {
+		resolvedID := r.resolveOrCreateCategoryID(ctx, categoryID)
+		if resolvedID != "" {
+			categoryID = resolvedID
+		}
 		if _, err := uuid.Parse(categoryID); err == nil {
 			whereClause += fmt.Sprintf(" AND (p.category_id = $%d OR p.sub_category_id = $%d)", argIdx, argIdx)
 			args = append(args, categoryID)

@@ -96,17 +96,23 @@ class MarketplaceRepository @Inject constructor(
     companion object {
         val defaultCategories = listOf(
             Category("all", "All", iconName = "grid"),
-            Category("7acb1bee-6bd7-4b42-ae24-8d1e4a49cdf3", "Electronics", iconName = "devices"),
+            Category("3bc4b137-8ffa-47b4-9207-2c550cccbe18", "Electronics", iconName = "devices"),
             Category("a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d", "Phones", iconName = "smartphone"),
-            Category("b2c3d4e5-f6a7-4b6c-9d0e-1f2a3b4c5d6e", "Fashion", iconName = "checkroom"),
+            Category("3e84ce02-1ae6-4851-8495-814fc806b96b", "Fashion", iconName = "checkroom"),
             Category("c3d4e5f6-a7b8-4c7d-0e1f-2a3b4c5d6e7f", "Gaming", iconName = "sports_esports"),
-            Category("d4e5f6a7-b8c9-4d8e-1f2a-3b4c5d6e7f8a", "Home", iconName = "weekend"),
-            Category("e5f6a7b8-c9d0-4e9f-2a3b-4c5d6e7f8a9b", "Services", iconName = "handyman"),
-            Category("f6a7b8c9-d0e1-4f0a-3b4c-5d6e7f8a9b0c", "Beauty", iconName = "spa"),
-            Category("0a1b2c3d-4e5f-4a0b-8c9d-1e2f3a4b5c6d", "Sports", iconName = "fitness_center"),
-            Category("1b2c3d4e-5f6a-4b1c-9d0e-2f3a4b5c6d7e", "Food", iconName = "restaurant"),
-            Category("2c3d4e5f-6a7b-4c2d-0e1f-3a4b5c6d7e8f", "General", iconName = "category")
+            Category("1015a855-9a4d-48ed-95e6-2ab1f933fb09", "Home & Garden", iconName = "weekend"),
+            Category("fa813070-bf53-4b6c-af6a-e6b0d88d79bf", "Furniture", iconName = "weekend"),
+            Category("76647403-3615-4c74-9918-901e63ae540d", "Services", iconName = "handyman"),
+            Category("b76027bf-4027-4628-9faa-3d21dfdafd36", "Health & Beauty", iconName = "spa"),
+            Category("f2032ef6-94eb-4a37-a472-f9b1036de6d7", "Sports", iconName = "fitness_center"),
+            Category("a3f296c4-a007-435b-bab2-f75dd8a1dabe", "Food & Drinks", iconName = "restaurant"),
+            Category("688386bc-1ca1-4729-9d8c-f7ebc82c9520", "Books & Media", iconName = "menu_book"),
+            Category("99b41bf0-7a1a-415a-ae12-8e5d12849867", "Vehicles", iconName = "directions_car"),
+            Category("de591649-e471-43fb-ad18-c93ca6a0667b", "Other", iconName = "category")
         )
+
+        @Volatile
+        var cachedCategories: List<Category> = defaultCategories
 
         private val UUID_REGEX = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
@@ -117,30 +123,46 @@ class MarketplaceRepository @Inject constructor(
 
         fun resolveCategoryId(rawId: String?, rawName: String? = null): String {
             if (!rawId.isNullOrBlank() && isValidUuid(rawId)) {
+                val foundById = cachedCategories.firstOrNull { it.id.equals(rawId.trim(), ignoreCase = true) }
+                if (foundById != null) return foundById.id
                 return rawId.trim().lowercase()
             }
             val query = (rawName?.takeIf { it.isNotBlank() } ?: rawId).orEmpty().trim().lowercase()
+            if (query.isBlank()) return "de591649-e471-43fb-ad18-c93ca6a0667b"
+
+            val match = cachedCategories.firstOrNull {
+                !it.id.equals("all", ignoreCase = true) &&
+                (it.name.equals(query, ignoreCase = true) || it.name.lowercase().contains(query) || query.contains(it.name.lowercase()))
+            }
+            if (match != null) return match.id
+
             return when {
                 query.contains("elect") || query.contains("gadget") || query.contains("tech") || query.contains("laptop") || query.contains("pc") || query.contains("tv") ->
-                    "7acb1bee-6bd7-4b42-ae24-8d1e4a49cdf3"
+                    "3bc4b137-8ffa-47b4-9207-2c550cccbe18"
                 query.contains("phone") || query.contains("mobile") || query.contains("smart") || query.contains("cell") || query.contains("iphone") || query.contains("android") ->
                     "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d"
                 query.contains("fash") || query.contains("cloth") || query.contains("wear") || query.contains("shoe") || query.contains("dress") || query.contains("shirt") ->
-                    "b2c3d4e5-f6a7-4b6c-9d0e-1f2a3b4c5d6e"
+                    "3e84ce02-1ae6-4851-8495-814fc806b96b"
                 query.contains("gam") || query.contains("playstation") || query.contains("xbox") || query.contains("nintendo") || query.contains("ps5") ->
                     "c3d4e5f6-a7b8-4c7d-0e1f-2a3b4c5d6e7f"
-                query.contains("home") || query.contains("furn") || query.contains("decor") || query.contains("bed") || query.contains("kitchen") ->
-                    "d4e5f6a7-b8c9-4d8e-1f2a-3b4c5d6e7f8a"
+                query.contains("furn") || query.contains("chair") || query.contains("table") || query.contains("bed") ->
+                    "fa813070-bf53-4b6c-af6a-e6b0d88d79bf"
+                query.contains("home") || query.contains("garden") || query.contains("decor") || query.contains("kitchen") ->
+                    "1015a855-9a4d-48ed-95e6-2ab1f933fb09"
                 query.contains("serv") || query.contains("handy") || query.contains("repair") || query.contains("plumb") || query.contains("electrician") ->
-                    "e5f6a7b8-c9d0-4e9f-2a3b-4c5d6e7f8a9b"
-                query.contains("beaut") || query.contains("cosmet") || query.contains("skin") || query.contains("hair") || query.contains("perfume") || query.contains("makeup") ->
-                    "f6a7b8c9-d0e1-4f0a-3b4c-5d6e7f8a9b0c"
+                    "76647403-3615-4c74-9918-901e63ae540d"
+                query.contains("beaut") || query.contains("cosmet") || query.contains("skin") || query.contains("hair") || query.contains("perfume") || query.contains("makeup") || query.contains("health") ->
+                    "b76027bf-4027-4628-9faa-3d21dfdafd36"
                 query.contains("sport") || query.contains("fit") || query.contains("gym") || query.contains("athlet") || query.contains("ball") ->
-                    "0a1b2c3d-4e5f-4a0b-8c9d-1e2f3a4b5c6d"
-                query.contains("food") || query.contains("groc") || query.contains("drink") || query.contains("snack") || query.contains("eat") || query.contains("meal") ->
-                    "1b2c3d4e-5f6a-4b1c-9d0e-2f3a4b5c6d7e"
+                    "f2032ef6-94eb-4a37-a472-f9b1036de6d7"
+                query.contains("food") || query.contains("groc") || query.contains("drink") || query.contains("snack") || query.contains("eat") || query.contains("meal") || query.contains("restaurant") ->
+                    "a3f296c4-a007-435b-bab2-f75dd8a1dabe"
+                query.contains("book") || query.contains("media") ->
+                    "688386bc-1ca1-4729-9d8c-f7ebc82c9520"
+                query.contains("car") || query.contains("vehic") || query.contains("auto") ->
+                    "99b41bf0-7a1a-415a-ae12-8e5d12849867"
                 else ->
-                    "2c3d4e5f-6a7b-4c2d-0e1f-3a4b5c6d7e8f" // General
+                    "de591649-e471-43fb-ad18-c93ca6a0667b" // Other
             }
         }
 
@@ -148,17 +170,26 @@ class MarketplaceRepository @Inject constructor(
             if (!rawName.isNullOrBlank() && rawName.lowercase() != "all" && !isValidUuid(rawName)) {
                 return rawName.trim().replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
             }
+            if (!rawId.isNullOrBlank()) {
+                val match = cachedCategories.firstOrNull { it.id.equals(rawId.trim(), ignoreCase = true) }
+                if (match != null && !match.id.equals("all", ignoreCase = true)) {
+                    return match.name
+                }
+            }
             return when (rawId?.lowercase()?.trim()) {
-                "7acb1bee-6bd7-4b42-ae24-8d1e4a49cdf3" -> "Electronics"
+                "3bc4b137-8ffa-47b4-9207-2c550cccbe18", "7acb1bee-6bd7-4b42-ae24-8d1e4a49cdf3" -> "Electronics"
                 "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d" -> "Phones"
-                "b2c3d4e5-f6a7-4b6c-9d0e-1f2a3b4c5d6e" -> "Fashion"
+                "3e84ce02-1ae6-4851-8495-814fc806b96b", "b2c3d4e5-f6a7-4b6c-9d0e-1f2a3b4c5d6e" -> "Fashion"
                 "c3d4e5f6-a7b8-4c7d-0e1f-2a3b4c5d6e7f" -> "Gaming"
-                "d4e5f6a7-b8c9-4d8e-1f2a-3b4c5d6e7f8a" -> "Home"
-                "e5f6a7b8-c9d0-4e9f-2a3b-4c5d6e7f8a9b" -> "Services"
-                "f6a7b8c9-d0e1-4f0a-3b4c-5d6e7f8a9b0c" -> "Beauty"
-                "0a1b2c3d-4e5f-4a0b-8c9d-1e2f3a4b5c6d" -> "Sports"
-                "1b2c3d4e-5f6a-4b1c-9d0e-2f3a4b5c6d7e" -> "Food"
-                else -> "General"
+                "fa813070-bf53-4b6c-af6a-e6b0d88d79bf" -> "Furniture"
+                "1015a855-9a4d-48ed-95e6-2ab1f933fb09", "d4e5f6a7-b8c9-4d8e-1f2a-3b4c5d6e7f8a" -> "Home & Garden"
+                "76647403-3615-4c74-9918-901e63ae540d", "e5f6a7b8-c9d0-4e9f-2a3b-4c5d6e7f8a9b" -> "Services"
+                "b76027bf-4027-4628-9faa-3d21dfdafd36", "f6a7b8c9-d0e1-4f0a-3b4c-5d6e7f8a9b0c" -> "Health & Beauty"
+                "f2032ef6-94eb-4a37-a472-f9b1036de6d7", "0a1b2c3d-4e5f-4a0b-8c9d-1e2f3a4b5c6d" -> "Sports"
+                "a3f296c4-a007-435b-bab2-f75dd8a1dabe", "1b2c3d4e-5f6a-4b1c-9d0e-2f3a4b5c6d7e" -> "Food & Drinks"
+                "688386bc-1ca1-4729-9d8c-f7ebc82c9520" -> "Books & Media"
+                "99b41bf0-7a1a-415a-ae12-8e5d12849867" -> "Vehicles"
+                else -> "Other"
             }
         }
     }
@@ -476,11 +507,14 @@ class MarketplaceRepository @Inject constructor(
                 if (list.isNotEmpty()) {
                     val hasAll = list.any { it.id.equals("all", ignoreCase = true) }
                     val fullList = if (!hasAll) listOf(Category("all", "All", iconName = "grid")) + list else list
+                    cachedCategories = fullList
                     Result.success(fullList)
                 } else {
+                    cachedCategories = defaultCategories
                     Result.success(defaultCategories)
                 }
             } else {
+                cachedCategories = defaultCategories
                 Result.success(defaultCategories)
             }
         } catch (e: Exception) {

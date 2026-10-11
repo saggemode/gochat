@@ -73,9 +73,6 @@ class ProductRemoteMediator(
                 db.withTransaction {
                     if (loadType == LoadType.REFRESH) {
                         db.marketplaceDao().clearRemoteKeys()
-                        if ((categoryId == null || categoryId == "all") && search.isNullOrBlank()) {
-                            db.marketplaceDao().clearProducts()
-                        }
                     }
                     val prevKey = if (page == 1) null else page - 1
                     val nextKey = if (endOfPaginationReached) null else page + 1
