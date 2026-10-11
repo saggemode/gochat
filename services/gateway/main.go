@@ -459,7 +459,7 @@ func main() {
 		authRequired.POST("/chat/polls/:id/vote", chatHandler.VotePoll)
 		authRequired.POST("/chat/polls/:id/close", chatHandler.ClosePoll)
 
-		// Media upload & Telegram CDN download
+		// Media upload
 		uploadLimiter := middleware.RateLimitMiddleware(redisClient, middleware.RateLimitConfig{
 			Prefix:             "rl:media:upload",
 			Limit:              20,
@@ -467,7 +467,6 @@ func main() {
 			UseUserIfAvailable: true,
 		})
 		authRequired.POST("/media/upload", uploadLimiter, mediaHandler.Upload)
-		authRequired.GET("/media/download/:fileId", mediaHandler.DownloadTelegram)
 
 		// Group management
 		authRequired.GET("/groups/:id/members", groupHandler.ListGroupMembers)
