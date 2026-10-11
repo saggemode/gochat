@@ -255,10 +255,12 @@ class MarketplaceViewModel @Inject constructor(
             val store = storeRes.getOrNull()
             _myStore.value = store
 
-            if (store != null) {
-                val myProdRes = repository.getMyProducts()
+            val myProdRes = repository.getMyProducts()
+            if (myProdRes.isSuccess) {
                 _myProducts.value = myProdRes.getOrDefault(emptyList())
+            }
 
+            if (store != null) {
                 val ordersRes = repository.getSellerOrders()
                 _sellerOrders.value = ordersRes.getOrDefault(emptyList())
             }
@@ -457,7 +459,7 @@ class MarketplaceViewModel @Inject constructor(
                 _isLoading.value = false
                 onSuccess()
             } else {
-                val isOnline = networkMonitor.isOnline.value
+                val isOnline = networkMonitor.isCurrentlyOnline()
                 val errorMsg = result.exceptionOrNull()?.message ?: "Failed to create product"
                 if (isOnline) {
                     _isLoading.value = false

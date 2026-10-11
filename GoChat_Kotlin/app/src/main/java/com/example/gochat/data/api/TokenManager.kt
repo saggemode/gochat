@@ -8,6 +8,7 @@ import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
@@ -178,7 +179,27 @@ class TokenManager private constructor(context: Context) {
     // ── User Fields ──────────────────────────────────────────────
 
     var userId: String?
-        get() = prefs.getString(KEY_USER_ID, null)
+        get() {
+            val stored = prefs.getString(KEY_USER_ID, null)
+            if (!stored.isNullOrBlank()) return stored
+            val token = getToken()
+            if (!token.isNullOrBlank() && token.split(".").size == 3) {
+                try {
+                    val payloadBytes = Base64.decode(
+                        token.split(".")[1],
+                        Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
+                    )
+                    val payloadJson = String(payloadBytes, Charsets.UTF_8)
+                    val json = Json { ignoreUnknownKeys = true }.parseToJsonElement(payloadJson).jsonObject
+                    val uid = (json["uid"] ?: json["sub"] ?: json["user_id"])?.jsonPrimitive?.contentOrNull
+                    if (!uid.isNullOrBlank()) {
+                        prefs.edit().putString(KEY_USER_ID, uid).apply()
+                        return uid
+                    }
+                } catch (_: Exception) {}
+            }
+            return null
+        }
         set(value) = prefs.edit().putString(KEY_USER_ID, value).apply()
 
     var userPin: String?

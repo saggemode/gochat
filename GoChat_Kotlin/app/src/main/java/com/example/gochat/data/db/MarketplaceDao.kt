@@ -58,7 +58,7 @@ interface MarketplaceDao {
     @Query("SELECT * FROM products WHERE storeId = :storeId")
     suspend fun getStoreProducts(storeId: String): List<Product>
 
-    @Query("SELECT * FROM products WHERE sellerId = :sellerId")
+    @Query("SELECT * FROM products WHERE (sellerId = :sellerId AND :sellerId != '') OR (storeId = :sellerId AND :sellerId != '') ORDER BY createdAt DESC")
     suspend fun getMyProducts(sellerId: String): List<Product>
 
     @Query("DELETE FROM products WHERE id = :productId")
