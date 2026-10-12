@@ -31,7 +31,7 @@ class StoreProductAdapter(
 
         fun bind(product: Product) {
             binding.tvProductName.text = product.displayTitle
-            binding.tvProductPrice.text = String.format(Locale.US, "$%.2f", product.price)
+            binding.tvProductPrice.text = product.getFormattedPrice()
             binding.tvProductStock.text = String.format(
                 Locale.US,
                 "Stock: %d • %s",

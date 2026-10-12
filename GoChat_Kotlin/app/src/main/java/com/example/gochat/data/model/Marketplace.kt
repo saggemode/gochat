@@ -117,6 +117,31 @@ data class Product(
 
     val displayTitle: String
         get() = name.ifBlank { "Product" }
+
+    val displayPrice: Double
+        get() = com.example.gochat.core.currency.CurrencyManager.convert(price, currency)
+
+    fun getFormattedPrice(targetCurrency: String = com.example.gochat.core.currency.CurrencyManager.getUserCurrency()): String {
+        return com.example.gochat.core.currency.CurrencyManager.formatPrice(price, currency, targetCurrency)
+    }
+
+    fun getFormattedOriginalPrice(targetCurrency: String = com.example.gochat.core.currency.CurrencyManager.getUserCurrency()): String {
+        return com.example.gochat.core.currency.CurrencyManager.formatPrice(originalPrice, currency, targetCurrency)
+    }
+
+    fun getConversionNote(targetCurrency: String = com.example.gochat.core.currency.CurrencyManager.getUserCurrency()): String? {
+        return com.example.gochat.core.currency.CurrencyManager.getOriginalPriceNote(price, currency, targetCurrency)
+    }
+
+    fun isCurrencyConverted(targetCurrency: String = com.example.gochat.core.currency.CurrencyManager.getUserCurrency()): Boolean {
+        return com.example.gochat.core.currency.CurrencyManager.isConverted(currency, targetCurrency)
+    }
+
+    val resolvedCountry: String
+        get() = com.example.gochat.core.currency.CurrencyManager.getCountryForCurrency(currency)
+
+    val resolvedContinent: String
+        get() = com.example.gochat.core.currency.CurrencyManager.getContinentForCurrency(currency)
 }
 
 @Serializable

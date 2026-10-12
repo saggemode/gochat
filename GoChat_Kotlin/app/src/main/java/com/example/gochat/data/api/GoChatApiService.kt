@@ -308,6 +308,11 @@ interface GoChatApiService {
     // ── Marketplace & Business ───────────────────────────────────
     // ═══════════════════════════════════════════════════════════════
 
+    @GET("api/v1/fx/rates")
+    suspend fun getFxRates(
+        @Query("base") base: String = "USD"
+    ): Response<JsonObject>
+
     @GET(ApiConstants.PRODUCTS)
     suspend fun getProducts(
         @Query("category_id") categoryId: String? = null,

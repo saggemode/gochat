@@ -61,6 +61,7 @@ class AuthRepository @Inject constructor(
                 put("password", safePassword)
                 put("display_name", safeName)
                 put("country_code", countryCode.ifBlank { "NG" })
+                put("currency", com.example.gochat.ui.auth.CountryData.getByCountryCode(countryCode).currencyCode)
             }
 
             val response = api.register(body)
@@ -656,6 +657,21 @@ class AuthRepository @Inject constructor(
         if (!status.isNullOrBlank()) {
             tokenManager.userStatusText = status
         }
+
+        val countryCode = (userObj["country_code"] ?: userObj["countryCode"])
+            ?.jsonPrimitive?.contentOrNull
+        val currency = userObj["currency"]?.jsonPrimitive?.contentOrNull
+
+        val resolvedCountry = when {
+            !countryCode.isNullOrBlank() -> countryCode
+            !tokenManager.userPhone.isNullOrBlank() -> com.example.gochat.ui.auth.CountryData.getByPhone(tokenManager.userPhone.orEmpty()).code
+            else -> tokenManager.userCountryCode.ifBlank { "NG" }
+        }
+
+        com.example.gochat.core.currency.CurrencyManager.setUserCountryAndCurrency(
+            countryCode = resolvedCountry,
+            currencyCode = currency
+        )
     }
 
     suspend fun syncPushTokenIfAvailable() {

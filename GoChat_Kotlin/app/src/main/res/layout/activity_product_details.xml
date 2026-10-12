@@ -144,6 +144,18 @@
                     tools:text="4.9 ★ (342)" />
             </LinearLayout>
 
+            <!-- FX Currency Conversion Info -->
+            <TextView
+                android:id="@+id/tvFxConversionInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/whatsapp_teal_light"
+                android:textSize="12sp"
+                android:visibility="gone"
+                tools:text="🌍 Converted from $20.00 USD (1 USD = ₦1,520.00)"
+                tools:visibility="visible" />
+
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"

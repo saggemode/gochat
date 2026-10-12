@@ -30,7 +30,7 @@ class CartAdapter(
         fun bind(item: CartItem) {
             val context = binding.root.context
             binding.tvProductName.text = item.productName ?: context.getString(R.string.placeholder_product_name)
-            binding.tvProductPrice.text = context.getString(R.string.price_format_usd, (item.productPrice ?: 0.0).toString())
+            binding.tvProductPrice.text = com.example.gochat.core.currency.CurrencyManager.formatPrice(item.productPrice ?: 0.0, "USD")
             binding.tvQuantity.text = item.quantity.toString()
             
             MediaImageHelper.loadSafeImage(binding.ivProductImage, item.productImage)

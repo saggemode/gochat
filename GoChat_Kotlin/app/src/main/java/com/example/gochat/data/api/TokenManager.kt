@@ -14,6 +14,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import java.io.File
 import java.security.KeyStore
+import com.example.gochat.ui.auth.CountryData
 
 /**
  * Secure JWT token and user-session storage using EncryptedSharedPreferences.
@@ -35,6 +36,10 @@ class TokenManager private constructor(context: Context) {
         private const val KEY_FCM_TOKEN = "fcm_token"
         private const val KEY_BIOMETRIC_LOCK = "biometric_lock_enabled"
         private const val KEY_DEVICE_ID = "device_id"
+        private const val KEY_USER_COUNTRY_CODE = "user_country_code"
+        private const val KEY_USER_CURRENCY_CODE = "user_currency_code"
+        private const val KEY_USER_CURRENCY_SYMBOL = "user_currency_symbol"
+        private const val KEY_USER_CONTINENT = "user_continent"
 
         @Volatile
         private var INSTANCE: TokenManager? = null
@@ -229,6 +234,68 @@ class TokenManager private constructor(context: Context) {
     var isBiometricLockEnabled: Boolean
         get() = prefs.getBoolean(KEY_BIOMETRIC_LOCK, false)
         set(value) = prefs.edit().putBoolean(KEY_BIOMETRIC_LOCK, value).apply()
+
+    var userCountryCode: String
+        get() {
+            val stored = prefs.getString(KEY_USER_COUNTRY_CODE, null)
+            if (!stored.isNullOrBlank()) return stored.uppercase()
+            val phone = userPhone.orEmpty()
+            if (phone.isNotBlank()) {
+                val inferred = CountryData.getByPhone(phone).code
+                prefs.edit().putString(KEY_USER_COUNTRY_CODE, inferred).apply()
+                return inferred
+            }
+            return "NG"
+        }
+        set(value) = prefs.edit().putString(KEY_USER_COUNTRY_CODE, value.uppercase()).apply()
+
+    var userCurrencyCode: String
+        get() {
+            val stored = prefs.getString(KEY_USER_CURRENCY_CODE, null)
+            if (!stored.isNullOrBlank()) return stored.uppercase()
+            val country = CountryData.getByCountryCode(userCountryCode)
+            val curr = country.currencyCode
+            prefs.edit().putString(KEY_USER_CURRENCY_CODE, curr).apply()
+            return curr
+        }
+        set(value) = prefs.edit().putString(KEY_USER_CURRENCY_CODE, value.uppercase()).apply()
+
+    var userCurrencySymbol: String
+        get() {
+            val stored = prefs.getString(KEY_USER_CURRENCY_SYMBOL, null)
+            if (!stored.isNullOrBlank()) return stored
+            val country = CountryData.getByCountryCode(userCountryCode)
+            val sym = country.currencySymbol
+            prefs.edit().putString(KEY_USER_CURRENCY_SYMBOL, sym).apply()
+            return sym
+        }
+        set(value) = prefs.edit().putString(KEY_USER_CURRENCY_SYMBOL, value).apply()
+
+    var userContinent: String
+        get() {
+            val stored = prefs.getString(KEY_USER_CONTINENT, null)
+            if (!stored.isNullOrBlank()) return stored
+            val country = CountryData.getByCountryCode(userCountryCode)
+            val cont = country.continent
+            prefs.edit().putString(KEY_USER_CONTINENT, cont).apply()
+            return cont
+        }
+        set(value) = prefs.edit().putString(KEY_USER_CONTINENT, value).apply()
+
+    fun setUserCountryAndCurrency(
+        countryCode: String,
+        currencyCode: String? = null,
+        currencySymbol: String? = null,
+        continent: String? = null
+    ) {
+        val c = CountryData.getByCountryCode(countryCode)
+        prefs.edit()
+            .putString(KEY_USER_COUNTRY_CODE, c.code)
+            .putString(KEY_USER_CURRENCY_CODE, currencyCode?.ifBlank { null } ?: c.currencyCode)
+            .putString(KEY_USER_CURRENCY_SYMBOL, currencySymbol?.ifBlank { null } ?: c.currencySymbol)
+            .putString(KEY_USER_CONTINENT, continent?.ifBlank { null } ?: c.continent)
+            .apply()
+    }
 
     // ── Session Helpers ──────────────────────────────────────────
 

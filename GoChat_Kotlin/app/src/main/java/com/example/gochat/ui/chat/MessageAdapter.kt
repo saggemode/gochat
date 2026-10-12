@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import coil.transform.RoundedCornersTransformation
+import android.graphics.Paint
 import com.example.gochat.R
 import com.example.gochat.core.media.AudioPlayerManager
 import com.example.gochat.core.wallpaper.BubbleShape
@@ -24,6 +25,7 @@ import com.example.gochat.core.wallpaper.ChatBubbleHelper
 import com.example.gochat.core.wallpaper.ChatTheme
 import com.example.gochat.data.model.CatalogData
 import com.example.gochat.data.model.CatalogItemData
+import com.example.gochat.data.model.CustomOfferData
 import com.example.gochat.data.model.InvoiceData
 import com.example.gochat.data.model.Message
 import com.example.gochat.data.model.MessageStatus
@@ -69,6 +71,8 @@ class MessageAdapter(
     var onPayInvoiceClicked: ((message: Message, invoiceData: InvoiceData) -> Unit)? = null
     var onMarkShippedClicked: ((message: Message, invoiceData: InvoiceData) -> Unit)? = null
     var onConfirmReceiptClicked: ((message: Message, invoiceData: InvoiceData) -> Unit)? = null
+    var onAcceptOfferClicked: ((message: Message, offer: CustomOfferData) -> Unit)? = null
+    var onCounterOfferClicked: ((message: Message, offer: CustomOfferData) -> Unit)? = null
     private var accentColor: Int = 0xFF00A884.toInt() // Default emerald
     private var bubbleShape: BubbleShape = BubbleShape.CLASSIC
 
@@ -183,6 +187,106 @@ class MessageAdapter(
         } else {
             layoutBadge.visibility = View.GONE
             layoutBadge.setOnClickListener(null)
+        }
+    }
+
+    private fun bindCustomOffer(
+        message: Message,
+        isMe: Boolean,
+        layoutCustomOfferCard: View,
+        tvOfferCardTitle: TextView,
+        tvOfferDiscountBadge: TextView,
+        tvOfferItemTitle: TextView,
+        tvOfferOriginalPrice: TextView,
+        tvOfferPrice: TextView,
+        tvOfferNote: TextView,
+        btnAcceptOffer: TextView,
+        btnCounterOffer: TextView,
+        tvMessageContent: TextView
+    ) {
+        val isOffer = (message.content.contains("\"custom_offer\"") ||
+                message.content.contains("\"offered_price\"")) && !message.isDeleted
+
+        if (isOffer) {
+            layoutCustomOfferCard.visibility = View.VISIBLE
+            try {
+                val json = Json { ignoreUnknownKeys = true; isLenient = true }
+                val rootObj = json.decodeFromString<JsonObject>(message.content)
+                val offerObj = rootObj["custom_offer"]?.let { if (it is JsonObject) it else null } ?: rootObj
+
+                val offerId = offerObj["id"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                val prodId = offerObj["product_id"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                val itemName = offerObj["item_name"]?.jsonPrimitive?.contentOrNull ?: "Custom Offer"
+                val origPrice = offerObj["original_price"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+                val offPrice = offerObj["offered_price"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+                val noteStr = offerObj["note"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                val statusStr = offerObj["status"]?.jsonPrimitive?.contentOrNull ?: "pending"
+
+                val offerData = CustomOfferData(
+                    id = offerId,
+                    productId = prodId,
+                    itemName = itemName,
+                    originalPrice = origPrice,
+                    offeredPrice = offPrice,
+                    note = noteStr,
+                    status = statusStr
+                )
+
+                tvOfferItemTitle.text = itemName
+                tvOfferPrice.text = String.format(Locale.US, "$%.2f", offPrice)
+
+                if (origPrice > offPrice && origPrice > 0) {
+                    tvOfferOriginalPrice.visibility = View.VISIBLE
+                    tvOfferOriginalPrice.text = String.format(Locale.US, "$%.2f", origPrice)
+                    tvOfferOriginalPrice.paintFlags = tvOfferOriginalPrice.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
+
+                    val discountPercent = (((origPrice - offPrice) / origPrice) * 100).toInt()
+                    tvOfferDiscountBadge.visibility = View.VISIBLE
+                    tvOfferDiscountBadge.text = "🔥 $discountPercent% OFF"
+                } else {
+                    tvOfferOriginalPrice.visibility = View.GONE
+                    tvOfferDiscountBadge.visibility = View.GONE
+                }
+
+                if (noteStr.isNotBlank()) {
+                    tvOfferNote.visibility = View.VISIBLE
+                    tvOfferNote.text = noteStr
+                } else {
+                    tvOfferNote.visibility = View.GONE
+                }
+
+                when (statusStr.lowercase(Locale.ROOT)) {
+                    "accepted" -> {
+                        btnAcceptOffer.text = "✅ ACCEPTED"
+                        btnAcceptOffer.isEnabled = false
+                        btnCounterOffer.visibility = View.GONE
+                    }
+                    "declined" -> {
+                        btnAcceptOffer.text = "❌ DECLINED"
+                        btnAcceptOffer.isEnabled = false
+                        btnCounterOffer.visibility = View.GONE
+                    }
+                    else -> {
+                        btnAcceptOffer.text = if (isMe) "⚡ Pending" else "⚡ Accept"
+                        btnAcceptOffer.isEnabled = !isMe
+                        btnCounterOffer.visibility = View.VISIBLE
+
+                        btnAcceptOffer.setOnClickListener {
+                            onAcceptOfferClicked?.invoke(message, offerData)
+                        }
+                        btnCounterOffer.setOnClickListener {
+                            onCounterOfferClicked?.invoke(message, offerData)
+                        }
+                    }
+                }
+
+                tvMessageContent.visibility = View.GONE
+                tvMessageContent.text = ""
+            } catch (e: Exception) {
+                layoutCustomOfferCard.visibility = View.GONE
+            }
+        } else {
+            layoutCustomOfferCard.visibility = View.GONE
         }
     }
 
@@ -871,6 +975,21 @@ class MessageAdapter(
                     tvMessageContent = tvMessageContent
                 )
 
+                bindCustomOffer(
+                    message = message,
+                    isMe = true,
+                    layoutCustomOfferCard = layoutCustomOfferCard,
+                    tvOfferCardTitle = tvOfferCardTitle,
+                    tvOfferDiscountBadge = tvOfferDiscountBadge,
+                    tvOfferItemTitle = tvOfferItemTitle,
+                    tvOfferOriginalPrice = tvOfferOriginalPrice,
+                    tvOfferPrice = tvOfferPrice,
+                    tvOfferNote = tvOfferNote,
+                    btnAcceptOffer = btnAcceptOffer,
+                    btnCounterOffer = btnCounterOffer,
+                    tvMessageContent = tvMessageContent
+                )
+
                 // Product Catalog Card Row
                 bindCatalogCard(
                     message = message,
@@ -1301,6 +1420,21 @@ class MessageAdapter(
                     tvPaymentStatusBadge = tvPaymentStatusBadge,
                     tvPaymentEscrowNote = tvPaymentEscrowNote,
                     btnPaymentAction = btnPaymentAction,
+                    tvMessageContent = tvMessageContent
+                )
+
+                bindCustomOffer(
+                    message = message,
+                    isMe = false,
+                    layoutCustomOfferCard = layoutCustomOfferCard,
+                    tvOfferCardTitle = tvOfferCardTitle,
+                    tvOfferDiscountBadge = tvOfferDiscountBadge,
+                    tvOfferItemTitle = tvOfferItemTitle,
+                    tvOfferOriginalPrice = tvOfferOriginalPrice,
+                    tvOfferPrice = tvOfferPrice,
+                    tvOfferNote = tvOfferNote,
+                    btnAcceptOffer = btnAcceptOffer,
+                    btnCounterOffer = btnCounterOffer,
                     tvMessageContent = tvMessageContent
                 )
 

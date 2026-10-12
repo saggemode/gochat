@@ -107,8 +107,9 @@ class ProductDetailsActivity : AppCompatActivity() {
             binding.tvProductName.text = initialName
         }
         val initialPrice = intent.getDoubleExtra("product_price", 0.0)
+        val initialCurrency = intent.getStringExtra("product_currency") ?: "USD"
         if (initialPrice > 0.0) {
-            binding.tvProductPrice.text = String.format(Locale.US, "$%.2f", initialPrice)
+            binding.tvProductPrice.text = com.example.gochat.core.currency.CurrencyManager.formatPrice(initialPrice, initialCurrency)
         }
 
         setupAdapters()
@@ -397,20 +398,34 @@ class ProductDetailsActivity : AppCompatActivity() {
         })
         updateReviewUI()
         binding.tvProductName.text = product.displayTitle
-        binding.tvProductPrice.text = String.format(Locale.US, "$%.2f", product.price)
+        binding.tvProductPrice.text = product.getFormattedPrice()
 
         setupVariantsUI(product)
 
         if (product.hasDiscount) {
             binding.tvOriginalPrice.visibility = View.VISIBLE
             binding.tvOriginalPrice.paintFlags = binding.tvOriginalPrice.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
-            binding.tvOriginalPrice.text = String.format(Locale.US, "$%.2f", product.originalPrice)
+            binding.tvOriginalPrice.text = product.getFormattedOriginalPrice()
 
             binding.tvDiscountBadge.visibility = View.VISIBLE
             binding.tvDiscountBadge.text = String.format(Locale.US, "-%d%%", product.discountPercent)
+        } else if (product.isCurrencyConverted()) {
+            binding.tvOriginalPrice.visibility = View.VISIBLE
+            binding.tvOriginalPrice.paintFlags = binding.tvOriginalPrice.paintFlags and Paint.STRIKE_THRU_TEXT_FLAG.inv()
+            binding.tvOriginalPrice.text = product.getConversionNote()
+            binding.tvDiscountBadge.visibility = View.GONE
         } else {
             binding.tvOriginalPrice.visibility = View.GONE
             binding.tvDiscountBadge.visibility = View.GONE
+        }
+
+        // Display FX Conversion details banner if converted
+        if (product.isCurrencyConverted()) {
+            val rateQuote = com.example.gochat.core.currency.CurrencyManager.getRateQuote(product.currency)
+            binding.tvFxConversionInfo.visibility = View.VISIBLE
+            binding.tvFxConversionInfo.text = "🌍 Converted from ${product.currency} (${product.getConversionNote()}) · $rateQuote"
+        } else {
+            binding.tvFxConversionInfo.visibility = View.GONE
         }
 
         binding.tvRating.text = String.format(Locale.US, "%.1f ★ (%d)", product.rating, product.reviewsCount)
@@ -521,7 +536,7 @@ class ProductDetailsActivity : AppCompatActivity() {
         selectedVariant = found
         found?.let {
             val displayPrice = if (it.priceOverride > 0) it.priceOverride else p.price
-            binding.tvProductPrice.text = String.format(Locale.US, "$%.2f", displayPrice)
+            binding.tvProductPrice.text = com.example.gochat.core.currency.CurrencyManager.formatPrice(displayPrice, p.currency)
         }
     }
 

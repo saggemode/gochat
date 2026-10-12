@@ -68,6 +68,7 @@ import com.example.gochat.data.model.MessageType
 import com.example.gochat.core.haptic.HapticEngine
 import androidx.transition.TransitionManager
 import androidx.transition.AutoTransition
+import com.example.gochat.data.model.InvoiceData
 import com.example.gochat.databinding.ActivityChatRoomBinding
 import com.example.gochat.databinding.BottomSheetAttachmentPickerBinding
 import com.example.gochat.databinding.DialogImagePreviewBinding
@@ -86,6 +87,7 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 import com.example.gochat.data.repository.ChatRepository
+import com.example.gochat.databinding.BottomSheetCustomOfferBinding
 
 @AndroidEntryPoint
 class ChatRoomActivity : AppCompatActivity() {
@@ -577,6 +579,35 @@ class ChatRoomActivity : AppCompatActivity() {
                     .setNegativeButton("Not Yet", null)
                     .show()
             }
+            onAcceptOfferClicked = { message, offer ->
+                AlertDialog.Builder(this@ChatRoomActivity)
+                    .setTitle("Accept Custom Offer")
+                    .setMessage("Accept offer of ${String.format(Locale.US, "$%.2f", offer.offeredPrice)} for '${offer.itemName}'?")
+                    .setPositiveButton("Accept & Pay") { _, _ ->
+                        viewModel.updateCustomOfferStatus(
+                            messageId = message.id,
+                            currentContent = message.content,
+                            newStatus = "accepted"
+                        )
+                        val invoiceData = InvoiceData(
+                            id = offer.id,
+                            itemName = offer.itemName,
+                            amount = offer.offeredPrice,
+                            note = offer.note,
+                            status = "pending"
+                        )
+                        showEscrowCheckoutBottomSheet(message, invoiceData)
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            }
+            onCounterOfferClicked = { _, offer ->
+                showCreateCustomOfferBottomSheet(
+                    prefillItem = offer.itemName,
+                    prefillOriginal = offer.offeredPrice,
+                    prefillOffered = offer.offeredPrice * 0.9
+                )
+            }
         }
 
         val layoutManager = LinearLayoutManager(this).apply {
@@ -975,6 +1006,62 @@ class ChatRoomActivity : AppCompatActivity() {
             HapticEngine.playMessageSent(this)
             sheet.dismiss()
             Toast.makeText(this, "💳 Payment request sent", Toast.LENGTH_SHORT).show()
+        }
+
+        sheet.show()
+    }
+
+    private fun showCreateCustomOfferBottomSheet(
+        prefillItem: String = "",
+        prefillOriginal: Double = 0.0,
+        prefillOffered: Double = 0.0
+    ) {
+        val sheet = BottomSheetDialog(this)
+        val offerBinding = BottomSheetCustomOfferBinding.inflate(layoutInflater)
+        sheet.setContentView(offerBinding.root)
+
+        if (prefillItem.isNotBlank()) {
+            offerBinding.etOfferItemName.setText(prefillItem)
+        }
+        if (prefillOriginal > 0) {
+            offerBinding.etOfferOriginalPrice.setText(prefillOriginal.toString())
+        }
+        if (prefillOffered > 0) {
+            offerBinding.etOfferPrice.setText(prefillOffered.toString())
+        }
+
+        offerBinding.btnCloseOfferSheet.setOnClickListener {
+            sheet.dismiss()
+        }
+
+        offerBinding.btnSendOffer.setOnClickListener {
+            val itemName = offerBinding.etOfferItemName.text.toString().trim()
+            val origStr = offerBinding.etOfferOriginalPrice.text.toString().trim()
+            val offStr = offerBinding.etOfferPrice.text.toString().trim()
+            val note = offerBinding.etOfferNote.text.toString().trim()
+
+            if (itemName.isBlank()) {
+                Toast.makeText(this, "Please enter an item name", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val origPrice = origStr.toDoubleOrNull() ?: 0.0
+            val offPrice = offStr.toDoubleOrNull()
+
+            if (offPrice == null || offPrice <= 0.0) {
+                Toast.makeText(this, "Please enter a valid offered price", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            viewModel.sendCustomOfferMessage(
+                itemName = itemName,
+                originalPrice = origPrice,
+                offeredPrice = offPrice,
+                note = note
+            )
+            HapticEngine.playMessageSent(this)
+            sheet.dismiss()
+            Toast.makeText(this, "🔥 Custom offer sent", Toast.LENGTH_SHORT).show()
         }
 
         sheet.show()

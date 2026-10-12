@@ -48,6 +48,12 @@ class GoChatApp : Application(), Configuration.Provider, ImageLoaderFactory {
         // 2. Initialize Adaptive DayNight Theme
         ThemeManager.init(this)
 
+        // 2b. Initialize CurrencyManager with user token preferences & sync FX rates
+        com.example.gochat.core.currency.CurrencyManager.init(this, tokenManager)
+        appScope.launch {
+            com.example.gochat.core.currency.CurrencyManager.syncRates(apiService)
+        }
+
         // 3. Initialize LinkPreviewManager with authenticated API service
         com.example.gochat.core.utils.LinkPreviewManager.apiService = apiService
 

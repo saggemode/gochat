@@ -65,6 +65,23 @@ data class InvoiceData(
 )
 
 @Serializable
+data class CustomOfferData(
+    val id: String = "",
+    @SerialName("product_id") val productId: String = "",
+    @SerialName("item_name") val itemName: String = "",
+    @SerialName("original_price") val originalPrice: Double = 0.0,
+    @SerialName("offered_price") val offeredPrice: Double = 0.0,
+    val note: String = "",
+    val status: String = "pending", // "pending", "accepted", "countered", "declined"
+    @SerialName("expires_at") val expiresAt: Long = 0L
+) {
+    val discountPercent: Int
+        get() = if (originalPrice > offeredPrice && originalPrice > 0) {
+            (((originalPrice - offeredPrice) / originalPrice) * 100).toInt()
+        } else 0
+}
+
+@Serializable
 enum class MessageStatus {
     @SerialName("sending") SENDING,
     @SerialName("sent") SENT,

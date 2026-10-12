@@ -132,6 +132,7 @@ class MarketplaceFragment : Fragment() {
                 putExtra("product_name", product.displayTitle)
                 putExtra("product_image", product.primaryImage)
                 putExtra("product_price", product.price)
+                putExtra("product_currency", product.currency)
                 putExtra("store_id", product.storeId)
                 putExtra("store_name", product.storeName)
                 putExtra("seller_pin", product.sellerPin)

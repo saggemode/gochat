@@ -33,15 +33,20 @@ class ProductAdapter(
 
         fun bind(product: Product) {
             binding.tvProductName.text = product.displayTitle
-            binding.tvProductPrice.text = String.format(Locale.US, "$%.2f", product.price)
+            binding.tvProductPrice.text = product.getFormattedPrice()
 
             if (product.hasDiscount) {
                 binding.tvOriginalPrice.visibility = View.VISIBLE
                 binding.tvOriginalPrice.paintFlags = binding.tvOriginalPrice.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
-                binding.tvOriginalPrice.text = String.format(Locale.US, "$%.2f", product.originalPrice)
+                binding.tvOriginalPrice.text = product.getFormattedOriginalPrice()
 
                 binding.tvDiscountBadge.visibility = View.VISIBLE
                 binding.tvDiscountBadge.text = String.format(Locale.US, "-%d%%", product.discountPercent)
+            } else if (product.isCurrencyConverted()) {
+                binding.tvOriginalPrice.visibility = View.VISIBLE
+                binding.tvOriginalPrice.paintFlags = binding.tvOriginalPrice.paintFlags and Paint.STRIKE_THRU_TEXT_FLAG.inv()
+                binding.tvOriginalPrice.text = product.getConversionNote()
+                binding.tvDiscountBadge.visibility = View.GONE
             } else {
                 binding.tvOriginalPrice.visibility = View.GONE
                 binding.tvDiscountBadge.visibility = View.GONE

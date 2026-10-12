@@ -877,6 +877,73 @@ class ChatRoomViewModel @Inject constructor(
         }
     }
 
+    fun sendCustomOfferMessage(
+        itemName: String,
+        originalPrice: Double,
+        offeredPrice: Double,
+        note: String,
+        targetConvId: String? = null
+    ) {
+        val convId = targetConvId ?: _conversationId.value
+        if (convId.isEmpty()) return
+
+        val offerId = "offer_${System.currentTimeMillis()}"
+        val offerJson = buildJsonObject {
+            put("type", "custom_offer")
+            put("custom_offer", buildJsonObject {
+                put("id", offerId)
+                put("item_name", itemName)
+                put("original_price", originalPrice)
+                put("offered_price", offeredPrice)
+                put("note", note)
+                put("status", "pending")
+            })
+        }.toString()
+
+        viewModelScope.launch {
+            chatRepository.sendMessage(
+                conversationId = convId,
+                content = offerJson,
+                type = 10
+            )
+        }
+    }
+
+    fun updateCustomOfferStatus(
+        messageId: String,
+        currentContent: String,
+        newStatus: String
+    ) {
+        viewModelScope.launch {
+            try {
+                val rootObj = Json.decodeFromString<JsonObject>(currentContent)
+                val offerObj = rootObj["custom_offer"]?.jsonObject ?: rootObj
+
+                val updatedOfferObj = buildJsonObject {
+                    offerObj.forEach { (key, value) ->
+                        if (key == "status") {
+                            put("status", newStatus)
+                        } else {
+                            put(key, value)
+                        }
+                    }
+                    if (!offerObj.containsKey("status")) {
+                        put("status", newStatus)
+                    }
+                }
+
+                val newContent = buildJsonObject {
+                    put("type", "custom_offer")
+                    put("custom_offer", updatedOfferObj)
+                }.toString()
+
+                chatRepository.editMessage(messageId, newContent)
+            } catch (e: Exception) {
+                Log.e("ChatRoomVM", "Failed to update custom offer status: ${e.message}")
+            }
+        }
+    }
+
     fun sendSystemMessage(content: String, targetConvId: String? = null) {
         val convId = targetConvId ?: _conversationId.value
         if (convId.isEmpty()) return

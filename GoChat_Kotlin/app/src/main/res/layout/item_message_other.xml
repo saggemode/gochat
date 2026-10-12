@@ -734,6 +734,157 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Custom Offer Card Preview -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/layoutCustomOfferCard"
+            android:layout_width="250dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="6dp"
+            app:cardBackgroundColor="@color/gochat_surface_dark"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/gochat_border_dark"
+            app:strokeWidth="1dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <!-- Offer Header Row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:contentDescription="Offer"
+                        android:src="@drawable/ic_bolt"
+                        app:tint="#F39C12" />
+
+                    <TextView
+                        android:id="@+id/tvOfferCardTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:layout_weight="1"
+                        android:text="Custom Price Offer"
+                        android:textColor="@color/gochat_text_primary"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvOfferDiscountBadge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_pill"
+                        android:backgroundTint="#40E67E22"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:textColor="#F39C12"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        tools:text="🔥 20% OFF" />
+                </LinearLayout>
+
+                <!-- Item Title -->
+                <TextView
+                    android:id="@+id/tvOfferItemTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:textColor="@color/gochat_text_primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    tools:text="Product / Offer Title" />
+
+                <!-- Price Row (Original Strikethrough vs Offered) -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tvOfferOriginalPrice"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/gochat_text_secondary"
+                        android:textSize="12sp"
+                        tools:text="$100.00" />
+
+                    <TextView
+                        android:id="@+id/tvOfferPrice"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:textColor="@color/gochat_emerald_light"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        tools:text="$80.00" />
+                </LinearLayout>
+
+                <!-- Note / Terms -->
+                <TextView
+                    android:id="@+id/tvOfferNote"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textColor="@color/gochat_text_secondary"
+                    android:textSize="11sp"
+                    android:textStyle="italic"
+                    tools:text="Valid for 24 hours only!" />
+
+                <!-- Action Buttons -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/btnAcceptOffer"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="3dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_pill"
+                        android:backgroundTint="@color/whatsapp_teal_light"
+                        android:gravity="center"
+                        android:paddingVertical="5dp"
+                        android:text="⚡ Accept"
+                        android:textColor="@color/white"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/btnCounterOffer"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="3dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_pill"
+                        android:backgroundTint="@color/gochat_card_dark"
+                        android:gravity="center"
+                        android:paddingVertical="5dp"
+                        android:text="🔄 Counter"
+                        android:textColor="@color/gochat_text_primary"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- Message Text -->
 
         <TextView

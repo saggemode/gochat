@@ -14,7 +14,10 @@ data class User(
     @SerialName("status_text") val statusText: String = "Hey there! I am using GoChat.",
     val status: String = "offline",
     @SerialName("is_online") val isOnline: Boolean = false,
-    @SerialName("last_seen") val lastSeen: String? = null
+    @SerialName("last_seen") val lastSeen: String? = null,
+    @SerialName("country_code") val countryCode: String = "",
+    val currency: String = "",
+    val continent: String = ""
 )
 
 @Serializable

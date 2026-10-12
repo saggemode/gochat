@@ -319,7 +319,10 @@ func main() {
 			marketplace.GET("/stores/:id/products", businessHandler.GetStoreProducts)
 			marketplace.GET("/products/:id/reviews", businessHandler.ListReviews)
 			marketplace.GET("/products/followed", businessHandler.ListFollowedProducts)
+			marketplace.GET("/fx/rates", businessHandler.GetFxRates)
 		}
+
+		api.GET("/fx/rates", businessHandler.GetFxRates)
 
 
 		// Search Service Proxy

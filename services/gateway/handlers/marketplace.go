@@ -32,6 +32,12 @@ func formatProductItem(p *pb.MarketplaceProduct) map[string]interface{} {
 	if catName == "" {
 		catName = "General"
 	}
+	curr := p.Currency
+	if curr == "" {
+		curr = "USD"
+	}
+	currencySymbol, sellerCountry, continent := deriveCurrencyInfo(curr)
+
 	return map[string]interface{}{
 		"id":               p.Id,
 		"product_id":       p.Id,
@@ -40,7 +46,11 @@ func formatProductItem(p *pb.MarketplaceProduct) map[string]interface{} {
 		"description":      p.Description,
 		"price":            p.Price,
 		"discount_percent": p.DiscountPercent,
-		"currency":         p.Currency,
+		"currency":         curr,
+		"currency_symbol":  currencySymbol,
+		"seller_country":   sellerCountry,
+		"country_code":     sellerCountry,
+		"continent":        continent,
 		"stock":            p.Quantity,
 		"quantity":         p.Quantity,
 		"sku":              p.Sku,
@@ -73,6 +83,40 @@ func formatProductItem(p *pb.MarketplaceProduct) map[string]interface{} {
 		"brand_name":       p.BrandName,
 		"is_verified":      true,
 		"created_at":       p.CreatedAt,
+	}
+}
+
+func deriveCurrencyInfo(curr string) (symbol string, country string, continent string) {
+	curr = strings.ToUpper(strings.TrimSpace(curr))
+	switch curr {
+	case "NGN":
+		return "₦", "NG", "Africa"
+	case "KES":
+		return "KSh", "KE", "Africa"
+	case "GHS":
+		return "GH₵", "GH", "Africa"
+	case "ZAR":
+		return "R", "ZA", "Africa"
+	case "GBP":
+		return "£", "GB", "Europe"
+	case "EUR":
+		return "€", "EU", "Europe"
+	case "INR":
+		return "₹", "IN", "Asia"
+	case "AED":
+		return "د.إ", "AE", "Asia"
+	case "CAD":
+		return "C$", "CA", "North America"
+	case "AUD":
+		return "A$", "AU", "Oceania"
+	case "BRL":
+		return "R$", "BR", "South America"
+	case "JPY":
+		return "¥", "JP", "Asia"
+	case "CNY":
+		return "¥", "CN", "Asia"
+	default:
+		return "$", "US", "North America"
 	}
 }
 
