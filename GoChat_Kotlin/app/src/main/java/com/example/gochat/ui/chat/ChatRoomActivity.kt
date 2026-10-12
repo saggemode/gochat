@@ -53,6 +53,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import com.example.gochat.ui.contacts.SelectContactActivity
 import com.example.gochat.core.media.AudioPlayerManager

@@ -711,6 +711,7 @@ class MessageAdapter(
                               !message.isDeleted
                 val isProduct = (message.type == MessageType.PRODUCT || (message.content.contains("\"product\"") && message.content.contains("\"price\""))) && !message.isDeleted
                 val isOrder = (message.type == MessageType.ORDER || message.content.contains("\"order_number\"") || message.content.contains("\"type\":\"order\"")) && !message.isDeleted
+                val isPayment = (message.type == MessageType.PAYMENT_REQUEST || message.content.contains("\"invoice\"") || message.content.contains("\"payment_request\"")) && !message.isDeleted
 
                 // Content text
                 if (message.isDeleted) {
@@ -1135,6 +1136,7 @@ class MessageAdapter(
                               !message.isDeleted
                 val isProduct = (message.type == MessageType.PRODUCT || (message.content.contains("\"product\"") && message.content.contains("\"price\""))) && !message.isDeleted
                 val isOrder = (message.type == MessageType.ORDER || message.content.contains("\"order_number\"") || message.content.contains("\"type\":\"order\"")) && !message.isDeleted
+                val isPayment = (message.type == MessageType.PAYMENT_REQUEST || message.content.contains("\"invoice\"") || message.content.contains("\"payment_request\"")) && !message.isDeleted
 
                 // Sender name
                 if (message.senderName.isNotBlank()) {
