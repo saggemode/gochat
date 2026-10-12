@@ -1,4 +1,4 @@
-﻿package handlers
+package handlers
 
 import (
 	"context"
@@ -1722,9 +1722,11 @@ func (h *ChatHandler) fanOutEvent(eventType string, messageID string, convID str
 			contentBody := "You received a new message"
 			mediaURL := ""
 
+			rawContent := ""
 			if msgMap, ok := extra["message"].(map[string]interface{}); ok {
 				if c, ok := msgMap["content"].(string); ok && c != "" {
 					contentBody = c
+					rawContent = c
 				}
 				if m, ok := msgMap["media_url"].(string); ok {
 					mediaURL = m
@@ -1749,6 +1751,31 @@ func (h *ChatHandler) fanOutEvent(eventType string, messageID string, convID str
 					contentBody = "🛍️ Product Catalog"
 				} else if strings.Contains(strings.ToUpper(typeStr), "PRODUCT") {
 					contentBody = "🛒 Product"
+				} else if strings.Contains(strings.ToUpper(typeStr), "ORDER") ||
+					strings.Contains(contentBody, `"type":"order"`) ||
+					strings.Contains(contentBody, `"type": "order"`) ||
+					strings.Contains(contentBody, `"order_number"`) {
+					contentBody = "📦 New Order Received"
+					var orderData map[string]interface{}
+					if err := json.Unmarshal([]byte(rawContent), &orderData); err == nil {
+						ord, ok := orderData["order"].(map[string]interface{})
+						if !ok {
+							ord = orderData
+						}
+						ordNum, _ := ord["order_number"].(string)
+						summary, _ := ord["items_summary"].(string)
+						total, _ := ord["total_amount"].(float64)
+						if ordNum != "" && summary != "" && total > 0 {
+							contentBody = fmt.Sprintf("📦 Order #%s: %s ($%.2f)", ordNum, summary, total)
+						} else if ordNum != "" && summary != "" {
+							contentBody = fmt.Sprintf("📦 Order #%s: %s", ordNum, summary)
+						} else if ordNum != "" {
+							contentBody = fmt.Sprintf("📦 Order #%s", ordNum)
+						}
+					}
+					if !isGroup {
+						pushTitle = "🎉 New Order Placed!"
+					}
 				} else if strings.Contains(strings.ToUpper(typeStr), "PAYMENT") || strings.Contains(strings.ToUpper(typeStr), "INVOICE") {
 					contentBody = "💳 Payment Request"
 				} else if strings.Contains(strings.ToUpper(typeStr), "LOCATION") {
@@ -1788,9 +1815,21 @@ func (h *ChatHandler) fanOutEvent(eventType string, messageID string, convID str
 						pushCtx, pCancel := context.WithTimeout(context.Background(), 8*time.Second)
 						defer pCancel()
 
+						rawTypeVal := "0"
+						if msgMap, ok := extra["message"].(map[string]interface{}); ok {
+							rawTypeVal = fmt.Sprintf("%v", msgMap["type"])
+							if c, ok := msgMap["content"].(string); ok {
+								if strings.Contains(c, `"type":"order"`) || strings.Contains(c, `"order_number"`) {
+									rawTypeVal = "9"
+								}
+							}
+						}
+
 						pushData := map[string]string{
 							"type":            "chat_message",
 							"event_type":      "chat_message",
+							"message_type":    rawTypeVal,
+							"type_int":        rawTypeVal,
 							"conversation_id": convID,
 							"sender_id":       userID,
 							"sender_name":     senderDisplayName,

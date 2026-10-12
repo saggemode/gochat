@@ -470,7 +470,7 @@ class ChatRepository @Inject constructor(
                 dao.insertMessage(finalMsg)
                 dao.updateLastMessage(
                     convId = conversationId,
-                    lastText = if (finalMsg.content.length > 50) finalMsg.content.take(47) + "..." else finalMsg.content.ifBlank { "Media" },
+                    lastText = formatLastMessageSummary(finalMsg),
                     lastTime = finalMsg.createdAt,
                     updatedAt = System.currentTimeMillis()
                 )
@@ -751,7 +751,10 @@ class ChatRepository @Inject constructor(
         val currentUserId = tokenManager.userId ?: ""
         val isMe = senderId.isNotEmpty() && senderId == currentUserId
 
-        val msgType = when (type) {
+        val isOrderPayload = content.contains("\"order_number\"") || content.contains("\"type\":\"order\"")
+        val msgType = if (isOrderPayload) {
+            MessageType.ORDER
+        } else when (type) {
             1 -> MessageType.IMAGE
             2 -> MessageType.VIDEO
             3 -> MessageType.AUDIO
@@ -791,24 +794,7 @@ class ChatRepository @Inject constructor(
 
         // Update or create conversation record
         val isViewing = activeConversationId == conversationId
-        val lastText = when (finalMsg.type) {
-            MessageType.TEXT -> finalMsg.content.ifBlank { "Message" }
-            MessageType.IMAGE -> "📷 Photo"
-            MessageType.VIDEO -> "🎥 Video"
-            MessageType.VOICE, MessageType.AUDIO -> "🎵 Voice note"
-            MessageType.FILE -> "📄 Document"
-            MessageType.POLL -> "📊 Poll"
-            MessageType.PING -> "💥 PING"
-            MessageType.CATALOG -> "🛍️ Product Catalog"
-            MessageType.PRODUCT -> "🛒 Product"
-            MessageType.PAYMENT_REQUEST -> "💳 Payment Request"
-            MessageType.LOCATION -> "📍 Location"
-            MessageType.CONTACT -> "👤 Contact"
-            MessageType.STICKER -> "🏷️ Sticker"
-            MessageType.ORDER -> "📦 Order"
-            MessageType.SYSTEM -> "System message"
-            else -> "Media"
-        }
+        val lastText = formatLastMessageSummary(finalMsg)
 
         val existingConv = dao.getConversationById(conversationId)
         val now = System.currentTimeMillis()
@@ -868,6 +854,64 @@ class ChatRepository @Inject constructor(
         return finalMsg
     }
 
+    fun formatLastMessageSummary(msg: Message): String {
+        return when (msg.type) {
+            MessageType.ORDER -> {
+                try {
+                    val json = Json { ignoreUnknownKeys = true; isLenient = true }
+                    val root = json.decodeFromString<JsonObject>(msg.content.trim())
+                    val ord = root["order"]?.let { if (it is JsonObject) it else null } ?: root
+                    val num = ord["order_number"]?.jsonPrimitive?.contentOrNull ?: "ORD"
+                    val summary = ord["items_summary"]?.jsonPrimitive?.contentOrNull ?: "Marketplace Order"
+                    val total = ord["total_amount"]?.jsonPrimitive?.doubleOrNull
+                    val totalStr = if (total != null && total > 0) " ($%.2f)".format(java.util.Locale.US, total) else ""
+                    "📦 Order #$num: $summary$totalStr"
+                } catch (_: Exception) {
+                    "📦 Order update"
+                }
+            }
+            MessageType.TEXT -> {
+                val trimmed = msg.content.trim()
+                if (trimmed.startsWith("{") && (trimmed.contains("\"order_number\"") || trimmed.contains("\"type\":\"order\"") || trimmed.contains("\"order\""))) {
+                    try {
+                        val json = Json { ignoreUnknownKeys = true; isLenient = true }
+                        val root = json.decodeFromString<JsonObject>(trimmed)
+                        val ord = root["order"]?.let { if (it is JsonObject) it else null } ?: root
+                        val num = ord["order_number"]?.jsonPrimitive?.contentOrNull ?: "ORD"
+                        val summary = ord["items_summary"]?.jsonPrimitive?.contentOrNull ?: "Marketplace Order"
+                        val total = ord["total_amount"]?.jsonPrimitive?.doubleOrNull
+                        val totalStr = if (total != null && total > 0) " ($%.2f)".format(java.util.Locale.US, total) else ""
+                        "📦 Order #$num: $summary$totalStr"
+                    } catch (_: Exception) {
+                        "📦 Order update"
+                    }
+                } else if (trimmed.startsWith("{") && (trimmed.contains("\"type\":\"catalog\"") || trimmed.contains("\"catalog\""))) {
+                    "🛍️ Product Catalog"
+                } else if (trimmed.startsWith("{") && (trimmed.contains("\"payment_request\"") || trimmed.contains("\"invoice\""))) {
+                    "💳 Payment Request"
+                } else if (trimmed.startsWith("{") && trimmed.contains("\"product\"")) {
+                    "🛒 Product inquiry"
+                } else {
+                    if (msg.content.length > 50) msg.content.take(47) + "..." else msg.content.ifBlank { "Message" }
+                }
+            }
+            MessageType.IMAGE -> "📷 Photo"
+            MessageType.VIDEO -> "🎥 Video"
+            MessageType.VOICE, MessageType.AUDIO -> "🎵 Voice note"
+            MessageType.FILE -> "📄 Document"
+            MessageType.POLL -> "📊 Poll"
+            MessageType.PING -> "💥 PING"
+            MessageType.CATALOG -> "🛍️ Product Catalog"
+            MessageType.PRODUCT -> "🛒 Product"
+            MessageType.PAYMENT_REQUEST -> "💳 Payment Request"
+            MessageType.LOCATION -> "📍 Location"
+            MessageType.CONTACT -> "👤 Contact"
+            MessageType.STICKER -> "🏷️ Sticker"
+            MessageType.SYSTEM -> "System message"
+            else -> "Media"
+        }
+    }
+
     suspend fun insertWebSocketMessage(message: Message) {
         val decrypted = tryDecryptMessage(message)
         val isMe = decrypted.senderId == (tokenManager.userId ?: "")
@@ -915,7 +959,7 @@ class ChatRepository @Inject constructor(
                 context = context,
                 conversationId = finalMsg.conversationId,
                 title = displayTitle,
-                body = finalMsg.content.ifBlank { "New message" },
+                body = formatLastMessageSummary(finalMsg),
                 senderAvatar = avatarUrl,
                 isGroup = isGroup,
                 isMuted = isMuted

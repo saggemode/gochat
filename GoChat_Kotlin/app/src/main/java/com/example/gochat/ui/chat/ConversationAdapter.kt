@@ -15,6 +15,7 @@ import com.example.gochat.data.model.InvitationStatus
 import com.example.gochat.databinding.ItemConversationBinding
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.serialization.json.*
 
 class ConversationAdapter(
     private val onConversationClicked: (Conversation) -> Unit,
@@ -76,7 +77,7 @@ class ConversationAdapter(
                 when (conversation.invitationStatus) {
                     InvitationStatus.PENDING_INCOMING -> "🤝 Incoming invitation · Tap to accept"
                     InvitationStatus.PENDING_OUTGOING -> "⏳ Invitation sent · Waiting for acceptance"
-                    else -> conversation.lastMessageText?.ifBlank { "No messages yet" } ?: "No messages yet"
+                    else -> formatLastMessagePreview(conversation.lastMessageText)
                 }
             }
             tvLastMessage.text = preview
@@ -123,6 +124,33 @@ class ConversationAdapter(
                 true
             }
         }
+    }
+
+    private fun formatLastMessagePreview(rawText: String?): String {
+        if (rawText.isNullOrBlank()) return "No messages yet"
+        val trimmed = rawText.trim()
+        if (trimmed.startsWith("{") && (trimmed.contains("\"order_number\"") || trimmed.contains("\"type\":\"order\"") || trimmed.contains("\"order\""))) {
+            return try {
+                val json = Json { ignoreUnknownKeys = true; isLenient = true }
+                val root = json.decodeFromString<JsonObject>(trimmed)
+                val order = root["order"]?.let { if (it is JsonObject) it else null } ?: root
+                val num = order["order_number"]?.jsonPrimitive?.contentOrNull ?: "ORD"
+                val summary = order["items_summary"]?.jsonPrimitive?.contentOrNull ?: "Marketplace Order"
+                "📦 Order #$num · $summary"
+            } catch (_: Exception) {
+                "📦 Marketplace Order"
+            }
+        }
+        if (trimmed.startsWith("{") && (trimmed.contains("\"type\":\"catalog\"") || trimmed.contains("\"catalog\""))) {
+            return "🛍️ Product Catalog"
+        }
+        if (trimmed.startsWith("{") && (trimmed.contains("\"payment_request\"") || trimmed.contains("\"invoice\""))) {
+            return "💳 Payment Request"
+        }
+        if (trimmed.startsWith("{") && trimmed.contains("\"product\"")) {
+            return "🛒 Product inquiry"
+        }
+        return trimmed
     }
 
     private fun formatTimestamp(timeMillis: Long): String {

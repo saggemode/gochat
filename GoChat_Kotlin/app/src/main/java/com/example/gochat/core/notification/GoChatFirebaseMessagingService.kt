@@ -69,14 +69,45 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
         if (title == null) title = "GoChat Message"
         if (body == null) body = "You received a new message"
 
+        var isOrderPush = false
         // Sanitize body: if it looks like raw JSON, replace with a friendly label
         if (body != null && body.trimStart().startsWith("{")) {
-            body = when {
-                body.contains("\"type\":\"catalog\"") || body.contains("\"type\": \"catalog\"") -> "🛍️ Product Catalog"
-                body.contains("\"product\"") && body.contains("\"price\"") -> "🛒 Product"
-                body.contains("\"payment_request\"") || body.contains("\"invoice\"") -> "💳 Payment Request"
-                else -> "New message"
+            body = try {
+                val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true; isLenient = true }
+                val root = json.decodeFromString<kotlinx.serialization.json.JsonObject>(body.trim())
+                val isOrd = root.containsKey("order") || body.contains("\"order_number\"") || body.contains("\"type\":\"order\"")
+                if (isOrd) {
+                    isOrderPush = true
+                    val ordObj = root["order"]?.let { if (it is kotlinx.serialization.json.JsonObject) it else null } ?: root
+                    val num = ordObj["order_number"]?.jsonPrimitive?.contentOrNull ?: "ORD"
+                    val summary = ordObj["items_summary"]?.jsonPrimitive?.contentOrNull ?: "Marketplace Order"
+                    val total = ordObj["total_amount"]?.jsonPrimitive?.doubleOrNull
+                    val totalStr = if (total != null && total > 0) " • $%.2f".format(java.util.Locale.US, total) else ""
+                    "📦 New Order #$num: $summary$totalStr"
+                } else if (body.contains("\"type\":\"catalog\"") || body.contains("\"type\": \"catalog\"")) {
+                    "🛍️ Product Catalog"
+                } else if (body.contains("\"product\"") && body.contains("\"price\"")) {
+                    "🛒 Product"
+                } else if (body.contains("\"payment_request\"") || body.contains("\"invoice\"")) {
+                    "💳 Payment Request"
+                } else {
+                    "New message"
+                }
+            } catch (_: Exception) {
+                if (body.contains("\"order\"") || body.contains("\"order_number\"")) {
+                    isOrderPush = true
+                    "📦 New Order Placed"
+                } else {
+                    "New message"
+                }
             }
+        } else if (body != null && (body.contains("\"order_number\"") || body.contains("\"type\":\"order\""))) {
+            isOrderPush = true
+            body = "📦 New Order Placed"
+        }
+
+        if (isOrderPush && (title == "GoChat Message" || title == "New Message")) {
+            title = "🎉 New Order Placed!"
         }
 
         val eventType = data["type"] ?: data["event_type"] ?: ""
@@ -246,7 +277,7 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
         val senderId = data["sender_id"] ?: data["senderId"] ?: ""
         val mediaUrl = data["media_url"] ?: data["mediaUrl"]
         val rawType = data["message_type"] ?: data["type_int"]
-        val msgTypeInt = rawType?.toIntOrNull() ?: 0
+        val msgTypeInt = rawType?.toIntOrNull() ?: if (isOrderPush) 9 else 0
 
         val messageWakeLock = powerManager?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "GoChat:FCMMessageWakeLock")?.apply {
             try { acquire(15000L) } catch (_: Exception) {}

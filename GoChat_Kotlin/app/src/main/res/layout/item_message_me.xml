@@ -197,7 +197,7 @@
         <!-- Product Card Preview -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/layoutProductCard"
-            android:layout_width="220dp"
+            android:layout_width="240dp"
             android:layout_height="wrap_content"
             android:layout_marginBottom="6dp"
             app:cardBackgroundColor="#20FFFFFF"
@@ -260,30 +260,45 @@
                             android:id="@+id/btnViewProductCard"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginEnd="4dp"
+                            android:layout_marginEnd="2dp"
                             android:layout_weight="1"
                             android:background="@drawable/bg_pill"
                             android:backgroundTint="#30FFFFFF"
                             android:gravity="center"
                             android:paddingVertical="5dp"
-                            android:text="View Details"
+                            android:text="Details"
                             android:textColor="@color/white"
-                            android:textSize="11sp"
+                            android:textSize="10sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/btnAddToCartProductCard"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginHorizontal="2dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_pill"
+                            android:backgroundTint="#40FFFFFF"
+                            android:gravity="center"
+                            android:paddingVertical="5dp"
+                            android:text="🛒 +Cart"
+                            android:textColor="@color/white"
+                            android:textSize="10sp"
                             android:textStyle="bold" />
 
                         <TextView
                             android:id="@+id/btnBuyNowProductCard"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="4dp"
+                            android:layout_marginStart="2dp"
                             android:layout_weight="1"
                             android:background="@drawable/bg_pill"
                             android:backgroundTint="@color/whatsapp_teal_light"
                             android:gravity="center"
                             android:paddingVertical="5dp"
-                            android:text="⚡ Buy Now"
+                            android:text="⚡ Buy"
                             android:textColor="@color/white"
-                            android:textSize="11sp"
+                            android:textSize="10sp"
                             android:textStyle="bold" />
                     </LinearLayout>
                 </LinearLayout>

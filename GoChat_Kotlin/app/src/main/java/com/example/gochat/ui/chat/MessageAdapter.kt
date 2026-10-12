@@ -65,6 +65,7 @@ class MessageAdapter(
     var onImageClicked: ((String) -> Unit)? = null
     var onMediaClick: ((Message) -> Unit)? = null
     var onBuyNowClicked: ((productId: String, productName: String, price: Double, image: String) -> Unit)? = null
+    var onAddToCartClicked: ((productId: String, productJson: String) -> Unit)? = null
     var onPayInvoiceClicked: ((message: Message, invoiceData: InvoiceData) -> Unit)? = null
     var onMarkShippedClicked: ((message: Message, invoiceData: InvoiceData) -> Unit)? = null
     var onConfirmReceiptClicked: ((message: Message, invoiceData: InvoiceData) -> Unit)? = null
@@ -733,6 +734,9 @@ class MessageAdapter(
                     tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_text_secondary))
                     tvMessageContent.setTypeface(null, Typeface.ITALIC)
                     tvMessageContent.setOnClickListener(null)
+                } else if (isOrder) {
+                    tvMessageContent.text = ""
+                    tvMessageContent.visibility = View.GONE
                 } else {
                     tvMessageContent.text = highlightMentions(message.content, accentColor)
                     tvMessageContent.setTextColor(textColor)
@@ -783,6 +787,18 @@ class MessageAdapter(
                             }
                         }
 
+                        btnAddToCartProductCard.setOnClickListener {
+                            prodId?.let { id ->
+                                onAddToCartClicked?.invoke(id, message.content) ?: run {
+                                    val intent = Intent(root.context, ProductDetailsActivity::class.java).apply {
+                                        putExtra("product_id", id)
+                                        putExtra("auto_add_cart", true)
+                                    }
+                                    root.context.startActivity(intent)
+                                }
+                            }
+                        }
+
                         btnBuyNowProductCard.setOnClickListener {
                             prodId?.let { id ->
                                 onBuyNowClicked?.invoke(id, prodName, prodPrice, prodImage.orEmpty()) ?: run {
@@ -805,8 +821,9 @@ class MessageAdapter(
                 if (isOrder) {
                     layoutOrderCard.visibility = View.VISIBLE
                     try {
-                        val orderObj = Json.decodeFromString<JsonObject>(message.content)
-                        val orderData = orderObj["order"]?.jsonObject ?: orderObj
+                        val json = Json { ignoreUnknownKeys = true; isLenient = true }
+                        val orderObj = json.decodeFromString<JsonObject>(message.content)
+                        val orderData = orderObj["order"]?.let { if (it is JsonObject) it else null } ?: orderObj
 
                         val orderNum = orderData["order_number"]?.jsonPrimitive?.contentOrNull ?: "ORD"
                         val orderStatus = orderData["status"]?.jsonPrimitive?.contentOrNull ?: "PAID"
@@ -823,15 +840,18 @@ class MessageAdapter(
 
                         btnViewOrderCard.setOnClickListener {
                             val intent = Intent(root.context, com.example.gochat.ui.marketplace.OrdersActivity::class.java).apply {
-                                putExtra("highlight_order_id", orderId)
+                                if (orderId.isNotBlank()) putExtra("highlight_order_id", orderId)
                             }
                             root.context.startActivity(intent)
                         }
-
-                        tvMessageContent.visibility = View.GONE
-                    } catch (e: Exception) {
-                        layoutOrderCard.visibility = View.GONE
+                    } catch (_: Exception) {
+                        tvOrderCardNumber.text = "#ORD"
+                        tvOrderCardStatus.text = "ORDER"
+                        tvOrderCardStore.text = "Marketplace Store"
+                        tvOrderCardSummary.text = "Marketplace Order"
                     }
+                    tvMessageContent.visibility = View.GONE
+                    tvMessageContent.text = ""
                 } else {
                     layoutOrderCard.visibility = View.GONE
                 }
@@ -875,8 +895,9 @@ class MessageAdapter(
                         (message.content.contains("\"products\"") && (message.content.contains("\"catalog\"") || message.content.contains("\"store_name\""))) ||
                         (message.content.startsWith("{") && (message.content.contains("\"type\":\"catalog\"") || message.content.contains("\"type\": \"catalog\"")))) && !message.isDeleted
 
-                if (isCatalogMessage) {
+                if (isCatalogMessage || isOrder || isPayment) {
                     tvMessageContent.visibility = View.GONE
+                    tvMessageContent.text = ""
                 } else if ((isImage || isVoice) && isOnlyMediaLabel) {
                     tvMessageContent.visibility = View.GONE
                 } else {
@@ -1145,6 +1166,9 @@ class MessageAdapter(
                     tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_text_secondary))
                     tvMessageContent.setTypeface(null, Typeface.ITALIC)
                     tvMessageContent.setOnClickListener(null)
+                } else if (isOrder) {
+                    tvMessageContent.text = ""
+                    tvMessageContent.visibility = View.GONE
                 } else {
                     tvMessageContent.text = highlightMentions(message.content, accentColor)
                     tvMessageContent.setTextColor(textColor)
@@ -1195,6 +1219,18 @@ class MessageAdapter(
                             }
                         }
 
+                        btnAddToCartProductCard.setOnClickListener {
+                            prodId?.let { id ->
+                                onAddToCartClicked?.invoke(id, message.content) ?: run {
+                                    val intent = Intent(root.context, ProductDetailsActivity::class.java).apply {
+                                        putExtra("product_id", id)
+                                        putExtra("auto_add_cart", true)
+                                    }
+                                    root.context.startActivity(intent)
+                                }
+                            }
+                        }
+
                         btnBuyNowProductCard.setOnClickListener {
                             prodId?.let { id ->
                                 onBuyNowClicked?.invoke(id, prodName, prodPrice, prodImage.orEmpty()) ?: run {
@@ -1217,8 +1253,9 @@ class MessageAdapter(
                 if (isOrder) {
                     layoutOrderCard.visibility = View.VISIBLE
                     try {
-                        val orderObj = Json.decodeFromString<JsonObject>(message.content)
-                        val orderData = orderObj["order"]?.jsonObject ?: orderObj
+                        val json = Json { ignoreUnknownKeys = true; isLenient = true }
+                        val orderObj = json.decodeFromString<JsonObject>(message.content)
+                        val orderData = orderObj["order"]?.let { if (it is JsonObject) it else null } ?: orderObj
 
                         val orderNum = orderData["order_number"]?.jsonPrimitive?.contentOrNull ?: "ORD"
                         val orderStatus = orderData["status"]?.jsonPrimitive?.contentOrNull ?: "PAID"
@@ -1235,15 +1272,18 @@ class MessageAdapter(
 
                         btnViewOrderCard.setOnClickListener {
                             val intent = Intent(root.context, com.example.gochat.ui.marketplace.OrdersActivity::class.java).apply {
-                                putExtra("highlight_order_id", orderId)
+                                if (orderId.isNotBlank()) putExtra("highlight_order_id", orderId)
                             }
                             root.context.startActivity(intent)
                         }
-
-                        tvMessageContent.visibility = View.GONE
-                    } catch (e: Exception) {
-                        layoutOrderCard.visibility = View.GONE
+                    } catch (_: Exception) {
+                        tvOrderCardNumber.text = "#ORD"
+                        tvOrderCardStatus.text = "ORDER"
+                        tvOrderCardStore.text = "Marketplace Store"
+                        tvOrderCardSummary.text = "Marketplace Order"
                     }
+                    tvMessageContent.visibility = View.GONE
+                    tvMessageContent.text = ""
                 } else {
                     layoutOrderCard.visibility = View.GONE
                 }
@@ -1286,8 +1326,9 @@ class MessageAdapter(
                         (message.content.contains("\"products\"") && (message.content.contains("\"catalog\"") || message.content.contains("\"store_name\""))) ||
                         (message.content.startsWith("{") && (message.content.contains("\"type\":\"catalog\"") || message.content.contains("\"type\": \"catalog\"")))) && !message.isDeleted
 
-                if (isCatalogMessage) {
+                if (isCatalogMessage || isOrder || isPayment) {
                     tvMessageContent.visibility = View.GONE
+                    tvMessageContent.text = ""
                 } else if ((isImage || isVoice) && isOnlyMediaLabel) {
                     tvMessageContent.visibility = View.GONE
                 } else {

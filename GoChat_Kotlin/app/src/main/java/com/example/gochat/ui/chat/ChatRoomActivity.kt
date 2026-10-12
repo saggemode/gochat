@@ -45,6 +45,15 @@ import coil.load
 import com.example.gochat.R
 import com.example.gochat.ui.marketplace.OrdersActivity
 import com.example.gochat.ui.marketplace.ProductDetailsActivity
+import com.example.gochat.ui.marketplace.CartActivity
+import com.example.gochat.data.repository.MarketplaceRepository
+import com.example.gochat.data.model.Product
+import com.google.android.material.snackbar.Snackbar
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.doubleOrNull
 import com.example.gochat.ui.contacts.SelectContactActivity
 import com.example.gochat.core.media.AudioPlayerManager
 import com.example.gochat.core.media.AudioRecorderManager
@@ -103,6 +112,7 @@ class ChatRoomActivity : AppCompatActivity() {
     private val viewModel: ChatRoomViewModel by viewModels()
     @Inject lateinit var chatRepository: ChatRepository
     @Inject lateinit var tokenManager: com.example.gochat.data.api.TokenManager
+    @Inject lateinit var marketplaceRepository: MarketplaceRepository
     private lateinit var messageAdapter: MessageAdapter
     private lateinit var mentionAdapter: GroupMemberAdapter
     private lateinit var commandAdapter: BotCommandAdapter
@@ -526,15 +536,11 @@ class ChatRoomActivity : AppCompatActivity() {
             onImageClicked = { imageUrl ->
                 showFullScreenImage(imageUrl)
             }
+            onAddToCartClicked = { productId, productJson ->
+                showQuickShoppingSheet(productId, productJson)
+            }
             onBuyNowClicked = { prodId, name, price, image ->
-                val intent = Intent(this@ChatRoomActivity, ProductDetailsActivity::class.java).apply {
-                    putExtra("product_id", prodId)
-                    putExtra("product_name", name)
-                    putExtra("product_price", price)
-                    putExtra("product_image", image)
-                    putExtra("auto_buy", true)
-                }
-                startActivity(intent)
+                showQuickShoppingSheet(prodId, "")
             }
             onPayInvoiceClicked = { message, invoiceData ->
                 showEscrowCheckoutBottomSheet(message, invoiceData)
@@ -1021,6 +1027,72 @@ class ChatRoomActivity : AppCompatActivity() {
             )
         }
         picker.show(supportFragmentManager, "ProductPicker")
+    }
+
+    private fun showQuickShoppingSheet(productId: String, productJson: String) {
+        lifecycleScope.launch {
+            val fetchedProduct = marketplaceRepository.getProductById(productId).getOrNull()
+            val product = fetchedProduct ?: run {
+                try {
+                    val root = Json.decodeFromString<JsonObject>(productJson)
+                    val prodData = root["product"]?.jsonObject ?: root
+                    val prodName = prodData["name"]?.jsonPrimitive?.contentOrNull
+                        ?: prodData["title"]?.jsonPrimitive?.contentOrNull ?: "Product"
+                    val prodPrice = prodData["price"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+                    val prodImage = prodData["image"]?.jsonPrimitive?.contentOrNull
+                        ?: prodData["imageUrl"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                    Product(
+                        id = productId,
+                        sellerId = "",
+                        name = prodName,
+                        description = "",
+                        price = prodPrice,
+                        imageUrl = prodImage,
+                        imageUrls = if (prodImage.isNotEmpty()) listOf(prodImage) else emptyList(),
+                        storeId = "",
+                        storeName = "Store",
+                        stock = 10
+                    )
+                } catch (_: Exception) {
+                    null
+                }
+            }
+
+            if (product == null) {
+                Toast.makeText(this@ChatRoomActivity, "Unable to load product details", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
+            val sheet = QuickAddBottomSheet(
+                product = product,
+                onAddToCart = { prod, qty, _ ->
+                    lifecycleScope.launch {
+                        val res = marketplaceRepository.addToCart(prod.id, qty, prod)
+                        if (res.isSuccess) {
+                            HapticEngine.playMessageSent(this@ChatRoomActivity)
+                            Snackbar.make(binding.root, "🛒 Added ${prod.displayTitle} x$qty to Cart!", Snackbar.LENGTH_LONG)
+                                .setAction("View Cart") {
+                                    startActivity(Intent(this@ChatRoomActivity, CartActivity::class.java))
+                                }
+                                .show()
+                        } else {
+                            Toast.makeText(this@ChatRoomActivity, "Failed to add to cart", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
+                onDirectCheckout = { prod, _, _ ->
+                    val intent = Intent(this@ChatRoomActivity, ProductDetailsActivity::class.java).apply {
+                        putExtra("product_id", prod.id)
+                        putExtra("product_name", prod.displayTitle)
+                        putExtra("product_price", prod.price)
+                        putExtra("product_image", prod.primaryImage)
+                        putExtra("auto_buy", true)
+                    }
+                    startActivity(intent)
+                }
+            )
+            sheet.show(supportFragmentManager, "QuickAddBottomSheet")
+        }
     }
 
     private fun setupLinkedOrderBanner() {
