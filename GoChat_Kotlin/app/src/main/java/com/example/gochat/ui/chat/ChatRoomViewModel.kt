@@ -12,6 +12,7 @@ import com.example.gochat.data.model.*
 import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.data.repository.GroupRepository
 import com.example.gochat.core.sound.ChatSoundManager
+import com.example.gochat.core.currency.CurrencyManager
 import com.example.gochat.data.websocket.GoChatWebSocket
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -744,6 +745,8 @@ class ChatRoomViewModel @Inject constructor(
                 put("id", productId)
                 put("name", name)
                 put("price", price)
+                put("currency", CurrencyManager.getUserCurrency())
+                put("currency_symbol", CurrencyManager.getUserCurrencySymbol())
                 put("image", image)
             })
         }.toString()
@@ -806,6 +809,8 @@ class ChatRoomViewModel @Inject constructor(
                 put("id", paymentId)
                 put("item_name", itemName)
                 put("amount", amount)
+                put("currency", CurrencyManager.getUserCurrency())
+                put("currency_symbol", CurrencyManager.getUserCurrencySymbol())
                 put("note", note)
                 put("status", "pending")
             })
@@ -895,6 +900,8 @@ class ChatRoomViewModel @Inject constructor(
                 put("item_name", itemName)
                 put("original_price", originalPrice)
                 put("offered_price", offeredPrice)
+                put("currency", CurrencyManager.getUserCurrency())
+                put("currency_symbol", CurrencyManager.getUserCurrencySymbol())
                 put("note", note)
                 put("status", "pending")
             })
@@ -979,6 +986,8 @@ class ChatRoomViewModel @Inject constructor(
                 put("buyer_id", order.buyerId)
                 put("buyer_name", order.buyerName)
                 put("total_amount", order.totalAmount)
+                put("currency", CurrencyManager.getUserCurrency())
+                put("currency_symbol", CurrencyManager.getUserCurrencySymbol())
                 put("status", order.status.name)
                 put("shipping_address", order.shippingAddress ?: "Lagos, Nigeria")
                 put("items_count", order.items.size)

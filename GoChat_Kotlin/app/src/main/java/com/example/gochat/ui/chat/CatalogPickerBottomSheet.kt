@@ -17,6 +17,7 @@ import com.example.gochat.databinding.ItemCatalogPickerSelectableBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import com.example.gochat.core.currency.CurrencyManager
 import java.util.Locale
 import javax.inject.Inject
 
@@ -158,7 +159,7 @@ class CatalogPickerBottomSheet(
             val isSelected = selectedProductIds.contains(product.id)
 
             holder.itemBinding.tvProductTitle.text = product.displayTitle
-            holder.itemBinding.tvProductPrice.text = String.format(Locale.US, "$%.2f", product.price)
+            holder.itemBinding.tvProductPrice.text = CurrencyManager.formatPrice(product.price, product.currency)
             holder.itemBinding.tvProductCategory.text = "• ${product.category.ifBlank { "General" }}"
             holder.itemBinding.cbSelectProduct.isChecked = isSelected
 

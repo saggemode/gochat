@@ -26,6 +26,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import com.example.gochat.core.currency.CurrencyManager
 
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.gochat.core.contacts.ContactSyncManager
@@ -591,7 +592,7 @@ class ContactProfileActivity : AppCompatActivity() {
                 putExtra(ChatRoomActivity.EXTRA_PRODUCT_NAME, product.displayTitle)
                 putExtra(ChatRoomActivity.EXTRA_PRODUCT_PRICE, product.price)
                 putExtra(ChatRoomActivity.EXTRA_PRODUCT_IMAGE, product.primaryImage)
-                putExtra(ChatRoomActivity.EXTRA_INITIAL_MESSAGE, "Hi! I'm interested in ${product.displayTitle} (${String.format(Locale.US, "$%.2f", product.price)})")
+                putExtra(ChatRoomActivity.EXTRA_INITIAL_MESSAGE, "Hi! I'm interested in ${product.displayTitle} (${CurrencyManager.formatPrice(product.price, product.currency)})")
             }
             setResult(RESULT_OK, resultIntent)
             finish()

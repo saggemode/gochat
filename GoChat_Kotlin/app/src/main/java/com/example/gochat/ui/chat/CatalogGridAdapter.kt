@@ -6,6 +6,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.gochat.core.media.MediaImageHelper
 import com.example.gochat.data.model.CatalogItemData
 import com.example.gochat.databinding.ItemCatalogGridProductBinding
+import com.example.gochat.core.currency.CurrencyManager
 import java.util.Locale
 
 class CatalogGridAdapter(
@@ -18,7 +19,7 @@ class CatalogGridAdapter(
 
         fun bind(item: CatalogItemData) {
             binding.tvCatalogProductTitle.text = item.name.ifBlank { "Product" }
-            binding.tvCatalogProductPrice.text = String.format(Locale.US, "$%.2f", item.price)
+            binding.tvCatalogProductPrice.text = CurrencyManager.formatPrice(item.price)
 
             MediaImageHelper.loadSafeImage(
                 imageView = binding.ivCatalogProductImage,

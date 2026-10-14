@@ -18,6 +18,7 @@ import com.example.gochat.databinding.ItemProductPickerBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import com.example.gochat.core.currency.CurrencyManager
 import java.util.Locale
 import javax.inject.Inject
 
@@ -116,7 +117,7 @@ class ProductPickerBottomSheet(
 
             fun bind(item: Product) {
                 b.tvProductTitle.text = item.displayTitle
-                b.tvProductPrice.text = String.format(Locale.US, "$%.2f", item.price)
+                b.tvProductPrice.text = CurrencyManager.formatPrice(item.price, item.currency)
                 b.tvStoreName.text = item.storeName.ifBlank { "Official Store" }
 
                 MediaImageHelper.loadSafeImage(

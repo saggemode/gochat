@@ -118,9 +118,10 @@
         android:paddingHorizontal="14dp">
 
         <TextView
+            android:id="@+id/tvInvoiceCurrencySymbol"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="$"
+            android:text="₦"
             android:textColor="@color/gochat_emerald_light"
             android:textSize="18sp"
             android:textStyle="bold" />

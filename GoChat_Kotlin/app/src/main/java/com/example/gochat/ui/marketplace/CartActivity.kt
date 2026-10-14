@@ -15,6 +15,7 @@ import com.example.gochat.core.ui.applyEdgeToEdge
 import com.example.gochat.core.ui.applyNavigationBarInset
 import com.example.gochat.core.ui.applyStatusBarInset
 import dagger.hilt.android.AndroidEntryPoint
+import com.example.gochat.core.currency.CurrencyManager
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -94,6 +95,6 @@ class CartActivity : AppCompatActivity() {
 
     private fun updateTotal(items: List<CartItem>) {
         val total = items.sumOf { (it.productPrice ?: 0.0) * it.quantity }
-        binding.tvTotalAmount.text = getString(R.string.price_format_usd, total.toString())
+        binding.tvTotalAmount.text = CurrencyManager.formatPrice(total)
     }
 }

@@ -26,6 +26,7 @@ import coil.imageLoader
 import coil.request.ImageRequest
 import coil.transform.CircleCropTransformation
 import com.example.gochat.R
+import com.example.gochat.core.currency.CurrencyManager
 import com.example.gochat.ui.calls.CallActivity
 import com.example.gochat.ui.chat.ChatRoomActivity
 import kotlinx.coroutines.withTimeoutOrNull
@@ -551,7 +552,7 @@ object NotificationHelper {
 
         val displayStoreName = storeName.ifBlank { "Official Store" }
         val title = "🛍️ $displayStoreName uploaded a new product!"
-        val formattedPrice = price.toDoubleOrNull()?.let { String.format(java.util.Locale.US, "$%.2f", it) } ?: price
+        val formattedPrice = price.toDoubleOrNull()?.let { CurrencyManager.formatPrice(it) } ?: price
         val displayProduct = productName.ifBlank { "A new item" }
         val body = if (formattedPrice.isNotBlank()) "$displayProduct is now available for $formattedPrice. Tap to view!" else "$displayProduct is now available. Tap to view!"
 

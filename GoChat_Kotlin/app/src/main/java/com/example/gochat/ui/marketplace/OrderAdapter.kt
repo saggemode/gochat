@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.gochat.data.model.Order
 import com.example.gochat.data.model.OrderStatus
+import com.example.gochat.core.currency.CurrencyManager
 import com.example.gochat.databinding.ItemOrderBinding
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
@@ -42,7 +43,7 @@ class OrderAdapter(
             binding.tvOrderId.text = "Order #$orderNum"
             binding.tvOrderStatus.text = order.status.name
             binding.tvOrderDate.text = dateFormat.format(Date(order.createdAt))
-            binding.tvTotalAmount.text = String.format(Locale.US, "$%.2f", order.totalAmount)
+            binding.tvTotalAmount.text = CurrencyManager.formatPrice(order.totalAmount)
 
             updateStatusTracker(order.status)
 

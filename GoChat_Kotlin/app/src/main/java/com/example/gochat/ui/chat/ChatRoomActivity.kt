@@ -56,6 +56,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import com.example.gochat.ui.contacts.SelectContactActivity
+import com.example.gochat.core.currency.CurrencyManager
 import com.example.gochat.core.media.AudioPlayerManager
 import com.example.gochat.core.media.AudioRecorderManager
 import com.example.gochat.core.media.ImageCompressor
@@ -573,7 +574,7 @@ class ChatRoomActivity : AppCompatActivity() {
             onConfirmReceiptClicked = { message, invoiceData ->
                 AlertDialog.Builder(this@ChatRoomActivity)
                     .setTitle("Confirm Receipt & Release Funds")
-                    .setMessage("Have you received '${invoiceData.itemName}' in satisfactory condition?\n\nThis will release ${String.format(Locale.US, "$%.2f", invoiceData.amount)} from Escrow to the seller.")
+                    .setMessage("Have you received '${invoiceData.itemName}' in satisfactory condition?\n\nThis will release ${CurrencyManager.formatPrice(invoiceData.amount)} from Escrow to the seller.")
                     .setPositiveButton("Release Funds") { _, _ ->
                         viewModel.updatePaymentRequestStatus(
                             messageId = message.id,
@@ -589,7 +590,7 @@ class ChatRoomActivity : AppCompatActivity() {
             onAcceptOfferClicked = { message, offer ->
                 AlertDialog.Builder(this@ChatRoomActivity)
                     .setTitle("Accept Custom Offer")
-                    .setMessage("Accept offer of ${String.format(Locale.US, "$%.2f", offer.offeredPrice)} for '${offer.itemName}'?")
+                    .setMessage("Accept offer of ${CurrencyManager.formatPrice(offer.offeredPrice)} for '${offer.itemName}'?")
                     .setPositiveButton("Accept & Pay") { _, _ ->
                         viewModel.updateCustomOfferStatus(
                             messageId = message.id,
@@ -983,6 +984,7 @@ class ChatRoomActivity : AppCompatActivity() {
     private fun showCreateInvoiceBottomSheet() {
         val sheet = BottomSheetDialog(this)
         val invoiceBinding = com.example.gochat.databinding.BottomSheetCreateInvoiceBinding.inflate(layoutInflater)
+        invoiceBinding.tvInvoiceCurrencySymbol.text = CurrencyManager.getUserCurrencySymbol()
         sheet.setContentView(invoiceBinding.root)
 
         invoiceBinding.btnCloseInvoiceSheet.setOnClickListener {
@@ -1081,7 +1083,7 @@ class ChatRoomActivity : AppCompatActivity() {
 
         checkoutBinding.tvCheckoutItemName.text = invoiceData.itemName
         checkoutBinding.tvCheckoutItemNote.text = if (invoiceData.note.isNotBlank()) invoiceData.note else "Standard GoChat escrow protection applies"
-        checkoutBinding.tvCheckoutTotalAmount.text = String.format(Locale.US, "$%.2f", invoiceData.amount)
+        checkoutBinding.tvCheckoutTotalAmount.text = CurrencyManager.formatPrice(invoiceData.amount)
 
         checkoutBinding.btnCloseCheckoutSheet.setOnClickListener {
             sheet.dismiss()
@@ -1105,7 +1107,7 @@ class ChatRoomActivity : AppCompatActivity() {
                 newStatus = "paid_escrow"
             )
             HapticEngine.playPaymentConfirmed(this@ChatRoomActivity)
-            Toast.makeText(this, "✅ ${String.format(Locale.US, "$%.2f", invoiceData.amount)} paid into Escrow", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "✅ ${CurrencyManager.formatPrice(invoiceData.amount)} paid into Escrow", Toast.LENGTH_LONG).show()
         }
 
         sheet.show()

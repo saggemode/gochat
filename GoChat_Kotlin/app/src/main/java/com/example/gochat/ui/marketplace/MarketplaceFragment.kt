@@ -28,6 +28,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.gochat.R
 import com.example.gochat.core.media.ImageCompressor
 import com.example.gochat.core.media.MediaImageHelper
+import com.example.gochat.core.currency.CurrencyManager
 import com.example.gochat.data.model.Category
 import com.example.gochat.data.model.Product
 import com.example.gochat.data.model.Store
@@ -1019,7 +1020,7 @@ class MarketplaceFragment : Fragment() {
                     viewModel.sellerOrders.collect { orders ->
                         binding.tvMetricOrders.text = orders.size.toString()
                         val revenue = orders.sumOf { if (it.grandTotal > 0.0) it.grandTotal else it.totalAmount }
-                        binding.tvMetricRevenue.text = String.format(Locale.US, "$%.2f", revenue)
+                        binding.tvMetricRevenue.text = CurrencyManager.formatPrice(revenue)
                     }
                 }
 

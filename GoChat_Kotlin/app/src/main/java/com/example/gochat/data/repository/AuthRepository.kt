@@ -663,14 +663,20 @@ class AuthRepository @Inject constructor(
         val currency = userObj["currency"]?.jsonPrimitive?.contentOrNull
 
         val resolvedCountry = when {
-            !countryCode.isNullOrBlank() -> countryCode
             !tokenManager.userPhone.isNullOrBlank() -> com.example.gochat.ui.auth.CountryData.getByPhone(tokenManager.userPhone.orEmpty()).code
+            !countryCode.isNullOrBlank() -> countryCode
             else -> tokenManager.userCountryCode.ifBlank { "NG" }
+        }
+
+        val resolvedCurrency = if (!currency.isNullOrBlank() && !(currency.equals("USD", ignoreCase = true) && resolvedCountry == "NG")) {
+            currency
+        } else {
+            com.example.gochat.ui.auth.CountryData.getByCountryCode(resolvedCountry).currencyCode
         }
 
         com.example.gochat.core.currency.CurrencyManager.setUserCountryAndCurrency(
             countryCode = resolvedCountry,
-            currencyCode = currency
+            currencyCode = resolvedCurrency
         )
     }
 

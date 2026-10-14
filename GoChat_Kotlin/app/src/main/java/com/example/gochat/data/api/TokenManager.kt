@@ -237,20 +237,26 @@ class TokenManager private constructor(context: Context) {
 
     var userCountryCode: String
         get() {
-            val stored = prefs.getString(KEY_USER_COUNTRY_CODE, null)
-            if (!stored.isNullOrBlank()) return stored.uppercase()
             val phone = userPhone.orEmpty()
             if (phone.isNotBlank()) {
                 val inferred = CountryData.getByPhone(phone).code
                 prefs.edit().putString(KEY_USER_COUNTRY_CODE, inferred).apply()
                 return inferred
             }
+            val stored = prefs.getString(KEY_USER_COUNTRY_CODE, null)
+            if (!stored.isNullOrBlank()) return stored.uppercase()
             return "NG"
         }
         set(value) = prefs.edit().putString(KEY_USER_COUNTRY_CODE, value.uppercase()).apply()
 
     var userCurrencyCode: String
         get() {
+            val phone = userPhone.orEmpty()
+            if (phone.isNotBlank()) {
+                val country = CountryData.getByPhone(phone)
+                prefs.edit().putString(KEY_USER_CURRENCY_CODE, country.currencyCode).apply()
+                return country.currencyCode
+            }
             val stored = prefs.getString(KEY_USER_CURRENCY_CODE, null)
             if (!stored.isNullOrBlank()) return stored.uppercase()
             val country = CountryData.getByCountryCode(userCountryCode)
@@ -262,6 +268,12 @@ class TokenManager private constructor(context: Context) {
 
     var userCurrencySymbol: String
         get() {
+            val phone = userPhone.orEmpty()
+            if (phone.isNotBlank()) {
+                val country = CountryData.getByPhone(phone)
+                prefs.edit().putString(KEY_USER_CURRENCY_SYMBOL, country.currencySymbol).apply()
+                return country.currencySymbol
+            }
             val stored = prefs.getString(KEY_USER_CURRENCY_SYMBOL, null)
             if (!stored.isNullOrBlank()) return stored
             val country = CountryData.getByCountryCode(userCountryCode)
@@ -273,6 +285,12 @@ class TokenManager private constructor(context: Context) {
 
     var userContinent: String
         get() {
+            val phone = userPhone.orEmpty()
+            if (phone.isNotBlank()) {
+                val country = CountryData.getByPhone(phone)
+                prefs.edit().putString(KEY_USER_CONTINENT, country.continent).apply()
+                return country.continent
+            }
             val stored = prefs.getString(KEY_USER_CONTINENT, null)
             if (!stored.isNullOrBlank()) return stored
             val country = CountryData.getByCountryCode(userCountryCode)

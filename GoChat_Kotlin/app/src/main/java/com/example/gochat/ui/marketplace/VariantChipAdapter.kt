@@ -8,6 +8,7 @@ import com.example.gochat.R
 import com.example.gochat.data.model.ProductVariant
 import com.example.gochat.databinding.ItemVariantChipBinding
 import java.util.Locale
+import com.example.gochat.core.currency.CurrencyManager
 
 class VariantChipAdapter(
     private val onVariantSelected: (ProductVariant) -> Unit
@@ -41,7 +42,7 @@ class VariantChipAdapter(
             binding.tvVariantTitle.text = variant.title
             
             if (variant.priceOverride > 0) {
-                binding.tvVariantPrice.text = String.format(Locale.US, "+$%.2f", variant.priceOverride)
+                binding.tvVariantPrice.text = "+${CurrencyManager.formatPrice(variant.priceOverride)}"
             } else {
                 binding.tvVariantPrice.text = "Default Price"
             }

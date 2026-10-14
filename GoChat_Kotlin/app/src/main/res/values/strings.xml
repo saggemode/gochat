@@ -465,7 +465,7 @@
     <!-- Marketplace Kotlin -->
     <string name="error_load_cart">Failed to load cart</string>
     <string name="error_update_quantity">Failed to update quantity</string>
-    <string name="price_format_usd">USD %1$s</string>
+    <string name="price_format_usd">%1$s</string>
     <string name="placeholder_product_name">Product</string>
 
     <!-- Marketplace Continued -->
@@ -473,7 +473,7 @@
     <string name="error_empty_address">Please enter an address</string>
     <string name="toast_order_placed_success">Order placed successfully!</string>
     <string name="error_place_order">Failed to place order</string>
-    <string name="order_summary_item_format">%1$s x %2$d = USD %3$s</string>
+    <string name="order_summary_item_format">%1$s x %2$d = %3$s</string>
     <string name="order_id_format">Order #%1$s</string>
     <string name="store_id_format">Store ID: %1$s</string>
     <string name="error_product_not_found">Product not found</string>

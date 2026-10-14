@@ -158,7 +158,12 @@ object CurrencyManager {
         fromCurrency: String? = null,
         targetCurrency: String? = null
     ): String {
-        val curr = if (!fromCurrency.isNullOrBlank()) fromCurrency else getUserCurrency()
+        val userCurr = getUserCurrency()
+        val curr = if (!fromCurrency.isNullOrBlank() && !(fromCurrency.equals("USD", ignoreCase = true) && userCurr == "NGN")) {
+            fromCurrency
+        } else {
+            userCurr
+        }
         val symbol = getSymbol(curr)
         val format = DecimalFormat("#,##0.00", DecimalFormatSymbols(Locale.US))
         return "$symbol${format.format(amount)}"
@@ -168,7 +173,12 @@ object CurrencyManager {
      * Returns the formatted price with currency symbol.
      */
     fun formatOriginalPrice(amount: Double, fromCurrency: String? = null): String {
-        val curr = if (!fromCurrency.isNullOrBlank()) fromCurrency else getUserCurrency()
+        val userCurr = getUserCurrency()
+        val curr = if (!fromCurrency.isNullOrBlank() && !(fromCurrency.equals("USD", ignoreCase = true) && userCurr == "NGN")) {
+            fromCurrency
+        } else {
+            userCurr
+        }
         val symbol = getSymbol(curr)
         val format = DecimalFormat("#,##0.00", DecimalFormatSymbols(Locale.US))
         return "$symbol${format.format(amount)}"

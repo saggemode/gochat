@@ -8,6 +8,7 @@ import com.example.gochat.data.repository.AuthRepository
 import com.example.gochat.data.repository.ChatRepository
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import com.example.gochat.core.currency.CurrencyManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -84,8 +85,8 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
                     val ordObj = root["order"]?.let { if (it is kotlinx.serialization.json.JsonObject) it else null } ?: root
                     val num = ordObj["order_number"]?.jsonPrimitive?.contentOrNull ?: "ORD"
                     val summary = ordObj["items_summary"]?.jsonPrimitive?.contentOrNull ?: "Marketplace Order"
-                    val total = ordObj["total_amount"]?.jsonPrimitive?.doubleOrNull
-                    val totalStr = if (total != null && total > 0) " • $%.2f".format(java.util.Locale.US, total) else ""
+                    val ordCurr = ordObj["currency"]?.jsonPrimitive?.contentOrNull
+                    val totalStr = if (total != null && total > 0) " • ${CurrencyManager.formatPrice(total, ordCurr)}" else ""
                     "📦 New Order #$num: $summary$totalStr"
                 } else if (body.contains("\"type\":\"catalog\"") || body.contains("\"type\": \"catalog\"")) {
                     "🛍️ Product Catalog"

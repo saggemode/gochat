@@ -22,6 +22,7 @@ import com.example.gochat.data.repository.AuthRepository
 import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.databinding.ActivityOrderDetailsBinding
+import com.example.gochat.core.currency.CurrencyManager
 import com.example.gochat.databinding.ItemOrderStatusHistoryBinding
 import com.example.gochat.ui.chat.ChatRoomActivity
 import dagger.hilt.android.AndroidEntryPoint
@@ -90,7 +91,7 @@ class OrderDetailsActivity : AppCompatActivity() {
         binding.tvOrderNumber.text = "Order #$orderNum"
         binding.tvOrderDate.text = "Placed on ${dateFormat.format(Date(order.createdAt))}"
         binding.tvStoreName.text = order.storeName.ifBlank { "Official Store" }
-        binding.tvTotalAmount.text = String.format(Locale.US, "Total: $%.2f", order.totalAmount)
+        binding.tvTotalAmount.text = "Total: ${CurrencyManager.formatPrice(order.totalAmount)}"
 
         // Status Badge
         binding.tvOrderStatusBadge.text = when (order.status) {

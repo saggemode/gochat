@@ -19,6 +19,7 @@ import coil.load
 import coil.transform.RoundedCornersTransformation
 import android.graphics.Paint
 import com.example.gochat.R
+import com.example.gochat.core.currency.CurrencyManager
 import com.example.gochat.core.media.AudioPlayerManager
 import com.example.gochat.core.wallpaper.BubbleShape
 import com.example.gochat.core.wallpaper.ChatBubbleHelper
@@ -232,12 +233,14 @@ class MessageAdapter(
                     status = statusStr
                 )
 
+                val offerCurrency = offerObj["currency"]?.jsonPrimitive?.contentOrNull
+                    ?: CurrencyManager.getUserCurrency()
                 tvOfferItemTitle.text = itemName
-                tvOfferPrice.text = String.format(Locale.US, "$%.2f", offPrice)
+                tvOfferPrice.text = CurrencyManager.formatPrice(offPrice, offerCurrency)
 
                 if (origPrice > offPrice && origPrice > 0) {
                     tvOfferOriginalPrice.visibility = View.VISIBLE
-                    tvOfferOriginalPrice.text = String.format(Locale.US, "$%.2f", origPrice)
+                    tvOfferOriginalPrice.text = CurrencyManager.formatPrice(origPrice, offerCurrency)
                     tvOfferOriginalPrice.paintFlags = tvOfferOriginalPrice.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
 
                     val discountPercent = (((origPrice - offPrice) / origPrice) * 100).toInt()
@@ -326,8 +329,10 @@ class MessageAdapter(
                     status = status
                 )
 
+                val payCurrency = invObj["currency"]?.jsonPrimitive?.contentOrNull
+                    ?: CurrencyManager.getUserCurrency()
                 tvPaymentItemName.text = itemName
-                tvPaymentAmount.text = String.format(Locale.US, "$%.2f", amount)
+                tvPaymentAmount.text = CurrencyManager.formatPrice(amount, payCurrency)
                 if (note.isNotBlank()) {
                     tvPaymentNote.visibility = View.VISIBLE
                     tvPaymentNote.text = note
@@ -871,8 +876,10 @@ class MessageAdapter(
                             ?: prodData["imageUrl"]?.jsonPrimitive?.contentOrNull
                         val prodId = prodData["id"]?.jsonPrimitive?.contentOrNull
 
+                        val prodCurrency = prodData["currency"]?.jsonPrimitive?.contentOrNull
+                            ?: CurrencyManager.getUserCurrency()
                         tvProductCardTitle.text = prodName
-                        tvProductCardPrice.text = String.format(Locale.US, "$%.2f", prodPrice)
+                        tvProductCardPrice.text = CurrencyManager.formatPrice(prodPrice, prodCurrency)
                         
                         MediaImageHelper.loadSafeImage(
                             imageView = ivProductCardImage,
@@ -937,11 +944,14 @@ class MessageAdapter(
                         val totalAmount = orderData["total_amount"]?.jsonPrimitive?.doubleOrNull ?: 0.0
                         val orderId = orderData["id"]?.jsonPrimitive?.contentOrNull ?: ""
 
+                        val orderCurrency = orderData["currency"]?.jsonPrimitive?.contentOrNull
+                            ?: orderData["currency_code"]?.jsonPrimitive?.contentOrNull
+                            ?: CurrencyManager.getUserCurrency()
                         tvOrderCardNumber.text = "#$orderNum"
                         tvOrderCardStatus.text = orderStatus.uppercase(Locale.ROOT)
                         tvOrderCardStore.text = storeName
                         tvOrderCardSummary.text = summary
-                        tvOrderCardTotal.text = String.format(Locale.US, "$%.2f", totalAmount)
+                        tvOrderCardTotal.text = CurrencyManager.formatPrice(totalAmount, orderCurrency)
 
                         btnViewOrderCard.setOnClickListener {
                             val intent = Intent(root.context, com.example.gochat.ui.marketplace.OrdersActivity::class.java).apply {
@@ -1319,8 +1329,10 @@ class MessageAdapter(
                             ?: prodData["imageUrl"]?.jsonPrimitive?.contentOrNull
                         val prodId = prodData["id"]?.jsonPrimitive?.contentOrNull
 
+                        val prodCurrency = prodData["currency"]?.jsonPrimitive?.contentOrNull
+                            ?: CurrencyManager.getUserCurrency()
                         tvProductCardTitle.text = prodName
-                        tvProductCardPrice.text = String.format(Locale.US, "$%.2f", prodPrice)
+                        tvProductCardPrice.text = CurrencyManager.formatPrice(prodPrice, prodCurrency)
                         
                         MediaImageHelper.loadSafeImage(
                             imageView = ivProductCardImage,
@@ -1385,11 +1397,14 @@ class MessageAdapter(
                         val totalAmount = orderData["total_amount"]?.jsonPrimitive?.doubleOrNull ?: 0.0
                         val orderId = orderData["id"]?.jsonPrimitive?.contentOrNull ?: ""
 
+                        val orderCurrency = orderData["currency"]?.jsonPrimitive?.contentOrNull
+                            ?: orderData["currency_code"]?.jsonPrimitive?.contentOrNull
+                            ?: CurrencyManager.getUserCurrency()
                         tvOrderCardNumber.text = "#$orderNum"
                         tvOrderCardStatus.text = orderStatus.uppercase(Locale.ROOT)
                         tvOrderCardStore.text = storeName
                         tvOrderCardSummary.text = summary
-                        tvOrderCardTotal.text = String.format(Locale.US, "$%.2f", totalAmount)
+                        tvOrderCardTotal.text = CurrencyManager.formatPrice(totalAmount, orderCurrency)
 
                         btnViewOrderCard.setOnClickListener {
                             val intent = Intent(root.context, com.example.gochat.ui.marketplace.OrdersActivity::class.java).apply {

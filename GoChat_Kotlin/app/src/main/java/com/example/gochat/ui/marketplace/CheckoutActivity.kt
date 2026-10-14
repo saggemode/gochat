@@ -17,6 +17,7 @@ import com.example.gochat.core.ui.applyEdgeToEdge
 import com.example.gochat.core.ui.applyStatusBarInset
 import com.example.gochat.core.ui.applySystemBarMargins
 import dagger.hilt.android.AndroidEntryPoint
+import com.example.gochat.core.currency.CurrencyManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -79,15 +80,17 @@ class CheckoutActivity : AppCompatActivity() {
         binding.layoutSummary.removeAllViews()
         var total = 0.0
         for (item in items) {
+            val itemTotal = (item.productPrice ?: 0.0) * item.quantity
+            val formattedItemTotal = CurrencyManager.formatPrice(itemTotal)
             val tv = TextView(this).apply {
-                text = getString(R.string.order_summary_item_format, item.productName, item.quantity, ((item.productPrice ?: 0.0) * item.quantity).toString())
+                text = "${item.productName ?: "Product"} x ${item.quantity} = $formattedItemTotal"
                 setPadding(0, 8, 0, 8)
-                setTextColor(Color.BLACK) // Or use a resource
+                setTextColor(Color.BLACK)
             }
             binding.layoutSummary.addView(tv)
-            total += (item.productPrice ?: 0.0) * item.quantity
+            total += itemTotal
         }
-        binding.tvTotalAmount.text = getString(R.string.price_format_usd, total.toString())
+        binding.tvTotalAmount.text = CurrencyManager.formatPrice(total)
     }
 
     private fun placeOrder() {
@@ -150,6 +153,8 @@ class CheckoutActivity : AppCompatActivity() {
                                 put("buyer_id", order.buyerId)
                                 put("buyer_name", order.buyerName)
                                 put("total_amount", order.totalAmount)
+                                put("currency", CurrencyManager.getUserCurrency())
+                                put("currency_symbol", CurrencyManager.getUserCurrencySymbol())
                                 put("status", order.status.name)
                                 put("shipping_address", order.shippingAddress ?: address)
                                 put("items_count", order.items.size)

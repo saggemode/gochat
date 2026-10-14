@@ -607,13 +607,7 @@ class ProductDetailsActivity : AppCompatActivity() {
     }
 
     private fun openChatWithSeller(product: Product) {
-        val inquiry = String.format(
-            Locale.US,
-            "\uD83D\uDC4B Hi %s! I am interested in purchasing \"%s\" listed for $%.2f on GoChat Marketplace.",
-            product.storeName,
-            product.displayTitle,
-            product.price
-        )
+        val inquiry = "\uD83D\uDC4B Hi ${product.storeName}! I am interested in purchasing \"${product.displayTitle}\" listed for ${product.getFormattedPrice()} on GoChat Marketplace."
 
         // Show loading state
         binding.btnChatSeller.isEnabled = false

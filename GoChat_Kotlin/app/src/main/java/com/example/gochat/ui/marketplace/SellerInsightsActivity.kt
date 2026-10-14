@@ -8,6 +8,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.gochat.R
 import com.example.gochat.data.model.Product
 import com.example.gochat.data.repository.MarketplaceRepository
+import com.example.gochat.core.currency.CurrencyManager
 import com.example.gochat.databinding.ActivitySellerInsightsBinding
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.*
@@ -52,7 +53,7 @@ class SellerInsightsActivity : AppCompatActivity() {
     private fun loadInsights() {
         lifecycleScope.launch {
             repository.getSellerInsights().onSuccess { insights ->
-                binding.tvGrossRevenue.text = "$%.2f".format(insights.grossRevenue)
+                binding.tvGrossRevenue.text = CurrencyManager.formatPrice(insights.grossRevenue)
                 binding.tvTotalOrders.text = insights.totalOrders.toString()
                 binding.tvListedProducts.text = insights.listedProducts.toString()
                 binding.tvTotalViews.text = insights.totalViews.toString()

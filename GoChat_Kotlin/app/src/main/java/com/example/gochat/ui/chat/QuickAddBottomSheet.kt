@@ -11,6 +11,7 @@ import com.example.gochat.databinding.BottomSheetQuickCheckoutBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.android.material.chip.Chip
 import dagger.hilt.android.AndroidEntryPoint
+import com.example.gochat.core.currency.CurrencyManager
 import java.util.Locale
 
 @AndroidEntryPoint
@@ -44,7 +45,7 @@ class QuickAddBottomSheet(
 
     private fun bindProductData() {
         binding.tvQuickProductName.text = product.displayTitle
-        binding.tvQuickProductPrice.text = String.format(Locale.US, "$%.2f", product.price)
+        binding.tvQuickProductPrice.text = CurrencyManager.formatPrice(product.price, product.currency)
         binding.tvQuickStockBadge.text = if (product.stock > 0) "In Stock (${product.stock} available)" else "Out of Stock"
 
         MediaImageHelper.loadSafeImage(
