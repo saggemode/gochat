@@ -20,6 +20,7 @@ import com.example.gochat.data.model.CallType
 import com.example.gochat.data.repository.CallRepository
 import com.example.gochat.data.websocket.GoChatWebSocket
 import com.example.gochat.databinding.ActivityCallBinding
+import com.example.gochat.core.notification.NotificationHelper
 import com.example.gochat.core.ui.applyEdgeToEdge
 import com.example.gochat.core.ui.applyNavigationBarInset
 import com.example.gochat.core.ui.applyStatusBarInset
@@ -42,6 +43,7 @@ class CallActivity : AppCompatActivity() {
         const val EXTRA_PEER_AVATAR = "extra_peer_avatar"
         const val EXTRA_IS_OUTGOING = "extra_is_outgoing"
         const val EXTRA_CALL_TYPE = "extra_call_type" // "voice" or "video"
+        const val EXTRA_AUTO_ACCEPT = "extra_auto_accept"
     }
 
     private lateinit var binding: ActivityCallBinding
@@ -62,18 +64,24 @@ class CallActivity : AppCompatActivity() {
     private val isOutgoing: Boolean by lazy { intent.getBooleanExtra(EXTRA_IS_OUTGOING, true) }
     private val callType: String by lazy { intent.getStringExtra(EXTRA_CALL_TYPE) ?: "voice" }
 
+    private val autoAccept: Boolean by lazy { intent.getBooleanExtra(EXTRA_AUTO_ACCEPT, false) }
     private var isAudioMuted = false
     private var isVideoMuted = false
     private var callStartTime = 0L
     private var callDurationSeconds = 0
     private var timerJob: Job? = null
     private var isCallEnded = false
+    private var isCallAccepted = false
+    private var pendingOfferSdp: String? = null
+    private var serverCallId = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         binding = ActivityCallBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        NotificationHelper.cancelCallNotification(this, callId)
 
         binding.layoutCallInfo.applyStatusBarInset()
         binding.layoutCallControls.applyNavigationBarInset()
@@ -84,6 +92,7 @@ class CallActivity : AppCompatActivity() {
         observeSignaling()
 
         if (isOutgoing) {
+            isCallAccepted = true
             lifecycleScope.launch(Dispatchers.IO) {
                 callRepo.recordCall(
                     CallRecord(
@@ -100,7 +109,6 @@ class CallActivity : AppCompatActivity() {
             }
             startOutgoingCall()
         } else {
-            HapticEngine.startIncomingCall(this)
             lifecycleScope.launch(Dispatchers.IO) {
                 callRepo.recordCall(
                     CallRecord(
@@ -115,6 +123,11 @@ class CallActivity : AppCompatActivity() {
                     )
                 )
             }
+            if (autoAccept) {
+                acceptIncomingCall()
+            } else {
+                HapticEngine.startIncomingCall(this)
+            }
         }
     }
 
@@ -123,7 +136,8 @@ class CallActivity : AppCompatActivity() {
             override fun onIceCandidate(candidate: IceCandidate?) {
                 candidate?.let {
                     lifecycleScope.launch(Dispatchers.IO) {
-                        callRepo.sendSignaling(callId, targetUserId, "ice-candidate", candidate = it.sdp)
+                        val cid = serverCallId.ifBlank { callId }
+                        callRepo.sendSignaling(cid, targetUserId, "ice-candidate", candidate = it.sdp)
                     }
                 }
             }
@@ -185,7 +199,6 @@ class CallActivity : AppCompatActivity() {
 
     private fun setupUI() {
         binding.tvCallerName.text = peerName
-        binding.tvCallStatus.text = if (isOutgoing) "Calling..." else "Ringing..."
 
         if (peerAvatar.isNotBlank()) {
             binding.ivCallerAvatar.load(peerAvatar) {
@@ -200,6 +213,10 @@ class CallActivity : AppCompatActivity() {
 
         binding.btnEndCall.setOnClickListener {
             endCall()
+        }
+
+        binding.btnAnswerCall.setOnClickListener {
+            acceptIncomingCall()
         }
 
         binding.btnMute.setOnClickListener {
@@ -225,6 +242,18 @@ class CallActivity : AppCompatActivity() {
             }
         }
 
+        if (isOutgoing || autoAccept) {
+            binding.tvCallStatus.text = if (isOutgoing) "Calling..." else "Connecting..."
+            binding.btnAnswerCall.visibility = View.GONE
+            binding.btnMute.visibility = View.VISIBLE
+            binding.btnToggleVideo.visibility = if (callType == "video") View.VISIBLE else View.GONE
+        } else {
+            binding.tvCallStatus.text = "Incoming Call..."
+            binding.btnAnswerCall.visibility = View.VISIBLE
+            binding.btnMute.visibility = View.GONE
+            binding.btnToggleVideo.visibility = View.GONE
+        }
+
         if (callType == "voice") {
             binding.localVideoView.visibility = View.GONE
             binding.remoteVideoView.visibility = View.GONE
@@ -232,12 +261,62 @@ class CallActivity : AppCompatActivity() {
         }
     }
 
+    private fun acceptIncomingCall() {
+        if (isCallAccepted || isCallEnded) return
+        isCallAccepted = true
+        HapticEngine.stopIncomingCall(this)
+        NotificationHelper.cancelCallNotification(this, callId)
+
+        runOnUiThread {
+            binding.tvCallStatus.text = "Connecting..."
+            binding.btnAnswerCall.visibility = View.GONE
+            binding.btnMute.visibility = View.VISIBLE
+            if (callType == "video") {
+                binding.btnToggleVideo.visibility = View.VISIBLE
+            }
+        }
+
+        val effectiveCallId = serverCallId.ifBlank { callId }
+        lifecycleScope.launch(Dispatchers.IO) {
+            callRepo.acceptCall(effectiveCallId)
+        }
+
+        pendingOfferSdp?.let { sdp ->
+            pendingOfferSdp = null
+            handleRemoteOffer(sdp)
+        }
+    }
+
+    private fun handleRemoteOffer(sdp: String) {
+        rtcClient.setRemoteDescription(SessionDescription(SessionDescription.Type.OFFER, sdp), object : SdpObserver {
+            override fun onSetSuccess() {
+                rtcClient.createAnswer(object : SdpObserver {
+                    override fun onCreateSuccess(answerSdp: SessionDescription?) {
+                        answerSdp?.let {
+                            lifecycleScope.launch(Dispatchers.IO) {
+                                val cid = serverCallId.ifBlank { callId }
+                                callRepo.sendSignaling(cid, targetUserId, "answer", sdp = it.description)
+                            }
+                        }
+                    }
+                    override fun onSetSuccess() {}
+                    override fun onCreateFailure(p0: String?) {}
+                    override fun onSetFailure(p0: String?) {}
+                })
+            }
+            override fun onCreateSuccess(p0: SessionDescription?) {}
+            override fun onCreateFailure(p0: String?) {}
+            override fun onSetFailure(p0: String?) {}
+        })
+    }
+
     private fun startOutgoingCall(iceRestart: Boolean = false) {
         rtcClient.createOffer(object : SdpObserver {
             override fun onCreateSuccess(sdp: SessionDescription?) {
                 sdp?.let {
                     lifecycleScope.launch(Dispatchers.IO) {
-                        callRepo.sendSignaling(callId, targetUserId, if (iceRestart) "ice-restart-offer" else "offer", sdp = it.description)
+                        val cid = serverCallId.ifBlank { callId }
+                        callRepo.sendSignaling(cid, targetUserId, if (iceRestart) "ice-restart-offer" else "offer", sdp = it.description)
                     }
                 }
             }
@@ -250,46 +329,37 @@ class CallActivity : AppCompatActivity() {
     private fun observeSignaling() {
         lifecycleScope.launch {
             webSocket.events.collect { event ->
+                // The gateway sends flattened call events with both "type" and "event" fields
                 val type = event["type"]?.jsonPrimitive?.contentOrNull
+                    ?: event["event"]?.jsonPrimitive?.contentOrNull
+
+                // Match on call_id — accept events for this call, or events with no call_id
                 val eventCallId = event["call_id"]?.jsonPrimitive?.contentOrNull
                     ?: event["id"]?.jsonPrimitive?.contentOrNull
-
-                // Process events related to this call
-                if (eventCallId != null && eventCallId.isNotBlank() && eventCallId != callId) {
+                if (eventCallId != null && eventCallId.isNotBlank() && eventCallId != callId && eventCallId != serverCallId) {
                     return@collect
+                }
+
+                // If we receive the server call_id for the first time, remember it
+                if (eventCallId != null && eventCallId.isNotBlank() && serverCallId.isBlank()) {
+                    serverCallId = eventCallId
                 }
 
                 when (type) {
                     "call_signaling" -> {
+                        // signal_type comes from the flattened call_payload "type" field
                         val sigType = event["signal_type"]?.jsonPrimitive?.contentOrNull
                             ?: event["signaling_type"]?.jsonPrimitive?.contentOrNull
-                            ?: event["type_signal"]?.jsonPrimitive?.contentOrNull
                         val sdp = event["sdp"]?.jsonPrimitive?.contentOrNull
                         val candidate = event["candidate"]?.jsonPrimitive?.contentOrNull
 
-                        if (sigType == "offer" && sdp != null) {
-                            // Incoming offer
-                            rtcClient.setRemoteDescription(SessionDescription(SessionDescription.Type.OFFER, sdp), object : SdpObserver {
-                                override fun onSetSuccess() {
-                                    rtcClient.createAnswer(object : SdpObserver {
-                                        override fun onCreateSuccess(answerSdp: SessionDescription?) {
-                                            answerSdp?.let {
-                                                lifecycleScope.launch(Dispatchers.IO) {
-                                                    callRepo.sendSignaling(callId, targetUserId, "answer", sdp = it.description)
-                                                }
-                                            }
-                                        }
-                                        override fun onSetSuccess() {}
-                                        override fun onCreateFailure(p0: String?) {}
-                                        override fun onSetFailure(p0: String?) {}
-                                    })
-                                }
-                                override fun onCreateSuccess(p0: SessionDescription?) {}
-                                override fun onCreateFailure(p0: String?) {}
-                                override fun onSetFailure(p0: String?) {}
-                            })
-                        } else if (sigType == "answer" && sdp != null) {
-                            // Outgoing response
+                        if ((sigType == "offer" || sigType == "ice-restart-offer") && sdp != null) {
+                            if (isCallAccepted) {
+                                handleRemoteOffer(sdp)
+                            } else {
+                                pendingOfferSdp = sdp
+                            }
+                        } else if ((sigType == "answer" || sigType == "sfu-pub-answer" || sigType == "sfu-sub-answer") && sdp != null) {
                             rtcClient.setRemoteDescription(SessionDescription(SessionDescription.Type.ANSWER, sdp), object : SdpObserver {
                                 override fun onSetSuccess() {}
                                 override fun onCreateSuccess(p0: SessionDescription?) {}
@@ -344,6 +414,7 @@ class CallActivity : AppCompatActivity() {
 
     private fun endCall() {
         HapticEngine.stopIncomingCall(this)
+        NotificationHelper.cancelCallNotification(this, callId)
         if (isCallEnded) return
         isCallEnded = true
 
@@ -356,10 +427,15 @@ class CallActivity : AppCompatActivity() {
             if (isOutgoing) CallStatus.OUTGOING else CallStatus.MISSED
         }
 
+        val effectiveCallId = serverCallId.ifBlank { callId }
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 callRepo.updateCallStatus(callId, finalStatus, callDurationSeconds)
-                callRepo.endCall(callId)
+                if (!isOutgoing && !isCallAccepted) {
+                    callRepo.rejectCall(effectiveCallId)
+                } else {
+                    callRepo.endCall(effectiveCallId)
+                }
             } catch (_: Exception) {}
         }
 
@@ -368,6 +444,7 @@ class CallActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         HapticEngine.stopIncomingCall(this)
+        NotificationHelper.cancelCallNotification(this, callId)
         reconnectionHandler?.cancel()
         rtcClient.close()
         timerJob?.cancel()

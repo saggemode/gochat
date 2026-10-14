@@ -114,6 +114,48 @@ func deriveCurrencyFromCountry(country string) string {
 	}
 }
 
+func deriveCurrencyFromPhoneOrCountry(phone, country string) string {
+	p := strings.TrimSpace(phone)
+	c := strings.ToUpper(strings.TrimSpace(country))
+	if strings.HasPrefix(p, "+234") || strings.HasPrefix(p, "234") || strings.HasPrefix(p, "070") || strings.HasPrefix(p, "080") || strings.HasPrefix(p, "081") || strings.HasPrefix(p, "090") || strings.HasPrefix(p, "091") || c == "NG" || c == "NIGERIA" {
+		return "NGN"
+	}
+	if strings.HasPrefix(p, "+44") || strings.HasPrefix(p, "44") || c == "GB" || c == "UK" || c == "UNITED KINGDOM" {
+		return "GBP"
+	}
+	if strings.HasPrefix(p, "+254") || strings.HasPrefix(p, "254") || c == "KE" || c == "KENYA" {
+		return "KES"
+	}
+	if strings.HasPrefix(p, "+233") || strings.HasPrefix(p, "233") || c == "GH" || c == "GHANA" {
+		return "GHS"
+	}
+	if strings.HasPrefix(p, "+27") || strings.HasPrefix(p, "27") || c == "ZA" || c == "SOUTH AFRICA" {
+		return "ZAR"
+	}
+	if strings.HasPrefix(p, "+91") || strings.HasPrefix(p, "91") || c == "IN" || c == "INDIA" {
+		return "INR"
+	}
+	if strings.HasPrefix(p, "+971") || strings.HasPrefix(p, "971") || c == "AE" || c == "UAE" {
+		return "AED"
+	}
+	if c == "CA" || c == "CANADA" {
+		return "CAD"
+	}
+	if c == "AU" || c == "AUSTRALIA" {
+		return "AUD"
+	}
+	if c == "JP" || c == "JAPAN" {
+		return "JPY"
+	}
+	if c == "CN" || c == "CHINA" {
+		return "CNY"
+	}
+	if c == "DE" || c == "FR" || c == "IT" || c == "ES" || c == "EU" {
+		return "EUR"
+	}
+	return deriveCurrencyFromCountry(country)
+}
+
 func (r *BusinessRepository) resolveOrCreateCategoryID(ctx context.Context, catInput string) string {
 	catInput = strings.TrimSpace(catInput)
 	if catInput == "" {
@@ -216,10 +258,23 @@ func (r *BusinessRepository) CreateMarketplaceProduct(ctx context.Context, p *Ma
 
 	p.ID = uuid.New().String()
 	p.BusinessID = p.OwnerID
+	if p.Currency == "" || p.Currency == "USD" {
+		var userCurr, countryCode, phone string
+		_ = r.db.QueryRow(ctx, `SELECT COALESCE(currency,''), COALESCE(country_code,''), COALESCE(phone,'') FROM core.users WHERE id = $1`, p.OwnerID).Scan(&userCurr, &countryCode, &phone)
+		if userCurr != "" && userCurr != "USD" {
+			p.Currency = userCurr
+		} else if derived := deriveCurrencyFromPhoneOrCountry(phone, countryCode); derived != "" && derived != "USD" {
+			p.Currency = derived
+		} else {
+			var bizCountry string
+			_ = r.db.QueryRow(ctx, `SELECT COALESCE(country_code,'') FROM business.business_profiles WHERE user_id = $1`, p.OwnerID).Scan(&bizCountry)
+			if bizDerived := deriveCurrencyFromCountry(bizCountry); bizDerived != "" {
+				p.Currency = bizDerived
+			}
+		}
+	}
 	if p.Currency == "" {
-		var countryCode string
-		_ = r.db.QueryRow(ctx, `SELECT COALESCE(country_code,'') FROM business.business_profiles WHERE user_id = $1`, p.OwnerID).Scan(&countryCode)
-		p.Currency = deriveCurrencyFromCountry(countryCode)
+		p.Currency = "NGN"
 	}
 	if p.Quantity <= 0 {
 		p.Quantity = 100

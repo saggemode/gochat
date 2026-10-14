@@ -749,8 +749,31 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 				if strings.HasPrefix(payload["event"], "call_") {
 					targetUserID := payload["target_user_id"]
 					if targetUserID != "" {
-						hub.SendToUser(targetUserID, []byte(msg.Payload))
-						log.Debug("Forwarded call event to target user",
+						// Flatten the nested call_payload into top-level fields
+						// so the client receives a single flat JSON object with
+						// "type", "call_id", "sdp", "candidate", etc. at the top level.
+						flat := map[string]string{
+							"type":     payload["event"],
+							"event":    payload["event"],
+							"actor_id": payload["actor_id"],
+						}
+						if cpRaw, ok := payload["call_payload"]; ok && cpRaw != "" {
+							var cpData map[string]string
+							if err := json.Unmarshal([]byte(cpRaw), &cpData); err == nil {
+								for k, v := range cpData {
+									if k == "type" {
+										// Preserve signal type from call_payload as "signal_type"
+										// to avoid overwriting the event type
+										flat["signal_type"] = v
+									} else {
+										flat[k] = v
+									}
+								}
+							}
+						}
+						flatJSON, _ := json.Marshal(flat)
+						hub.SendToUser(targetUserID, flatJSON)
+						log.Debug("Forwarded flattened call event to target user",
 							zap.String("event", payload["event"]),
 							zap.String("target_user_id", targetUserID),
 						)

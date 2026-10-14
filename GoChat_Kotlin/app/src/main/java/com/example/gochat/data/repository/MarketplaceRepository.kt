@@ -1026,7 +1026,8 @@ class MarketplaceRepository @Inject constructor(
                     ((product.originalPrice - product.price) / product.originalPrice) * 100
                 } else 0.0
                 put("discount_percent", disc)
-                put("currency", product.currency)
+                val prodCurrency = product.currency.ifBlank { com.example.gochat.core.currency.CurrencyManager.getUserCurrency() }
+                put("currency", prodCurrency)
                 put("category", resolvedCategoryName)
                 put("category_id", resolvedCategoryId)
                 put("stock", product.stock)

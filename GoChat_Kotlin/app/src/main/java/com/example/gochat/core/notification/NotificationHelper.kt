@@ -421,7 +421,26 @@ object NotificationHelper {
             callerName
         }
 
-        // 1. Answer Intent -> Opens CallActivity
+        // 1. Content/FullScreen Intent -> Opens CallActivity to view incoming call
+        val contentIntent = Intent(context, CallActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(CallActivity.EXTRA_CALL_ID, callId)
+            putExtra(CallActivity.EXTRA_TARGET_USER_ID, callerId)
+            putExtra(CallActivity.EXTRA_PEER_NAME, displayCallerName)
+            putExtra(CallActivity.EXTRA_PEER_AVATAR, callerAvatar)
+            putExtra(CallActivity.EXTRA_IS_OUTGOING, false)
+            putExtra(CallActivity.EXTRA_CALL_TYPE, callType)
+            putExtra(CallActivity.EXTRA_AUTO_ACCEPT, false)
+        }
+
+        val contentPendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId + 1,
+            contentIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // 2. Answer Action Intent -> Opens CallActivity and immediately accepts
         val answerIntent = Intent(context, CallActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(CallActivity.EXTRA_CALL_ID, callId)
@@ -430,16 +449,17 @@ object NotificationHelper {
             putExtra(CallActivity.EXTRA_PEER_AVATAR, callerAvatar)
             putExtra(CallActivity.EXTRA_IS_OUTGOING, false)
             putExtra(CallActivity.EXTRA_CALL_TYPE, callType)
+            putExtra(CallActivity.EXTRA_AUTO_ACCEPT, true)
         }
 
         val answerPendingIntent = PendingIntent.getActivity(
             context,
-            notificationId + 1,
+            notificationId + 3,
             answerIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // 2. Decline Intent -> NotificationActionReceiver
+        // 3. Decline Intent -> NotificationActionReceiver
         val declineIntent = Intent(context, NotificationActionReceiver::class.java).apply {
             action = ACTION_DISMISS_CALL
             putExtra(EXTRA_NOTIFICATION_ID, notificationId)
@@ -464,8 +484,8 @@ object NotificationHelper {
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setOngoing(true)
             .setAutoCancel(true)
-            .setContentIntent(answerPendingIntent)
-            .setFullScreenIntent(answerPendingIntent, true)
+            .setContentIntent(contentPendingIntent)
+            .setFullScreenIntent(contentPendingIntent, true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .addAction(R.drawable.ic_close, "Decline", declinePendingIntent)
             .addAction(R.drawable.ic_call, "Answer", answerPendingIntent)
@@ -486,6 +506,16 @@ object NotificationHelper {
             Log.d("NotificationHelper", "Call notification shown for $callId from $callerName")
         } catch (e: Exception) {
             Log.e("NotificationHelper", "Failed to show call notification", e)
+        }
+    }
+
+    fun cancelCallNotification(context: Context, callId: String) {
+        val notificationId = ("call_$callId").hashCode()
+        try {
+            NotificationManagerCompat.from(context).cancel(notificationId)
+            Log.d("NotificationHelper", "Call notification cancelled for $callId")
+        } catch (e: Exception) {
+            Log.e("NotificationHelper", "Failed to cancel call notification", e)
         }
     }
 

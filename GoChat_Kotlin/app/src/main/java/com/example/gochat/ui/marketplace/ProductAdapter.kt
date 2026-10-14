@@ -42,11 +42,6 @@ class ProductAdapter(
 
                 binding.tvDiscountBadge.visibility = View.VISIBLE
                 binding.tvDiscountBadge.text = String.format(Locale.US, "-%d%%", product.discountPercent)
-            } else if (product.isCurrencyConverted()) {
-                binding.tvOriginalPrice.visibility = View.VISIBLE
-                binding.tvOriginalPrice.paintFlags = binding.tvOriginalPrice.paintFlags and Paint.STRIKE_THRU_TEXT_FLAG.inv()
-                binding.tvOriginalPrice.text = product.getConversionNote()
-                binding.tvDiscountBadge.visibility = View.GONE
             } else {
                 binding.tvOriginalPrice.visibility = View.GONE
                 binding.tvDiscountBadge.visibility = View.GONE

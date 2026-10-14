@@ -409,24 +409,12 @@ class ProductDetailsActivity : AppCompatActivity() {
 
             binding.tvDiscountBadge.visibility = View.VISIBLE
             binding.tvDiscountBadge.text = String.format(Locale.US, "-%d%%", product.discountPercent)
-        } else if (product.isCurrencyConverted()) {
-            binding.tvOriginalPrice.visibility = View.VISIBLE
-            binding.tvOriginalPrice.paintFlags = binding.tvOriginalPrice.paintFlags and Paint.STRIKE_THRU_TEXT_FLAG.inv()
-            binding.tvOriginalPrice.text = product.getConversionNote()
-            binding.tvDiscountBadge.visibility = View.GONE
         } else {
             binding.tvOriginalPrice.visibility = View.GONE
             binding.tvDiscountBadge.visibility = View.GONE
         }
 
-        // Display FX Conversion details banner if converted
-        if (product.isCurrencyConverted()) {
-            val rateQuote = com.example.gochat.core.currency.CurrencyManager.getRateQuote(product.currency)
-            binding.tvFxConversionInfo.visibility = View.VISIBLE
-            binding.tvFxConversionInfo.text = "🌍 Converted from ${product.currency} (${product.getConversionNote()}) · $rateQuote"
-        } else {
-            binding.tvFxConversionInfo.visibility = View.GONE
-        }
+        binding.tvFxConversionInfo.visibility = View.GONE
 
         binding.tvRating.text = String.format(Locale.US, "%.1f ★ (%d)", product.rating, product.reviewsCount)
         binding.tvProductDescription.text = product.description.ifBlank {

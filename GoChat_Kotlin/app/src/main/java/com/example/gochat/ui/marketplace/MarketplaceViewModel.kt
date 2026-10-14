@@ -430,6 +430,7 @@ class MarketplaceViewModel @Inject constructor(
                 description = description,
                 price = price,
                 originalPrice = if (originalPrice > price) originalPrice else 0.0,
+                currency = com.example.gochat.core.currency.CurrencyManager.getUserCurrency(),
                 category = catName,
                 categoryId = catUuid,
                 stock = stock,

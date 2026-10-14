@@ -398,35 +398,40 @@ class CallsFragment : Fragment() {
         peerAvatar: String,
         callType: String
     ) {
-        val callId = "call_${System.currentTimeMillis()}"
-
-        // Pre-insert outbound call record locally so it immediately appears in history
-        val newRecord = CallRecord(
-            id = callId,
-            peerId = targetUserId,
-            peerName = peerName.ifBlank { "GoChat Contact" },
-            peerAvatar = peerAvatar,
-            type = if (callType == "video") CallType.VIDEO else CallType.AUDIO,
-            status = CallStatus.OUTGOING,
-            durationSeconds = 0,
-            timestamp = System.currentTimeMillis()
-        )
+        val localCallId = "call_${System.currentTimeMillis()}"
 
         viewLifecycleOwner.lifecycleScope.launch {
-            callRepository.recordCall(newRecord)
-            callRepository.startCall(targetUserId, callType)
-        }
+            // Start call on server first to get the real server-assigned call ID
+            val result = callRepository.startCall(targetUserId, callType)
+            val serverCallId = result.getOrNull()?.id
 
-        // Launch CallActivity with full metadata
-        val intent = Intent(requireContext(), CallActivity::class.java).apply {
-            putExtra(CallActivity.EXTRA_CALL_ID, callId)
-            putExtra(CallActivity.EXTRA_TARGET_USER_ID, targetUserId)
-            putExtra(CallActivity.EXTRA_PEER_NAME, peerName)
-            putExtra(CallActivity.EXTRA_PEER_AVATAR, peerAvatar)
-            putExtra(CallActivity.EXTRA_IS_OUTGOING, true)
-            putExtra(CallActivity.EXTRA_CALL_TYPE, callType)
+            // Use server call ID if available, otherwise fall back to local ID
+            val effectiveCallId = if (!serverCallId.isNullOrBlank()) serverCallId else localCallId
+
+            // Pre-insert outbound call record locally so it immediately appears in history
+            val newRecord = CallRecord(
+                id = effectiveCallId,
+                peerId = targetUserId,
+                peerName = peerName.ifBlank { "GoChat Contact" },
+                peerAvatar = peerAvatar,
+                type = if (callType == "video") CallType.VIDEO else CallType.AUDIO,
+                status = CallStatus.OUTGOING,
+                durationSeconds = 0,
+                timestamp = System.currentTimeMillis()
+            )
+            callRepository.recordCall(newRecord)
+
+            // Launch CallActivity with full metadata
+            val intent = Intent(requireContext(), CallActivity::class.java).apply {
+                putExtra(CallActivity.EXTRA_CALL_ID, effectiveCallId)
+                putExtra(CallActivity.EXTRA_TARGET_USER_ID, targetUserId)
+                putExtra(CallActivity.EXTRA_PEER_NAME, peerName)
+                putExtra(CallActivity.EXTRA_PEER_AVATAR, peerAvatar)
+                putExtra(CallActivity.EXTRA_IS_OUTGOING, true)
+                putExtra(CallActivity.EXTRA_CALL_TYPE, callType)
+            }
+            startActivity(intent)
         }
-        startActivity(intent)
     }
 
     override fun onHiddenChanged(hidden: Boolean) {

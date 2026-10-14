@@ -16,8 +16,9 @@ import com.example.gochat.databinding.ActivityContactProfileBinding
 import com.example.gochat.ui.calls.CallActivity
 import com.example.gochat.ui.contacts.SelectContactActivity
 import com.example.gochat.ui.security.SecurityVerificationActivity
-import androidx.lifecycle.lifecycleScope
 import com.example.gochat.data.repository.ChatRepository
+import com.example.gochat.data.repository.CallRepository
+import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.launch
@@ -45,6 +46,9 @@ class ContactProfileActivity : AppCompatActivity() {
 
     @Inject
     lateinit var contactSyncManager: ContactSyncManager
+
+    @Inject
+    lateinit var callRepository: CallRepository
 
     companion object {
         const val EXTRA_CONVERSATION_ID = "extra_conversation_id"
@@ -175,28 +179,40 @@ class ContactProfileActivity : AppCompatActivity() {
 
         // 1. Voice Call
         binding.btnActionVoice.setOnClickListener {
-            val intent = Intent(this, CallActivity::class.java).apply {
-                putExtra(CallActivity.EXTRA_CALL_ID, "call_${System.currentTimeMillis()}")
-                putExtra(CallActivity.EXTRA_TARGET_USER_ID, resolveCallTarget())
-                putExtra(CallActivity.EXTRA_PEER_NAME, userName)
-                putExtra(CallActivity.EXTRA_PEER_AVATAR, userAvatar)
-                putExtra(CallActivity.EXTRA_IS_OUTGOING, true)
-                putExtra(CallActivity.EXTRA_CALL_TYPE, "voice")
+            val target = resolveCallTarget()
+            lifecycleScope.launch {
+                val result = callRepository.startCall(target, "voice")
+                val serverCallId = result.getOrNull()?.id
+                val effectiveCallId = if (!serverCallId.isNullOrBlank()) serverCallId else "call_${System.currentTimeMillis()}"
+                val intent = Intent(this@ContactProfileActivity, CallActivity::class.java).apply {
+                    putExtra(CallActivity.EXTRA_CALL_ID, effectiveCallId)
+                    putExtra(CallActivity.EXTRA_TARGET_USER_ID, target)
+                    putExtra(CallActivity.EXTRA_PEER_NAME, userName)
+                    putExtra(CallActivity.EXTRA_PEER_AVATAR, userAvatar)
+                    putExtra(CallActivity.EXTRA_IS_OUTGOING, true)
+                    putExtra(CallActivity.EXTRA_CALL_TYPE, "voice")
+                }
+                startActivity(intent)
             }
-            startActivity(intent)
         }
 
         // 2. Video Call
         binding.btnActionVideo.setOnClickListener {
-            val intent = Intent(this, CallActivity::class.java).apply {
-                putExtra(CallActivity.EXTRA_CALL_ID, "call_${System.currentTimeMillis()}")
-                putExtra(CallActivity.EXTRA_TARGET_USER_ID, resolveCallTarget())
-                putExtra(CallActivity.EXTRA_PEER_NAME, userName)
-                putExtra(CallActivity.EXTRA_PEER_AVATAR, userAvatar)
-                putExtra(CallActivity.EXTRA_IS_OUTGOING, true)
-                putExtra(CallActivity.EXTRA_CALL_TYPE, "video")
+            val target = resolveCallTarget()
+            lifecycleScope.launch {
+                val result = callRepository.startCall(target, "video")
+                val serverCallId = result.getOrNull()?.id
+                val effectiveCallId = if (!serverCallId.isNullOrBlank()) serverCallId else "call_${System.currentTimeMillis()}"
+                val intent = Intent(this@ContactProfileActivity, CallActivity::class.java).apply {
+                    putExtra(CallActivity.EXTRA_CALL_ID, effectiveCallId)
+                    putExtra(CallActivity.EXTRA_TARGET_USER_ID, target)
+                    putExtra(CallActivity.EXTRA_PEER_NAME, userName)
+                    putExtra(CallActivity.EXTRA_PEER_AVATAR, userAvatar)
+                    putExtra(CallActivity.EXTRA_IS_OUTGOING, true)
+                    putExtra(CallActivity.EXTRA_CALL_TYPE, "video")
+                }
+                startActivity(intent)
             }
-            startActivity(intent)
         }
 
         // 3. Search

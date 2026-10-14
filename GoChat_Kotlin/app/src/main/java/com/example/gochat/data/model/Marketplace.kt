@@ -81,7 +81,7 @@ data class Product(
     val description: String = "",
     val price: Double = 0.0,
     @SerialName("original_price") val originalPrice: Double = 0.0,
-    val currency: String = "USD",
+    val currency: String = "NGN",
     @SerialName("image_urls") val imageUrls: List<String> = emptyList(),
     @SerialName("image_url") val imageUrl: String = "",
     @SerialName("store_id") val storeId: String = "",
@@ -119,23 +119,19 @@ data class Product(
         get() = name.ifBlank { "Product" }
 
     val displayPrice: Double
-        get() = com.example.gochat.core.currency.CurrencyManager.convert(price, currency)
+        get() = price
 
-    fun getFormattedPrice(targetCurrency: String = com.example.gochat.core.currency.CurrencyManager.getUserCurrency()): String {
-        return com.example.gochat.core.currency.CurrencyManager.formatPrice(price, currency, targetCurrency)
+    fun getFormattedPrice(): String {
+        return com.example.gochat.core.currency.CurrencyManager.formatPrice(price, currency)
     }
 
-    fun getFormattedOriginalPrice(targetCurrency: String = com.example.gochat.core.currency.CurrencyManager.getUserCurrency()): String {
-        return com.example.gochat.core.currency.CurrencyManager.formatPrice(originalPrice, currency, targetCurrency)
+    fun getFormattedOriginalPrice(): String {
+        return com.example.gochat.core.currency.CurrencyManager.formatPrice(originalPrice, currency)
     }
 
-    fun getConversionNote(targetCurrency: String = com.example.gochat.core.currency.CurrencyManager.getUserCurrency()): String? {
-        return com.example.gochat.core.currency.CurrencyManager.getOriginalPriceNote(price, currency, targetCurrency)
-    }
+    fun getConversionNote(): String? = null
 
-    fun isCurrencyConverted(targetCurrency: String = com.example.gochat.core.currency.CurrencyManager.getUserCurrency()): Boolean {
-        return com.example.gochat.core.currency.CurrencyManager.isConverted(currency, targetCurrency)
-    }
+    fun isCurrencyConverted(): Boolean = false
 
     val resolvedCountry: String
         get() = com.example.gochat.core.currency.CurrencyManager.getCountryForCurrency(currency)

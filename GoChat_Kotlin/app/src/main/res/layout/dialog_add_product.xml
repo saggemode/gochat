@@ -64,12 +64,13 @@
             android:orientation="horizontal">
 
             <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilProductPrice"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="6dp"
                 android:layout_weight="1"
-                android:hint="Selling Price ($) *"
+                android:hint="Selling Price *"
                 android:textColorHint="@color/gochat_text_muted"
                 app:boxStrokeColor="@color/whatsapp_teal_light">
 
@@ -82,12 +83,13 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilProductOriginalPrice"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="6dp"
                 android:layout_weight="1"
-                android:hint="Original Price ($)"
+                android:hint="Original Price"
                 android:textColorHint="@color/gochat_text_muted"
                 app:boxStrokeColor="@color/whatsapp_teal_light">
 

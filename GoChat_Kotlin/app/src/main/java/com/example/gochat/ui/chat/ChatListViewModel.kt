@@ -16,6 +16,7 @@ import com.example.gochat.data.model.UserStories
 import com.example.gochat.data.repository.AuthRepository
 import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.data.repository.MarketplaceRepository
+import com.example.gochat.data.repository.CallRepository
 import com.example.gochat.data.repository.StoryRepository
 import com.example.gochat.data.websocket.GoChatWebSocket
 import com.example.gochat.core.network.NetworkMonitor
@@ -42,7 +43,8 @@ class ChatListViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val tokenManager: TokenManager,
     private val webSocket: GoChatWebSocket,
-    private val networkMonitor: NetworkMonitor
+    private val networkMonitor: NetworkMonitor,
+    private val callRepository: CallRepository
 ) : AndroidViewModel(application) {
 
     val selectedFilter = MutableStateFlow("All")
@@ -58,6 +60,17 @@ class ChatListViewModel @Inject constructor(
 
     private val _verifiedStoreIds = MutableStateFlow<Set<String>>(emptySet())
     val verifiedStoreIds: StateFlow<Set<String>> = _verifiedStoreIds.asStateFlow()
+
+    /** Emits incoming call events received via WebSocket so the UI can launch CallActivity. */
+    data class IncomingCallEvent(
+        val callId: String,
+        val callerId: String,
+        val callerName: String,
+        val callerAvatar: String,
+        val callType: String
+    )
+    private val _incomingCallEvent = MutableSharedFlow<IncomingCallEvent>(extraBufferCapacity = 1)
+    val incomingCallEvent: SharedFlow<IncomingCallEvent> = _incomingCallEvent.asSharedFlow()
 
     // Paged Conversations Flow
     val pagedConversations: Flow<PagingData<Conversation>> = chatRepository.getConversationsPaged()
@@ -207,6 +220,57 @@ class ChatListViewModel @Inject constructor(
                             )
                         } catch (_: Exception) {}
                     }
+                } else if (type.startsWith("call_")) {
+                    // Handle incoming call events from the flattened WebSocket payload
+                    if (type == "call_initiated") {
+                        val callId = event["call_id"]?.jsonPrimitive?.contentOrNull ?: ""
+                        val callerId = event["caller_id"]?.jsonPrimitive?.contentOrNull
+                            ?: event["actor_id"]?.jsonPrimitive?.contentOrNull ?: ""
+                        val callerName = event["caller_name"]?.jsonPrimitive?.contentOrNull ?: "GoChat Contact"
+                        val callerAvatar = event["caller_avatar"]?.jsonPrimitive?.contentOrNull ?: ""
+                        val callType = event["signal_type"]?.jsonPrimitive?.contentOrNull ?: "voice"
+
+                        if (callId.isNotBlank() && callerId.isNotBlank()) {
+                            // Record incoming call locally
+                            try {
+                                callRepository.recordCall(
+                                    com.example.gochat.data.model.CallRecord(
+                                        id = callId,
+                                        peerId = callerId,
+                                        peerName = callerName,
+                                        peerAvatar = callerAvatar,
+                                        type = if (callType == "video") com.example.gochat.data.model.CallType.VIDEO else com.example.gochat.data.model.CallType.AUDIO,
+                                        status = com.example.gochat.data.model.CallStatus.INCOMING,
+                                        durationSeconds = 0,
+                                        timestamp = System.currentTimeMillis()
+                                    )
+                                )
+                            } catch (_: Exception) {}
+
+                            try {
+                                NotificationHelper.showCallNotificationAsync(
+                                    context = getApplication(),
+                                    callId = callId,
+                                    callerId = callerId,
+                                    callerName = callerName,
+                                    callType = callType,
+                                    callerAvatar = callerAvatar
+                                )
+                            } catch (_: Exception) {}
+
+                            _incomingCallEvent.tryEmit(
+                                IncomingCallEvent(
+                                    callId = callId,
+                                    callerId = callerId,
+                                    callerName = callerName,
+                                    callerAvatar = callerAvatar,
+                                    callType = callType
+                                )
+                            )
+                        }
+                    }
+                    // call_signaling, call_accepted, call_rejected, call_ended are handled
+                    // directly by CallActivity's own webSocket.events collector
                 } else {
                     val msg = chatRepository.handleIncomingWebSocketEvent(event)
                     if (msg != null) {

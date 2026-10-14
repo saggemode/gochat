@@ -133,91 +133,63 @@ object CurrencyManager {
     }
 
     /**
-     * Checks whether an amount in [fromCurrency] needs conversion to [targetCurrency].
+     * Checks whether an amount needs conversion (disabled: prices remain exact).
      */
-    fun isConverted(fromCurrency: String, targetCurrency: String = getUserCurrency()): Boolean {
-        return !fromCurrency.trim().equals(targetCurrency.trim(), ignoreCase = true)
+    fun isConverted(fromCurrency: String? = null, targetCurrency: String? = null): Boolean {
+        return false
     }
 
     /**
-     * Converts an amount from [fromCurrency] to [targetCurrency] using exchange rates.
+     * Returns the exact product price without conversion.
      */
     fun convert(
         amount: Double,
-        fromCurrency: String,
-        targetCurrency: String = getUserCurrency()
+        fromCurrency: String? = null,
+        targetCurrency: String? = null
     ): Double {
-        if (!isConverted(fromCurrency, targetCurrency) || amount <= 0.0) {
-            return amount
-        }
-
-        val from = fromCurrency.trim().uppercase()
-        val to = targetCurrency.trim().uppercase()
-
-        val fromUsdRate = ratesInUsd[from] ?: DEFAULT_USD_RATES[from] ?: 1.0
-        val toUsdRate = ratesInUsd[to] ?: DEFAULT_USD_RATES[to] ?: 1.0
-
-        if (fromUsdRate <= 0.0) return amount
-
-        // Calculate: amount in USD = amount / fromUsdRate
-        val amountInUsd = amount / fromUsdRate
-        // Converted amount = amountInUsd * toUsdRate
-        return amountInUsd * toUsdRate
+        return amount
     }
 
     /**
-     * Returns the formatted price with the assigned currency symbol (e.g. "₦30,400.00" or "$20.00").
+     * Returns the formatted price with the assigned currency symbol (e.g. "₦200.00").
      */
     fun formatPrice(
         amount: Double,
-        fromCurrency: String,
-        targetCurrency: String = getUserCurrency()
+        fromCurrency: String? = null,
+        targetCurrency: String? = null
     ): String {
-        val target = targetCurrency.trim().uppercase()
-        val converted = convert(amount, fromCurrency, target)
-        val symbol = getSymbol(target)
-
-        val format = DecimalFormat("#,##0.00", DecimalFormatSymbols(Locale.US))
-        return "$symbol${format.format(converted)}"
-    }
-
-    /**
-     * Returns the formatted price in the original seller currency (e.g. "$20.00 USD").
-     */
-    fun formatOriginalPrice(amount: Double, fromCurrency: String): String {
-        val curr = fromCurrency.trim().uppercase()
+        val curr = if (!fromCurrency.isNullOrBlank()) fromCurrency else getUserCurrency()
         val symbol = getSymbol(curr)
         val format = DecimalFormat("#,##0.00", DecimalFormatSymbols(Locale.US))
-        return "$symbol${format.format(amount)} $curr"
+        return "$symbol${format.format(amount)}"
     }
 
     /**
-     * Returns a note explaining the conversion, or null if the currency is already local.
-     * E.g. "orig. $20.00 USD"
+     * Returns the formatted price with currency symbol.
+     */
+    fun formatOriginalPrice(amount: Double, fromCurrency: String? = null): String {
+        val curr = if (!fromCurrency.isNullOrBlank()) fromCurrency else getUserCurrency()
+        val symbol = getSymbol(curr)
+        val format = DecimalFormat("#,##0.00", DecimalFormatSymbols(Locale.US))
+        return "$symbol${format.format(amount)}"
+    }
+
+    /**
+     * Notes explaining conversion are disabled.
      */
     fun getOriginalPriceNote(
-        amount: Double,
-        fromCurrency: String,
-        targetCurrency: String = getUserCurrency()
-    ): String? {
-        if (!isConverted(fromCurrency, targetCurrency)) return null
-        return "orig. ${formatOriginalPrice(amount, fromCurrency)}"
-    }
+        amount: Double = 0.0,
+        fromCurrency: String? = null,
+        targetCurrency: String? = null
+    ): String? = null
 
     /**
-     * Returns an exchange rate quote string, e.g. "1 USD = ₦1,520.00"
+     * Rate quotes disabled.
      */
     fun getRateQuote(
-        fromCurrency: String,
-        targetCurrency: String = getUserCurrency()
-    ): String? {
-        if (!isConverted(fromCurrency, targetCurrency)) return null
-        val unitConverted = convert(1.0, fromCurrency, targetCurrency)
-        val target = targetCurrency.trim().uppercase()
-        val symbol = getSymbol(target)
-        val format = DecimalFormat("#,##0.00", DecimalFormatSymbols(Locale.US))
-        return "1 ${fromCurrency.uppercase()} = $symbol${format.format(unitConverted)}"
-    }
+        fromCurrency: String? = null,
+        targetCurrency: String? = null
+    ): String? = null
 
     /**
      * Syncs latest exchange rates with the backend `/api/v1/fx/rates` endpoint.

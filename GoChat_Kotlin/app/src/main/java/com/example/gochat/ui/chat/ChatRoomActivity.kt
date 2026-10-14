@@ -87,6 +87,7 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 import com.example.gochat.data.repository.ChatRepository
+import com.example.gochat.data.repository.CallRepository
 import com.example.gochat.databinding.BottomSheetCustomOfferBinding
 
 @AndroidEntryPoint
@@ -116,6 +117,7 @@ class ChatRoomActivity : AppCompatActivity() {
     @Inject lateinit var chatRepository: ChatRepository
     @Inject lateinit var tokenManager: com.example.gochat.data.api.TokenManager
     @Inject lateinit var marketplaceRepository: MarketplaceRepository
+    @Inject lateinit var callRepository: CallRepository
     private lateinit var messageAdapter: MessageAdapter
     private lateinit var mentionAdapter: GroupMemberAdapter
     private lateinit var commandAdapter: BotCommandAdapter
@@ -490,15 +492,20 @@ class ChatRoomActivity : AppCompatActivity() {
                 val resolvedPartnerId = currentPartnerId?.ifBlank { null }
                     ?: viewModel.partnerId?.ifBlank { null }
                     ?: viewModel.conversationId.value
-                val intent = Intent(this@ChatRoomActivity, CallActivity::class.java).apply {
-                    putExtra(CallActivity.EXTRA_CALL_ID, "call_${System.currentTimeMillis()}")
-                    putExtra(CallActivity.EXTRA_TARGET_USER_ID, resolvedPartnerId)
-                    putExtra(CallActivity.EXTRA_PEER_NAME, title)
-                    putExtra(CallActivity.EXTRA_PEER_AVATAR, avatarUrl)
-                    putExtra(CallActivity.EXTRA_IS_OUTGOING, true)
-                    putExtra(CallActivity.EXTRA_CALL_TYPE, "voice")
+                lifecycleScope.launch {
+                    val result = callRepository.startCall(resolvedPartnerId, "voice")
+                    val serverCallId = result.getOrNull()?.id
+                    val effectiveCallId = if (!serverCallId.isNullOrBlank()) serverCallId else "call_${System.currentTimeMillis()}"
+                    val intent = Intent(this@ChatRoomActivity, CallActivity::class.java).apply {
+                        putExtra(CallActivity.EXTRA_CALL_ID, effectiveCallId)
+                        putExtra(CallActivity.EXTRA_TARGET_USER_ID, resolvedPartnerId)
+                        putExtra(CallActivity.EXTRA_PEER_NAME, title)
+                        putExtra(CallActivity.EXTRA_PEER_AVATAR, avatarUrl)
+                        putExtra(CallActivity.EXTRA_IS_OUTGOING, true)
+                        putExtra(CallActivity.EXTRA_CALL_TYPE, "voice")
+                    }
+                    startActivity(intent)
                 }
-                startActivity(intent)
             }
 
             btnMoreChatOptions.setOnClickListener {

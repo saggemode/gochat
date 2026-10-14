@@ -24,6 +24,7 @@ import com.example.gochat.core.ui.EdgeToEdgeHelper.applyEdgeToEdge
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.databinding.ActivityMainBinding
 import com.example.gochat.ui.auth.LoginActivity
+import com.example.gochat.ui.calls.CallActivity
 import com.example.gochat.ui.calls.CallsFragment
 import com.example.gochat.ui.chat.ChatListFragment
 import com.example.gochat.ui.chat.ChatListViewModel
@@ -115,6 +116,7 @@ class MainActivity : AppCompatActivity() {
         setupBottomNavigation()
         observeUnreadBadge()
         observeCallsBadge()
+        observeIncomingCalls()
 
         // Initialize E2EE Keys
         lifecycleScope.launch {
@@ -358,6 +360,25 @@ class MainActivity : AppCompatActivity() {
                     } else {
                         callsBadge.isVisible = false
                     }
+                }
+            }
+        }
+    }
+
+    private fun observeIncomingCalls() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                chatViewModel.incomingCallEvent.collect { event ->
+                    val intent = Intent(this@MainActivity, CallActivity::class.java).apply {
+                        putExtra(CallActivity.EXTRA_CALL_ID, event.callId)
+                        putExtra(CallActivity.EXTRA_TARGET_USER_ID, event.callerId)
+                        putExtra(CallActivity.EXTRA_PEER_NAME, event.callerName)
+                        putExtra(CallActivity.EXTRA_PEER_AVATAR, event.callerAvatar)
+                        putExtra(CallActivity.EXTRA_IS_OUTGOING, false)
+                        putExtra(CallActivity.EXTRA_CALL_TYPE, event.callType)
+                        putExtra(CallActivity.EXTRA_AUTO_ACCEPT, false)
+                    }
+                    startActivity(intent)
                 }
             }
         }

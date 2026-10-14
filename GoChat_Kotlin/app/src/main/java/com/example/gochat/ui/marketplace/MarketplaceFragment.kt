@@ -455,6 +455,11 @@ class MarketplaceFragment : Fragment() {
         val dialogBinding = DialogAddProductBinding.inflate(layoutInflater)
         dialog.setContentView(dialogBinding.root)
 
+        val userCurrencySymbol = com.example.gochat.core.currency.CurrencyManager.getUserCurrencySymbol()
+        val userCurrencyCode = com.example.gochat.core.currency.CurrencyManager.getUserCurrency()
+        dialogBinding.tilProductPrice.hint = "Selling Price ($userCurrencySymbol $userCurrencyCode) *"
+        dialogBinding.tilProductOriginalPrice.hint = "Original Price ($userCurrencySymbol $userCurrencyCode)"
+
         val selectedProductUris = mutableListOf<Uri>()
 
         // Variants setup

@@ -73,11 +73,13 @@ func (s *CallServer) StartCall(ctx context.Context, req *callpb.StartCallRequest
 
 	// Publish real-time event to Redis targeted to the receiver
 	cpPayload := map[string]string{
-		"call_id":     pbCall.Id,
-		"caller_id":   pbCall.CallerId,
-		"receiver_id": pbCall.ReceiverId,
-		"type":        callType,
-		"status":      "dialing",
+		"call_id":       pbCall.Id,
+		"caller_id":     pbCall.CallerId,
+		"caller_name":   pbCall.CallerName,
+		"caller_avatar": pbCall.CallerAvatarUrl,
+		"receiver_id":   pbCall.ReceiverId,
+		"type":          callType,
+		"status":        "dialing",
 	}
 	cpJSON, _ := json.Marshal(cpPayload)
 

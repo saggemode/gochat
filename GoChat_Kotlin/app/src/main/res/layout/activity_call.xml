@@ -95,6 +95,17 @@
             app:backgroundTint="#1F2C33"
             app:tint="@color/white" />
 
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/btnAnswerCall"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:src="@drawable/ic_call"
+            android:visibility="gone"
+            app:backgroundTint="#4CAF50"
+            app:fabSize="normal"
+            app:tint="@color/white" />
+
     </LinearLayout>
 
 </FrameLayout>

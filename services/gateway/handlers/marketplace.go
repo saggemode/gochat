@@ -34,7 +34,7 @@ func formatProductItem(p *pb.MarketplaceProduct) map[string]interface{} {
 	}
 	curr := p.Currency
 	if curr == "" {
-		curr = "USD"
+		curr = "NGN"
 	}
 	currencySymbol, sellerCountry, continent := deriveCurrencyInfo(curr)
 
