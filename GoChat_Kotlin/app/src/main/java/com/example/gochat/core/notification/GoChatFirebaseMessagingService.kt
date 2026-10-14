@@ -85,6 +85,7 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
                     val ordObj = root["order"]?.let { if (it is kotlinx.serialization.json.JsonObject) it else null } ?: root
                     val num = ordObj["order_number"]?.jsonPrimitive?.contentOrNull ?: "ORD"
                     val summary = ordObj["items_summary"]?.jsonPrimitive?.contentOrNull ?: "Marketplace Order"
+                    val total = ordObj["total_amount"]?.jsonPrimitive?.doubleOrNull
                     val ordCurr = ordObj["currency"]?.jsonPrimitive?.contentOrNull
                     val totalStr = if (total != null && total > 0) " • ${CurrencyManager.formatPrice(total, ordCurr)}" else ""
                     "📦 New Order #$num: $summary$totalStr"
