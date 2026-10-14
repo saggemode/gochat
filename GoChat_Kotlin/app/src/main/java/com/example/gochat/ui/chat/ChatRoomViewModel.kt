@@ -402,14 +402,14 @@ class ChatRoomViewModel @Inject constructor(
     private fun getReplyPreviewText(message: Message): String {
         return when (message.type) {
             MessageType.TEXT -> message.content.take(200)
-            MessageType.IMAGE -> "📷 Photo"
-            MessageType.VIDEO -> "🎥 Video"
+            MessageType.IMAGE -> if (message.content.isNotBlank() && message.content != "Photo" && message.content != "① Photo") "📷 ${message.content.take(150)}" else "📷 Photo"
+            MessageType.VIDEO -> if (message.content.isNotBlank() && message.content != "Video") "🎥 ${message.content.take(150)}" else "🎥 Video"
             MessageType.VOICE, MessageType.AUDIO -> "🎵 Voice note"
-            MessageType.FILE -> "📄 Document"
-            MessageType.POLL -> "📊 Poll"
+            MessageType.FILE -> if (message.content.isNotBlank()) "📄 ${message.content.take(150)}" else "📄 Document"
+            MessageType.POLL -> "📊 Poll: ${message.content.take(100)}"
             MessageType.PING -> "💥 PING"
             MessageType.CATALOG -> "🛍️ Product Catalog"
-            MessageType.PRODUCT -> "🛒 Product"
+            MessageType.PRODUCT -> if (message.content.isNotBlank()) "🛒 ${message.content.take(100)}" else "🛒 Product"
             MessageType.PAYMENT_REQUEST -> "💳 Payment Request"
             MessageType.LOCATION -> "📍 Location"
             MessageType.CONTACT -> "👤 Contact"
@@ -463,6 +463,8 @@ class ChatRoomViewModel @Inject constructor(
                     replyToId = reply?.id,
                     replyToText = reply?.let { getReplyPreviewText(it) },
                     replyToSenderName = reply?.senderName,
+                    replyToMediaUrl = reply?.let { it.mediaThumbnail ?: it.mediaUrl },
+                    replyToMediaType = reply?.type?.name,
                     mentionedUserIds = mentions,
                     disappearingDurationSeconds = _disappearingDuration.value
                 )
@@ -1020,6 +1022,8 @@ class ChatRoomViewModel @Inject constructor(
                 replyToId = reply?.id,
                 replyToText = reply?.let { getReplyPreviewText(it) },
                 replyToSenderName = reply?.senderName,
+                replyToMediaUrl = reply?.let { it.mediaThumbnail ?: it.mediaUrl },
+                replyToMediaType = reply?.type?.name,
                 disappearingDurationSeconds = _disappearingDuration.value
             )
             clearReply()
@@ -1059,6 +1063,8 @@ class ChatRoomViewModel @Inject constructor(
                 replyToId = reply?.id,
                 replyToText = reply?.let { getReplyPreviewText(it) },
                 replyToSenderName = reply?.senderName,
+                replyToMediaUrl = reply?.let { it.mediaThumbnail ?: it.mediaUrl },
+                replyToMediaType = reply?.type?.name,
                 disappearingDurationSeconds = _disappearingDuration.value,
                 isViewOnce = isViewOnce
             )

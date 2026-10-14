@@ -78,6 +78,8 @@ data class Message(
     @SerialName("reply_to_id") val replyToId: String? = null,
     @SerialName("reply_to_text") val replyToText: String? = null,
     @SerialName("reply_to_sender_name") val replyToSenderName: String? = null,
+    @SerialName("reply_to_media_url") val replyToMediaUrl: String? = null,
+    @SerialName("reply_to_media_type") val replyToMediaType: String? = null,
     @SerialName("blur_hash") val blurHash: String? = null,
     @SerialName("created_at") val createdAt: Long = 0,
     val isMe: Boolean = false,

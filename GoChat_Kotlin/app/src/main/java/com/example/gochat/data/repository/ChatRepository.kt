@@ -313,6 +313,8 @@ class ChatRepository @Inject constructor(
         replyToId: String? = null,
         replyToText: String? = null,
         replyToSenderName: String? = null,
+        replyToMediaUrl: String? = null,
+        replyToMediaType: String? = null,
         mentionedUserIds: List<String> = emptyList(),
         disappearingDurationSeconds: Int? = null,
         isViewOnce: Boolean = false
@@ -354,7 +356,8 @@ class ChatRepository @Inject constructor(
         // 2. Insert optimistic message into local Room DB immediately (status = SENDING)
         var localMsg = createOptimisticMessage(
             conversationId, content, type, mediaUrl,
-            replyToId, replyToText, replyToSenderName
+            replyToId, replyToText, replyToSenderName,
+            replyToMediaUrl, replyToMediaType
         ).copy(status = MessageStatus.SENDING, blurHash = blurHash, isViewOnce = isViewOnce)
 
         
@@ -459,6 +462,11 @@ class ChatRepository @Inject constructor(
                     isViewOnce = isViewOnce || parsed.isViewOnce,
                     disappearingDurationSeconds = parsed.disappearingDurationSeconds ?: localMsg.disappearingDurationSeconds,
                     expiresAt = parsed.expiresAt ?: localMsg.expiresAt,
+                    replyToId = parsed.replyToId ?: localMsg.replyToId,
+                    replyToText = parsed.replyToText ?: localMsg.replyToText,
+                    replyToSenderName = parsed.replyToSenderName ?: localMsg.replyToSenderName,
+                    replyToMediaUrl = parsed.replyToMediaUrl ?: localMsg.replyToMediaUrl,
+                    replyToMediaType = parsed.replyToMediaType ?: localMsg.replyToMediaType,
                     isStarred = localExisting?.isStarred ?: localMsg.isStarred,
                     isPinned = localExisting?.isPinned ?: localMsg.isPinned
                 )
@@ -1391,7 +1399,9 @@ class ChatRepository @Inject constructor(
         mediaUrl: String?,
         replyToId: String?,
         replyToText: String?,
-        replyToSenderName: String?
+        replyToSenderName: String?,
+        replyToMediaUrl: String? = null,
+        replyToMediaType: String? = null
     ): Message {
         val msgType = when (type) {
             1 -> MessageType.IMAGE
@@ -1420,6 +1430,8 @@ class ChatRepository @Inject constructor(
             replyToId = replyToId,
             replyToText = replyToText,
             replyToSenderName = replyToSenderName,
+            replyToMediaUrl = replyToMediaUrl,
+            replyToMediaType = replyToMediaType,
             isMe = true,
             createdAt = System.currentTimeMillis()
         )

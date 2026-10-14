@@ -72,10 +72,15 @@
 
         <LinearLayout
             android:id="@+id/layoutQuotedReply"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="6dp"
             android:background="@drawable/bg_quoted_reply_other"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            android:gravity="center_vertical"
+            android:minWidth="140dp"
             android:orientation="horizontal"
             android:padding="6dp"
             android:visibility="gone"
@@ -87,15 +92,18 @@
                 android:background="@color/gochat_accent" />
 
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
+                android:layout_weight="1"
                 android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/tvQuotedSender"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
                     android:textColor="@color/gochat_accent"
                     android:textSize="12sp"
                     android:textStyle="bold"
@@ -111,6 +119,18 @@
                     android:textSize="12sp"
                     tools:text="Original message snippet..." />
             </LinearLayout>
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/ivQuotedThumbnail"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:layout_gravity="center_vertical"
+                android:layout_marginStart="6dp"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Small"
+                tools:src="@drawable/ic_gallery"
+                tools:visibility="visible" />
         </LinearLayout>
 
         <!-- Media Image Preview -->

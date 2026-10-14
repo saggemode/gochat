@@ -136,6 +136,8 @@ data class Message(
     @SerialName("reply_to_id") val replyToId: String? = null,
     @SerialName("reply_to_text") val replyToText: String? = null,
     @SerialName("reply_to_sender_name") val replyToSenderName: String? = null,
+    @SerialName("reply_to_media_url") val replyToMediaUrl: String? = null,
+    @SerialName("reply_to_media_type") val replyToMediaType: String? = null,
     @SerialName("blur_hash") val blurHash: String? = null,
     @SerialName("created_at") val createdAt: Long = System.currentTimeMillis(),
 
@@ -276,6 +278,12 @@ data class Message(
             val replyToSenderName = (json["reply_to_sender_name"] ?: json["replyToSenderName"])
                 ?.jsonPrimitive?.contentOrNull
 
+            val replyToMediaUrl = (json["reply_to_media_url"] ?: json["replyToMediaUrl"])
+                ?.jsonPrimitive?.contentOrNull
+
+            val replyToMediaType = (json["reply_to_media_type"] ?: json["replyToMediaType"])
+                ?.jsonPrimitive?.contentOrNull
+
             val reactions = (json["reactions"] ?: json["Reactions"])?.jsonArray?.map {
                 val obj = it.jsonObject
                 Reaction(
@@ -326,6 +334,8 @@ data class Message(
                 replyToId = replyToId,
                 replyToText = replyToText,
                 replyToSenderName = replyToSenderName,
+                replyToMediaUrl = replyToMediaUrl,
+                replyToMediaType = replyToMediaType,
                 blurHash = blurHash,
                 createdAt = createdAt,
 

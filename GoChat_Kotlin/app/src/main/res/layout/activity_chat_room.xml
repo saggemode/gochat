@@ -578,6 +578,10 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="8dp"
             android:background="@drawable/bg_reply_preview_bar"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            android:gravity="center_vertical"
             android:orientation="horizontal"
             android:padding="8dp"
             android:visibility="gone"
@@ -614,6 +618,18 @@
                     android:textSize="12sp"
                     tools:text="I will send the document over in a bit." />
             </LinearLayout>
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/ivReplyPreviewThumbnail"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_gravity="center_vertical"
+                android:layout_marginEnd="8dp"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Small"
+                tools:src="@drawable/ic_gallery"
+                tools:visibility="visible" />
 
             <ImageView
                 android:id="@+id/btnCloseReplyPreview"
