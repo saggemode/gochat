@@ -671,12 +671,37 @@ func (r *MessageRepository) MarkRead(ctx context.Context, convID, userID uuid.UU
 	}
 	defer tx.Rollback(ctx)
 
-	for _, msgID := range msgIDs {
+	if len(msgIDs) > 0 {
+		for _, msgID := range msgIDs {
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO message_reads (message_id, user_id)
+				VALUES ($1, $2)
+				ON CONFLICT DO NOTHING
+			`, msgID, userID); err != nil {
+				return err
+			}
+		}
+
+		if _, err := tx.Exec(ctx, `
+			UPDATE messages SET status = 'read'
+			WHERE id = ANY($1) AND sender_id != $2
+		`, msgIDs, userID); err != nil {
+			return err
+		}
+	} else {
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO message_reads (message_id, user_id)
-			VALUES ($1, $2)
+			SELECT id, $2 FROM messages
+			WHERE conversation_id = $1 AND sender_id != $2 AND is_deleted = FALSE
 			ON CONFLICT DO NOTHING
-		`, msgID, userID); err != nil {
+		`, convID, userID); err != nil {
+			return err
+		}
+
+		if _, err := tx.Exec(ctx, `
+			UPDATE messages SET status = 'read'
+			WHERE conversation_id = $1 AND sender_id != $2 AND status != 'read'
+		`, convID, userID); err != nil {
 			return err
 		}
 	}
@@ -972,6 +997,9 @@ func (r *MessageRepository) hydrateMessages(ctx context.Context, msgs []*Message
 			if err := rdRows.Scan(&rd.MessageID, &rd.UserID, &rd.ReadAt); err == nil {
 				if m, ok := msgMap[rd.MessageID]; ok {
 					m.Reads = append(m.Reads, rd)
+					if m.Status != MessageStatusRead {
+						m.Status = MessageStatusRead
+					}
 				}
 			}
 		}

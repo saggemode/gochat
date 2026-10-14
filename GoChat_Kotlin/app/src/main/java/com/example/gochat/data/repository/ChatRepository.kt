@@ -471,13 +471,21 @@ class ChatRepository @Inject constructor(
                 val data = response.body() ?: buildJsonObject {}
                 val msgJson = data["message"]?.jsonObject ?: data
                 val parsed = Message.fromJson(msgJson, tokenManager.userId ?: "")
-                val localExisting = dao.getMessageById(localMsg.id)
+                val localExisting = dao.getMessageById(localMsg.id) ?: dao.getMessageById(parsed.id)
+                val currentStatus = localExisting?.status ?: MessageStatus.SENT
+                val resolvedStatus = if (currentStatus == MessageStatus.READ || currentStatus == MessageStatus.DELIVERED) {
+                    currentStatus
+                } else if (parsed.status == MessageStatus.READ || parsed.status == MessageStatus.DELIVERED) {
+                    parsed.status
+                } else {
+                    MessageStatus.SENT
+                }
                 val finalMsg = parsed.copy(
                     isMe = true,
                     content = content, // Preserve local plaintext
                     mediaUrl = if (!parsed.mediaUrl.isNullOrBlank()) parsed.mediaUrl else finalMediaUrl,
                     blurHash = if (!parsed.blurHash.isNullOrBlank()) parsed.blurHash else blurHash,
-                    status = MessageStatus.SENT,
+                    status = resolvedStatus,
                     isViewOnce = isViewOnce || parsed.isViewOnce,
                     disappearingDurationSeconds = parsed.disappearingDurationSeconds ?: localMsg.disappearingDurationSeconds,
                     expiresAt = parsed.expiresAt ?: localMsg.expiresAt,
@@ -623,6 +631,21 @@ class ChatRepository @Inject constructor(
             } else {
                 // Received message — attempt decryption
                 msg = tryDecryptMessage(msg)
+            }
+
+            if (localExisting != null) {
+                val priority = mapOf(
+                    MessageStatus.SENDING to 0,
+                    MessageStatus.FAILED to 1,
+                    MessageStatus.SENT to 2,
+                    MessageStatus.DELIVERED to 3,
+                    MessageStatus.READ to 4
+                )
+                val localPri = priority[localExisting.status] ?: 0
+                val incomingPri = priority[msg.status] ?: 0
+                if (localPri >= incomingPri) {
+                    msg = msg.copy(status = localExisting.status)
+                }
             }
 
             if (msg.conversationId.isNotEmpty()) {
@@ -956,9 +979,24 @@ class ChatRepository @Inject constructor(
         val isDeletedForMe = (localExisting?.deletedForMe == true) || decrypted.deletedForMe || 
                 (clearedAt > 0L && decrypted.createdAt <= clearedAt && !isStarred)
         val contentToUse = if (isDeleted) "This message was deleted" else decrypted.content
+        val mergedStatus = if (localExisting != null) {
+            val priority = mapOf(
+                MessageStatus.SENDING to 0,
+                MessageStatus.FAILED to 1,
+                MessageStatus.SENT to 2,
+                MessageStatus.DELIVERED to 3,
+                MessageStatus.READ to 4
+            )
+            val localPri = priority[localExisting.status] ?: 0
+            val incomingPri = priority[decrypted.status] ?: 0
+            if (localPri >= incomingPri) localExisting.status else decrypted.status
+        } else {
+            decrypted.status
+        }
         val finalMsg = decrypted.copy(
             isMe = decrypted.senderId == (tokenManager.userId ?: ""),
             content = contentToUse,
+            status = mergedStatus,
             isDeleted = isDeleted,
             mediaUrl = if (isDeleted) null else decrypted.mediaUrl,
             mediaThumbnail = if (isDeleted) null else decrypted.mediaThumbnail,
@@ -1035,7 +1073,23 @@ class ChatRepository @Inject constructor(
 
 
     suspend fun updateMessageStatus(messageId: String, status: MessageStatus) {
-        dao.updateMessageStatus(messageId, status)
+        val existing = dao.getMessageById(messageId)
+        if (existing != null) {
+            val priority = mapOf(
+                MessageStatus.SENDING to 0,
+                MessageStatus.FAILED to 1,
+                MessageStatus.SENT to 2,
+                MessageStatus.DELIVERED to 3,
+                MessageStatus.READ to 4
+            )
+            val currentPri = priority[existing.status] ?: 0
+            val newPri = priority[status] ?: 0
+            if (newPri > currentPri) {
+                dao.updateMessageStatus(messageId, status)
+            }
+        } else {
+            dao.updateMessageStatus(messageId, status)
+        }
     }
 
     // ── Messaging Enhancements ───────────────────────────────────

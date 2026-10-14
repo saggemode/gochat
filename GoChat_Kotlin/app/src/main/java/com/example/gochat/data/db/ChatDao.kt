@@ -89,7 +89,16 @@ interface ChatDao {
     @Query("SELECT * FROM messages WHERE status = 'SENDING' ORDER BY createdAt ASC")
     suspend fun getPendingMessages(): List<Message>
 
-    @Query("UPDATE messages SET status = :status WHERE id = :messageId")
+    @Query("""
+        UPDATE messages SET status = :status 
+        WHERE id = :messageId 
+        AND (
+            status = :status 
+            OR :status = 'READ' 
+            OR (:status = 'DELIVERED' AND status != 'READ') 
+            OR (:status = 'SENT' AND status NOT IN ('DELIVERED', 'READ'))
+        )
+    """)
     suspend fun updateMessageStatus(messageId: String, status: MessageStatus): Int
 
     @Query("UPDATE messages SET content = :newContent, isEdited = 1 WHERE id = :messageId")

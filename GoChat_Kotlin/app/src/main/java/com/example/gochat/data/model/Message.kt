@@ -227,7 +227,13 @@ data class Message(
             val statusElem = json["status"] ?: json["Status"]
             val statusStr = statusElem?.jsonPrimitive?.contentOrNull?.lowercase().orEmpty()
             val statusInt = statusElem?.jsonPrimitive?.intOrNull
+            val readsArray = (json["reads"] ?: json["Reads"])?.let {
+                if (it is JsonArray) it else null
+            }
+            val hasReads = readsArray != null && readsArray.isNotEmpty()
+
             val msgStatus = when {
+                hasReads -> MessageStatus.READ
                 statusInt == 3 || statusStr.contains("read") -> MessageStatus.READ
                 statusInt == 2 || statusStr.contains("deliver") -> MessageStatus.DELIVERED
                 statusInt == 1 || statusStr.contains("sent") -> MessageStatus.SENT

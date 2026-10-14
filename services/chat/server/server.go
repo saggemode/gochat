@@ -918,7 +918,11 @@ func msgToProto(m *repository.Message) *chatpb.Message {
 	}
 
 	// Map status
-	switch m.Status {
+	mStatus := m.Status
+	if len(m.Reads) > 0 {
+		mStatus = repository.MessageStatusRead
+	}
+	switch mStatus {
 	case repository.MessageStatusDelivered:
 		pb.Status = chatpb.MessageStatus_DELIVERED
 	case repository.MessageStatusRead:
