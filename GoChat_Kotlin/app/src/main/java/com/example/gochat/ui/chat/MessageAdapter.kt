@@ -16,8 +16,8 @@ import androidx.paging.PagingDataAdapter
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
-import coil.transform.RoundedCornersTransformation
 import android.graphics.Paint
+import androidx.core.content.ContextCompat
 import com.example.gochat.R
 import com.example.gochat.core.currency.CurrencyManager
 import com.example.gochat.core.media.AudioPlayerManager
@@ -74,6 +74,137 @@ class MessageAdapter(
     var onConfirmReceiptClicked: ((message: Message, invoiceData: InvoiceData) -> Unit)? = null
     var onAcceptOfferClicked: ((message: Message, offer: CustomOfferData) -> Unit)? = null
     var onCounterOfferClicked: ((message: Message, offer: CustomOfferData) -> Unit)? = null
+    var onQuotedMessageClicked: ((replyToId: String) -> Unit)? = null
+
+    private val quotedMessageCache = LruCache<String, Message>(150)
+    private val pendingQuotedFetches = mutableSetOf<String>()
+
+    private fun bindQuotedReply(
+        message: Message,
+        layoutQuotedReply: View,
+        tvQuotedSender: TextView,
+        tvQuotedText: TextView,
+        ivQuotedThumbnail: ImageView
+    ) {
+        val replyToId = message.replyToId
+        if (replyToId.isNullOrBlank() || message.isDeleted) {
+            layoutQuotedReply.visibility = View.GONE
+            return
+        }
+
+        layoutQuotedReply.visibility = View.VISIBLE
+
+        val senderName = message.replyToSenderName?.ifBlank { null }
+            ?: layoutQuotedReply.context.getString(R.string.original_message_label)
+        tvQuotedSender.text = senderName
+
+        var parent = quotedMessageCache.get(replyToId)
+        if (parent == null) {
+            parent = snapshot().items.find { it.id == replyToId }
+            if (parent != null) {
+                quotedMessageCache.put(replyToId, parent)
+            } else if (!pendingQuotedFetches.contains(replyToId)) {
+                pendingQuotedFetches.add(replyToId)
+                adapterScope.launch {
+                    val loaded = withContext(Dispatchers.IO) {
+                        try {
+                            com.example.gochat.data.db.AppDatabase.getInstance(layoutQuotedReply.context).chatDao().getMessageById(replyToId)
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+                    if (loaded != null) {
+                        quotedMessageCache.put(replyToId, loaded)
+                        val pos = (0 until itemCount).indexOfFirst { peek(it)?.id == message.id }
+                        if (pos != -1) {
+                            notifyItemChanged(pos)
+                        }
+                    }
+                }
+            }
+        }
+
+        val displayText = when {
+            !message.replyToText.isNullOrBlank() -> message.replyToText
+            parent != null -> formatQuotedMessageText(parent)
+            else -> layoutQuotedReply.context.getString(R.string.original_message_label)
+        }
+        tvQuotedText.text = displayText
+
+        // Resolve thumbnail and icon
+        val targetMediaUrl = message.replyToMediaUrl ?: parent?.mediaThumbnail ?: parent?.mediaUrl
+        val parentType = parent?.type ?: when (message.replyToMediaType) {
+            "IMAGE" -> MessageType.IMAGE
+            "VIDEO" -> MessageType.VIDEO
+            "VOICE" -> MessageType.VOICE
+            "AUDIO" -> MessageType.AUDIO
+            "FILE" -> MessageType.FILE
+            "PRODUCT" -> MessageType.PRODUCT
+            else -> null
+        }
+
+        val isVisualMedia = parentType == MessageType.IMAGE ||
+                parentType == MessageType.VIDEO ||
+                parentType == MessageType.PRODUCT ||
+                (!targetMediaUrl.isNullOrBlank() && (displayText?.contains("📷") == true || displayText?.contains("🎥") == true || displayText?.contains("🛒") == true))
+
+        if (isVisualMedia && !targetMediaUrl.isNullOrBlank()) {
+            ivQuotedThumbnail.visibility = View.VISIBLE
+            ivQuotedThumbnail.imageTintList = null
+            MediaImageHelper.loadSafeImage(
+                imageView = ivQuotedThumbnail,
+                url = targetMediaUrl,
+                cornerRadiusDp = 4f,
+                placeholderRes = R.drawable.ic_gallery,
+                errorRes = R.drawable.ic_gallery
+            )
+        } else if (parentType == MessageType.VOICE || parentType == MessageType.AUDIO ||
+            displayText?.contains("Voice note") == true || displayText?.contains("🎵") == true || displayText?.contains("🎙️") == true) {
+            ivQuotedThumbnail.visibility = View.VISIBLE
+            ivQuotedThumbnail.setImageResource(R.drawable.ic_mic)
+            ivQuotedThumbnail.imageTintList = ColorStateList.valueOf(
+                ContextCompat.getColor(layoutQuotedReply.context, R.color.gochat_emerald_light)
+            )
+        } else if (parentType == MessageType.FILE || displayText?.contains("📄") == true || displayText?.contains("Document") == true) {
+            ivQuotedThumbnail.visibility = View.VISIBLE
+            ivQuotedThumbnail.setImageResource(R.drawable.ic_document)
+            ivQuotedThumbnail.imageTintList = ColorStateList.valueOf(
+                ContextCompat.getColor(layoutQuotedReply.context, R.color.gochat_text_secondary)
+            )
+        } else {
+            ivQuotedThumbnail.visibility = View.GONE
+        }
+
+        layoutQuotedReply.setOnClickListener {
+            if (!isSelectionMode) {
+                onQuotedMessageClicked?.invoke(replyToId)
+            } else {
+                toggleSelection(message.id)
+            }
+        }
+    }
+
+    private fun formatQuotedMessageText(msg: Message): String {
+        return when (msg.type) {
+            MessageType.TEXT -> msg.content.take(200)
+            MessageType.IMAGE -> if (msg.content.isNotBlank() && msg.content != "Photo" && msg.content != "① Photo") "📷 ${msg.content.take(150)}" else "📷 Photo"
+            MessageType.VIDEO -> if (msg.content.isNotBlank() && msg.content != "Video") "🎥 ${msg.content.take(150)}" else "🎥 Video"
+            MessageType.VOICE, MessageType.AUDIO -> "🎵 Voice note"
+            MessageType.FILE -> if (msg.content.isNotBlank()) "📄 ${msg.content.take(150)}" else "📄 Document"
+            MessageType.POLL -> "📊 Poll: ${msg.content.take(100)}"
+            MessageType.PING -> "💥 PING"
+            MessageType.CATALOG -> "🛍️ Product Catalog"
+            MessageType.PRODUCT -> if (msg.content.isNotBlank()) "🛒 ${msg.content.take(100)}" else "🛒 Product"
+            MessageType.PAYMENT_REQUEST -> "💳 Payment Request"
+            MessageType.LOCATION -> "📍 Location"
+            MessageType.CONTACT -> "👤 Contact"
+            MessageType.STICKER -> "🏷️ Sticker"
+            MessageType.ORDER -> "📦 Order"
+            MessageType.SYSTEM -> "System message"
+            else -> msg.content.take(200).ifBlank { "Media" }
+        }
+    }
+
     private var accentColor: Int = 0xFF00A884.toInt() // Default emerald
     private var bubbleShape: BubbleShape = BubbleShape.CLASSIC
 
@@ -1084,13 +1215,13 @@ class MessageAdapter(
                 }
 
                 // Quoted Reply container
-                if (!message.replyToId.isNullOrBlank() && !message.isDeleted) {
-                    layoutQuotedReply.visibility = View.VISIBLE
-                    tvQuotedSender.text = message.replyToSenderName ?: binding.root.context.getString(R.string.original_message_label)
-                    tvQuotedText.text = message.replyToText ?: ""
-                } else {
-                    layoutQuotedReply.visibility = View.GONE
-                }
+                bindQuotedReply(
+                    message = message,
+                    layoutQuotedReply = layoutQuotedReply,
+                    tvQuotedSender = tvQuotedSender,
+                    tvQuotedText = tvQuotedText,
+                    ivQuotedThumbnail = ivQuotedThumbnail
+                )
 
                 // Media Image Preview
                 if (isImage) {
@@ -1526,13 +1657,13 @@ class MessageAdapter(
                 tvMessageTime.setTextColor(timeColor)
 
                 // Quoted Reply container
-                if (!message.replyToId.isNullOrBlank() && !message.isDeleted) {
-                    layoutQuotedReply.visibility = View.VISIBLE
-                    tvQuotedSender.text = message.replyToSenderName ?: binding.root.context.getString(R.string.original_message_label)
-                    tvQuotedText.text = message.replyToText ?: ""
-                } else {
-                    layoutQuotedReply.visibility = View.GONE
-                }
+                bindQuotedReply(
+                    message = message,
+                    layoutQuotedReply = layoutQuotedReply,
+                    tvQuotedSender = tvQuotedSender,
+                    tvQuotedText = tvQuotedText,
+                    ivQuotedThumbnail = ivQuotedThumbnail
+                )
 
                 // Media Image Preview
                 if (isImage) {

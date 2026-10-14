@@ -532,6 +532,9 @@ class ChatRoomActivity : AppCompatActivity() {
                 }
             }
         ).apply {
+            onQuotedMessageClicked = { targetId ->
+                jumpToAndHighlightMessage(targetId)
+            }
             onMediaClick = { message ->
                 message.mediaUrl?.let { url ->
                     showFullScreenImage(
@@ -805,6 +808,11 @@ class ChatRoomActivity : AppCompatActivity() {
     private fun setupReplyPreview() {
         binding.btnCloseReplyPreview.setOnClickListener {
             viewModel.clearReply()
+        }
+        binding.layoutReplyPreview.setOnClickListener {
+            viewModel.replyingTo.value?.id?.let { targetId ->
+                jumpToAndHighlightMessage(targetId)
+            }
         }
         binding.btnCloseEditPreview.setOnClickListener {
             viewModel.clearEditing()
@@ -1407,8 +1415,65 @@ class ChatRoomActivity : AppCompatActivity() {
                         if (replyMsg != null) {
                             binding.layoutReplyPreview.visibility = View.VISIBLE
                             binding.layoutEditPreview.visibility = View.GONE
-                            binding.tvReplyPreviewSender.text = getString(R.string.replying_to_format, replyMsg.senderName.ifBlank { getString(R.string.message_hint) })
-                            binding.tvReplyPreviewText.text = replyMsg.content
+
+                            val senderName = if (replyMsg.isMe) {
+                                getString(R.string.replying_to_yourself)
+                            } else {
+                                getString(R.string.replying_to_format, replyMsg.senderName.ifBlank { getString(R.string.message_hint) })
+                            }
+                            binding.tvReplyPreviewSender.text = senderName
+
+                            val previewText = when (replyMsg.type) {
+                                MessageType.IMAGE -> if (replyMsg.content.isNotBlank() && replyMsg.content != "Photo" && replyMsg.content != "① Photo") "📷 ${replyMsg.content.take(150)}" else getString(R.string.reply_photo)
+                                MessageType.VIDEO -> if (replyMsg.content.isNotBlank() && replyMsg.content != "Video") "🎥 ${replyMsg.content.take(150)}" else getString(R.string.reply_video)
+                                MessageType.VOICE, MessageType.AUDIO -> getString(R.string.reply_voice_note)
+                                MessageType.FILE -> if (replyMsg.content.isNotBlank()) "📄 ${replyMsg.content.take(150)}" else getString(R.string.reply_document)
+                                MessageType.LOCATION -> "📍 Location"
+                                MessageType.CONTACT -> "👤 Contact"
+                                MessageType.PRODUCT -> if (replyMsg.content.isNotBlank()) "🛒 ${replyMsg.content.take(100)}" else "🛒 Product"
+                                MessageType.POLL -> "📊 Poll: ${replyMsg.content.take(100)}"
+                                else -> replyMsg.content.ifBlank { "Message" }
+                            }
+                            binding.tvReplyPreviewText.text = previewText
+
+                            val mediaUrl = replyMsg.mediaThumbnail ?: replyMsg.mediaUrl
+                            val isVisual = replyMsg.type == MessageType.IMAGE ||
+                                    replyMsg.type == MessageType.VIDEO ||
+                                    replyMsg.type == MessageType.PRODUCT
+
+                            if (isVisual && !mediaUrl.isNullOrBlank()) {
+                                binding.ivReplyPreviewThumbnail.visibility = View.VISIBLE
+                                binding.ivReplyPreviewThumbnail.imageTintList = null
+                                MediaImageHelper.loadSafeImage(
+                                    imageView = binding.ivReplyPreviewThumbnail,
+                                    url = mediaUrl,
+                                    cornerRadiusDp = 6f,
+                                    placeholderRes = R.drawable.ic_gallery,
+                                    errorRes = R.drawable.ic_gallery
+                                )
+                            } else if (replyMsg.type == MessageType.VOICE || replyMsg.type == MessageType.AUDIO) {
+                                binding.ivReplyPreviewThumbnail.visibility = View.VISIBLE
+                                binding.ivReplyPreviewThumbnail.setImageResource(R.drawable.ic_mic)
+                                binding.ivReplyPreviewThumbnail.imageTintList = ColorStateList.valueOf(
+                                    ContextCompat.getColor(this@ChatRoomActivity, R.color.gochat_emerald_light)
+                                )
+                            } else if (replyMsg.type == MessageType.FILE) {
+                                binding.ivReplyPreviewThumbnail.visibility = View.VISIBLE
+                                binding.ivReplyPreviewThumbnail.setImageResource(R.drawable.ic_document)
+                                binding.ivReplyPreviewThumbnail.imageTintList = ColorStateList.valueOf(
+                                    ContextCompat.getColor(this@ChatRoomActivity, R.color.gochat_text_secondary)
+                                )
+                            } else {
+                                binding.ivReplyPreviewThumbnail.visibility = View.GONE
+                            }
+
+                            // Highlight the replied-to message in the chat
+                            messageAdapter.highlightMessage(replyMsg.id)
+
+                            // Focus input and open soft keyboard
+                            binding.etMessageInput.requestFocus()
+                            val imm = getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+                            imm?.showSoftInput(binding.etMessageInput, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
                         } else {
                             binding.layoutReplyPreview.visibility = View.GONE
                         }
@@ -2292,9 +2357,34 @@ class ChatRoomActivity : AppCompatActivity() {
     private fun jumpToAndHighlightMessage(targetMsgId: String) {
         targetMessageJumpJob?.cancel()
         targetMessageJumpJob = lifecycleScope.launch {
+            // First check if already present in adapter's loaded items
+            val adapterPos = (0 until messageAdapter.itemCount).indexOfFirst {
+                messageAdapter.peek(it)?.id == targetMsgId
+            }
+            if (adapterPos != -1) {
+                val layoutMgr = binding.rvMessages.layoutManager as? LinearLayoutManager
+                val currentPos = layoutMgr?.findFirstVisibleItemPosition() ?: 0
+                if (Math.abs(currentPos - adapterPos) > 25) {
+                    val jumpNearby = if (adapterPos > currentPos) adapterPos - 10 else adapterPos + 10
+                    binding.rvMessages.scrollToPosition(jumpNearby.coerceIn(0, messageAdapter.itemCount - 1))
+                }
+                binding.rvMessages.post {
+                    binding.rvMessages.smoothScrollToPosition(adapterPos)
+                    messageAdapter.highlightMessage(targetMsgId)
+                }
+                return@launch
+            }
+
+            // Otherwise, observe viewModel.messages until found
             viewModel.messages.collect { list ->
                 val idx = list.indexOfFirst { it.id == targetMsgId }
                 if (idx != -1) {
+                    val layoutMgr = binding.rvMessages.layoutManager as? LinearLayoutManager
+                    val currentPos = layoutMgr?.findFirstVisibleItemPosition() ?: 0
+                    if (Math.abs(currentPos - idx) > 25) {
+                        val jumpNearby = if (idx > currentPos) idx - 10 else idx + 10
+                        binding.rvMessages.scrollToPosition(jumpNearby.coerceIn(0, (messageAdapter.itemCount - 1).coerceAtLeast(0)))
+                    }
                     binding.rvMessages.post {
                         binding.rvMessages.smoothScrollToPosition(idx)
                         messageAdapter.highlightMessage(targetMsgId)
