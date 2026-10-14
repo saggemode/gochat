@@ -274,8 +274,27 @@ class ChatRepository @Inject constructor(
                         } else {
                             tryDecryptMessage(msg).content
                         }
+                        // Preserve the highest message status – never downgrade
+                        // (e.g. local READ must not revert to server's SENT)
+                        // Priority: SENDING(0) < FAILED(1) < SENT(2) < DELIVERED(3) < READ(4)
+                        val mergedStatus = if (localExisting != null) {
+                            val priority = mapOf(
+                                MessageStatus.SENDING to 0,
+                                MessageStatus.FAILED to 1,
+                                MessageStatus.SENT to 2,
+                                MessageStatus.DELIVERED to 3,
+                                MessageStatus.READ to 4
+                            )
+                            val localPri = priority[localExisting.status] ?: 0
+                            val serverPri = priority[msg.status] ?: 0
+                            if (localPri >= serverPri) localExisting.status else msg.status
+                        } else {
+                            msg.status
+                        }
+
                         msg.copy(
                             content = contentToUse,
+                            status = mergedStatus,
                             isDeleted = isDeleted,
                             mediaUrl = if (isDeleted) null else msg.mediaUrl,
                             mediaThumbnail = if (isDeleted) null else msg.mediaThumbnail,
