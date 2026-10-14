@@ -42,8 +42,13 @@ class WebRTCClient(
             .createPeerConnectionFactory()
     }
 
+    private var videoCapturer: VideoCapturer? = null
+    private var videoSource: VideoSource? = null
+    private var surfaceTextureHelper: SurfaceTextureHelper? = null
+
     fun createPeerConnection() {
         val rtcConfig = PeerConnection.RTCConfiguration(iceServers).apply {
+            sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
             continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY
             iceTransportsType = PeerConnection.IceTransportsType.ALL
             tcpCandidatePolicy = PeerConnection.TcpCandidatePolicy.ENABLED
@@ -105,17 +110,59 @@ class WebRTCClient(
     }
 
     fun addStream(mediaStream: MediaStream) {
-        peerConnection?.addStream(mediaStream)
+        // Under Unified Plan SdpSemantics, calling peerConnection.addStream() directly
+        // triggers an RTC_CHECK(!IsUnifiedPlan()) abort. Tracks must be registered via addTrack().
+        val streamIds = listOf(mediaStream.id.ifBlank { "local_stream" })
+        mediaStream.audioTracks?.forEach { audioTrack ->
+            peerConnection?.addTrack(audioTrack, streamIds)
+        }
+        mediaStream.videoTracks?.forEach { videoTrack ->
+            peerConnection?.addTrack(videoTrack, streamIds)
+        }
     }
 
-    fun createLocalStream(streamId: String): MediaStream {
+    fun addTrack(track: MediaStreamTrack, streamIds: List<String> = listOf("local_stream")): RtpSender? {
+        return peerConnection?.addTrack(track, streamIds)
+    }
+
+    fun createLocalStream(streamId: String, isVideo: Boolean = false): MediaStream {
         val stream = peerConnectionFactory.createLocalMediaStream(streamId)
         
         val audioSource = peerConnectionFactory.createAudioSource(MediaConstraints())
         val audioTrack = peerConnectionFactory.createAudioTrack("${streamId}_audio", audioSource)
         stream.addTrack(audioTrack)
 
+        if (isVideo) {
+            try {
+                val capturer = createCameraCapturer()
+                if (capturer != null) {
+                    videoCapturer = capturer
+                    surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", eglBaseContext)
+                    val vSource = peerConnectionFactory.createVideoSource(capturer.isScreencast)
+                    videoSource = vSource
+                    capturer.initialize(surfaceTextureHelper, context, vSource.capturerObserver)
+                    capturer.startCapture(1280, 720, 30)
+                    val videoTrack = peerConnectionFactory.createVideoTrack("${streamId}_video", vSource)
+                    stream.addTrack(videoTrack)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("WebRTCClient", "Failed to start camera capturer for video call", e)
+            }
+        }
+
         return stream
+    }
+
+    private fun createCameraCapturer(): VideoCapturer? {
+        val enumerator = if (Camera2Enumerator.isSupported(context)) {
+            Camera2Enumerator(context)
+        } else {
+            Camera1Enumerator(true)
+        }
+        val deviceNames = enumerator.deviceNames
+        val frontCamera = deviceNames.firstOrNull { enumerator.isFrontFacing(it) }
+        val targetDevice = frontCamera ?: deviceNames.firstOrNull()
+        return targetDevice?.let { enumerator.createCapturer(it, null) }
     }
 
     fun createVideoTrack(videoSource: VideoSource): VideoTrack {
@@ -129,6 +176,21 @@ class WebRTCClient(
     fun getEglBaseContext(): EglBase.Context = eglBaseContext
 
     fun close() {
+        try {
+            videoCapturer?.stopCapture()
+        } catch (_: Exception) {}
+        try {
+            videoCapturer?.dispose()
+        } catch (_: Exception) {}
+        videoCapturer = null
+
+        videoSource?.dispose()
+        videoSource = null
+
+        surfaceTextureHelper?.dispose()
+        surfaceTextureHelper = null
+
         peerConnection?.close()
+        peerConnection = null
     }
 }

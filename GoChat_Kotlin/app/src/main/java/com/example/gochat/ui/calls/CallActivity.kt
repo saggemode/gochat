@@ -143,7 +143,9 @@ class CallActivity : AppCompatActivity() {
             }
 
             override fun onAddStream(stream: MediaStream?) {
-                stream?.videoTracks?.getOrNull(0)?.addSink(binding.remoteVideoView)
+                runOnUiThread {
+                    stream?.videoTracks?.getOrNull(0)?.addSink(binding.remoteVideoView)
+                }
             }
 
             override fun onSignalingChange(p0: PeerConnection.SignalingState?) {}
@@ -175,7 +177,14 @@ class CallActivity : AppCompatActivity() {
             override fun onRemoveStream(p0: MediaStream?) {}
             override fun onDataChannel(p0: DataChannel?) {}
             override fun onRenegotiationNeeded() {}
-            override fun onAddTrack(p0: RtpReceiver?, p1: Array<out MediaStream>?) {}
+            override fun onAddTrack(receiver: RtpReceiver?, mediaStreams: Array<out MediaStream>?) {
+                val track = receiver?.track()
+                if (track is VideoTrack) {
+                    runOnUiThread {
+                        track.addSink(binding.remoteVideoView)
+                    }
+                }
+            }
         })
 
         rtcClient.createPeerConnection()
@@ -190,11 +199,15 @@ class CallActivity : AppCompatActivity() {
             }
         }
 
-        localStream = rtcClient.createLocalStream("local_stream")
+        localStream = rtcClient.createLocalStream("local_stream", isVideo = callType == "video")
         localStream?.let { rtcClient.addStream(it) }
 
         binding.remoteVideoView.init(rtcClient.getEglBaseContext(), null)
         binding.localVideoView.init(rtcClient.getEglBaseContext(), null)
+
+        if (callType == "video") {
+            localStream?.videoTracks?.firstOrNull()?.addSink(binding.localVideoView)
+        }
     }
 
     private fun setupUI() {
@@ -446,7 +459,9 @@ class CallActivity : AppCompatActivity() {
         HapticEngine.stopIncomingCall(this)
         NotificationHelper.cancelCallNotification(this, callId)
         reconnectionHandler?.cancel()
-        rtcClient.close()
+        if (::rtcClient.isInitialized) {
+            rtcClient.close()
+        }
         timerJob?.cancel()
         super.onDestroy()
     }
