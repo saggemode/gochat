@@ -372,6 +372,7 @@
     <string name="caption_photo">📷 Photo</string>
     <string name="error_photo_process">Failed to process photo</string>
     <string name="caption_audio_file">🎵 Audio File</string>
+    <string name="error_audio_process">Failed to process audio file</string>
     <string name="replying_to_format">Replying to %1$s</string>
     <string name="replying_to_yourself">Replying to yourself</string>
     <string name="reply_voice_note">🎵 Voice note</string>
