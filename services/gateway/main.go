@@ -772,11 +772,24 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 							}
 						}
 						flatJSON, _ := json.Marshal(flat)
-						hub.SendToUser(targetUserID, flatJSON)
+						delivered := hub.SendToUser(targetUserID, flatJSON)
 						log.Debug("Forwarded flattened call event to target user",
 							zap.String("event", payload["event"]),
 							zap.String("target_user_id", targetUserID),
+							zap.Bool("delivered", delivered),
 						)
+						if payload["event"] == "call_initiated" && delivered && payload["actor_id"] != "" {
+							callID := flat["call_id"]
+							ringMsg := map[string]string{
+								"type":           "call_ringing",
+								"event":          "call_ringing",
+								"call_id":        callID,
+								"actor_id":       targetUserID,
+								"target_user_id": payload["actor_id"],
+							}
+							ringJSON, _ := json.Marshal(ringMsg)
+							hub.SendToUser(payload["actor_id"], ringJSON)
+						}
 					}
 					continue
 				}

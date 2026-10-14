@@ -258,6 +258,13 @@ class ChatListViewModel @Inject constructor(
                                 )
                             } catch (_: Exception) {}
 
+                            // Acknowledge ringing back to caller immediately so caller shows "Ringing..."
+                            viewModelScope.launch(Dispatchers.IO) {
+                                try {
+                                    callRepository.sendSignaling(callId, callerId, "ringing")
+                                } catch (_: Exception) {}
+                            }
+
                             _incomingCallEvent.tryEmit(
                                 IncomingCallEvent(
                                     callId = callId,

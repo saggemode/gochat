@@ -2,7 +2,10 @@ package com.example.gochat.ui.calls
 
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -72,6 +75,10 @@ class CallActivity : AppCompatActivity() {
     private var timerJob: Job? = null
     private var isCallEnded = false
     private var isCallAccepted = false
+    private var isCallConnected = false
+    private var isRinging = false
+    private var callTimeoutJob: Job? = null
+    private var toneGenerator: ToneGenerator? = null
     private var pendingOfferSdp: String? = null
     private var serverCallId = ""
 
@@ -108,6 +115,8 @@ class CallActivity : AppCompatActivity() {
                 )
             }
             startOutgoingCall()
+            startCallTimeoutTimer()
+            playRingbackTone()
         } else {
             lifecycleScope.launch(Dispatchers.IO) {
                 callRepo.recordCall(
@@ -127,6 +136,11 @@ class CallActivity : AppCompatActivity() {
                 acceptIncomingCall()
             } else {
                 HapticEngine.startIncomingCall(this)
+                // Notify caller immediately that recipient device is ringing
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val cid = serverCallId.ifBlank { callId }
+                    callRepo.sendSignaling(cid, targetUserId, "ringing")
+                }
             }
         }
     }
@@ -156,6 +170,9 @@ class CallActivity : AppCompatActivity() {
                 runOnUiThread {
                     when (state) {
                         PeerConnection.IceConnectionState.CONNECTED -> {
+                            isCallConnected = true
+                            callTimeoutJob?.cancel()
+                            stopRingbackTone()
                             HapticEngine.stopIncomingCall(this@CallActivity)
                             startCallTimer()
                         }
@@ -323,6 +340,65 @@ class CallActivity : AppCompatActivity() {
         })
     }
 
+    private fun playRingbackTone() {
+        if (isCallConnected || isCallEnded) return
+        try {
+            if (toneGenerator == null) {
+                toneGenerator = ToneGenerator(AudioManager.STREAM_VOICE_CALL, 80)
+            }
+            toneGenerator?.startTone(ToneGenerator.TONE_SUP_RINGTONE)
+        } catch (e: Exception) {
+            Log.e("CallActivity", "Failed to start ringback tone: ${e.message}")
+        }
+    }
+
+    private fun stopRingbackTone() {
+        try {
+            toneGenerator?.stopTone()
+            toneGenerator?.release()
+        } catch (_: Exception) {}
+        toneGenerator = null
+    }
+
+    private fun playBusyTone() {
+        try {
+            val busy = ToneGenerator(AudioManager.STREAM_VOICE_CALL, 85)
+            busy.startTone(ToneGenerator.TONE_SUP_BUSY, 1500)
+            lifecycleScope.launch {
+                delay(1600)
+                try { busy.release() } catch (_: Exception) {}
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun handleRinging() {
+        if (isCallConnected || isCallEnded || !isOutgoing) return
+        isRinging = true
+        runOnUiThread {
+            if (!isCallConnected && !isCallEnded) {
+                binding.tvCallStatus.text = "Ringing..."
+            }
+        }
+        playRingbackTone()
+    }
+
+    private fun startCallTimeoutTimer() {
+        callTimeoutJob?.cancel()
+        callTimeoutJob = lifecycleScope.launch {
+            // WhatsApp-standard 40 seconds timeout
+            delay(40_000L)
+            if (!isCallConnected && !isCallEnded) {
+                runOnUiThread {
+                    stopRingbackTone()
+                    binding.tvCallStatus.text = if (isRinging) "No Answer" else "Unavailable"
+                }
+                playBusyTone()
+                delay(2000L)
+                endCall()
+            }
+        }
+    }
+
     private fun startOutgoingCall(iceRestart: Boolean = false) {
         rtcClient.createOffer(object : SdpObserver {
             override fun onCreateSuccess(sdp: SessionDescription?) {
@@ -346,10 +422,22 @@ class CallActivity : AppCompatActivity() {
                 val type = event["type"]?.jsonPrimitive?.contentOrNull
                     ?: event["event"]?.jsonPrimitive?.contentOrNull
 
-                // Match on call_id — accept events for this call, or events with no call_id
+                // Match on call_id or peer targetUserId to ensure events are never dropped
                 val eventCallId = event["call_id"]?.jsonPrimitive?.contentOrNull
                     ?: event["id"]?.jsonPrimitive?.contentOrNull
-                if (eventCallId != null && eventCallId.isNotBlank() && eventCallId != callId && eventCallId != serverCallId) {
+                val actorId = event["actor_id"]?.jsonPrimitive?.contentOrNull
+                    ?: event["caller_id"]?.jsonPrimitive?.contentOrNull
+                val eventTargetId = event["target_user_id"]?.jsonPrimitive?.contentOrNull
+                    ?: event["receiver_id"]?.jsonPrimitive?.contentOrNull
+
+                val isPeerMatch = (actorId != null && actorId == targetUserId) ||
+                        (eventTargetId != null && eventTargetId == targetUserId)
+
+                val isCallIdMatch = (eventCallId == null || eventCallId.isBlank() ||
+                        eventCallId == callId ||
+                        (serverCallId.isNotBlank() && eventCallId == serverCallId))
+
+                if (!isCallIdMatch && !isPeerMatch) {
                     return@collect
                 }
 
@@ -359,6 +447,9 @@ class CallActivity : AppCompatActivity() {
                 }
 
                 when (type) {
+                    "call_ringing" -> {
+                        handleRinging()
+                    }
                     "call_signaling" -> {
                         // signal_type comes from the flattened call_payload "type" field
                         val sigType = event["signal_type"]?.jsonPrimitive?.contentOrNull
@@ -366,7 +457,9 @@ class CallActivity : AppCompatActivity() {
                         val sdp = event["sdp"]?.jsonPrimitive?.contentOrNull
                         val candidate = event["candidate"]?.jsonPrimitive?.contentOrNull
 
-                        if ((sigType == "offer" || sigType == "ice-restart-offer") && sdp != null) {
+                        if (sigType == "ringing") {
+                            handleRinging()
+                        } else if ((sigType == "offer" || sigType == "ice-restart-offer") && sdp != null) {
                             if (isCallAccepted) {
                                 handleRemoteOffer(sdp)
                             } else {
@@ -384,6 +477,9 @@ class CallActivity : AppCompatActivity() {
                         }
                     }
                     "call_accepted" -> {
+                        isCallConnected = true
+                        callTimeoutJob?.cancel()
+                        stopRingbackTone()
                         runOnUiThread {
                             HapticEngine.stopIncomingCall(this@CallActivity)
                             binding.tvCallStatus.text = "Connected"
@@ -391,18 +487,25 @@ class CallActivity : AppCompatActivity() {
                         }
                     }
                     "call_rejected" -> {
+                        callTimeoutJob?.cancel()
+                        stopRingbackTone()
+                        val isBusy = event["status"]?.jsonPrimitive?.contentOrNull == "busy"
                         runOnUiThread {
                             HapticEngine.stopIncomingCall(this@CallActivity)
-                            binding.tvCallStatus.text = "Call Declined"
+                            binding.tvCallStatus.text = if (isBusy) "Busy" else "Call Declined"
                         }
-                        delay(1200)
+                        playBusyTone()
+                        delay(1500)
                         endCall()
                     }
                     "call_ended" -> {
+                        callTimeoutJob?.cancel()
+                        stopRingbackTone()
                         runOnUiThread {
                             binding.tvCallStatus.text = "Call Ended"
                         }
-                        delay(1000)
+                        playBusyTone()
+                        delay(1200)
                         endCall()
                     }
                 }
@@ -431,6 +534,9 @@ class CallActivity : AppCompatActivity() {
         if (isCallEnded) return
         isCallEnded = true
 
+        stopRingbackTone()
+        callTimeoutJob?.cancel()
+        callTimeoutJob = null
         timerJob?.cancel()
         timerJob = null
 
@@ -456,6 +562,8 @@ class CallActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        stopRingbackTone()
+        callTimeoutJob?.cancel()
         HapticEngine.stopIncomingCall(this)
         NotificationHelper.cancelCallNotification(this, callId)
         reconnectionHandler?.cancel()
