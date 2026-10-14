@@ -22,6 +22,7 @@ import com.example.gochat.data.websocket.GoChatWebSocket
 import com.example.gochat.core.network.NetworkMonitor
 import com.example.gochat.core.notification.NotificationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.contentOrNull
