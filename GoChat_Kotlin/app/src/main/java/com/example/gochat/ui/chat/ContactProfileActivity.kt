@@ -183,6 +183,11 @@ class ContactProfileActivity : AppCompatActivity() {
             val target = resolveCallTarget()
             lifecycleScope.launch {
                 val result = callRepository.startCall(target, "voice")
+                if (result.isFailure) {
+                    val error = result.exceptionOrNull()?.message ?: "Unable to place call"
+                    Toast.makeText(this@ContactProfileActivity, error, Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
                 val serverCallId = result.getOrNull()?.id
                 val effectiveCallId = if (!serverCallId.isNullOrBlank()) serverCallId else "call_${System.currentTimeMillis()}"
                 val intent = Intent(this@ContactProfileActivity, CallActivity::class.java).apply {
@@ -202,6 +207,11 @@ class ContactProfileActivity : AppCompatActivity() {
             val target = resolveCallTarget()
             lifecycleScope.launch {
                 val result = callRepository.startCall(target, "video")
+                if (result.isFailure) {
+                    val error = result.exceptionOrNull()?.message ?: "Unable to place call"
+                    Toast.makeText(this@ContactProfileActivity, error, Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
                 val serverCallId = result.getOrNull()?.id
                 val effectiveCallId = if (!serverCallId.isNullOrBlank()) serverCallId else "call_${System.currentTimeMillis()}"
                 val intent = Intent(this@ContactProfileActivity, CallActivity::class.java).apply {

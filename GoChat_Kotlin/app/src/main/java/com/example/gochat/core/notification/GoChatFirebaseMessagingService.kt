@@ -153,6 +153,11 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
                     )
                     callRepository.recordCall(record)
 
+                    // Acknowledge ringing back to caller immediately so caller shows "Ringing..."
+                    try {
+                        callRepository.sendSignaling(callId, callerId, "ringing")
+                    } catch (_: Exception) {}
+
                     NotificationHelper.showCallNotificationAsync(
                         context = applicationContext,
                         callId = callId,

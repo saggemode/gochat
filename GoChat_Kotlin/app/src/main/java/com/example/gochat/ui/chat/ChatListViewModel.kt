@@ -1,6 +1,7 @@
 package com.example.gochat.ui.chat
 
 import android.app.Application
+import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
@@ -70,7 +71,7 @@ class ChatListViewModel @Inject constructor(
         val callerAvatar: String,
         val callType: String
     )
-    private val _incomingCallEvent = MutableSharedFlow<IncomingCallEvent>(extraBufferCapacity = 1)
+    private val _incomingCallEvent = MutableSharedFlow<IncomingCallEvent>(replay = 1, extraBufferCapacity = 8)
     val incomingCallEvent: SharedFlow<IncomingCallEvent> = _incomingCallEvent.asSharedFlow()
 
     // Paged Conversations Flow
@@ -275,6 +276,21 @@ class ChatListViewModel @Inject constructor(
                                     callType = callType
                                 )
                             )
+
+                            // Launch CallActivity directly so incoming call screen appears immediately
+                            try {
+                                val callIntent = Intent(getApplication(), com.example.gochat.ui.calls.CallActivity::class.java).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                                    putExtra(com.example.gochat.ui.calls.CallActivity.EXTRA_CALL_ID, callId)
+                                    putExtra(com.example.gochat.ui.calls.CallActivity.EXTRA_TARGET_USER_ID, callerId)
+                                    putExtra(com.example.gochat.ui.calls.CallActivity.EXTRA_PEER_NAME, callerName)
+                                    putExtra(com.example.gochat.ui.calls.CallActivity.EXTRA_PEER_AVATAR, callerAvatar)
+                                    putExtra(com.example.gochat.ui.calls.CallActivity.EXTRA_IS_OUTGOING, false)
+                                    putExtra(com.example.gochat.ui.calls.CallActivity.EXTRA_CALL_TYPE, callType)
+                                    putExtra(com.example.gochat.ui.calls.CallActivity.EXTRA_AUTO_ACCEPT, false)
+                                }
+                                getApplication<Application>().startActivity(callIntent)
+                            } catch (_: Exception) {}
                         }
                     }
                     // call_signaling, call_accepted, call_rejected, call_ended are handled

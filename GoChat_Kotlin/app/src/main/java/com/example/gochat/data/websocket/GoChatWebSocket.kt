@@ -29,6 +29,9 @@ class GoChatWebSocket(
     private val _events = MutableSharedFlow<JsonObject>(extraBufferCapacity = 64)
     val events = _events.asSharedFlow()
 
+    private val _callEvents = MutableSharedFlow<JsonObject>(replay = 20, extraBufferCapacity = 64)
+    val callEvents = _callEvents.asSharedFlow()
+
     private val _isConnected = MutableStateFlow(false)
     val isConnected = _isConnected.asStateFlow()
 
@@ -93,6 +96,11 @@ class GoChatWebSocket(
                             val text = frame.readText()
                             try {
                                 val parsed = json.parseToJsonElement(text).jsonObject
+                                val eventType = (parsed["type"] ?: parsed["event"] ?: parsed["event_type"])
+                                    ?.jsonPrimitive?.contentOrNull.orEmpty().lowercase()
+                                if (eventType.startsWith("call_") || eventType == "call") {
+                                    _callEvents.emit(parsed)
+                                }
                                 _events.emit(parsed)
                             } catch (e: Exception) {
                                 Log.w(TAG, "Failed to parse WS message: ${e.message}")

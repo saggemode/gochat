@@ -311,9 +311,16 @@ class CallActivity : AppCompatActivity() {
             callRepo.acceptCall(effectiveCallId)
         }
 
-        pendingOfferSdp?.let { sdp ->
+        if (pendingOfferSdp != null) {
+            val sdp = pendingOfferSdp!!
             pendingOfferSdp = null
             handleRemoteOffer(sdp)
+        } else {
+            // Offer has not arrived yet, explicitly ask caller to re-transmit offer
+            lifecycleScope.launch(Dispatchers.IO) {
+                val cid = serverCallId.ifBlank { callId }
+                callRepo.sendSignaling(cid, targetUserId, "request-offer")
+            }
         }
     }
 
@@ -380,6 +387,10 @@ class CallActivity : AppCompatActivity() {
             }
         }
         playRingbackTone()
+        // Remote peer is confirmed ringing; ensure caller's WebRTC offer is sent
+        if (!isCallConnected) {
+            startOutgoingCall(iceRestart = false)
+        }
     }
 
     private fun startCallTimeoutTimer() {
@@ -417,7 +428,7 @@ class CallActivity : AppCompatActivity() {
 
     private fun observeSignaling() {
         lifecycleScope.launch {
-            webSocket.events.collect { event ->
+            webSocket.callEvents.collect { event ->
                 // The gateway sends flattened call events with both "type" and "event" fields
                 val type = event["type"]?.jsonPrimitive?.contentOrNull
                     ?: event["event"]?.jsonPrimitive?.contentOrNull
@@ -459,6 +470,8 @@ class CallActivity : AppCompatActivity() {
 
                         if (sigType == "ringing") {
                             handleRinging()
+                        } else if (sigType == "request-offer" && isOutgoing) {
+                            startOutgoingCall(iceRestart = false)
                         } else if ((sigType == "offer" || sigType == "ice-restart-offer") && sdp != null) {
                             if (isCallAccepted) {
                                 handleRemoteOffer(sdp)

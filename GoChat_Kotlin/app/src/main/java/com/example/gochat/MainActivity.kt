@@ -367,7 +367,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun observeIncomingCalls() {
         lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
                 chatViewModel.incomingCallEvent.collect { event ->
                     val intent = Intent(this@MainActivity, CallActivity::class.java).apply {
                         putExtra(CallActivity.EXTRA_CALL_ID, event.callId)

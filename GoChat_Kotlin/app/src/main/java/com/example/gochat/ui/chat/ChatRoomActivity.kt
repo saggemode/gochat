@@ -490,16 +490,28 @@ class ChatRoomActivity : AppCompatActivity() {
             }
 
             btnCall.setOnClickListener {
-                val resolvedPartnerId = currentPartnerId?.ifBlank { null }
-                    ?: viewModel.partnerId?.ifBlank { null }
-                    ?: viewModel.conversationId.value
                 lifecycleScope.launch {
-                    val result = callRepository.startCall(resolvedPartnerId, "voice")
+                    var targetId = currentPartnerId?.ifBlank { null }
+                    if (targetId.isNullOrBlank()) {
+                        val conv = chatRepository.getConversationById(viewModel.conversationId.value)
+                        val myId = tokenManager.userId.orEmpty()
+                        targetId = conv?.memberIds?.find { it != myId }
+                    }
+                    if (targetId.isNullOrBlank()) {
+                        Toast.makeText(this@ChatRoomActivity, "Cannot place call: recipient user not found", Toast.LENGTH_SHORT).show()
+                        return@launch
+                    }
+                    val result = callRepository.startCall(targetId, "voice")
+                    if (result.isFailure) {
+                        val error = result.exceptionOrNull()?.message ?: "Unable to place call"
+                        Toast.makeText(this@ChatRoomActivity, error, Toast.LENGTH_SHORT).show()
+                        return@launch
+                    }
                     val serverCallId = result.getOrNull()?.id
                     val effectiveCallId = if (!serverCallId.isNullOrBlank()) serverCallId else "call_${System.currentTimeMillis()}"
                     val intent = Intent(this@ChatRoomActivity, CallActivity::class.java).apply {
                         putExtra(CallActivity.EXTRA_CALL_ID, effectiveCallId)
-                        putExtra(CallActivity.EXTRA_TARGET_USER_ID, resolvedPartnerId)
+                        putExtra(CallActivity.EXTRA_TARGET_USER_ID, targetId)
                         putExtra(CallActivity.EXTRA_PEER_NAME, title)
                         putExtra(CallActivity.EXTRA_PEER_AVATAR, avatarUrl)
                         putExtra(CallActivity.EXTRA_IS_OUTGOING, true)

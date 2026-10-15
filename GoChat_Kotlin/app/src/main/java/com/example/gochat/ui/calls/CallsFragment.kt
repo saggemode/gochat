@@ -403,6 +403,11 @@ class CallsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             // Start call on server first to get the real server-assigned call ID
             val result = callRepository.startCall(targetUserId, callType)
+            if (result.isFailure) {
+                val error = result.exceptionOrNull()?.message ?: "Unable to place call"
+                Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show()
+                return@launch
+            }
             val serverCallId = result.getOrNull()?.id
 
             // Use server call ID if available, otherwise fall back to local ID
