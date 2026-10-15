@@ -10,7 +10,9 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * Real-time WebSocket client using Ktor with automatic reconnection.
@@ -94,16 +96,22 @@ class GoChatWebSocket(
                     for (frame in incoming) {
                         if (frame is Frame.Text) {
                             val text = frame.readText()
-                            try {
-                                val parsed = json.parseToJsonElement(text).jsonObject
-                                val eventType = (parsed["type"] ?: parsed["event"] ?: parsed["event_type"])
-                                    ?.jsonPrimitive?.contentOrNull.orEmpty().lowercase()
-                                if (eventType.startsWith("call_") || eventType == "call") {
-                                    _callEvents.emit(parsed)
+                            // Split on newlines to handle frames that may contain
+                            // multiple JSON objects (defense-in-depth for server batching)
+                            for (line in text.split('\n')) {
+                                val trimmed = line.trim()
+                                if (trimmed.isEmpty()) continue
+                                try {
+                                    val parsed = json.parseToJsonElement(trimmed).jsonObject
+                                    val eventType = (parsed["type"] ?: parsed["event"] ?: parsed["event_type"])
+                                        ?.jsonPrimitive?.contentOrNull.orEmpty().lowercase()
+                                    if (eventType.startsWith("call_") || eventType == "call") {
+                                        _callEvents.emit(parsed)
+                                    }
+                                    _events.emit(parsed)
+                                } catch (e: Exception) {
+                                    Log.w(TAG, "Failed to parse WS message: ${e.message}")
                                 }
-                                _events.emit(parsed)
-                            } catch (e: Exception) {
-                                Log.w(TAG, "Failed to parse WS message: ${e.message}")
                             }
                         }
                     }
