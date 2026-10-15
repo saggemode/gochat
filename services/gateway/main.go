@@ -229,6 +229,8 @@ func main() {
 
 	// ── WebSocket Hub ──────────────────────────────────────────────────────────
 	hub := ws.NewHub()
+	relay := ws.NewRelay(ctx, redisClient, hub, log) // nil-safe if Redis unavailable
+	hub.SetRelay(relay)
 	go hub.Run()
 
 	startPushNotificationWorker(ctx, redisClient, chatClient, hub, log)

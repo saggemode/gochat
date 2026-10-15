@@ -28,6 +28,10 @@ const (
 
 	// Maximum message size allowed from peer (64 MB for images, voice notes, and media payloads).
 	maxMessageSize = 64 * 1024 * 1024
+
+	// Minimum interval between relayed typing events for the same
+	// user+conversation pair. Events arriving sooner are silently dropped.
+	typingThrottleInterval = 3 * time.Second
 )
 
 // Client represents a single connected WebSocket client.
@@ -37,8 +41,14 @@ type Client struct {
 	send       chan []byte
 	userID     string
 	authClient authpb.AuthServiceClient
+	chatClient chatpb.ChatServiceClient
 	log        *zap.Logger
 	cancel     context.CancelFunc
+
+	// typingThrottle tracks the last time a typing event was relayed for
+	// each conversation ID. Only accessed from readPump (single goroutine)
+	// so no mutex is needed.
+	typingThrottle map[string]time.Time
 }
 
 // readPump pumps messages from the websocket connection to the hub/discard.
@@ -123,6 +133,53 @@ func (c *Client) readPump() {
 				}
 
 				msgType, _ := payload["type"].(string)
+
+				// ── Typing indicator throttle ───────────────────────────────
+				// Relay at most one typing event per typingThrottleInterval
+				// for each conversation to avoid flooding recipients.
+				if msgType == "typing" {
+					convID, _ := payload["conversation_id"].(string)
+					now := time.Now()
+					if last, ok := c.typingThrottle[convID]; ok && now.Sub(last) < typingThrottleInterval {
+						continue // drop — too soon since last relay
+					}
+					c.typingThrottle[convID] = now
+
+					// Housekeeping: purge stale entries every 64 events to
+					// prevent unbounded growth if user chats in many convos.
+					if len(c.typingThrottle) > 64 {
+						for k, v := range c.typingThrottle {
+							if now.Sub(v) > typingThrottleInterval*2 {
+								delete(c.typingThrottle, k)
+							}
+						}
+					}
+				}
+
+				// ── Persist chat messages via gRPC ──────────────────────────
+				// Actual chat content must be saved to the chat service before
+				// fan-out so offline users can retrieve messages later.
+				// The chat service also publishes to Redis, which feeds the
+				// gRPC StreamMessages — clients should dedup by message ID.
+				if c.chatClient != nil && isChatContent(msgType, payload) {
+					persisted, pErr := c.persistMessage(payload)
+					if pErr != nil {
+						c.log.Error("failed to persist WS message via gRPC",
+							zap.Error(pErr),
+							zap.String("user_id", c.userID),
+						)
+						errResp, _ := json.Marshal(map[string]interface{}{
+							"type":  "error",
+							"error": "failed to send message",
+						})
+						select {
+						case c.send <- errResp:
+						default:
+						}
+						continue // don't broadcast an unpersisted message
+					}
+					payload = persisted
+				}
 
 				// Check if targeted to a specific recipient user
 				targetUserID, hasTarget := payload["recipient_id"].(string)
@@ -323,13 +380,15 @@ func ServeWs(hub *Hub, chatClient chatpb.ChatServiceClient, authClient authpb.Au
 
 		ctx, cancel := context.WithCancel(context.Background())
 		client := &Client{
-			hub:        hub,
-			conn:       conn,
-			send:       make(chan []byte, 256),
-			userID:     userID,
-			authClient: authClient,
-			log:        log,
-			cancel:     cancel,
+			hub:            hub,
+			conn:           conn,
+			send:           make(chan []byte, 256),
+			userID:         userID,
+			authClient:     authClient,
+			chatClient:     chatClient,
+			log:            log,
+			cancel:         cancel,
+			typingThrottle: make(map[string]time.Time),
 		}
 
 		client.hub.register <- client
@@ -338,4 +397,86 @@ func ServeWs(hub *Hub, chatClient chatpb.ChatServiceClient, authClient authpb.Au
 		go client.readPump()
 		go client.listenGrpcStream(ctx, chatClient)
 	}
+}
+
+// isChatContent returns true when the WebSocket payload represents a chat
+// message that must be persisted (text or media with a conversation ID).
+// Ephemeral events (typing, presence, reactions, calls, etc.) return false.
+func isChatContent(msgType string, payload map[string]interface{}) bool {
+	switch msgType {
+	case "message", "new_message", "chat_message", "":
+		convID, _ := payload["conversation_id"].(string)
+		if convID == "" {
+			return false
+		}
+		content, _ := payload["content"].(string)
+		mediaURL, _ := payload["media_url"].(string)
+		return content != "" || mediaURL != ""
+	default:
+		return false
+	}
+}
+
+// persistMessage calls the Chat service SendMessage gRPC to save the message
+// in the database. It returns the payload enriched with server-assigned fields
+// (message ID, created_at, status) so downstream recipients receive a
+// fully-formed message object.
+func (c *Client) persistMessage(payload map[string]interface{}) (map[string]interface{}, error) {
+	convID, _ := payload["conversation_id"].(string)
+	content, _ := payload["content"].(string)
+
+	req := &chatpb.SendMessageRequest{
+		ConversationId: convID,
+		SenderId:       c.userID,
+		Content:        content,
+	}
+
+	// Map optional fields from the WebSocket payload.
+	if v, ok := payload["media_url"].(string); ok {
+		req.MediaUrl = v
+	}
+	if v, ok := payload["media_mime"].(string); ok {
+		req.MediaMime = v
+	}
+	if v, ok := payload["media_size"].(float64); ok {
+		req.MediaSize = int64(v)
+	}
+	if v, ok := payload["parent_id"].(string); ok {
+		req.ParentId = v
+	}
+	if v, ok := payload["expires_at"].(float64); ok {
+		req.ExpiresAt = int64(v)
+	}
+	if v, ok := payload["message_type"].(float64); ok {
+		req.Type = chatpb.MessageType(int32(v))
+	}
+	if mentions, ok := payload["mentioned_user_ids"].([]interface{}); ok {
+		for _, m := range mentions {
+			if mid, ok := m.(string); ok {
+				req.MentionedUserIds = append(req.MentionedUserIds, mid)
+			}
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := c.chatClient.SendMessage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Enrich the payload with server-assigned fields.
+	if resp != nil && resp.Message != nil {
+		payload["id"] = resp.Message.Id
+		payload["message_id"] = resp.Message.Id
+		payload["status"] = resp.Message.Status.String()
+		payload["created_at"] = resp.Message.CreatedAt
+		payload["send_at"] = resp.Message.SendAt
+		if resp.Message.ExpiresAt > 0 {
+			payload["expires_at"] = resp.Message.ExpiresAt
+		}
+	}
+
+	return payload, nil
 }
