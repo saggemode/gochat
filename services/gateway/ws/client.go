@@ -156,6 +156,31 @@ func (c *Client) readPump() {
 					}
 				}
 
+				// ── Persist reactions via gRPC ──────────────────────────────
+				// Reactions must be stored in the database via the Chat
+				// service. The Chat service also publishes reaction events
+				// to Redis → StreamMessages for cross-instance fan-out.
+				if c.chatClient != nil && (msgType == "reaction" || msgType == "remove_reaction") {
+					if rErr := c.persistReaction(msgType, payload); rErr != nil {
+						c.log.Error("failed to persist reaction via gRPC",
+							zap.Error(rErr),
+							zap.String("user_id", c.userID),
+							zap.String("reaction_type", msgType),
+						)
+						errResp, _ := json.Marshal(map[string]interface{}{
+							"type":  "error",
+							"error": "failed to persist reaction",
+						})
+						select {
+						case c.send <- errResp:
+						default:
+						}
+					}
+					// Reaction fan-out happens via Redis → gRPC
+					// StreamMessages, so no local broadcast needed.
+					continue
+				}
+
 				// ── Persist chat messages via gRPC ──────────────────────────
 				// Actual chat content must be saved to the chat service before
 				// fan-out so offline users can retrieve messages later.
@@ -401,7 +426,8 @@ func ServeWs(hub *Hub, chatClient chatpb.ChatServiceClient, authClient authpb.Au
 
 // isChatContent returns true when the WebSocket payload represents a chat
 // message that must be persisted (text or media with a conversation ID).
-// Ephemeral events (typing, presence, reactions, calls, etc.) return false.
+// Reactions are handled separately by persistReaction.
+// Ephemeral events (typing, presence, calls, etc.) return false.
 func isChatContent(msgType string, payload map[string]interface{}) bool {
 	switch msgType {
 	case "message", "new_message", "chat_message", "":
@@ -414,6 +440,43 @@ func isChatContent(msgType string, payload map[string]interface{}) bool {
 		return content != "" || mediaURL != ""
 	default:
 		return false
+	}
+}
+
+// persistReaction calls the Chat service AddReaction or RemoveReaction gRPC
+// endpoint depending on the event type. This ensures reactions sent over
+// WebSocket are stored in the database and trigger Redis pub/sub events for
+// cross-instance fan-out.
+func (c *Client) persistReaction(msgType string, payload map[string]interface{}) error {
+	msgID, _ := payload["message_id"].(string)
+	if msgID == "" {
+		msgID, _ = payload["id"].(string)
+	}
+	emoji, _ := payload["emoji"].(string)
+	if msgID == "" || emoji == "" {
+		return nil // nothing to persist
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	switch msgType {
+	case "reaction":
+		_, err := c.chatClient.AddReaction(ctx, &chatpb.AddReactionRequest{
+			MessageId: msgID,
+			UserId:    c.userID,
+			Emoji:     emoji,
+		})
+		return err
+	case "remove_reaction":
+		_, err := c.chatClient.RemoveReaction(ctx, &chatpb.RemoveReactionRequest{
+			MessageId: msgID,
+			UserId:    c.userID,
+			Emoji:     emoji,
+		})
+		return err
+	default:
+		return nil
 	}
 }
 
