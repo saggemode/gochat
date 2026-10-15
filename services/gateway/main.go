@@ -824,13 +824,45 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 					}
 
 					if onlineMap[memberID] {
+						payloadBytes := []byte(msg.Payload)
+						if eventType == "read" {
+							readEvt, _ := json.Marshal(map[string]interface{}{
+								"type":            "read_receipt",
+								"event":           "read",
+								"event_type":      "read_receipt",
+								"conversation_id": convIDStr,
+								"conv_id":         convIDStr,
+								"actor_id":        actorIDStr,
+								"user_id":         actorIDStr,
+								"sender_id":       actorIDStr,
+								"message_id":      msgIDStr,
+								"msg_id":          msgIDStr,
+							})
+							payloadBytes = readEvt
+						}
+
 						// Deliver the event to online WebSocket clients in real-time
-						hub.SendToUser(memberID, []byte(msg.Payload))
+						delivered := hub.SendToUser(memberID, payloadBytes)
 						log.Debug("Delivered real-time event to online user",
 							zap.String("event", eventType),
 							zap.String("recipient_id", memberID),
 							zap.String("conversation_id", convIDStr),
 						)
+
+						// Acknowledge delivery back to sender when recipient receives new_message
+						if delivered && eventType == "new_message" && msgIDStr != "" && actorIDStr != "" {
+							statusAck, _ := json.Marshal(map[string]interface{}{
+								"type":            "message_status",
+								"event":           "message_status",
+								"message_id":      msgIDStr,
+								"msg_id":          msgIDStr,
+								"conversation_id": convIDStr,
+								"conv_id":         convIDStr,
+								"status":          "delivered",
+								"recipient_id":    memberID,
+							})
+							hub.SendToUser(actorIDStr, statusAck)
+						}
 					} else if eventType == "new_message" {
 						// Only log push notifications for new messages
 						log.Info("MOCK PUSH NOTIFICATION TRIGGERED (RECIPIENT OFFLINE)",
