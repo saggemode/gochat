@@ -547,6 +547,9 @@ class ChatRoomActivity : AppCompatActivity() {
             onQuotedMessageClicked = { targetId ->
                 jumpToAndHighlightMessage(targetId)
             }
+            onEditHistoryClicked = { msg ->
+                showEditHistoryDialog(msg)
+            }
             onMediaClick = { message ->
                 message.mediaUrl?.let { url ->
                     showFullScreenImage(
@@ -1806,6 +1809,7 @@ class ChatRoomActivity : AppCompatActivity() {
                     }
                 }
                 MessageActionBottomSheet.Action.EDIT -> viewModel.setEditingMessage(message)
+                MessageActionBottomSheet.Action.VIEW_EDIT_HISTORY -> showEditHistoryDialog(message)
                 MessageActionBottomSheet.Action.EXPORT -> {
                     showExportChatBottomSheet(targetMessages = listOf(message))
                 }
@@ -1866,6 +1870,47 @@ class ChatRoomActivity : AppCompatActivity() {
             }
             .setNegativeButton(getString(R.string.btn_cancel), null)
             .show()
+    }
+
+    private fun showEditHistoryDialog(message: Message) {
+        val loadingToast = Toast.makeText(this, "Loading edit history...", Toast.LENGTH_SHORT)
+        loadingToast.show()
+        viewModel.getEditHistory(message.id) { entries ->
+            loadingToast.cancel()
+            if (entries.isEmpty()) {
+                AlertDialog.Builder(this)
+                    .setTitle(R.string.title_edit_history)
+                    .setMessage(R.string.edit_history_empty)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show()
+                return@getEditHistory
+            }
+
+            val timeFormatter = java.text.SimpleDateFormat("h:mm a, d MMM yyyy", java.util.Locale.getDefault())
+            val formattedItems = ArrayList<CharSequence>()
+            entries.forEachIndexed { index, entry ->
+                val label = if (index == 0) getString(R.string.label_original) else getString(R.string.label_edit_version, index)
+                val timeStr = if (entry.editedAt > 0) {
+                    val epochMs = if (entry.editedAt < 100_000_000_000L) entry.editedAt * 1000L else entry.editedAt
+                    timeFormatter.format(java.util.Date(epochMs))
+                } else ""
+                val header = if (timeStr.isNotEmpty()) "$label ($timeStr)" else label
+
+                val ssb = android.text.SpannableStringBuilder()
+                val start = ssb.length
+                ssb.append(header).append("\n")
+                ssb.setSpan(android.text.style.StyleSpan(android.graphics.Typeface.BOLD), start, ssb.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                ssb.setSpan(android.text.style.ForegroundColorSpan(getColor(R.color.gochat_emerald_light)), start, ssb.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                ssb.append(entry.content)
+                formattedItems.add(ssb)
+            }
+
+            AlertDialog.Builder(this)
+                .setTitle(R.string.title_edit_history)
+                .setItems(formattedItems.toTypedArray(), null)
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
+        }
     }
 
     private fun performTranslation(message: Message, targetLang: String) {
