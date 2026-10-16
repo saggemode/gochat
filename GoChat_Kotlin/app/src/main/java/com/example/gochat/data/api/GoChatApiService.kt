@@ -177,6 +177,11 @@ interface GoChatApiService {
         @Path("id") messageId: String
     ): Response<JsonObject>
 
+    @GET("api/v1/chat/messages/{id}/history")
+    suspend fun getEditHistory(
+        @Path("id") messageId: String
+    ): Response<List<com.example.gochat.data.model.EditHistoryEntry>>
+
     // ═══════════════════════════════════════════════════════════════
     // ── Group Management ─────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════

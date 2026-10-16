@@ -1255,6 +1255,21 @@ class ChatRepository @Inject constructor(
         }
     }
 
+    suspend fun getEditHistory(messageId: String): Result<List<com.example.gochat.data.model.EditHistoryEntry>> = withContext(Dispatchers.IO) {
+        try {
+            val resp = api.getEditHistory(messageId)
+            if (resp.isSuccessful) {
+                Result.success(resp.body() ?: emptyList())
+            } else {
+                Log.w("ChatRepository", "getEditHistory returned code: ${resp.code()}")
+                Result.failure(Exception("Failed to fetch edit history (${resp.code()})"))
+            }
+        } catch (e: Exception) {
+            Log.e("ChatRepository", "Failed to fetch edit history", e)
+            Result.failure(e)
+        }
+    }
+
     suspend fun translateText(
         text: String,
         targetLanguage: String,

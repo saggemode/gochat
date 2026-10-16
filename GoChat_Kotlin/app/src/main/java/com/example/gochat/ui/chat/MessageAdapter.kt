@@ -75,6 +75,7 @@ class MessageAdapter(
     var onAcceptOfferClicked: ((message: Message, offer: CustomOfferData) -> Unit)? = null
     var onCounterOfferClicked: ((message: Message, offer: CustomOfferData) -> Unit)? = null
     var onQuotedMessageClicked: ((replyToId: String) -> Unit)? = null
+    var onEditHistoryClicked: ((message: Message) -> Unit)? = null
 
     private val quotedMessageCache = LruCache<String, Message>(150)
     private val pendingQuotedFetches = mutableSetOf<String>()
@@ -1166,7 +1167,13 @@ class MessageAdapter(
                 }
 
                 // Edited status
-                tvEdited.visibility = if (message.isEdited && !message.isDeleted) View.VISIBLE else View.GONE
+                if (message.isEdited && !message.isDeleted) {
+                    tvEdited.visibility = View.VISIBLE
+                    tvEdited.setOnClickListener { onEditHistoryClicked?.invoke(message) }
+                } else {
+                    tvEdited.visibility = View.GONE
+                    tvEdited.setOnClickListener(null)
+                }
 
                 // Starred status
                 ivStarred.visibility = if (message.isStarred) View.VISIBLE else View.GONE
@@ -1618,7 +1625,13 @@ class MessageAdapter(
                 }
 
                 // Edited status
-                tvEdited.visibility = if (message.isEdited && !message.isDeleted) View.VISIBLE else View.GONE
+                if (message.isEdited && !message.isDeleted) {
+                    tvEdited.visibility = View.VISIBLE
+                    tvEdited.setOnClickListener { onEditHistoryClicked?.invoke(message) }
+                } else {
+                    tvEdited.visibility = View.GONE
+                    tvEdited.setOnClickListener(null)
+                }
 
                 // Starred status
                 ivStarred.visibility = if (message.isStarred) View.VISIBLE else View.GONE

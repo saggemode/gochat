@@ -114,6 +114,12 @@ data class Reaction(
 )
 
 @Serializable
+data class EditHistoryEntry(
+    val content: String = "",
+    @SerialName("edited_at") val editedAt: Long = 0L
+)
+
+@Serializable
 @Entity(tableName = "messages")
 data class Message(
     @PrimaryKey val id: String = "",

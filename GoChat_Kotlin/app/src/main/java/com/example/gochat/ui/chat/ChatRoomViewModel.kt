@@ -434,6 +434,14 @@ class ChatRoomViewModel @Inject constructor(
                 clearEditing()
                 return
             }
+            val payload = buildJsonObject {
+                put("type", "message_edited")
+                put("message_id", edit.id)
+                put("conversation_id", convId)
+                put("content", trimmed)
+                put("is_edited", true)
+            }
+            webSocket.send(payload)
             viewModelScope.launch {
                 chatRepository.editMessage(edit.id, trimmed, convId)
                 clearEditing()
@@ -657,8 +665,22 @@ class ChatRoomViewModel @Inject constructor(
 
     fun deleteMessageForEveryone(messageId: String) {
         val convId = _conversationId.value
+        val payload = buildJsonObject {
+            put("type", "message_deleted")
+            put("message_id", messageId)
+            put("conversation_id", convId)
+            put("is_deleted", true)
+        }
+        webSocket.send(payload)
         viewModelScope.launch {
             chatRepository.deleteMessageForEveryone(messageId, convId)
+        }
+    }
+
+    fun getEditHistory(messageId: String, onResult: (List<com.example.gochat.data.model.EditHistoryEntry>) -> Unit) {
+        viewModelScope.launch {
+            val result = chatRepository.getEditHistory(messageId)
+            onResult(result.getOrDefault(emptyList()))
         }
     }
 

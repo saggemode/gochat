@@ -17,7 +17,7 @@ class MessageActionBottomSheet(
     private val binding get() = _binding!!
 
     enum class Action {
-        REPLY, FORWARD, STAR, TRANSLATE, PIN, EDIT, EXPORT, DELETE, REACT_LIKE, REACT_HEART, REACT_LAUGH, REACT_WOW, REACT_SAD, REACT_PRAY
+        REPLY, FORWARD, STAR, TRANSLATE, PIN, EDIT, VIEW_EDIT_HISTORY, EXPORT, DELETE, REACT_LIKE, REACT_HEART, REACT_LAUGH, REACT_WOW, REACT_SAD, REACT_PRAY
     }
 
     override fun onCreateView(
@@ -39,6 +39,9 @@ class MessageActionBottomSheet(
                 isWithin15Minutes
         binding.btnEdit.visibility = if (canEdit) View.VISIBLE else View.GONE
 
+        // Show edit history option if the message was previously edited
+        binding.btnEditHistory.visibility = if (message.isEdited && !message.isDeleted) View.VISIBLE else View.GONE
+
         // Translation visibility: available for text messages with content
         val canTranslate = !message.isDeleted && message.content.isNotBlank() &&
                 message.type == com.example.gochat.data.model.MessageType.TEXT
@@ -57,6 +60,7 @@ class MessageActionBottomSheet(
         binding.btnTranslate.setOnClickListener { dismiss(); onAction(Action.TRANSLATE) }
         binding.btnPin.setOnClickListener { dismiss(); onAction(Action.PIN) }
         binding.btnEdit.setOnClickListener { dismiss(); onAction(Action.EDIT) }
+        binding.btnEditHistory.setOnClickListener { dismiss(); onAction(Action.VIEW_EDIT_HISTORY) }
         binding.btnExport.setOnClickListener { dismiss(); onAction(Action.EXPORT) }
         binding.btnDelete.setOnClickListener { dismiss(); onAction(Action.DELETE) }
 

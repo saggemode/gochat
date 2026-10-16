@@ -467,6 +467,11 @@
     <string name="message_deleted_notice">🚫 This message was deleted</string>
     <string name="original_message_label">Original Message</string>
     <string name="original_message_not_found">Original message not found</string>
+    <string name="action_edit_history">Edit History</string>
+    <string name="title_edit_history">Edit History</string>
+    <string name="edit_history_empty">No prior edits recorded</string>
+    <string name="label_original">Original</string>
+    <string name="label_edit_version">Edit #%1$d</string>
 
     <!-- Marketplace Kotlin -->
     <string name="error_load_cart">Failed to load cart</string>
