@@ -921,6 +921,15 @@ func (h *ChatHandler) DeleteMessage(c *gin.Context) {
 	}
 	msgID := c.Param("id")
 
+	var req struct {
+		ConversationID string `json:"conversation_id"`
+	}
+	_ = c.ShouldBindJSON(&req)
+	convID := req.ConversationID
+	if convID == "" {
+		convID = c.Query("conversation_id")
+	}
+
 	resp, err := h.client.DeleteMessage(c.Request.Context(), &chatpb.DeleteMessageRequest{
 		MessageId: msgID,
 		DeleterId: userID,
@@ -930,12 +939,45 @@ func (h *ChatHandler) DeleteMessage(c *gin.Context) {
 		return
 	}
 
-	// We need the conversation ID to fan out.
-	// For simplicity, we could fetch the message first, but Chat Service already publishes to Redis.
-	// If we want low-latency fan-out here, we'd need more info.
-	// Let's assume the client knows which conversation it's in.
+	// Fan out delete event immediately to active WebSocket clients
+	h.fanOutEvent("message_deleted", msgID, convID, userID, map[string]interface{}{
+		"is_deleted": true,
+	})
 
 	c.JSON(http.StatusOK, gin.H{"success": resp.Success})
+}
+
+// GetEditHistory retrieves the edit history of an edited message.
+func (h *ChatHandler) GetEditHistory(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	msgID := c.Param("id")
+
+	resp, err := h.client.GetEditHistory(c.Request.Context(), &chatpb.GetEditHistoryRequest{
+		MessageId: msgID,
+		UserId:    userID,
+	})
+	if err != nil {
+		h.handleGrpcError(c, err, "failed to fetch edit history")
+		return
+	}
+
+	type historyDTO struct {
+		Content  string `json:"content"`
+		EditedAt int64  `json:"edited_at"`
+	}
+
+	results := make([]historyDTO, 0, len(resp.EditHistory))
+	for _, entry := range resp.EditHistory {
+		results = append(results, historyDTO{
+			Content:  entry.Content,
+			EditedAt: entry.EditedAt,
+		})
+	}
+
+	c.JSON(http.StatusOK, results)
 }
 
 // AddReaction adds an emoji reaction to a message.

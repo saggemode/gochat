@@ -181,6 +181,48 @@ func (c *Client) readPump() {
 					continue
 				}
 
+				// ── Handle delete message via gRPC ──────────────────────────
+				if c.chatClient != nil && (msgType == "message_deleted" || msgType == "delete_message") {
+					msgID, _ := payload["message_id"].(string)
+					if msgID == "" {
+						msgID, _ = payload["id"].(string)
+					}
+					if msgID != "" {
+						go func(mID string) {
+							ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+							defer cancel()
+							_, _ = c.chatClient.DeleteMessage(ctx, &chatpb.DeleteMessageRequest{
+								MessageId: mID,
+								DeleterId: c.userID,
+							})
+						}(msgID)
+					}
+					payload["type"] = "message_deleted"
+					payload["is_deleted"] = true
+				}
+
+				// ── Handle edit message via gRPC ────────────────────────────
+				if c.chatClient != nil && (msgType == "message_edited" || msgType == "edit_message") {
+					msgID, _ := payload["message_id"].(string)
+					if msgID == "" {
+						msgID, _ = payload["id"].(string)
+					}
+					content, _ := payload["content"].(string)
+					if msgID != "" && content != "" {
+						go func(mID, cnt string) {
+							ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+							defer cancel()
+							_, _ = c.chatClient.EditMessage(ctx, &chatpb.EditMessageRequest{
+								MessageId: mID,
+								EditorId:  c.userID,
+								Content:   cnt,
+							})
+						}(msgID, content)
+					}
+					payload["type"] = "message_edited"
+					payload["is_edited"] = true
+				}
+
 				// ── Persist chat messages via gRPC ──────────────────────────
 				// Actual chat content must be saved to the chat service before
 				// fan-out so offline users can retrieve messages later.

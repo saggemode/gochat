@@ -37,6 +37,9 @@ service ChatService {
   // Edit a message's text (stores edit history)
   rpc EditMessage(EditMessageRequest) returns (EditMessageResponse);
 
+  // Get edit history of a message
+  rpc GetEditHistory(GetEditHistoryRequest) returns (GetEditHistoryResponse);
+
   // Soft-delete a message
   rpc DeleteMessage(DeleteMessageRequest) returns (DeleteMessageResponse);
 
@@ -338,6 +341,15 @@ message EditMessageRequest {
 message EditMessageResponse {
   Message                 message      = 1;
   repeated EditHistoryEntry edit_history = 2;
+}
+
+message GetEditHistoryRequest {
+  string message_id = 1;
+  string user_id    = 2;
+}
+
+message GetEditHistoryResponse {
+  repeated EditHistoryEntry edit_history = 1;
 }
 
 message DeleteMessageRequest {

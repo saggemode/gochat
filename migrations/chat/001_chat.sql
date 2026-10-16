@@ -45,11 +45,16 @@ CREATE TABLE IF NOT EXISTS chat.messages (
     expires_at       TIMESTAMPTZ,
     is_pinned        BOOLEAN         NOT NULL DEFAULT FALSE,
     is_edited        BOOLEAN         NOT NULL DEFAULT FALSE,
+    edited_at        TIMESTAMPTZ,
     is_deleted       BOOLEAN         NOT NULL DEFAULT FALSE,
+    deleted_at       TIMESTAMPTZ,
     search_vector    TSVECTOR,
     created_at       TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     updated_at       TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE chat.messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
+ALTER TABLE chat.messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 
 -- ── Message Edit History ────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS chat.message_edits (

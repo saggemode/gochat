@@ -29,6 +29,7 @@ const (
 	ChatService_GetMessages_FullMethodName             = "/chat.ChatService/GetMessages"
 	ChatService_GetThread_FullMethodName               = "/chat.ChatService/GetThread"
 	ChatService_EditMessage_FullMethodName             = "/chat.ChatService/EditMessage"
+	ChatService_GetEditHistory_FullMethodName          = "/chat.ChatService/GetEditHistory"
 	ChatService_DeleteMessage_FullMethodName           = "/chat.ChatService/DeleteMessage"
 	ChatService_ForwardMessage_FullMethodName          = "/chat.ChatService/ForwardMessage"
 	ChatService_AddReaction_FullMethodName             = "/chat.ChatService/AddReaction"
@@ -82,6 +83,8 @@ type ChatServiceClient interface {
 	GetThread(ctx context.Context, in *GetThreadRequest, opts ...grpc.CallOption) (*GetThreadResponse, error)
 	// Edit a message's text (stores edit history)
 	EditMessage(ctx context.Context, in *EditMessageRequest, opts ...grpc.CallOption) (*EditMessageResponse, error)
+	// Get edit history of a message
+	GetEditHistory(ctx context.Context, in *GetEditHistoryRequest, opts ...grpc.CallOption) (*GetEditHistoryResponse, error)
 	// Soft-delete a message
 	DeleteMessage(ctx context.Context, in *DeleteMessageRequest, opts ...grpc.CallOption) (*DeleteMessageResponse, error)
 	// Forward a message to another conversation
@@ -230,6 +233,16 @@ func (c *chatServiceClient) EditMessage(ctx context.Context, in *EditMessageRequ
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(EditMessageResponse)
 	err := c.cc.Invoke(ctx, ChatService_EditMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetEditHistory(ctx context.Context, in *GetEditHistoryRequest, opts ...grpc.CallOption) (*GetEditHistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetEditHistoryResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetEditHistory_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -539,6 +552,8 @@ type ChatServiceServer interface {
 	GetThread(context.Context, *GetThreadRequest) (*GetThreadResponse, error)
 	// Edit a message's text (stores edit history)
 	EditMessage(context.Context, *EditMessageRequest) (*EditMessageResponse, error)
+	// Get edit history of a message
+	GetEditHistory(context.Context, *GetEditHistoryRequest) (*GetEditHistoryResponse, error)
 	// Soft-delete a message
 	DeleteMessage(context.Context, *DeleteMessageRequest) (*DeleteMessageResponse, error)
 	// Forward a message to another conversation
@@ -622,6 +637,9 @@ func (UnimplementedChatServiceServer) GetThread(context.Context, *GetThreadReque
 }
 func (UnimplementedChatServiceServer) EditMessage(context.Context, *EditMessageRequest) (*EditMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method EditMessage not implemented")
+}
+func (UnimplementedChatServiceServer) GetEditHistory(context.Context, *GetEditHistoryRequest) (*GetEditHistoryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetEditHistory not implemented")
 }
 func (UnimplementedChatServiceServer) DeleteMessage(context.Context, *DeleteMessageRequest) (*DeleteMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteMessage not implemented")
@@ -901,6 +919,24 @@ func _ChatService_EditMessage_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ChatServiceServer).EditMessage(ctx, req.(*EditMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetEditHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetEditHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetEditHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetEditHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetEditHistory(ctx, req.(*GetEditHistoryRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1430,6 +1466,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "EditMessage",
 			Handler:    _ChatService_EditMessage_Handler,
+		},
+		{
+			MethodName: "GetEditHistory",
+			Handler:    _ChatService_GetEditHistory_Handler,
 		},
 		{
 			MethodName: "DeleteMessage",

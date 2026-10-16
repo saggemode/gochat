@@ -22,25 +22,25 @@ const (
 )
 
 type BusinessProfile struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	BusinessName  string                 `protobuf:"bytes,2,opt,name=business_name,json=businessName,proto3" json:"business_name,omitempty"`
-	Category      string                 `protobuf:"bytes,3,opt,name=category,proto3" json:"category,omitempty"`
-	Description   string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
-	Address       string                 `protobuf:"bytes,5,opt,name=address,proto3" json:"address,omitempty"`
-	Website       string                 `protobuf:"bytes,6,opt,name=website,proto3" json:"website,omitempty"`
-	Email         string                 `protobuf:"bytes,7,opt,name=email,proto3" json:"email,omitempty"`
-	Phone         string                 `protobuf:"bytes,8,opt,name=phone,proto3" json:"phone,omitempty"`
-	HoursJson     string                 `protobuf:"bytes,9,opt,name=hours_json,json=hoursJson,proto3" json:"hours_json,omitempty"`
-	IsVerified    bool                   `protobuf:"varint,10,opt,name=is_verified,json=isVerified,proto3" json:"is_verified,omitempty"`
-	LogoUrl       string                 `protobuf:"bytes,11,opt,name=logo_url,json=logoUrl,proto3" json:"logo_url,omitempty"`
-	BannerUrl     string                 `protobuf:"bytes,12,opt,name=banner_url,json=bannerUrl,proto3" json:"banner_url,omitempty"`
-	State         string                 `protobuf:"bytes,13,opt,name=state,proto3" json:"state,omitempty"`
-	CountryCode   string                 `protobuf:"bytes,14,opt,name=country_code,json=countryCode,proto3" json:"country_code,omitempty"`
-	Slug          string                 `protobuf:"bytes,15,opt,name=slug,proto3" json:"slug,omitempty"`
-	FollowersCount int64                 `protobuf:"varint,16,opt,name=followers_count,json=followers_count,proto3" json:"followers_count"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UserId         string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	BusinessName   string                 `protobuf:"bytes,2,opt,name=business_name,json=businessName,proto3" json:"business_name,omitempty"`
+	Category       string                 `protobuf:"bytes,3,opt,name=category,proto3" json:"category,omitempty"`
+	Description    string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	Address        string                 `protobuf:"bytes,5,opt,name=address,proto3" json:"address,omitempty"`
+	Website        string                 `protobuf:"bytes,6,opt,name=website,proto3" json:"website,omitempty"`
+	Email          string                 `protobuf:"bytes,7,opt,name=email,proto3" json:"email,omitempty"`
+	Phone          string                 `protobuf:"bytes,8,opt,name=phone,proto3" json:"phone,omitempty"`
+	HoursJson      string                 `protobuf:"bytes,9,opt,name=hours_json,json=hoursJson,proto3" json:"hours_json,omitempty"`
+	IsVerified     bool                   `protobuf:"varint,10,opt,name=is_verified,json=isVerified,proto3" json:"is_verified,omitempty"`
+	LogoUrl        string                 `protobuf:"bytes,11,opt,name=logo_url,json=logoUrl,proto3" json:"logo_url,omitempty"`
+	BannerUrl      string                 `protobuf:"bytes,12,opt,name=banner_url,json=bannerUrl,proto3" json:"banner_url,omitempty"`
+	State          string                 `protobuf:"bytes,13,opt,name=state,proto3" json:"state,omitempty"`
+	CountryCode    string                 `protobuf:"bytes,14,opt,name=country_code,json=countryCode,proto3" json:"country_code,omitempty"`
+	Slug           string                 `protobuf:"bytes,15,opt,name=slug,proto3" json:"slug,omitempty"`
+	FollowersCount int64                  `protobuf:"varint,16,opt,name=followers_count,json=followersCount,proto3" json:"followers_count,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *BusinessProfile) Reset() {
@@ -714,15 +714,15 @@ func (x *Review) GetCreatedAt() string {
 }
 
 type Store struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Profile       *BusinessProfile       `protobuf:"bytes,1,opt,name=profile,proto3" json:"profile,omitempty"`
-	Products      []*MarketplaceProduct  `protobuf:"bytes,2,rep,name=products,proto3" json:"products,omitempty"`
-	ProductCount  int32                  `protobuf:"varint,3,opt,name=product_count,json=productCount,proto3" json:"product_count,omitempty"`
-	AvgRating     float64                `protobuf:"fixed64,4,opt,name=avg_rating,json=avgRating,proto3" json:"avg_rating,omitempty"`
-	TotalReviews  int32                  `protobuf:"varint,5,opt,name=total_reviews,json=totalReviews,proto3" json:"total_reviews,omitempty"`
-	FollowersCount int64                 `protobuf:"varint,6,opt,name=followers_count,json=followers_count,proto3" json:"followers_count"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Profile        *BusinessProfile       `protobuf:"bytes,1,opt,name=profile,proto3" json:"profile,omitempty"`
+	Products       []*MarketplaceProduct  `protobuf:"bytes,2,rep,name=products,proto3" json:"products,omitempty"`
+	ProductCount   int32                  `protobuf:"varint,3,opt,name=product_count,json=productCount,proto3" json:"product_count,omitempty"`
+	AvgRating      float64                `protobuf:"fixed64,4,opt,name=avg_rating,json=avgRating,proto3" json:"avg_rating,omitempty"`
+	TotalReviews   int32                  `protobuf:"varint,5,opt,name=total_reviews,json=totalReviews,proto3" json:"total_reviews,omitempty"`
+	FollowersCount int64                  `protobuf:"varint,6,opt,name=followers_count,json=followersCount,proto3" json:"followers_count,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Store) Reset() {
@@ -10377,7 +10377,7 @@ var File_proto_business_proto protoreflect.FileDescriptor
 
 const file_proto_business_proto_rawDesc = "" +
 	"\n" +
-	"\x14proto/business.proto\x12\bbusiness\"\xb4\x03\n" +
+	"\x14proto/business.proto\x12\bbusiness\"\xdd\x03\n" +
 	"\x0fBusinessProfile\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12#\n" +
 	"\rbusiness_name\x18\x02 \x01(\tR\fbusinessName\x12\x1a\n" +
@@ -10397,7 +10397,8 @@ const file_proto_business_proto_rawDesc = "" +
 	"banner_url\x18\f \x01(\tR\tbannerUrl\x12\x14\n" +
 	"\x05state\x18\r \x01(\tR\x05state\x12!\n" +
 	"\fcountry_code\x18\x0e \x01(\tR\vcountryCode\x12\x12\n" +
-	"\x04slug\x18\x0f \x01(\tR\x04slug\"\xf8\x06\n" +
+	"\x04slug\x18\x0f \x01(\tR\x04slug\x12'\n" +
+	"\x0ffollowers_count\x18\x10 \x01(\x03R\x0efollowersCount\"\xf8\x06\n" +
 	"\x12MarketplaceProduct\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vbusiness_id\x18\x02 \x01(\tR\n" +
@@ -10468,14 +10469,15 @@ const file_proto_business_proto_rawDesc = "" +
 	"\rhelpful_count\x18\t \x01(\x05R\fhelpfulCount\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\n" +
-	" \x01(\tR\tcreatedAt\"\xdf\x01\n" +
+	" \x01(\tR\tcreatedAt\"\x88\x02\n" +
 	"\x05Store\x123\n" +
 	"\aprofile\x18\x01 \x01(\v2\x19.business.BusinessProfileR\aprofile\x128\n" +
 	"\bproducts\x18\x02 \x03(\v2\x1c.business.MarketplaceProductR\bproducts\x12#\n" +
 	"\rproduct_count\x18\x03 \x01(\x05R\fproductCount\x12\x1d\n" +
 	"\n" +
 	"avg_rating\x18\x04 \x01(\x01R\tavgRating\x12#\n" +
-	"\rtotal_reviews\x18\x05 \x01(\x05R\ftotalReviews\"|\n" +
+	"\rtotal_reviews\x18\x05 \x01(\x05R\ftotalReviews\x12'\n" +
+	"\x0ffollowers_count\x18\x06 \x01(\x03R\x0efollowersCount\"|\n" +
 	"\x0eProductCatalog\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x12\n" +

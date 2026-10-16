@@ -543,7 +543,7 @@ func (r *MessageRepository) Edit(ctx context.Context, msgID, editorID uuid.UUID,
 	// Update the message
 	msg := &Message{}
 	if err := tx.QueryRow(ctx, `
-		UPDATE messages SET content = $1, is_edited = TRUE
+		UPDATE messages SET content = $1, is_edited = TRUE, edited_at = NOW(), updated_at = NOW()
 		WHERE id = $2 AND sender_id = $3 AND is_deleted = FALSE
 		RETURNING id, conversation_id, sender_id, content, type, status,
 		          media_url, media_mime, media_size,
@@ -599,10 +599,10 @@ func (r *MessageRepository) Delete(ctx context.Context, msgID, deleterID uuid.UU
 	var args []interface{}
 
 	if bypassAuthorCheck {
-		query = `UPDATE messages SET is_deleted = TRUE WHERE id = $1`
+		query = `UPDATE messages SET is_deleted = TRUE, deleted_at = NOW(), updated_at = NOW() WHERE id = $1`
 		args = []interface{}{msgID}
 	} else {
-		query = `UPDATE messages SET is_deleted = TRUE WHERE id = $1 AND sender_id = $2`
+		query = `UPDATE messages SET is_deleted = TRUE, deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND sender_id = $2`
 		args = []interface{}{msgID, deleterID}
 	}
 

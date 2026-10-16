@@ -428,6 +428,30 @@ func (s *ChatServer) EditMessage(ctx context.Context, req *chatpb.EditMessageReq
 	}, nil
 }
 
+func (s *ChatServer) GetEditHistory(ctx context.Context, req *chatpb.GetEditHistoryRequest) (*chatpb.GetEditHistoryResponse, error) {
+	msgID, err := uuid.Parse(req.MessageId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid message_id")
+	}
+
+	history, err := s.msgRepo.GetEditHistory(ctx, msgID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to get edit history")
+	}
+
+	protoHistory := make([]*chatpb.EditHistoryEntry, len(history))
+	for i, h := range history {
+		protoHistory[i] = &chatpb.EditHistoryEntry{
+			Content:  h.Content,
+			EditedAt: h.EditedAt.Unix(),
+		}
+	}
+
+	return &chatpb.GetEditHistoryResponse{
+		EditHistory: protoHistory,
+	}, nil
+}
+
 func (s *ChatServer) DeleteMessage(ctx context.Context, req *chatpb.DeleteMessageRequest) (*chatpb.DeleteMessageResponse, error) {
 	msgID, _ := uuid.Parse(req.MessageId)
 	deleterID, _ := uuid.Parse(req.DeleterId)

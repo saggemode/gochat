@@ -412,6 +412,7 @@ func main() {
 		authRequired.GET("/chat/threads/:parent_id", chatHandler.GetThread)
 		authRequired.PUT("/chat/messages/:id", chatHandler.EditMessage)
 		authRequired.DELETE("/chat/messages/:id", chatHandler.DeleteMessage)
+		authRequired.GET("/chat/messages/:id/history", chatHandler.GetEditHistory)
 		authRequired.GET("/chat/unfurl", chatHandler.UnfurlURL)
 		authRequired.POST("/chat/unfurl", chatHandler.UnfurlURL)
 
