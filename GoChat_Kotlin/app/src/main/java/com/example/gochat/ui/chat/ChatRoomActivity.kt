@@ -683,7 +683,6 @@ class ChatRoomActivity : AppCompatActivity() {
             val message = messageAdapter.peek(position)
             if (message != null) {
                 viewModel.setReplyingTo(message)
-                messageAdapter.notifyItemChanged(position)
             }
         }
         ItemTouchHelper(swipeCallback).attachToRecyclerView(binding.rvMessages)
@@ -2387,22 +2386,27 @@ class ChatRoomActivity : AppCompatActivity() {
                 return@launch
             }
 
-            // Otherwise, observe viewModel.messages until found
-            viewModel.messages.collect { list ->
-                val idx = list.indexOfFirst { it.id == targetMsgId }
-                if (idx != -1) {
-                    val layoutMgr = binding.rvMessages.layoutManager as? LinearLayoutManager
-                    val currentPos = layoutMgr?.findFirstVisibleItemPosition() ?: 0
-                    if (Math.abs(currentPos - idx) > 25) {
-                        val jumpNearby = if (idx > currentPos) idx - 10 else idx + 10
-                        binding.rvMessages.scrollToPosition(jumpNearby.coerceIn(0, (messageAdapter.itemCount - 1).coerceAtLeast(0)))
+            // Otherwise, observe viewModel.messages until found or timeout
+            val found = kotlinx.coroutines.withTimeoutOrNull(2500) {
+                viewModel.messages.collect { list ->
+                    val idx = list.indexOfFirst { it.id == targetMsgId }
+                    if (idx != -1) {
+                        val layoutMgr = binding.rvMessages.layoutManager as? LinearLayoutManager
+                        val currentPos = layoutMgr?.findFirstVisibleItemPosition() ?: 0
+                        if (Math.abs(currentPos - idx) > 25) {
+                            val jumpNearby = if (idx > currentPos) idx - 10 else idx + 10
+                            binding.rvMessages.scrollToPosition(jumpNearby.coerceIn(0, (messageAdapter.itemCount - 1).coerceAtLeast(0)))
+                        }
+                        binding.rvMessages.post {
+                            binding.rvMessages.smoothScrollToPosition(idx)
+                            messageAdapter.highlightMessage(targetMsgId)
+                        }
+                        targetMessageJumpJob?.cancel()
                     }
-                    binding.rvMessages.post {
-                        binding.rvMessages.smoothScrollToPosition(idx)
-                        messageAdapter.highlightMessage(targetMsgId)
-                    }
-                    targetMessageJumpJob?.cancel()
                 }
+            }
+            if (found == null) {
+                Toast.makeText(this@ChatRoomActivity, getString(R.string.original_message_not_found), Toast.LENGTH_SHORT).show()
             }
         }
     }
