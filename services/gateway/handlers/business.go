@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -429,5 +430,127 @@ func (h *BusinessHandler) IsFollowingStore(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, resp)
+}
+
+// ── Quick Replies ────────────────────────────────────────────────────────────
+
+type QuickReply struct {
+	ID        string `json:"id"`
+	Shortcut  string `json:"shortcut"`
+	ReplyText string `json:"reply_text"`
+}
+
+func (h *BusinessHandler) ListQuickReplies(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+
+	key := fmt.Sprintf("biz:quick_replies:%s", userID)
+	var replies []QuickReply
+	if h.redis != nil {
+		if val, err := h.redis.Get(c.Request.Context(), key).Result(); err == nil && val != "" {
+			_ = json.Unmarshal([]byte(val), &replies)
+		}
+	}
+
+	if len(replies) == 0 {
+		// Provide high-utility business templates if none customized yet
+		replies = []QuickReply{
+			{ID: "qr_1", Shortcut: "/hours", ReplyText: "Our business hours are Monday – Saturday, 9:00 AM – 6:00 PM."},
+			{ID: "qr_2", Shortcut: "/location", ReplyText: "We are located at our main store. Check our profile for complete directions!"},
+			{ID: "qr_3", Shortcut: "/catalog", ReplyText: "You can browse our entire product catalog directly here in our store profile."},
+			{ID: "qr_4", Shortcut: "/shipping", ReplyText: "We ship orders within 24 hours. Domestic delivery takes 1–3 business days with tracking."},
+			{ID: "qr_5", Shortcut: "/thanks", ReplyText: "Thank you for reaching out! We appreciate your business and will assist you shortly."},
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"quick_replies": replies})
+}
+
+func (h *BusinessHandler) CreateQuickReply(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+
+	var req struct {
+		Shortcut  string `json:"shortcut" binding:"required"`
+		ReplyText string `json:"reply_text" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	shortcut := req.Shortcut
+	if !strings.HasPrefix(shortcut, "/") {
+		shortcut = "/" + shortcut
+	}
+
+	key := fmt.Sprintf("biz:quick_replies:%s", userID)
+	var replies []QuickReply
+	if h.redis != nil {
+		if val, err := h.redis.Get(c.Request.Context(), key).Result(); err == nil && val != "" {
+			_ = json.Unmarshal([]byte(val), &replies)
+		}
+	}
+
+	newReply := QuickReply{
+		ID:        fmt.Sprintf("qr_%d", time.Now().UnixNano()),
+		Shortcut:  shortcut,
+		ReplyText: req.ReplyText,
+	}
+
+	replaced := false
+	for i, r := range replies {
+		if strings.EqualFold(r.Shortcut, shortcut) {
+			replies[i] = newReply
+			replaced = true
+			break
+		}
+	}
+	if !replaced {
+		replies = append(replies, newReply)
+	}
+
+	if h.redis != nil {
+		if bytes, err := json.Marshal(replies); err == nil {
+			_ = h.redis.Set(c.Request.Context(), key, string(bytes), 365*24*time.Hour).Err()
+		}
+	}
+
+	c.JSON(http.StatusCreated, newReply)
+}
+
+func (h *BusinessHandler) DeleteQuickReply(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	qrID := c.Param("id")
+
+	key := fmt.Sprintf("biz:quick_replies:%s", userID)
+	var replies []QuickReply
+	if h.redis != nil {
+		if val, err := h.redis.Get(c.Request.Context(), key).Result(); err == nil && val != "" {
+			_ = json.Unmarshal([]byte(val), &replies)
+		}
+	}
+
+	filtered := make([]QuickReply, 0, len(replies))
+	for _, r := range replies {
+		if r.ID != qrID && !strings.EqualFold(r.Shortcut, qrID) {
+			filtered = append(filtered, r)
+		}
+	}
+
+	if h.redis != nil {
+		if bytes, err := json.Marshal(filtered); err == nil {
+			_ = h.redis.Set(c.Request.Context(), key, string(bytes), 365*24*time.Hour).Err()
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 

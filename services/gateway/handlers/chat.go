@@ -16,22 +16,37 @@ import (
 	"google.golang.org/grpc/status"
 
 	authpb "gochat/gen/auth"
+	businesspb "gochat/gen/business"
 	chatpb "gochat/gen/chat"
 	"gochat/pkg/fcm"
 	"gochat/services/gateway/ws"
+
+	"github.com/redis/go-redis/v9"
 )
 
 // ChatHandler wraps the Chat Service gRPC client.
 type ChatHandler struct {
-	client     chatpb.ChatServiceClient
-	authClient authpb.AuthServiceClient
-	hub        *ws.Hub
-	log        *zap.Logger
+	client         chatpb.ChatServiceClient
+	authClient     authpb.AuthServiceClient
+	businessClient businesspb.BusinessServiceClient
+	hub            *ws.Hub
+	redis          *redis.Client
+	log            *zap.Logger
 }
 
 // NewChatHandler constructs the ChatHandler.
 func NewChatHandler(client chatpb.ChatServiceClient, authClient authpb.AuthServiceClient, hub *ws.Hub, log *zap.Logger) *ChatHandler {
 	return &ChatHandler{client: client, authClient: authClient, hub: hub, log: log}
+}
+
+func (h *ChatHandler) WithBusinessClient(b businesspb.BusinessServiceClient) *ChatHandler {
+	h.businessClient = b
+	return h
+}
+
+func (h *ChatHandler) WithRedis(r *redis.Client) *ChatHandler {
+	h.redis = r
+	return h
 }
 
 // CreateConversation handles 1:1 and group creation.
@@ -792,6 +807,84 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 		h.fanOutEvent("new_message", resp.Message.Id, convID, userID, map[string]interface{}{
 			"message": msgData,
 		})
+	}
+
+	// Trigger automated Business Away / Auto-Reply if recipient is a business
+	if h.businessClient != nil {
+		go func(senderID, convID string) {
+			bgCtx, bgCancel := context.WithTimeout(context.Background(), 8*time.Second)
+			defer bgCancel()
+
+			convResp, cErr := h.client.GetConversation(bgCtx, &chatpb.GetConversationRequest{
+				ConversationId: convID,
+				UserId:         senderID,
+			})
+			if cErr != nil || convResp == nil || convResp.Conversation == nil {
+				return
+			}
+			if convResp.Conversation.Type != chatpb.ConversationType_DIRECT {
+				return
+			}
+
+			var recipientID string
+			for _, mID := range convResp.Conversation.MemberIds {
+				if mID != senderID && mID != "" {
+					recipientID = mID
+					break
+				}
+			}
+			if recipientID == "" {
+				return
+			}
+
+			rlKey := fmt.Sprintf("biz:autoreply:sent:%s:%s", recipientID, senderID)
+			if h.redis != nil {
+				if exists, _ := h.redis.Exists(bgCtx, rlKey).Result(); exists > 0 {
+					return
+				}
+			}
+
+			arResp, arErr := h.businessClient.GetAutoReplies(bgCtx, &businesspb.GetAutoRepliesRequest{UserId: recipientID})
+			if arErr != nil || arResp == nil || len(arResp.Rules) == 0 {
+				return
+			}
+
+			var activeRule *businesspb.AutoReply
+			for _, r := range arResp.Rules {
+				if r.IsActive && r.ReplyText != "" {
+					activeRule = r
+					break
+				}
+			}
+			if activeRule == nil {
+				return
+			}
+
+			time.Sleep(1200 * time.Millisecond)
+
+			replyResp, sendErr := h.client.SendMessage(bgCtx, &chatpb.SendMessageRequest{
+				ConversationId: convID,
+				SenderId:       recipientID,
+				Content:        activeRule.ReplyText,
+				Type:           chatpb.MessageType_TEXT,
+			})
+			if sendErr == nil && replyResp != nil && replyResp.Message != nil {
+				if h.redis != nil {
+					_ = h.redis.Set(bgCtx, rlKey, "1", 4*time.Hour).Err()
+				}
+				h.fanOutEvent("new_message", replyResp.Message.Id, convID, recipientID, map[string]interface{}{
+					"message": map[string]interface{}{
+						"id":              replyResp.Message.Id,
+						"conversation_id": replyResp.Message.ConversationId,
+						"sender_id":       replyResp.Message.SenderId,
+						"content":         replyResp.Message.Content,
+						"type":            replyResp.Message.Type.String(),
+						"status":          replyResp.Message.Status.String(),
+						"created_at":      replyResp.Message.CreatedAt,
+					},
+				})
+			}
+		}(userID, convID)
 	}
 
 	c.JSON(http.StatusCreated, resp.Message)

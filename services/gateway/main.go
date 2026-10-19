@@ -259,7 +259,7 @@ func main() {
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(authClient, log).WithRedis(redisClient).WithHub(hub)
-	chatHandler := handlers.NewChatHandler(chatClient, authClient, hub, log)
+	chatHandler := handlers.NewChatHandler(chatClient, authClient, hub, log).WithBusinessClient(businessClient).WithRedis(redisClient)
 	aiHandler := handlers.NewAIHandler(aiClient, log)
 	mediaHandler := handlers.NewMediaHandler(mediaClient, cfg.TelegramBotToken, log)
 	groupHandler := handlers.NewGroupHandler(groupClient, authClient, hub, log).WithChatClient(chatClient)
@@ -642,6 +642,9 @@ func main() {
 		authRequired.GET("/business/appointments", businessHandler.ListAppointments)
 		authRequired.POST("/business/auto-replies", businessHandler.SetAutoReply)
 		authRequired.GET("/business/auto-replies", businessHandler.GetAutoReplies)
+		authRequired.GET("/business/quick-replies", businessHandler.ListQuickReplies)
+		authRequired.POST("/business/quick-replies", businessHandler.CreateQuickReply)
+		authRequired.DELETE("/business/quick-replies/:id", businessHandler.DeleteQuickReply)
 		authRequired.POST("/business/queue/enqueue", businessHandler.EnqueueCustomer)
 		authRequired.POST("/business/queue/dequeue", businessHandler.DequeueCustomer)
 		authRequired.POST("/business/queue/position", businessHandler.GetQueuePosition)
