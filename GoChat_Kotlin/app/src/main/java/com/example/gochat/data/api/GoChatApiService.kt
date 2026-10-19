@@ -94,6 +94,11 @@ interface GoChatApiService {
         @Body body: JsonObject
     ): Response<JsonObject>
 
+    @POST("api/v1/auth/qr/link")
+    suspend fun linkDeviceWithQr(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
     @DELETE("api/v1/auth/devices/{id}")
     suspend fun unlinkDevice(
         @Path("id") deviceId: String

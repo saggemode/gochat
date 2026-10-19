@@ -250,7 +250,22 @@ class ChatBackupActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.auto_backup_dialog_title))
             .setItems(options) { _, which ->
-                viewModel.setAutoBackupFrequency(options[which])
+                val selected = options[which]
+                if (selected.equals(getString(R.string.freq_off), ignoreCase = true)) {
+                    viewModel.setAutoBackupFrequency(selected)
+                    Toast.makeText(this, "Auto-backup disabled", Toast.LENGTH_SHORT).show()
+                } else {
+                    if (viewModel.getAutoBackupPassword().isNullOrBlank()) {
+                        showPasswordDialog(isRestore = false) { password ->
+                            viewModel.saveAutoBackupPassword(password)
+                            viewModel.setAutoBackupFrequency(selected)
+                            Toast.makeText(this, "Auto-backup scheduled ($selected)", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        viewModel.setAutoBackupFrequency(selected)
+                        Toast.makeText(this, "Auto-backup scheduled ($selected)", Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
             .setNegativeButton(getString(R.string.btn_cancel), null)
             .show()

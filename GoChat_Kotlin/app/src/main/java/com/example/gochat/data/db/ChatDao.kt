@@ -49,6 +49,13 @@ interface ChatDao {
     @Query("UPDATE conversations SET isMuted = :isMuted WHERE id = :convId")
     suspend fun updateConversationMuted(convId: String, isMuted: Boolean): Int
 
+    // ── Drafts ──────────────────────────────────────────────────
+    @Query("UPDATE conversations SET draftText = :draft WHERE id = :convId")
+    suspend fun updateDraft(convId: String, draft: String?): Int
+
+    @Query("SELECT draftText FROM conversations WHERE id = :convId LIMIT 1")
+    suspend fun getDraft(convId: String): String?
+
     @Query("UPDATE conversations SET disappearingMessagesDuration = :durationSeconds WHERE id = :convId")
     suspend fun updateDisappearingMessagesDuration(convId: String, durationSeconds: Int): Int
 

@@ -235,6 +235,10 @@ class TokenManager private constructor(context: Context) {
         get() = prefs.getBoolean(KEY_BIOMETRIC_LOCK, false)
         set(value) = prefs.edit().putBoolean(KEY_BIOMETRIC_LOCK, value).apply()
 
+    var hasCompletedMigrationCheck: Boolean
+        get() = prefs.getBoolean("has_completed_migration_check", false)
+        set(value) = prefs.edit().putBoolean("has_completed_migration_check", value).apply()
+
     var userCountryCode: String
         get() {
             val phone = userPhone.orEmpty()

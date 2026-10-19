@@ -222,6 +222,19 @@ class ChatRepository @Inject constructor(
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // ── Drafts ──────────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════
+
+    suspend fun saveDraft(convId: String, text: String?) {
+        val draft = text?.trim()?.ifBlank { null }
+        dao.updateDraft(convId, draft)
+    }
+
+    suspend fun loadDraft(convId: String): String? = dao.getDraft(convId)
+
+    suspend fun clearDraft(convId: String) = dao.updateDraft(convId, null)
+
+    // ═══════════════════════════════════════════════════════════════
     // ── Messages ─────────────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════
 

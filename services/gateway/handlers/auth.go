@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	authpb "gochat/gen/auth"
+	"gochat/services/gateway/ws"
 )
 
 // DeviceSession represents an active linked device or web session.
@@ -31,6 +33,26 @@ type DeviceSession struct {
 	LastActiveAt time.Time `json:"last_active_at"`
 	IsCurrent    bool      `json:"is_current"`
 	TokenHash    string    `json:"token_hash,omitempty"`
+	PublicKey    string    `json:"public_key,omitempty"`
+	IdentityKey  string    `json:"identity_key,omitempty"`
+	Location     string    `json:"location,omitempty"`
+}
+
+// QRPairSession represents an active or pending QR pairing session for web/desktop.
+type QRPairSession struct {
+	Token        string `json:"token"`
+	DeviceName   string `json:"device_name"`
+	Platform     string `json:"platform"`
+	PublicKey    string `json:"public_key,omitempty"`
+	Status       string `json:"status"` // "pending", "approved", "expired"
+	CreatedAt    int64  `json:"created_at"`
+	ExpiresAt    int64  `json:"expires_at"`
+	AccessToken  string `json:"access_token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+	DeviceID     string `json:"device_id,omitempty"`
+	User         any    `json:"user,omitempty"`
+	IdentityKey  string `json:"identity_key,omitempty"`
+	KeyExchange  string `json:"key_exchange,omitempty"`
 }
 
 func hashToken(token string) string {
@@ -59,6 +81,7 @@ func extractTokenFromRequest(c *gin.Context) string {
 type AuthHandler struct {
 	client authpb.AuthServiceClient
 	redis  *redis.Client
+	hub    *ws.Hub
 	log    *zap.Logger
 }
 
@@ -70,6 +93,12 @@ func NewAuthHandler(client authpb.AuthServiceClient, log *zap.Logger) *AuthHandl
 // WithRedis sets the Redis client for device/session tracking.
 func (h *AuthHandler) WithRedis(redis *redis.Client) *AuthHandler {
 	h.redis = redis
+	return h
+}
+
+// WithHub sets the WebSocket Hub for real-time multi-device sync and notifications.
+func (h *AuthHandler) WithHub(hub *ws.Hub) *AuthHandler {
+	h.hub = hub
 	return h
 }
 
@@ -449,6 +478,16 @@ func (h *AuthHandler) TerminateSession(c *gin.Context) {
 		_ = h.redis.HDel(ctx, "user:devices:"+userID, sessionID).Err()
 	}
 
+	// 4. Real-time WebSocket notification so that the revoked device disconnects immediately
+	if h.hub != nil && userID != "" {
+		evt, _ := json.Marshal(map[string]any{
+			"type":      "session_revoked",
+			"device_id": sessionID,
+			"user_id":   userID,
+		})
+		h.hub.SendToUser(userID, evt)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success":       true,
 		"terminated_id": sessionID,
@@ -482,9 +521,264 @@ func (h *AuthHandler) TerminateAllOtherSessions(c *gin.Context) {
 		}
 	}
 
+	// Real-time WebSocket notification to force logout on all other devices
+	if h.hub != nil && userID != "" {
+		evt, _ := json.Marshal(map[string]any{
+			"type":              "all_other_sessions_revoked",
+			"current_device_id": currentDeviceID,
+			"user_id":           userID,
+		})
+		h.hub.SendToUser(userID, evt)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "All other active sessions and tokens terminated",
+	})
+}
+
+// InitQRPairing creates an ephemeral QR pairing token for web/desktop authentication.
+func (h *AuthHandler) InitQRPairing(c *gin.Context) {
+	var req struct {
+		DeviceName string `json:"device_name"`
+		Platform   string `json:"platform"`
+		PublicKey  string `json:"public_key"`
+	}
+	_ = c.ShouldBindJSON(&req)
+
+	if req.DeviceName == "" {
+		ua := c.GetHeader("User-Agent")
+		if strings.Contains(strings.ToLower(ua), "windows") {
+			req.DeviceName = "Chrome (Windows)"
+		} else if strings.Contains(strings.ToLower(ua), "mac") {
+			req.DeviceName = "Safari (macOS)"
+		} else {
+			req.DeviceName = "GoChat Web"
+		}
+	}
+	if req.Platform == "" {
+		req.Platform = "web"
+	}
+
+	token := "qr_" + randomTokenB64(24)
+	now := time.Now()
+	expiresAt := now.Add(120 * time.Second).Unix()
+
+	session := QRPairSession{
+		Token:      token,
+		DeviceName: req.DeviceName,
+		Platform:   req.Platform,
+		PublicKey:  req.PublicKey,
+		Status:     "pending",
+		CreatedAt:  now.Unix(),
+		ExpiresAt:  expiresAt,
+	}
+
+	if h.redis != nil {
+		data, _ := json.Marshal(session)
+		_ = h.redis.Set(c.Request.Context(), "qr:pair:"+token, data, 120*time.Second).Err()
+	}
+
+	qrPayload := fmt.Sprintf("gochat://pair?token=%s&pub=%s&name=%s&platform=%s",
+		token,
+		url.QueryEscape(req.PublicKey),
+		url.QueryEscape(req.DeviceName),
+		url.QueryEscape(req.Platform),
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"token":       token,
+		"status":      "pending",
+		"device_name": req.DeviceName,
+		"platform":    req.Platform,
+		"expires_at":  expiresAt,
+		"qr_payload":  qrPayload,
+	})
+}
+
+// GetQRPairingStatus checks if a QR pairing token has been scanned and authorized by the mobile app.
+func (h *AuthHandler) GetQRPairingStatus(c *gin.Context) {
+	token := c.Query("token")
+	if token == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "token parameter is required"})
+		return
+	}
+
+	if h.redis == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "pairing service unavailable"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	val, err := h.redis.Get(ctx, "qr:pair:"+token).Result()
+	if err != nil || val == "" {
+		c.JSON(http.StatusOK, gin.H{"status": "expired"})
+		return
+	}
+
+	var session QRPairSession
+	if err := json.Unmarshal([]byte(val), &session); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "corrupted pairing session"})
+		return
+	}
+
+	if session.Status == "approved" {
+		if session.AccessToken != "" && session.RefreshToken != "" {
+			setAuthCookies(c, session.AccessToken, session.RefreshToken)
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"status":        "approved",
+			"access_token":  session.AccessToken,
+			"refresh_token": session.RefreshToken,
+			"device_id":     session.DeviceID,
+			"user":          session.User,
+			"identity_key":  session.IdentityKey,
+			"key_exchange":  session.KeyExchange,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":     session.Status,
+		"expires_at": session.ExpiresAt,
+	})
+}
+
+// AuthorizeQRPairing is called by the authenticated mobile app after scanning the QR code.
+func (h *AuthHandler) AuthorizeQRPairing(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	var req struct {
+		Token       string `json:"token" binding:"required"`
+		DeviceName  string `json:"device_name"`
+		Platform    string `json:"platform"`
+		PublicKey   string `json:"public_key"`
+		IdentityKey string `json:"identity_key"`
+		KeyExchange string `json:"key_exchange"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "token is required"})
+		return
+	}
+
+	if h.redis == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "pairing service unavailable"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	val, err := h.redis.Get(ctx, "qr:pair:"+req.Token).Result()
+	if err != nil || val == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "QR code has expired or is invalid. Please refresh the code on your screen."})
+		return
+	}
+
+	var session QRPairSession
+	if err := json.Unmarshal([]byte(val), &session); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid pairing session"})
+		return
+	}
+
+	if session.Status != "pending" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "QR code already used or expired"})
+		return
+	}
+
+	// Fetch current user details
+	userResp, err := h.client.GetUser(ctx, &authpb.GetUserRequest{UserId: userID})
+	if err != nil {
+		h.handleGrpcError(c, err, "failed to retrieve user account")
+		return
+	}
+
+	identifier := userResp.User.Email
+	if identifier == "" {
+		identifier = userResp.User.Phone
+	}
+	if identifier == "" {
+		identifier = userResp.User.Id
+	}
+
+	// Generate fresh session token pair for the newly linked device
+	loginResp, err := h.client.Login(ctx, &authpb.LoginRequest{
+		Email:    identifier,
+		Password: "",
+	})
+	if err != nil {
+		h.handleGrpcError(c, err, "failed to issue linked device session token")
+		return
+	}
+
+	devName := req.DeviceName
+	if devName == "" {
+		devName = session.DeviceName
+	}
+	if devName == "" {
+		devName = "GoChat Web"
+	}
+
+	devPlatform := req.Platform
+	if devPlatform == "" {
+		devPlatform = session.Platform
+	}
+	if devPlatform == "" {
+		devPlatform = "web"
+	}
+
+	deviceID := fmt.Sprintf("dev_%s_%d", devPlatform, time.Now().UnixNano())
+	tokenHash := hashToken(loginResp.AccessToken)
+
+	// Save new linked device session
+	deviceSession := DeviceSession{
+		ID:           deviceID,
+		DeviceName:   devName,
+		Platform:     devPlatform,
+		OS:           devPlatform,
+		Browser:      devName,
+		IPAddress:    c.ClientIP(),
+		LastActiveAt: time.Now(),
+		IsCurrent:    false,
+		TokenHash:    tokenHash,
+		PublicKey:    req.PublicKey,
+		IdentityKey:  req.IdentityKey,
+	}
+
+	sessData, _ := json.Marshal(deviceSession)
+	_ = h.redis.HSet(ctx, "user:devices:"+userID, deviceID, sessData).Err()
+
+	// Update QR pair session to approved with tokens
+	session.Status = "approved"
+	session.AccessToken = loginResp.AccessToken
+	session.RefreshToken = loginResp.RefreshToken
+	session.DeviceID = deviceID
+	session.User = userResp.User
+	session.IdentityKey = req.IdentityKey
+	session.KeyExchange = req.KeyExchange
+
+	approvedData, _ := json.Marshal(session)
+	_ = h.redis.Set(ctx, "qr:pair:"+req.Token, approvedData, 60*time.Second).Err()
+
+	// Real-time broadcast to all user's active connections
+	if h.hub != nil {
+		evt, _ := json.Marshal(map[string]any{
+			"type":        "device_linked",
+			"device_id":   deviceID,
+			"device_name": devName,
+			"platform":    devPlatform,
+			"user_id":     userID,
+		})
+		h.hub.SendToUser(userID, evt)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":     true,
+		"device_id":   deviceID,
+		"device_name": devName,
+		"message":     "Device linked successfully",
 	})
 }
 

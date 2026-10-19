@@ -27,6 +27,7 @@ import coil.request.ImageRequest
 import coil.transform.CircleCropTransformation
 import com.example.gochat.R
 import com.example.gochat.core.currency.CurrencyManager
+import com.example.gochat.data.model.SyncedContact
 import com.example.gochat.ui.calls.CallActivity
 import com.example.gochat.ui.chat.ChatRoomActivity
 import kotlinx.coroutines.withTimeoutOrNull
@@ -41,6 +42,7 @@ object NotificationHelper {
     const val CHANNEL_GROUPS = "gochat_channel_groups_v2"
     const val CHANNEL_CALLS = "gochat_channel_calls_v2"
     const val CHANNEL_MARKETPLACE = "gochat_channel_marketplace_v1"
+    const val CHANNEL_CONTACTS = "gochat_channel_contacts_v1"
 
     const val KEY_TEXT_REPLY = "key_text_reply"
     const val EXTRA_CONVERSATION_ID = "extra_conversation_id"
@@ -141,7 +143,25 @@ object NotificationHelper {
                 setShowBadge(true)
             }
 
-            notificationManager.createNotificationChannels(listOf(messageChannel, groupChannel, callsChannel, marketplaceChannel))
+            // 5. Contacts & Network Updates channel
+            val contactsChannel = NotificationChannel(
+                CHANNEL_CONTACTS,
+                "New Contacts on GoChat",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Alerts when your phone contacts join GoChat"
+                enableLights(true)
+                lightColor = 0xFF10B981.toInt()
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 200, 150, 200)
+                setSound(soundUri, audioAttributes)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                setShowBadge(true)
+            }
+
+            notificationManager.createNotificationChannels(
+                listOf(messageChannel, groupChannel, callsChannel, marketplaceChannel, contactsChannel)
+            )
         }
     }
 
@@ -602,6 +622,174 @@ object NotificationHelper {
             Log.d("NotificationHelper", "Product uploaded notification shown for $productId: $title")
         } catch (e: Exception) {
             Log.e("NotificationHelper", "Failed to show product uploaded notification", e)
+        }
+    }
+
+    suspend fun showNewContactNotificationAsync(
+        context: Context,
+        contact: SyncedContact
+    ) {
+        val bitmap = if (contact.avatarUrl.isNotBlank()) loadCircularBitmap(context, contact.avatarUrl) else null
+        showNewContactNotification(context, contact, bitmap)
+    }
+
+    fun showNewContactNotification(
+        context: Context,
+        contact: SyncedContact,
+        avatarBitmap: Bitmap? = null
+    ) {
+        createNotificationChannels(context)
+
+        val notificationId = (contact.finalUserId.ifBlank { contact.phone }).hashCode() and 0x7FFFFFFF
+        val name = contact.displayName.ifBlank { "A contact" }
+        val title = "🎉 $name is now on GoChat!"
+        val body = "Say hello and start a conversation."
+
+        // Direct tap intent: Opens SelectContactActivity in auto-open mode with this contact
+        val tapIntent = Intent(context, com.example.gochat.ui.contacts.SelectContactActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(com.example.gochat.ui.contacts.SelectContactActivity.EXTRA_PRESELECT_USER_ID, contact.finalUserId)
+            putExtra(com.example.gochat.ui.contacts.SelectContactActivity.EXTRA_PRESELECT_NAME, name)
+            putExtra(com.example.gochat.ui.contacts.SelectContactActivity.EXTRA_PRESELECT_AVATAR, contact.avatarUrl)
+            putExtra(com.example.gochat.ui.contacts.SelectContactActivity.EXTRA_PRESELECT_PHONE, contact.phone)
+            putExtra(com.example.gochat.ui.contacts.SelectContactActivity.EXTRA_AUTO_OPEN_CHAT, true)
+        }
+
+        val tapPendingIntent = try {
+            TaskStackBuilder.create(context).run {
+                addNextIntentWithParentStack(tapIntent)
+                getPendingIntent(
+                    notificationId,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+            }
+        } catch (e: Exception) {
+            PendingIntent.getActivity(
+                context,
+                notificationId,
+                tapIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+
+        // Action button: "Say Hello 👋"
+        val sayHelloIntent = Intent(context, com.example.gochat.ui.contacts.SelectContactActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(com.example.gochat.ui.contacts.SelectContactActivity.EXTRA_PRESELECT_USER_ID, contact.finalUserId)
+            putExtra(com.example.gochat.ui.contacts.SelectContactActivity.EXTRA_PRESELECT_NAME, name)
+            putExtra(com.example.gochat.ui.contacts.SelectContactActivity.EXTRA_PRESELECT_AVATAR, contact.avatarUrl)
+            putExtra(com.example.gochat.ui.contacts.SelectContactActivity.EXTRA_PRESELECT_PHONE, contact.phone)
+            putExtra(com.example.gochat.ui.contacts.SelectContactActivity.EXTRA_AUTO_OPEN_CHAT, true)
+            putExtra(ChatRoomActivity.EXTRA_INITIAL_MESSAGE, "Hey $name! 👋")
+        }
+
+        val sayHelloPendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId + 10,
+            sayHelloIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val sayHelloAction = NotificationCompat.Action.Builder(
+            R.drawable.ic_send,
+            "Say Hello 👋",
+            sayHelloPendingIntent
+        ).build()
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_CONTACTS)
+            .setSmallIcon(R.drawable.ic_chat_bubble_rounded)
+            .setColor(ContextCompat.getColor(context, R.color.gochat_accent))
+            .setContentTitle(title)
+            .setContentText(body)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_SOCIAL)
+            .setAutoCancel(true)
+            .setContentIntent(tapPendingIntent)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .addAction(sayHelloAction)
+
+        if (avatarBitmap != null) {
+            builder.setLargeIcon(avatarBitmap)
+        }
+
+        try {
+            val notificationManager = NotificationManagerCompat.from(context)
+            if (!notificationManager.areNotificationsEnabled()) return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    return
+                }
+            }
+            notificationManager.notify(notificationId, builder.build())
+            Log.d("NotificationHelper", "New contact notification shown for ${contact.displayName} (id=$notificationId)")
+        } catch (e: Exception) {
+            Log.e("NotificationHelper", "Failed to show new contact notification", e)
+        }
+    }
+
+    fun showMultipleNewContactsNotification(
+        context: Context,
+        contacts: List<SyncedContact>
+    ) {
+        if (contacts.isEmpty()) return
+        if (contacts.size == 1) {
+            showNewContactNotification(context, contacts.first())
+            return
+        }
+
+        createNotificationChannels(context)
+
+        val notificationId = 88001
+        val names = contacts.take(2).joinToString(", ") { it.displayName }
+        val remaining = contacts.size - 2
+        val title = if (remaining > 0) {
+            "🎉 $names and $remaining others are on GoChat!"
+        } else {
+            "🎉 $names are on GoChat!"
+        }
+        val body = "Your phone contacts joined GoChat. Tap to view and start chatting."
+
+        val tapIntent = Intent(context, com.example.gochat.ui.contacts.SelectContactActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val tapPendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId,
+            tapIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val inboxStyle = NotificationCompat.InboxStyle()
+            .setBigContentTitle(title)
+            .setSummaryText("${contacts.size} new contacts on GoChat")
+        for (c in contacts.take(5)) {
+            inboxStyle.addLine("👋 ${c.displayName}")
+        }
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_CONTACTS)
+            .setSmallIcon(R.drawable.ic_chat_bubble_rounded)
+            .setColor(ContextCompat.getColor(context, R.color.gochat_accent))
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(inboxStyle)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_SOCIAL)
+            .setAutoCancel(true)
+            .setContentIntent(tapPendingIntent)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+
+        try {
+            val notificationManager = NotificationManagerCompat.from(context)
+            if (!notificationManager.areNotificationsEnabled()) return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    return
+                }
+            }
+            notificationManager.notify(notificationId, builder.build())
+            Log.d("NotificationHelper", "Multiple new contacts notification shown: $title")
+        } catch (e: Exception) {
+            Log.e("NotificationHelper", "Failed to show multiple new contacts notification", e)
         }
     }
 }

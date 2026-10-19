@@ -157,10 +157,15 @@ data class Message(
     @SerialName("is_starred") val isStarred: Boolean = false,
     @SerialName("is_pinned") val isPinned: Boolean = false,
     @SerialName("is_forwarded") val isForwarded: Boolean = false,
+    @SerialName("forward_count") val forwardCount: Int = 0,
+    @SerialName("is_frequently_forwarded") val isFrequentlyForwarded: Boolean = false,
     @SerialName("original_sender_name") val originalSenderName: String? = null
 ) {
     val isDisappearing: Boolean
         get() = (disappearingDurationSeconds != null && disappearingDurationSeconds > 0) || (expiresAt != null && expiresAt > 0)
+
+    val isViral: Boolean
+        get() = isFrequentlyForwarded || forwardCount >= 5
 
     companion object {
         fun fromJson(json: JsonObject, currentUserId: String = ""): Message {
@@ -316,6 +321,9 @@ data class Message(
                     json.containsKey("forwarded_from_id") ||
                     json.containsKey("ForwardedFromId")
             
+            val forwardCount = (json["forward_count"] ?: json["forwardCount"])?.jsonPrimitive?.intOrNull ?: 0
+            val isFrequentlyForwarded = json["is_frequently_forwarded"]?.jsonPrimitive?.booleanOrNull == true || forwardCount >= 5
+            
             val originalSenderName = json["original_sender_name"]?.jsonPrimitive?.contentOrNull ?:
                     json["forwarded_from_sender_name"]?.jsonPrimitive?.contentOrNull ?: "Someone"
 
@@ -359,6 +367,8 @@ data class Message(
                 isStarred = isStarred,
                 isPinned = isPinned,
                 isForwarded = isForwarded,
+                forwardCount = forwardCount,
+                isFrequentlyForwarded = isFrequentlyForwarded,
                 originalSenderName = originalSenderName
             )
         }

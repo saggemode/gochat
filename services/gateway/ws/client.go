@@ -40,6 +40,7 @@ type Client struct {
 	conn       *websocket.Conn
 	send       chan []byte
 	userID     string
+	deviceID   string
 	authClient authpb.AuthServiceClient
 	chatClient chatpb.ChatServiceClient
 	log        *zap.Logger
@@ -343,6 +344,29 @@ func (c *Client) writePump() {
 				return
 			}
 
+			// Check for session revocation targeting this device
+			if len(message) > 0 && message[0] == '{' && c.deviceID != "" {
+				var evt map[string]interface{}
+				if json.Unmarshal(message, &evt) == nil {
+					evtType, _ := evt["type"].(string)
+					if evtType == "session_revoked" {
+						revokedID, _ := evt["device_id"].(string)
+						if revokedID == "" || revokedID == c.deviceID {
+							c.log.Info("closing revoked device websocket session", zap.String("device_id", c.deviceID), zap.String("user_id", c.userID))
+							_ = c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "Session revoked"))
+							return
+						}
+					} else if evtType == "all_other_sessions_revoked" {
+						curID, _ := evt["current_device_id"].(string)
+						if c.deviceID != curID {
+							c.log.Info("closing terminated session due to logout-all", zap.String("device_id", c.deviceID), zap.String("user_id", c.userID))
+							_ = c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "Session logged out"))
+							return
+						}
+					}
+				}
+			}
+
 			// Drain queued messages, each as a separate WebSocket frame.
 			// Previously these were concatenated with '\n' into a single frame,
 			// which broke clients that expect one JSON object per frame.
@@ -445,12 +469,18 @@ func ServeWs(hub *Hub, chatClient chatpb.ChatServiceClient, authClient authpb.Au
 			return
 		}
 
+		deviceID := c.GetHeader("X-Device-Id")
+		if deviceID == "" {
+			deviceID = c.Query("device_id")
+		}
+
 		ctx, cancel := context.WithCancel(context.Background())
 		client := &Client{
 			hub:            hub,
 			conn:           conn,
 			send:           make(chan []byte, 256),
 			userID:         userID,
+			deviceID:       deviceID,
 			authClient:     authClient,
 			chatClient:     chatClient,
 			log:            log,

@@ -331,16 +331,23 @@ class AuthRepository @Inject constructor(
                 val list = (data["devices"] ?: data["sessions"])?.jsonArray ?: JsonArray(emptyList())
                 val devices = list.mapNotNull { element ->
                     if (element !is JsonObject) return@mapNotNull null
-                    LinkedDevice(
-                        id = element["id"]?.jsonPrimitive?.contentOrNull.orEmpty(),
-                        deviceName = element["device_name"]?.jsonPrimitive?.contentOrNull.orEmpty().ifBlank { "Device" },
-                        platform = element["platform"]?.jsonPrimitive?.contentOrNull.orEmpty().ifBlank { "android" },
-                        os = element["os"]?.jsonPrimitive?.contentOrNull.orEmpty(),
-                        browser = element["browser"]?.jsonPrimitive?.contentOrNull.orEmpty(),
-                        ipAddress = element["ip_address"]?.jsonPrimitive?.contentOrNull.orEmpty(),
-                        lastActiveAt = element["last_active_at"]?.jsonPrimitive?.contentOrNull.orEmpty(),
-                        isCurrent = element["is_current"]?.jsonPrimitive?.booleanOrNull ?: false
-                    )
+                    try {
+                        json.decodeFromJsonElement<LinkedDevice>(element)
+                    } catch (_: Exception) {
+                        LinkedDevice(
+                            id = element["id"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                            deviceName = element["device_name"]?.jsonPrimitive?.contentOrNull.orEmpty().ifBlank { "Device" },
+                            platform = element["platform"]?.jsonPrimitive?.contentOrNull.orEmpty().ifBlank { "android" },
+                            os = element["os"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                            browser = element["browser"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                            ipAddress = element["ip_address"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                            lastActiveAt = element["last_active_at"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                            isCurrent = element["is_current"]?.jsonPrimitive?.booleanOrNull ?: false,
+                            publicKey = element["public_key"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                            identityKey = element["identity_key"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                            location = element["location"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                        )
+                    }
                 }
                 Result.success(devices)
             } else {
@@ -377,6 +384,35 @@ class AuthRepository @Inject constructor(
             val response = api.registerDevice(body)
             if (response.isSuccessful) Result.success(Unit)
             else Result.failure(Exception("Failed to register device (${response.code()})"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun linkDeviceWithQr(
+        token: String,
+        deviceName: String = "GoChat Web",
+        platform: String = "web",
+        publicKey: String = "",
+        identityKey: String = "",
+        keyExchange: String = ""
+    ): Result<JsonObject> {
+        return try {
+            val body = buildJsonObject {
+                put("token", token.trim())
+                put("device_name", deviceName.trim())
+                put("platform", platform.trim())
+                if (publicKey.isNotBlank()) put("public_key", publicKey.trim())
+                if (identityKey.isNotBlank()) put("identity_key", identityKey.trim())
+                if (keyExchange.isNotBlank()) put("key_exchange", keyExchange.trim())
+            }
+            val response = api.linkDeviceWithQr(body)
+            if (response.isSuccessful) {
+                Result.success(response.body() ?: buildJsonObject {})
+            } else {
+                val errorBody = response.errorBody()?.string().orEmpty()
+                Result.failure(Exception(parseError(errorBody, response.code())))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

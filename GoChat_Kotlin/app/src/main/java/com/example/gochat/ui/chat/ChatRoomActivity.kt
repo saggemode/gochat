@@ -367,6 +367,15 @@ class ChatRoomActivity : AppCompatActivity() {
                 if (!initialMessage.isNullOrBlank()) {
                     binding.etMessageInput.setText(initialMessage)
                     binding.etMessageInput.setSelection(initialMessage.length)
+                } else {
+                    // Restore saved draft for this conversation
+                    lifecycleScope.launch {
+                        val draft = viewModel.loadDraft(convId)
+                        if (!draft.isNullOrBlank() && binding.etMessageInput.text.isNullOrBlank()) {
+                            binding.etMessageInput.setText(draft)
+                            binding.etMessageInput.setSelection(draft.length)
+                        }
+                    }
                 }
             }
         }
@@ -808,6 +817,9 @@ class ChatRoomActivity : AppCompatActivity() {
                     viewModel.sendTextMessage(text)
                     HapticEngine.playMessageSent(this@ChatRoomActivity)
                     etMessageInput.setText("")
+                    // Clear saved draft after sending
+                    val convId = intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty()
+                    if (convId.isNotEmpty()) viewModel.clearDraft(convId)
                 } else {
                     checkAudioPermissionAndStartRecording()
                 }
@@ -1772,7 +1784,8 @@ class ChatRoomActivity : AppCompatActivity() {
             when (action) {
                 MessageActionBottomSheet.Action.REPLY -> viewModel.setReplyingTo(message)
                 MessageActionBottomSheet.Action.FORWARD -> {
-                    Toast.makeText(this, getString(R.string.prompt_forward_chat), Toast.LENGTH_SHORT).show()
+                    val forwardSheet = ForwardMessageBottomSheet(message)
+                    forwardSheet.show(supportFragmentManager, "forward_message")
                 }
                 MessageActionBottomSheet.Action.STAR -> {
                     viewModel.toggleStar(message.id, !message.isStarred)
@@ -2276,6 +2289,12 @@ class ChatRoomActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
+        // Save draft text before leaving
+        val convId = intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty()
+        if (convId.isNotEmpty()) {
+            val draftText = binding.etMessageInput.text?.toString()
+            viewModel.saveDraft(convId, draftText)
+        }
         viewModel.onScreenPaused()
         if (isCurrentlyTypingSent) {
             isCurrentlyTypingSent = false

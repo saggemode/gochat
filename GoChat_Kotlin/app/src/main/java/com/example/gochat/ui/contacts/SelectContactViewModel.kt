@@ -77,6 +77,13 @@ class SelectContactViewModel @Inject constructor(
                         iconRes = R.drawable.ic_message_add
                     )
                 )
+                items.add(
+                    ContactListItem.Action(
+                        id = "action_invite_friends",
+                        title = "Invite friends to GoChat",
+                        iconRes = R.drawable.ic_share
+                    )
+                )
             }
 
             // 2. Contacts on GoChat

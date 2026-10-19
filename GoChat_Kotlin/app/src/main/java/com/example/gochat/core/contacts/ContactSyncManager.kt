@@ -27,6 +27,9 @@ class ContactSyncManager @Inject constructor(
 
     companion object {
         private const val CACHE_KEY = "gochat_cached_synced_contacts"
+        private const val KNOWN_REGISTERED_IDS_KEY = "gochat_known_registered_ids"
+        private const val HAS_COMPLETED_INITIAL_SYNC_KEY = "gochat_completed_initial_sync"
+        private const val LAST_SYNC_TIMESTAMP_KEY = "gochat_last_sync_timestamp"
         private val json = Json { ignoreUnknownKeys = true }
     }
 
@@ -209,6 +212,15 @@ class ContactSyncManager @Inject constructor(
 
             val combined = registeredContacts + inviteContacts
 
+            // 4b. Record initial baseline of registered contacts so first run doesn't blast notifications
+            val registeredIds = registeredContacts.map { it.finalUserId }.filter { it.isNotBlank() }.toSet()
+            if (!prefs.getBoolean(HAS_COMPLETED_INITIAL_SYNC_KEY, false) && registeredIds.isNotEmpty()) {
+                prefs.edit()
+                    .putBoolean(HAS_COMPLETED_INITIAL_SYNC_KEY, true)
+                    .putStringSet(KNOWN_REGISTERED_IDS_KEY, registeredIds)
+                    .apply()
+            }
+
             // 5. Cache result locally for instant startup
             try {
                 val encoded = json.encodeToString(combined)
@@ -219,5 +231,57 @@ class ContactSyncManager @Inject constructor(
         } catch (_: Exception) {
             getCachedContacts()
         }
+    }
+
+    fun getKnownRegisteredIds(): Set<String> {
+        return prefs.getStringSet(KNOWN_REGISTERED_IDS_KEY, null) ?: emptySet()
+    }
+
+    fun saveKnownRegisteredIds(ids: Set<String>) {
+        prefs.edit().putStringSet(KNOWN_REGISTERED_IDS_KEY, ids).apply()
+    }
+
+    fun getLastSyncTimestamp(): Long {
+        return prefs.getLong(LAST_SYNC_TIMESTAMP_KEY, 0L)
+    }
+
+    fun clearCache() {
+        prefs.edit().clear().apply()
+    }
+
+    /**
+     * Executes phonebook sync and compares newly discovered registered GoChat users
+     * against previously known registered contacts. Returns only the newly joined contacts.
+     */
+    suspend fun performBackgroundSyncAndDetectNew(): List<SyncedContact> = withContext(Dispatchers.IO) {
+        if (!hasPermission()) {
+            return@withContext emptyList()
+        }
+
+        val allContacts = scanAndSyncContacts(force = true)
+        val registered = allContacts.filter { it.isRegistered && it.finalUserId.isNotBlank() }
+
+        val hasCompletedInitial = prefs.getBoolean(HAS_COMPLETED_INITIAL_SYNC_KEY, false)
+        val knownIds = getKnownRegisteredIds()
+
+        prefs.edit().putLong(LAST_SYNC_TIMESTAMP_KEY, System.currentTimeMillis()).apply()
+
+        if (!hasCompletedInitial) {
+            // Baseline sync: record all current registered contacts without notifying
+            val baselineIds = registered.map { it.finalUserId }.toSet()
+            prefs.edit()
+                .putBoolean(HAS_COMPLETED_INITIAL_SYNC_KEY, true)
+                .putStringSet(KNOWN_REGISTERED_IDS_KEY, baselineIds)
+                .apply()
+            return@withContext emptyList()
+        }
+
+        val newlyDiscovered = registered.filter { !knownIds.contains(it.finalUserId) }
+        if (newlyDiscovered.isNotEmpty()) {
+            val updated = knownIds + newlyDiscovered.map { it.finalUserId }
+            saveKnownRegisteredIds(updated)
+        }
+
+        newlyDiscovered
     }
 }

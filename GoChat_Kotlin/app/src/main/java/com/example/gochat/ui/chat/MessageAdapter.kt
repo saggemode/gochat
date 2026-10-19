@@ -944,7 +944,18 @@ class MessageAdapter(
                 }
 
                 // Forwarded status
-                layoutForwarded.visibility = if (message.isForwarded) View.VISIBLE else View.GONE
+                if (message.isForwarded) {
+                    layoutForwarded.visibility = View.VISIBLE
+                    if (message.isViral) {
+                        tvForwardedLabel.text = "Frequently forwarded"
+                        ivForwardIcon.setImageResource(R.drawable.ic_repeat)
+                    } else {
+                        tvForwardedLabel.text = root.context.getString(R.string.label_forwarded)
+                        ivForwardIcon.setImageResource(R.drawable.ic_forward)
+                    }
+                } else {
+                    layoutForwarded.visibility = View.GONE
+                }
 
                 val isImage = (message.type == MessageType.IMAGE || message.content.contains("Photo", ignoreCase = true)) && 
                               !message.isDeleted && !message.mediaUrl.isNullOrBlank()
@@ -1395,7 +1406,18 @@ class MessageAdapter(
                 }
 
                 // Forwarded status
-                layoutForwarded.visibility = if (message.isForwarded) View.VISIBLE else View.GONE
+                if (message.isForwarded) {
+                    layoutForwarded.visibility = View.VISIBLE
+                    if (message.isViral) {
+                        tvForwardedLabel.text = "Frequently forwarded"
+                        ivForwardIcon.setImageResource(R.drawable.ic_repeat)
+                    } else {
+                        tvForwardedLabel.text = root.context.getString(R.string.label_forwarded)
+                        ivForwardIcon.setImageResource(R.drawable.ic_forward)
+                    }
+                } else {
+                    layoutForwarded.visibility = View.GONE
+                }
 
                 val isImage = (message.type == MessageType.IMAGE || message.content.contains("Photo", ignoreCase = true)) && 
                               !message.isDeleted && !message.mediaUrl.isNullOrBlank()

@@ -67,6 +67,9 @@ class GoChatApp : Application(), Configuration.Provider, ImageLoaderFactory {
 
         // 6. Schedule Disappearing Messages Cleanup
         scheduleCleanupWorker()
+
+        // 7. Schedule Periodic Contact Sync to discover new GoChat users
+        com.example.gochat.core.contacts.ContactSyncWorker.schedulePeriodic(this)
     }
 
     /**

@@ -173,16 +173,23 @@
             android:theme="@style/Theme.GoChat"
             android:windowSoftInputMode="adjustResize" />
 
-        <!-- Chat Backup Activity -->
-        <activity
-            android:name=".ui.backup.ChatBackupActivity"
-            android:exported="false"
-            android:theme="@style/Theme.GoChat"
-            android:windowSoftInputMode="adjustResize" />
 
         <!-- Linked Devices Activity -->
         <activity
             android:name=".ui.devices.LinkedDevicesActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Chat Backup & Restore Activities -->
+        <activity
+            android:name=".ui.backup.ChatBackupActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity"
+            android:theme="@style/Theme.GoChat"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ui.backup.RestoreBackupActivity"
             android:exported="false"
             android:theme="@style/Theme.GoChat"
             android:windowSoftInputMode="adjustResize" />

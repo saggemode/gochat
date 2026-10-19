@@ -242,9 +242,13 @@ func main() {
 	r.Use(gin.Recovery())
 	r.Use(ginLogger(log))
 	r.Use(corsMiddleware(cfg.CORSOrigins))
+	r.Use(middleware.VersioningMiddleware())
 	r.Use(middleware.GeoMiddleware())
 	r.Use(metrics.PrometheusMiddleware())
 	r.Use(cdn.CDNMiddleware())
+
+	// Backward-compatibility: transparently rewrite legacy unversioned /api/* paths to /api/v1/*
+	r.NoRoute(middleware.FallbackRewriteHandler(r))
 
 	// Prometheus metrics endpoint
 	r.GET("/metrics", metrics.Handler())
@@ -254,7 +258,7 @@ func main() {
 	_ = bus // available for async publishing in handlers
 
 	// Handlers
-	authHandler := handlers.NewAuthHandler(authClient, log).WithRedis(redisClient)
+	authHandler := handlers.NewAuthHandler(authClient, log).WithRedis(redisClient).WithHub(hub)
 	chatHandler := handlers.NewChatHandler(chatClient, authClient, hub, log)
 	aiHandler := handlers.NewAIHandler(aiClient, log)
 	mediaHandler := handlers.NewMediaHandler(mediaClient, cfg.TelegramBotToken, log)
@@ -268,16 +272,17 @@ func main() {
 	searchHandler := handlers.NewSearchHandler("http://localhost:8095", log)
 	docsHandler := handlers.NewDocsHandler()
 
-
 	// ── Root Status & Health Endpoints ──────────────────────────────────────
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
-			"service": "GoChat API Gateway",
-			"status":  "online",
-			"version": "1.0.0",
-			"docs":    "/docs",
-			"swagger": "/swagger",
-			"metrics": "/metrics",
+			"service":            "GoChat API Gateway",
+			"status":             "online",
+			"version":            "1.0.0",
+			"api_version":        middleware.CurrentAPIVersion,
+			"supported_versions": middleware.SupportedVersions,
+			"docs":               "/docs",
+			"swagger":            "/swagger",
+			"metrics":            "/metrics",
 		})
 	})
 	r.GET("/healthz", func(c *gin.Context) {
@@ -308,6 +313,8 @@ func main() {
 			auth.POST("/refresh", authLimiter, authHandler.Refresh)
 			auth.POST("/recovery/request", authLimiter, authHandler.RequestAccountRecovery)
 			auth.POST("/recovery/verify", authLimiter, authHandler.VerifyAccountRecovery)
+			auth.POST("/qr/init", authLimiter, authHandler.InitQRPairing)
+			auth.GET("/qr/status", authHandler.GetQRPairingStatus)
 		}
 
 		// Public Marketplace Routes
@@ -365,6 +372,7 @@ func main() {
 		authRequired.POST("/auth/devices", authHandler.RegisterDevice)
 		authRequired.DELETE("/auth/devices/:id", authHandler.TerminateSession)
 		authRequired.DELETE("/auth/devices", authHandler.TerminateAllOtherSessions)
+		authRequired.POST("/auth/qr/link", authHandler.AuthorizeQRPairing)
 		authRequired.GET("/auth/audit-logs", authHandler.GetSecurityAuditLogs)
 		authRequired.POST("/users/report", authHandler.ReportUser)
 
@@ -640,7 +648,10 @@ func main() {
 	}
 
 	// Real-time WebSocket connection endpoint (secured via AuthMiddleware)
-	r.GET("/ws", middleware.AuthMiddleware(authClient, redisClient), ws.ServeWs(hub, chatClient, authClient, cfg.CORSOrigins, log))
+	// Mounted both at versioned /api/v1/ws and legacy /ws for backward compatibility
+	wsHandler := ws.ServeWs(hub, chatClient, authClient, cfg.CORSOrigins, log)
+	r.GET("/ws", middleware.AuthMiddleware(authClient, redisClient), wsHandler)
+	api.GET("/ws", middleware.AuthMiddleware(authClient, redisClient), wsHandler)
 
 	// ── Server Start ──────────────────────────────────────────────────────────
 	srv := &http.Server{

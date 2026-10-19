@@ -32,6 +32,7 @@
             tools:visibility="visible">
 
             <ImageView
+                android:id="@+id/ivForwardIcon"
                 android:layout_width="12dp"
                 android:layout_height="12dp"
                 android:alpha="0.6"
@@ -40,6 +41,7 @@
                 app:tint="@color/gochat_text_secondary" />
 
             <TextView
+                android:id="@+id/tvForwardedLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"

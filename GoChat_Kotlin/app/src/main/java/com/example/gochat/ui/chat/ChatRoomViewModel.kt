@@ -221,6 +221,25 @@ class ChatRoomViewModel @Inject constructor(
         chatRepository.activeConversationId = null
     }
 
+    // ── Drafts ──────────────────────────────────────────────────
+    fun saveDraft(convId: String, text: String?) {
+        viewModelScope.launch(Dispatchers.IO) {
+            chatRepository.saveDraft(convId, text)
+        }
+    }
+
+    suspend fun loadDraft(convId: String): String? {
+        return withContext(Dispatchers.IO) {
+            chatRepository.loadDraft(convId)
+        }
+    }
+
+    fun clearDraft(convId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            chatRepository.clearDraft(convId)
+        }
+    }
+
     fun initConversation(convId: String, isGroupChat: Boolean = false) {
         _conversationId.value = convId
         chatRepository.activeConversationId = convId

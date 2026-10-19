@@ -1,5 +1,6 @@
 package com.example.gochat.ui.chat
 
+import android.text.Html
 import android.text.format.DateUtils
 import android.view.LayoutInflater
 import android.view.View
@@ -70,9 +71,13 @@ class ConversationAdapter(
             ivLockIndicator.visibility = if (isLocked) View.VISIBLE else View.GONE
             ivDisappearingIndicator.visibility = if (conversation.disappearingMessagesDuration > 0) View.VISIBLE else View.GONE
 
-            // Last message preview & invitation status
+            // Last message preview & invitation status — drafts take priority
+            val hasDraft = !conversation.draftText.isNullOrBlank()
             val preview = if (isLocked && !com.example.gochat.core.security.ChatLockManager.isSessionUnlocked(conversation.id)) {
                 "🔒 Locked chat · Tap to unlock"
+            } else if (hasDraft) {
+                // Show draft with red prefix (WhatsApp-style)
+                null // handled below with Html
             } else {
                 when (conversation.invitationStatus) {
                     InvitationStatus.PENDING_INCOMING -> "🤝 Incoming invitation · Tap to accept"
@@ -80,7 +85,15 @@ class ConversationAdapter(
                     else -> formatLastMessagePreview(conversation.lastMessageText)
                 }
             }
-            tvLastMessage.text = preview
+            if (hasDraft && preview == null) {
+                val escaped = android.text.TextUtils.htmlEncode(conversation.draftText!!.take(100))
+                tvLastMessage.text = Html.fromHtml(
+                    "<font color='#EF4444'><b>Draft:</b></font> $escaped",
+                    Html.FROM_HTML_MODE_COMPACT
+                )
+            } else {
+                tvLastMessage.text = preview
+            }
 
             // Formatted timestamp
             val timeMillis = conversation.lastMessageTime ?: conversation.updatedAt

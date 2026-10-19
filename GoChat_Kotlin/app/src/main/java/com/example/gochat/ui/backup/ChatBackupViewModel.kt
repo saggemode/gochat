@@ -66,12 +66,21 @@ class ChatBackupViewModel @Inject constructor(
 
     fun setAutoBackupFrequency(frequency: String) {
         _autoBackupFrequency.value = frequency
-        prefs.edit().putString("auto_backup_freq", frequency).apply()
+        prefs.edit().putString(com.example.gochat.core.backup.AutoBackupWorker.KEY_FREQUENCY, frequency).apply()
+        com.example.gochat.core.backup.AutoBackupWorker.updateSchedule(getApplication(), frequency)
+    }
+
+    fun getAutoBackupPassword(): String? {
+        return prefs.getString(com.example.gochat.core.backup.AutoBackupWorker.KEY_PASSWORD, null)
+    }
+
+    fun saveAutoBackupPassword(password: String) {
+        prefs.edit().putString(com.example.gochat.core.backup.AutoBackupWorker.KEY_PASSWORD, password).apply()
     }
 
     fun setIncludeMedia(include: Boolean) {
         _includeMedia.value = include
-        prefs.edit().putBoolean("include_media", include).apply()
+        prefs.edit().putBoolean(com.example.gochat.core.backup.AutoBackupWorker.KEY_INCLUDE_MEDIA, include).apply()
     }
 
     fun createBackup(

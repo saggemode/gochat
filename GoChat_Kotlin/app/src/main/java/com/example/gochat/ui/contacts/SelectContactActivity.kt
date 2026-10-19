@@ -28,13 +28,17 @@ import com.example.gochat.core.ui.applySystemBarInsets
 import com.example.gochat.core.ui.applySystemBarMargins
 import com.example.gochat.databinding.ActivitySelectContactBinding
 import com.example.gochat.databinding.DialogNewChatByPinBinding
+import com.example.gochat.data.api.TokenManager
 import com.example.gochat.ui.chat.ChatRoomActivity
 import com.example.gochat.ui.chat.GroupCreateActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class SelectContactActivity : AppCompatActivity() {
+
+    @Inject lateinit var tokenManager: TokenManager
 
     private lateinit var binding: ActivitySelectContactBinding
     private val viewModel: SelectContactViewModel by viewModels()
@@ -57,6 +61,7 @@ class SelectContactActivity : AppCompatActivity() {
         const val EXTRA_PRESELECT_NAME = "preselect_contact_name"
         const val EXTRA_PRESELECT_AVATAR = "preselect_avatar"
         const val EXTRA_PRESELECT_PHONE = "preselect_phone"
+        const val EXTRA_AUTO_OPEN_CHAT = "extra_auto_open_chat"
 
         fun start(context: Context) {
             val intent = Intent(context, SelectContactActivity::class.java)
@@ -90,7 +95,39 @@ class SelectContactActivity : AppCompatActivity() {
         setupListeners()
         observeViewModel()
         
-        if (preselectUserId.isNotBlank() || preselectName.isNotBlank() || preselectPhone.isNotBlank()) {
+        val autoOpenChat = intent.getBooleanExtra(EXTRA_AUTO_OPEN_CHAT, false)
+        val initialMessage = intent.getStringExtra(ChatRoomActivity.EXTRA_INITIAL_MESSAGE).orEmpty()
+
+        if (autoOpenChat && preselectUserId.isNotBlank()) {
+            val synthetic = SyncedContact(
+                id = preselectUserId,
+                userId = preselectUserId,
+                phonebookName = preselectName.ifBlank { "Contact" },
+                gochatName = preselectName.ifBlank { "Contact" },
+                phone = preselectPhone,
+                avatarUrl = preselectAvatar,
+                isRegistered = true
+            )
+            viewModel.openOrCreateChat(synthetic) { conv ->
+                if (conv != null) {
+                    val partnerId = conv.memberIds.firstOrNull { it != tokenManager.userId } ?: preselectUserId
+                    val chatIntent = Intent(this, ChatRoomActivity::class.java).apply {
+                        putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, conv.id)
+                        putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, conv.title)
+                        putExtra(ChatRoomActivity.EXTRA_CONVERSATION_AVATAR, conv.avatarUrl)
+                        putExtra(ChatRoomActivity.EXTRA_IS_ONLINE, conv.isOnline)
+                        putExtra(ChatRoomActivity.EXTRA_LAST_SEEN, conv.lastSeen ?: 0L)
+                        putExtra(ChatRoomActivity.EXTRA_IS_GROUP, conv.isGroup)
+                        putExtra(ChatRoomActivity.EXTRA_PARTNER_ID, partnerId)
+                        if (initialMessage.isNotBlank()) {
+                            putExtra(ChatRoomActivity.EXTRA_INITIAL_MESSAGE, initialMessage)
+                        }
+                    }
+                    startActivity(chatIntent)
+                    finish()
+                }
+            }
+        } else if (preselectUserId.isNotBlank() || preselectName.isNotBlank() || preselectPhone.isNotBlank()) {
             viewModel.preselectContact(
                 userId = preselectUserId,
                 name = preselectName,
@@ -123,17 +160,22 @@ class SelectContactActivity : AppCompatActivity() {
                     "action_pin" -> {
                         showChatByPinDialog()
                     }
+                    "action_invite_friends" -> {
+                        showInviteSheet(null)
+                    }
                 }
             },
             onContactClicked = { contact ->
                 if (viewModel.isMultiSelectMode.value) {
                     viewModel.toggleContactSelection(contact.finalUserId)
-                } else {
+                } else if (contact.isRegistered) {
                     openChatWithContact(contact)
+                } else {
+                    showInviteSheet(contact)
                 }
             },
             onInviteClicked = { contact ->
-                inviteContact(contact)
+                showInviteSheet(contact)
             }
         )
 
@@ -278,17 +320,13 @@ class SelectContactActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
-    private fun inviteContact(contact: SyncedContact) {
-        try {
-            val phone = contact.phone.ifBlank { "" }
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                data = Uri.parse("sms:$phone")
-                putExtra("sms_body", "Hey! Let's chat on GoChat. It's fast, private, and secure. Download it at: https://gochat.im")
-            }
-            startActivity(intent)
-        } catch (_: Exception) {
-            Toast.makeText(this, "Could not open SMS application", Toast.LENGTH_SHORT).show()
-        }
+    private fun showInviteSheet(contact: SyncedContact?) {
+        InviteContactBottomSheet.show(
+            context = this,
+            contact = contact,
+            userPin = tokenManager.userPin,
+            userDisplayName = tokenManager.userDisplayName
+        )
     }
 
     private fun showChatByPinDialog() {

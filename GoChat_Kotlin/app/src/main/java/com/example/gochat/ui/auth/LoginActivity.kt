@@ -37,6 +37,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var binding: ActivityLoginBinding
     private val viewModel: AuthViewModel by viewModels()
     private lateinit var countryAdapter: CountryAdapter
+    @javax.inject.Inject lateinit var tokenManager: com.example.gochat.data.api.TokenManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         applyEdgeToEdge()
@@ -287,11 +288,19 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun navigateToMain() {
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        if (!tokenManager.hasCompletedMigrationCheck) {
+            val intent = Intent(this, com.example.gochat.ui.backup.RestoreBackupActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            startActivity(intent)
+            finish()
+        } else {
+            val intent = Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            startActivity(intent)
+            finish()
         }
-        startActivity(intent)
-        finish()
     }
 
     private fun showAccountRecoveryDialog() {
