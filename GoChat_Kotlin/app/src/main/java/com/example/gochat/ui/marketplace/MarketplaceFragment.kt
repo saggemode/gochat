@@ -13,6 +13,7 @@ import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityOptionsCompat
@@ -32,6 +33,7 @@ import com.example.gochat.core.currency.CurrencyManager
 import com.example.gochat.data.model.Category
 import com.example.gochat.data.model.Product
 import com.example.gochat.data.model.Store
+import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.databinding.DialogAddProductBinding
 import com.example.gochat.databinding.DialogEditStoreBinding
 import androidx.paging.LoadState
@@ -463,6 +465,39 @@ class MarketplaceFragment : Fragment() {
 
         val selectedProductUris = mutableListOf<Uri>()
 
+        // Category Dropdown setup
+        val categoryList = (viewModel.categories.value.takeIf { it.isNotEmpty() } ?: MarketplaceRepository.cachedCategories)
+            .filter { !it.id.equals("all", ignoreCase = true) }
+        val categoryNames = categoryList.map { it.name }
+        var selectedCategoryId: String? = null
+
+        val categoryDropdownAdapter = ArrayAdapter(
+            requireContext(),
+            R.layout.item_dropdown_category,
+            R.id.tvDropdownItem,
+            categoryNames
+        )
+        dialogBinding.etProductCategory.setAdapter(categoryDropdownAdapter)
+
+        val defaultCat = categoryList.firstOrNull { it.name.equals("Electronics", ignoreCase = true) }
+            ?: categoryList.firstOrNull()
+        if (defaultCat != null) {
+            selectedCategoryId = defaultCat.id
+            dialogBinding.etProductCategory.setText(defaultCat.name, false)
+        }
+
+        dialogBinding.etProductCategory.setOnClickListener {
+            dialogBinding.etProductCategory.showDropDown()
+        }
+
+        dialogBinding.etProductCategory.setOnItemClickListener { _, _, position, _ ->
+            val chosen = categoryList.getOrNull(position)
+            if (chosen != null) {
+                selectedCategoryId = chosen.id
+                dialogBinding.etProductCategory.setText(chosen.name, false)
+            }
+        }
+
         // Variants setup
         val variantAdapter = VariantInputAdapter()
         dialogBinding.rvVariants.layoutManager = LinearLayoutManager(requireContext())
@@ -590,11 +625,13 @@ class MarketplaceFragment : Fragment() {
                 }
 
                 dialogBinding.tvUploadStatus.text = "Publishing product..."
+                val categoryId = selectedCategoryId ?: MarketplaceRepository.resolveCategoryId(null, category)
                 viewModel.addProduct(
                     name = title,
                     price = price,
                     originalPrice = originalPrice,
                     category = category,
+                    categoryId = categoryId,
                     stock = stock,
                     imageUrls = imageUrls,
                     description = description,
@@ -741,7 +778,42 @@ class MarketplaceFragment : Fragment() {
         if (product.originalPrice > 0.0) {
             dialogBinding.etProductOriginalPrice.setText(String.format(Locale.US, "%.2f", product.originalPrice))
         }
-        dialogBinding.etProductCategory.setText(product.category)
+
+        // Category Dropdown setup
+        val editCategoryList = (viewModel.categories.value.takeIf { it.isNotEmpty() } ?: MarketplaceRepository.cachedCategories)
+            .filter { !it.id.equals("all", ignoreCase = true) }
+        val editCategoryNames = editCategoryList.map { it.name }
+        var editSelectedCategoryId: String? = product.categoryId.takeIf { MarketplaceRepository.isValidUuid(it) }
+
+        val editCategoryAdapter = ArrayAdapter(
+            requireContext(),
+            R.layout.item_dropdown_category,
+            R.id.tvDropdownItem,
+            editCategoryNames
+        )
+        dialogBinding.etProductCategory.setAdapter(editCategoryAdapter)
+
+        val currentCat = editCategoryList.firstOrNull { it.id.equals(product.categoryId, ignoreCase = true) }
+            ?: editCategoryList.firstOrNull { it.name.equals(product.category, ignoreCase = true) }
+        if (currentCat != null) {
+            editSelectedCategoryId = currentCat.id
+            dialogBinding.etProductCategory.setText(currentCat.name, false)
+        } else {
+            dialogBinding.etProductCategory.setText(product.category.ifBlank { "Electronics" }, false)
+        }
+
+        dialogBinding.etProductCategory.setOnClickListener {
+            dialogBinding.etProductCategory.showDropDown()
+        }
+
+        dialogBinding.etProductCategory.setOnItemClickListener { _, _, position, _ ->
+            val chosen = editCategoryList.getOrNull(position)
+            if (chosen != null) {
+                editSelectedCategoryId = chosen.id
+                dialogBinding.etProductCategory.setText(chosen.name, false)
+            }
+        }
+
         dialogBinding.etProductStock.setText(product.stock.toString())
         dialogBinding.etProductDescription.setText(product.description)
 
@@ -893,12 +965,14 @@ class MarketplaceFragment : Fragment() {
                     }
                 }
 
+                val editCategoryId = editSelectedCategoryId ?: MarketplaceRepository.resolveCategoryId(product.categoryId, category)
                 viewModel.updateProduct(
                     product = product,
                     name = title,
                     price = price,
                     originalPrice = originalPrice,
                     category = category,
+                    categoryId = editCategoryId,
                     stock = stock,
                     imageUrls = finalUrls,
                     description = description,

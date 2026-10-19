@@ -389,6 +389,7 @@ class MarketplaceViewModel @Inject constructor(
         price: Double,
         originalPrice: Double,
         category: String,
+        categoryId: String? = null,
         stock: Int,
         imageUrls: List<String>,
         description: String,
@@ -421,7 +422,7 @@ class MarketplaceViewModel @Inject constructor(
             }
 
             val primaryImage = uploadedUrls.firstOrNull().orEmpty()
-            val catUuid = MarketplaceRepository.resolveCategoryId(null, category.ifBlank { "Electronics" })
+            val catUuid = MarketplaceRepository.resolveCategoryId(categoryId, category.ifBlank { "Electronics" })
             val catName = MarketplaceRepository.resolveCategoryName(catUuid, category.ifBlank { "Electronics" })
             val newProduct = Product(
                 id = java.util.UUID.randomUUID().toString(),
@@ -556,6 +557,7 @@ class MarketplaceViewModel @Inject constructor(
         price: Double,
         originalPrice: Double,
         category: String,
+        categoryId: String? = null,
         stock: Int,
         imageUrls: List<String>,
         description: String,
@@ -566,7 +568,7 @@ class MarketplaceViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             val primaryImage = imageUrls.firstOrNull() ?: product.primaryImage
-            val catUuid = MarketplaceRepository.resolveCategoryId(product.categoryId, category.ifBlank { product.category })
+            val catUuid = MarketplaceRepository.resolveCategoryId(categoryId ?: product.categoryId, category.ifBlank { product.category })
             val catName = MarketplaceRepository.resolveCategoryName(catUuid, category.ifBlank { product.category })
             val updated = product.copy(
                 name = name,
