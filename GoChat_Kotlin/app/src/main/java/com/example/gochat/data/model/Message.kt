@@ -183,6 +183,68 @@ data class Message(
     val isViral: Boolean
         get() = isFrequentlyForwarded || forwardCount >= 5
 
+    fun getPollData(): PollData? {
+        if (type != MessageType.POLL && !content.contains("\"options\"") && !content.contains("\"poll\"")) return null
+        return try {
+            val json = Json { ignoreUnknownKeys = true; isLenient = true }
+            val root = json.parseToJsonElement(content).jsonObject
+            val pollObj = root["poll"]?.jsonObject ?: root
+
+            val id = pollObj["id"]?.jsonPrimitive?.contentOrNull ?: ""
+            val question = pollObj["question"]?.jsonPrimitive?.contentOrNull ?: ""
+            val allowMultiple = pollObj["allow_multiple_answers"]?.jsonPrimitive?.booleanOrNull
+                ?: pollObj["is_multiple"]?.jsonPrimitive?.booleanOrNull
+                ?: false
+            val isQuiz = pollObj["is_quiz"]?.jsonPrimitive?.booleanOrNull ?: false
+            val correctOptionId = pollObj["correct_option_id"]?.jsonPrimitive?.contentOrNull
+            val explanation = pollObj["explanation"]?.jsonPrimitive?.contentOrNull
+            val isAnonymous = pollObj["is_anonymous"]?.jsonPrimitive?.booleanOrNull ?: false
+            val expiresAt = pollObj["expires_at"]?.jsonPrimitive?.longOrNull
+            val isClosed = pollObj["is_closed"]?.jsonPrimitive?.booleanOrNull ?: false
+            val createdAt = pollObj["created_at"]?.jsonPrimitive?.longOrNull ?: System.currentTimeMillis()
+            val createdBy = pollObj["created_by"]?.jsonPrimitive?.contentOrNull ?: ""
+
+            val rawOpts = pollObj["options"]?.jsonArray ?: JsonArray(emptyList())
+            val options = rawOpts.mapIndexed { idx, elem ->
+                val opt = elem.jsonObject
+                val optId = opt["id"]?.jsonPrimitive?.contentOrNull ?: "opt_$idx"
+                val text = opt["text"]?.jsonPrimitive?.contentOrNull ?: ""
+                val votes = opt["votes"]?.jsonPrimitive?.intOrNull
+                    ?: opt["vote_count"]?.jsonPrimitive?.intOrNull
+                    ?: 0
+                val voterIds = (opt["voter_ids"] ?: opt["voter_user_ids"])?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList()
+                val voterNames = opt["voter_names"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList()
+                val isCorrect = opt["is_correct"]?.jsonPrimitive?.booleanOrNull == true || (correctOptionId != null && optId == correctOptionId)
+
+                PollOption(
+                    id = optId,
+                    text = text,
+                    votes = votes,
+                    voterIds = voterIds,
+                    voterNames = voterNames,
+                    isCorrect = isCorrect
+                )
+            }
+
+            PollData(
+                id = id,
+                question = question,
+                options = options,
+                allowMultipleAnswers = allowMultiple,
+                isQuiz = isQuiz,
+                correctOptionId = correctOptionId,
+                explanation = explanation,
+                isAnonymous = isAnonymous,
+                expiresAt = expiresAt,
+                isClosed = isClosed,
+                createdAt = createdAt,
+                createdBy = createdBy
+            )
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     companion object {
         fun fromJson(json: JsonObject, currentUserId: String = ""): Message {
             val id = (json["id"] ?: json["Id"] ?: json["message_id"] ?: json["messageId"])
@@ -218,6 +280,8 @@ data class Message(
                     content.contains("💥 PING") ||
                     content.contains("[PING]")
 
+            val isPollVal = typeInt == 6 || typeStr.contains("poll") ||
+                    (content.startsWith("{") && (content.contains("\"poll\"") || (content.contains("\"question\"") && content.contains("\"options\""))))
             val isProductVal = typeInt == 7 || typeStr.contains("product") ||
                     (content.startsWith("{") && content.contains("\"product\"") && content.contains("\"price\""))
             val isOrderVal = typeInt == 9 || typeStr.contains("order") ||
@@ -231,6 +295,7 @@ data class Message(
 
             val msgType = when {
                 isPingVal -> MessageType.PING
+                isPollVal -> MessageType.POLL
                 isSystemVal -> MessageType.SYSTEM
                 isCatalogVal -> MessageType.CATALOG
                 isPaymentVal -> MessageType.PAYMENT_REQUEST

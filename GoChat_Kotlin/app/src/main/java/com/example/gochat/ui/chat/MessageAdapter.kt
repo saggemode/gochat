@@ -31,9 +31,13 @@ import com.example.gochat.data.model.InvoiceData
 import com.example.gochat.data.model.Message
 import com.example.gochat.data.model.MessageStatus
 import com.example.gochat.data.model.MessageType
+import com.example.gochat.data.model.PollData
+import com.example.gochat.data.model.PollOption
 import com.example.gochat.databinding.ItemMessageMeBinding
 import com.example.gochat.databinding.ItemMessageOtherBinding
 import com.example.gochat.databinding.ItemMessageSystemBinding
+import com.example.gochat.databinding.LayoutPollBubbleBinding
+import com.example.gochat.databinding.ItemPollOptionViewBinding
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import java.text.SimpleDateFormat
@@ -74,6 +78,9 @@ class MessageAdapter(
     var onConfirmReceiptClicked: ((message: Message, invoiceData: InvoiceData) -> Unit)? = null
     var onAcceptOfferClicked: ((message: Message, offer: CustomOfferData) -> Unit)? = null
     var onCounterOfferClicked: ((message: Message, offer: CustomOfferData) -> Unit)? = null
+    var onVotePollClicked: ((message: Message, optionId: String) -> Unit)? = null
+    var onViewPollResultsClicked: ((pollData: PollData) -> Unit)? = null
+    var currentUserId: String = ""
     var onQuotedMessageClicked: ((replyToId: String) -> Unit)? = null
     var onEditHistoryClicked: ((message: Message) -> Unit)? = null
 
@@ -671,6 +678,192 @@ class MessageAdapter(
         }
     }
 
+    private fun bindPollBubble(
+        message: Message,
+        layoutPollCard: View,
+        pollBinding: LayoutPollBubbleBinding,
+        tvMessageContent: TextView
+    ) {
+        val pollData = message.getPollData()
+        if (pollData == null) {
+            layoutPollCard.visibility = View.GONE
+            return
+        }
+
+        layoutPollCard.visibility = View.VISIBLE
+        tvMessageContent.visibility = View.GONE
+        tvMessageContent.text = ""
+
+        val context = layoutPollCard.context
+        val isExpired = pollData.isExpired
+        val hasVoted = pollData.hasUserVoted(currentUserId)
+        val userVotedOptionIds = pollData.userVotedOptionIds(currentUserId)
+
+        // 1. Header Type Badge (Poll vs Quiz)
+        if (pollData.isQuiz) {
+            pollBinding.tvPollTypeBadge.text = "🧠 QUIZ"
+            pollBinding.tvPollTypeBadge.backgroundTintList = ColorStateList.valueOf(0x339B59B6.toInt())
+            pollBinding.tvPollTypeBadge.setTextColor(0xFFBB86FC.toInt())
+        } else {
+            pollBinding.tvPollTypeBadge.text = "📊 POLL"
+            pollBinding.tvPollTypeBadge.backgroundTintList = ColorStateList.valueOf(0x2600A884.toInt())
+            pollBinding.tvPollTypeBadge.setTextColor(ContextCompat.getColor(context, R.color.gochat_emerald_light))
+        }
+
+        // Expiration Timer Tag
+        if (isExpired) {
+            pollBinding.tvPollExpireTimer.visibility = View.VISIBLE
+            pollBinding.tvPollExpireTimer.text = "🔒 Closed"
+            pollBinding.tvPollExpireTimer.backgroundTintList = ColorStateList.valueOf(0x28E74C3C.toInt())
+            pollBinding.tvPollExpireTimer.setTextColor(0xFFE74C3C.toInt())
+        } else if (pollData.expiresAt != null && pollData.expiresAt > 0L) {
+            val remainingMs = pollData.expiresAt - System.currentTimeMillis()
+            pollBinding.tvPollExpireTimer.visibility = View.VISIBLE
+            pollBinding.tvPollExpireTimer.text = "⏳ " + formatRemainingTime(remainingMs) + " left"
+            pollBinding.tvPollExpireTimer.backgroundTintList = ColorStateList.valueOf(0x28E67E22.toInt())
+            pollBinding.tvPollExpireTimer.setTextColor(0xFFF39C12.toInt())
+        } else {
+            pollBinding.tvPollExpireTimer.visibility = View.GONE
+        }
+
+        // Mode Note
+        pollBinding.tvPollModeNote.text = when {
+            pollData.isQuiz -> "Single choice • Quiz"
+            pollData.allowMultipleAnswers -> "Select one or more"
+            else -> "Select one"
+        }
+
+        // Question
+        pollBinding.tvPollQuestion.text = pollData.question
+
+        // 2. Options rendering
+        val container = pollBinding.layoutPollOptionsContainer
+        container.removeAllViews()
+        val inflater = LayoutInflater.from(context)
+        val totalVotes = pollData.totalVotes
+
+        val showResults = hasVoted || isExpired || message.isMe
+
+        pollData.options.forEach { opt ->
+            val optBinding = ItemPollOptionViewBinding.inflate(inflater, container, false)
+            val isSelectedByMe = userVotedOptionIds.contains(opt.id)
+            val percent = if (totalVotes > 0) ((opt.votes.toFloat() / totalVotes) * 100).toInt() else 0
+
+            optBinding.tvOptionText.text = opt.text
+
+            if (showResults) {
+                // Show horizontal result bar chart fill
+                optBinding.progressOptionBar.visibility = View.VISIBLE
+                val weight = percent.coerceIn(0, 100).toFloat()
+                val remainder = (100f - weight).coerceAtLeast(0f)
+
+                optBinding.progressOptionBar.layoutParams = android.widget.LinearLayout.LayoutParams(
+                    0,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    weight
+                )
+                optBinding.progressOptionBarRemainder.layoutParams = android.widget.LinearLayout.LayoutParams(
+                    0,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    remainder
+                )
+
+                // Stats on the right
+                optBinding.layoutOptionStats.visibility = View.VISIBLE
+                optBinding.tvOptionPercent.text = "$percent%"
+                optBinding.tvOptionVotes.text = "${opt.votes} vote" + if (opt.votes == 1) "" else "s"
+
+                // Quiz Mode Results Visualization
+                if (pollData.isQuiz) {
+                    val isCorrectOption = opt.isCorrect || (pollData.correctOptionId != null && opt.id == pollData.correctOptionId)
+                    if (isCorrectOption) {
+                        // Correct Option: Highlight in Emerald Green
+                        optBinding.layoutOptionRoot.setBackgroundResource(R.drawable.bg_card_dark)
+                        optBinding.progressOptionBar.backgroundTintList = ColorStateList.valueOf(0x4000A884.toInt())
+                        optBinding.ivOptionIndicator.setImageResource(R.drawable.ic_check)
+                        optBinding.ivOptionIndicator.imageTintList = ColorStateList.valueOf(0xFF00A884.toInt())
+
+                        optBinding.tvOptionBadge.visibility = View.VISIBLE
+                        optBinding.tvOptionBadge.text = "✓ Correct Answer"
+                        optBinding.tvOptionBadge.setTextColor(0xFF00A884.toInt())
+                    } else if (isSelectedByMe) {
+                        // User chose wrong answer: Highlight in Red
+                        optBinding.layoutOptionRoot.setBackgroundResource(R.drawable.bg_card_dark)
+                        optBinding.progressOptionBar.backgroundTintList = ColorStateList.valueOf(0x40E74C3C.toInt())
+                        optBinding.ivOptionIndicator.setImageResource(R.drawable.ic_close)
+                        optBinding.ivOptionIndicator.imageTintList = ColorStateList.valueOf(0xFFE74C3C.toInt())
+
+                        optBinding.tvOptionBadge.visibility = View.VISIBLE
+                        optBinding.tvOptionBadge.text = "✗ Your choice"
+                        optBinding.tvOptionBadge.setTextColor(0xFFE74C3C.toInt())
+                    } else {
+                        // Other wrong options
+                        optBinding.progressOptionBar.backgroundTintList = ColorStateList.valueOf(0x20FFFFFF)
+                        optBinding.ivOptionIndicator.setImageResource(R.drawable.ic_radio_unchecked)
+                        optBinding.ivOptionIndicator.imageTintList = ColorStateList.valueOf(0xFF666666.toInt())
+                        optBinding.tvOptionBadge.visibility = View.GONE
+                    }
+                } else {
+                    // Standard Poll Results Visualization
+                    if (isSelectedByMe) {
+                        optBinding.progressOptionBar.backgroundTintList = ColorStateList.valueOf(0x4000A884.toInt())
+                        val indicatorRes = if (pollData.allowMultipleAnswers) R.drawable.ic_checkbox_checked else R.drawable.ic_radio_checked
+                        optBinding.ivOptionIndicator.setImageResource(indicatorRes)
+                        optBinding.ivOptionIndicator.imageTintList = ColorStateList.valueOf(0xFF00A884.toInt())
+                        optBinding.tvOptionBadge.visibility = View.GONE
+                    } else {
+                        optBinding.progressOptionBar.backgroundTintList = ColorStateList.valueOf(0x20FFFFFF)
+                        val indicatorRes = if (pollData.allowMultipleAnswers) R.drawable.ic_checkbox_unchecked else R.drawable.ic_radio_unchecked
+                        optBinding.ivOptionIndicator.setImageResource(indicatorRes)
+                        optBinding.ivOptionIndicator.imageTintList = ColorStateList.valueOf(0xFF666666.toInt())
+                        optBinding.tvOptionBadge.visibility = View.GONE
+                    }
+                }
+            } else {
+                // Not voted yet: show clean voting options
+                optBinding.progressOptionBar.visibility = View.GONE
+                optBinding.layoutOptionStats.visibility = View.GONE
+                optBinding.tvOptionBadge.visibility = View.GONE
+
+                val indicatorRes = if (pollData.allowMultipleAnswers) R.drawable.ic_checkbox_unchecked else R.drawable.ic_radio_unchecked
+                optBinding.ivOptionIndicator.setImageResource(indicatorRes)
+                optBinding.ivOptionIndicator.imageTintList = ColorStateList.valueOf(0xFF888888.toInt())
+            }
+
+            // Click handling
+            if (!isExpired) {
+                optBinding.layoutOptionRoot.setOnClickListener {
+                    onVotePollClicked?.invoke(message, opt.id)
+                }
+            } else {
+                optBinding.layoutOptionRoot.isClickable = false
+            }
+
+            container.addView(optBinding.root)
+        }
+
+        // 3. Quiz explanation (Revealed after voting or when expired)
+        if (pollData.isQuiz && showResults && !pollData.explanation.isNullOrBlank()) {
+            pollBinding.layoutQuizExplanation.visibility = View.VISIBLE
+            pollBinding.tvQuizExplanationText.text = pollData.explanation
+        } else {
+            pollBinding.layoutQuizExplanation.visibility = View.GONE
+        }
+
+        // 4. Footer: Total votes & View Votes Sheet
+        val votesWord = if (totalVotes == 1) "vote" else "votes"
+        pollBinding.tvPollTotalVotes.text = "👥 $totalVotes $votesWord" + if (pollData.isAnonymous) " • Anonymous" else ""
+
+        if (!pollData.isAnonymous && totalVotes > 0) {
+            pollBinding.btnViewPollVotes.visibility = View.VISIBLE
+            pollBinding.btnViewPollVotes.setOnClickListener {
+                onViewPollResultsClicked?.invoke(pollData)
+            }
+        } else {
+            pollBinding.btnViewPollVotes.visibility = View.GONE
+        }
+    }
+
     private fun formatRemainingTime(remainingMs: Long): String {
         return when {
             remainingMs <= 0 -> "<1m"
@@ -1159,6 +1352,14 @@ class MessageAdapter(
                     tvMessageContent = tvMessageContent
                 )
 
+                // Poll 2.0 Card Preview
+                bindPollBubble(
+                    message = message,
+                    layoutPollCard = layoutPollCard,
+                    pollBinding = includePoll,
+                    tvMessageContent = tvMessageContent
+                )
+
                 // Hide the text label if it's purely a media label
                 val isOnlyMediaLabel = message.content.isBlank() || 
                     message.content.contains("Photo", ignoreCase = true) || 
@@ -1168,7 +1369,9 @@ class MessageAdapter(
                         (message.content.contains("\"products\"") && (message.content.contains("\"catalog\"") || message.content.contains("\"store_name\""))) ||
                         (message.content.startsWith("{") && (message.content.contains("\"type\":\"catalog\"") || message.content.contains("\"type\": \"catalog\"")))) && !message.isDeleted
 
-                if (isCatalogMessage || isOrder || isPayment) {
+                val isPollMessage = (message.type == MessageType.POLL || message.getPollData() != null) && !message.isDeleted
+
+                if (isPollMessage || isCatalogMessage || isOrder || isPayment) {
                     tvMessageContent.visibility = View.GONE
                     tvMessageContent.text = ""
                 } else if ((isImage || isVoice) && isOnlyMediaLabel) {
@@ -1629,6 +1832,14 @@ class MessageAdapter(
                     tvMessageContent = tvMessageContent
                 )
 
+                // Poll 2.0 Card Preview
+                bindPollBubble(
+                    message = message,
+                    layoutPollCard = layoutPollCard,
+                    pollBinding = includePoll,
+                    tvMessageContent = tvMessageContent
+                )
+
                 val isOnlyMediaLabel = message.content.isBlank() || 
                     message.content.contains("Photo", ignoreCase = true) || 
                     message.content.contains("Voice Note", ignoreCase = true)
@@ -1637,7 +1848,9 @@ class MessageAdapter(
                         (message.content.contains("\"products\"") && (message.content.contains("\"catalog\"") || message.content.contains("\"store_name\""))) ||
                         (message.content.startsWith("{") && (message.content.contains("\"type\":\"catalog\"") || message.content.contains("\"type\": \"catalog\"")))) && !message.isDeleted
 
-                if (isCatalogMessage || isOrder || isPayment) {
+                val isPollMessage = (message.type == MessageType.POLL || message.getPollData() != null) && !message.isDeleted
+
+                if (isPollMessage || isCatalogMessage || isOrder || isPayment) {
                     tvMessageContent.visibility = View.GONE
                     tvMessageContent.text = ""
                 } else if ((isImage || isVoice) && isOnlyMediaLabel) {

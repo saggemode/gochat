@@ -851,6 +851,144 @@ class ChatRoomViewModel @Inject constructor(
         }
     }
 
+    fun sendPollMessage(pollData: PollData, targetConvId: String? = null) {
+        val convId = targetConvId ?: _conversationId.value
+        if (convId.isEmpty()) return
+
+        val pollJson = buildJsonObject {
+            put("id", pollData.id)
+            put("question", pollData.question)
+            put("allow_multiple_answers", pollData.allowMultipleAnswers)
+            put("is_multiple", pollData.allowMultipleAnswers)
+            put("is_quiz", pollData.isQuiz)
+            pollData.correctOptionId?.let { put("correct_option_id", it) }
+            pollData.explanation?.let { put("explanation", it) }
+            put("is_anonymous", pollData.isAnonymous)
+            pollData.expiresAt?.let { put("expires_at", it) }
+            put("is_closed", pollData.isClosed)
+            put("created_at", pollData.createdAt)
+            put("created_by", pollData.createdBy)
+            put("options", buildJsonArray {
+                pollData.options.forEach { opt ->
+                    add(buildJsonObject {
+                        put("id", opt.id)
+                        put("text", opt.text)
+                        put("votes", opt.votes)
+                        put("vote_count", opt.votes)
+                        put("is_correct", opt.isCorrect)
+                        put("voter_ids", buildJsonArray {
+                            opt.voterIds.forEach { add(JsonPrimitive(it)) }
+                        })
+                        put("voter_names", buildJsonArray {
+                            opt.voterNames.forEach { add(JsonPrimitive(it)) }
+                        })
+                    })
+                }
+            })
+        }.toString()
+
+        viewModelScope.launch {
+            chatRepository.sendMessage(
+                conversationId = convId,
+                content = pollJson,
+                type = 6 // MessageType.POLL
+            )
+        }
+    }
+
+    fun votePoll(message: Message, optionId: String) {
+        val pollData = message.getPollData() ?: return
+        if (pollData.isExpired) return
+
+        val myUserId = tokenManager.userId ?: ""
+        val myUserName = tokenManager.userDisplayName ?: "You"
+
+        val updatedOptions = pollData.options.map { opt ->
+            val hasVotedThis = opt.voterIds.contains(myUserId)
+            if (pollData.allowMultipleAnswers) {
+                if (opt.id == optionId) {
+                    if (hasVotedThis) {
+                        // Toggle off
+                        opt.copy(
+                            votes = (opt.votes - 1).coerceAtLeast(0),
+                            voterIds = opt.voterIds - myUserId,
+                            voterNames = opt.voterNames.filterIndexed { idx, _ -> opt.voterIds.getOrNull(idx) != myUserId }
+                        )
+                    } else {
+                        // Toggle on
+                        opt.copy(
+                            votes = opt.votes + 1,
+                            voterIds = opt.voterIds + myUserId,
+                            voterNames = opt.voterNames + myUserName
+                        )
+                    }
+                } else {
+                    opt
+                }
+            } else {
+                // Single choice or quiz
+                if (opt.id == optionId) {
+                    if (hasVotedThis) {
+                        opt
+                    } else {
+                        opt.copy(
+                            votes = opt.votes + 1,
+                            voterIds = opt.voterIds + myUserId,
+                            voterNames = opt.voterNames + myUserName
+                        )
+                    }
+                } else if (hasVotedThis) {
+                    opt.copy(
+                        votes = (opt.votes - 1).coerceAtLeast(0),
+                        voterIds = opt.voterIds - myUserId,
+                        voterNames = opt.voterNames.filterIndexed { idx, _ -> opt.voterIds.getOrNull(idx) != myUserId }
+                    )
+                } else {
+                    opt
+                }
+            }
+        }
+
+        val updatedPollData = pollData.copy(options = updatedOptions)
+        val updatedJson = buildJsonObject {
+            put("id", updatedPollData.id)
+            put("question", updatedPollData.question)
+            put("allow_multiple_answers", updatedPollData.allowMultipleAnswers)
+            put("is_multiple", updatedPollData.allowMultipleAnswers)
+            put("is_quiz", updatedPollData.isQuiz)
+            updatedPollData.correctOptionId?.let { put("correct_option_id", it) }
+            updatedPollData.explanation?.let { put("explanation", it) }
+            put("is_anonymous", updatedPollData.isAnonymous)
+            updatedPollData.expiresAt?.let { put("expires_at", it) }
+            put("is_closed", updatedPollData.isClosed)
+            put("created_at", updatedPollData.createdAt)
+            put("created_by", updatedPollData.createdBy)
+            put("options", buildJsonArray {
+                updatedPollData.options.forEach { opt ->
+                    add(buildJsonObject {
+                        put("id", opt.id)
+                        put("text", opt.text)
+                        put("votes", opt.votes)
+                        put("vote_count", opt.votes)
+                        put("is_correct", opt.isCorrect)
+                        put("voter_ids", buildJsonArray {
+                            opt.voterIds.forEach { add(JsonPrimitive(it)) }
+                        })
+                        put("voter_names", buildJsonArray {
+                            opt.voterNames.forEach { add(JsonPrimitive(it)) }
+                        })
+                    })
+                }
+            })
+        }.toString()
+
+        viewModelScope.launch {
+            chatRepository.editMessageLocally(message.id, updatedJson)
+            val selectedOptionIds = updatedOptions.filter { it.voterIds.contains(myUserId) }.map { it.id }
+            chatRepository.votePoll(pollData.id, selectedOptionIds)
+        }
+    }
+
     fun sendPaymentRequestMessage(
         itemName: String,
         amount: Double,

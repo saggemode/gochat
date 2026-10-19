@@ -13,14 +13,29 @@
     android:minHeight="44dp">
 
     <!-- Horizontal Result Bar Chart Fill -->
-    <View
-        android:id="@+id/progressOptionBar"
-        android:layout_width="0dp"
+    <LinearLayout
+        android:id="@+id/layoutBarContainer"
+        android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/bg_poll_progress"
-        android:visibility="gone"
-        tools:layout_width="160dp"
-        tools:visibility="visible" />
+        android:orientation="horizontal"
+        android:weightSum="100">
+
+        <View
+            android:id="@+id/progressOptionBar"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0"
+            android:background="@drawable/bg_poll_progress"
+            android:visibility="gone"
+            tools:layout_weight="57"
+            tools:visibility="visible" />
+
+        <View
+            android:id="@+id/progressOptionBarRemainder"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="100" />
+    </LinearLayout>
 
     <!-- Foreground Content -->
     <LinearLayout

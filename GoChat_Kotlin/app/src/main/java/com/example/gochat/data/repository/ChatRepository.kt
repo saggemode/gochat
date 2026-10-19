@@ -1411,11 +1411,22 @@ class ChatRepository @Inject constructor(
     }
 
     suspend fun votePoll(pollId: String, optionId: String): Result<Unit> {
+        return votePoll(pollId, listOf(optionId))
+    }
+
+    suspend fun votePoll(pollId: String, optionIds: List<String>): Result<Unit> {
         return try {
-            val body = buildJsonObject { put("option_id", optionId) }
+            val body = buildJsonObject {
+                if (optionIds.isNotEmpty()) {
+                    put("option_id", optionIds.first())
+                }
+                put("option_ids", buildJsonArray {
+                    optionIds.forEach { add(JsonPrimitive(it)) }
+                })
+            }
             val response = api.votePoll(pollId, body)
             if (response.isSuccessful) Result.success(Unit)
-            else Result.failure(Exception("Vote failed"))
+            else Result.failure(Exception("Vote failed: ${response.code()}"))
         } catch (e: Exception) {
             Result.failure(e)
         }
