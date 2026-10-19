@@ -156,12 +156,55 @@ func deriveCurrencyFromPhoneOrCountry(phone, country string) string {
 	return deriveCurrencyFromCountry(country)
 }
 
+func (r *BusinessRepository) ensureCategoriesSeeded(ctx context.Context) {
+	var count int
+	_ = r.db.QueryRow(ctx, `SELECT COUNT(*) FROM business.categories`).Scan(&count)
+	if count > 0 {
+		return
+	}
+	log.Println("[marketplace] categories table is empty — auto-seeding defaults")
+	_, _ = r.db.Exec(ctx, `
+		INSERT INTO business.categories (name, icon, sort_order) VALUES
+			('Electronics',      '📱', 1),
+			('Fashion',          '👗', 2),
+			('Furniture',        '🪑', 3),
+			('Food & Drinks',    '🍔', 4),
+			('Health & Beauty',  '💄', 5),
+			('Home & Garden',    '🏠', 6),
+			('Sports',           '⚽', 7),
+			('Books & Media',    '📚', 8),
+			('Vehicles',         '🚗', 9),
+			('Services',         '🛠️', 10),
+			('Other',            '📦', 11)
+		ON CONFLICT (name) DO NOTHING
+	`)
+}
+
+func (r *BusinessRepository) getOrCreateFallbackCategoryID(ctx context.Context) string {
+	r.ensureCategoriesSeeded(ctx)
+	var defID string
+	_ = r.db.QueryRow(ctx, `SELECT id::text FROM business.categories WHERE name ILIKE 'Other' OR name ILIKE 'General' ORDER BY name LIMIT 1`).Scan(&defID)
+	if defID != "" {
+		return defID
+	}
+	// Last resort: create one right now
+	newID := uuid.New().String()
+	_, _ = r.db.Exec(ctx, `INSERT INTO business.categories (id, name, icon, sort_order) VALUES ($1, 'Other', '📦', 99) ON CONFLICT (name) DO NOTHING`, newID)
+	_ = r.db.QueryRow(ctx, `SELECT id::text FROM business.categories WHERE name ILIKE 'Other' LIMIT 1`).Scan(&defID)
+	if defID != "" {
+		return defID
+	}
+	return newID
+}
+
 func (r *BusinessRepository) resolveOrCreateCategoryID(ctx context.Context, catInput string) string {
 	catInput = strings.TrimSpace(catInput)
+
+	// Ensure categories are seeded before any lookup
+	r.ensureCategoriesSeeded(ctx)
+
 	if catInput == "" {
-		var defID string
-		_ = r.db.QueryRow(ctx, `SELECT id::text FROM business.categories WHERE name ILIKE 'Other' OR name ILIKE 'General' LIMIT 1`).Scan(&defID)
-		return defID
+		return r.getOrCreateFallbackCategoryID(ctx)
 	}
 
 	// 1. If valid UUID, check if it actually exists in business.categories!
@@ -194,9 +237,7 @@ func (r *BusinessRepository) resolveOrCreateCategoryID(ctx context.Context, catI
 
 	// 5. If catInput was an unresolvable UUID, fallback to a known default category so foreign key NEVER fails
 	if _, err := uuid.Parse(catInput); err == nil {
-		var defID string
-		_ = r.db.QueryRow(ctx, `SELECT id::text FROM business.categories WHERE name ILIKE 'Other' OR name ILIKE 'General' OR name ILIKE 'Electronics' LIMIT 1`).Scan(&defID)
-		return defID
+		return r.getOrCreateFallbackCategoryID(ctx)
 	}
 
 	// 6. Auto-insert/upsert into business.categories so custom categories are NEVER lost
@@ -210,6 +251,9 @@ func (r *BusinessRepository) resolveOrCreateCategoryID(ctx context.Context, catI
 	`, newID, titleName).Scan(&catID)
 	if catID == "" {
 		_ = r.db.QueryRow(ctx, `SELECT id::text FROM business.categories WHERE name ILIKE $1 LIMIT 1`, catInput).Scan(&catID)
+	}
+	if catID == "" {
+		return r.getOrCreateFallbackCategoryID(ctx)
 	}
 	return catID
 }
