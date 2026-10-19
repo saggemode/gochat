@@ -156,6 +156,7 @@ data class Store(
     @SerialName("banner_url") val bannerUrl: String? = null,
     val rating: Double = 4.9,
     @SerialName("is_verified") val isVerified: Boolean = true,
+    @SerialName("hours_json") val hoursJson: String? = null,
     @SerialName("total_sales") val totalSales: Int = 0,
     @SerialName("total_revenue") val totalRevenue: Double = 0.0,
     @SerialName("followers_count") val followersCount: Int = 0,

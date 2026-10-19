@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/layoutOptionRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginVertical="3.5dp"
+    android:background="@drawable/bg_card_dark"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
+    android:minHeight="44dp">
+
+    <!-- Horizontal Result Bar Chart Fill -->
+    <View
+        android:id="@+id/progressOptionBar"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_poll_progress"
+        android:visibility="gone"
+        tools:layout_width="160dp"
+        tools:visibility="visible" />
+
+    <!-- Foreground Content -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="9dp">
+
+        <!-- Selection / Quiz Indicator Icon -->
+        <ImageView
+            android:id="@+id/ivOptionIndicator"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:contentDescription="Select"
+            android:src="@drawable/bg_circle_pulse"
+            app:tint="@color/gochat_text_muted" />
+
+        <!-- Option Text & Quiz Result Tag -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="8dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvOptionText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/gochat_text_primary"
+                android:textSize="13.5sp"
+                tools:text="Berlin" />
+
+            <TextView
+                android:id="@+id/tvOptionBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textSize="10.5sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                tools:text="✓ Correct Answer"
+                tools:textColor="@color/online_green"
+                tools:visibility="visible" />
+        </LinearLayout>
+
+        <!-- Right Side: Vote Count & Percentage -->
+        <LinearLayout
+            android:id="@+id/layoutOptionStats"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="end"
+            android:orientation="horizontal"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <TextView
+                android:id="@+id/tvOptionVotes"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/gochat_text_muted"
+                android:textSize="11.5sp"
+                tools:text="4 votes" />
+
+            <TextView
+                android:id="@+id/tvOptionPercent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:textColor="@color/gochat_text_primary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                tools:text="57%" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</FrameLayout>

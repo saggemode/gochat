@@ -92,18 +92,34 @@ enum class MessageStatus {
 
 @Serializable
 data class PollOption(
-    val id: String,
-    val text: String,
+    val id: String = "",
+    val text: String = "",
     val votes: Int = 0,
-    @SerialName("voter_ids") val voterIds: List<String> = emptyList()
+    @SerialName("voter_ids") val voterIds: List<String> = emptyList(),
+    @SerialName("voter_names") val voterNames: List<String> = emptyList(),
+    @SerialName("is_correct") val isCorrect: Boolean = false
 )
 
 @Serializable
 data class PollData(
-    val question: String,
+    val id: String = "",
+    val question: String = "",
     val options: List<PollOption> = emptyList(),
-    @SerialName("allow_multiple_answers") val allowMultipleAnswers: Boolean = false
-)
+    @SerialName("allow_multiple_answers") val allowMultipleAnswers: Boolean = false,
+    @SerialName("is_quiz") val isQuiz: Boolean = false,
+    @SerialName("correct_option_id") val correctOptionId: String? = null,
+    val explanation: String? = null,
+    @SerialName("is_anonymous") val isAnonymous: Boolean = false,
+    @SerialName("expires_at") val expiresAt: Long? = null,
+    @SerialName("is_closed") val isClosed: Boolean = false,
+    @SerialName("created_at") val createdAt: Long = System.currentTimeMillis(),
+    @SerialName("created_by") val createdBy: String = ""
+) {
+    val isExpired: Boolean get() = isClosed || (expiresAt != null && expiresAt > 0L && System.currentTimeMillis() > expiresAt)
+    val totalVotes: Int get() = options.sumOf { it.votes }
+    fun hasUserVoted(userId: String): Boolean = options.any { it.voterIds.contains(userId) }
+    fun userVotedOptionIds(userId: String): List<String> = options.filter { it.voterIds.contains(userId) }.map { it.id }
+}
 
 @Serializable
 data class Reaction(

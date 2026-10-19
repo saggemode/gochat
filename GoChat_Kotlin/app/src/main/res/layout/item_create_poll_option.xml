@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginVertical="3dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <!-- Correct Answer Radio Button (Quiz Mode only) -->
+    <RadioButton
+        android:id="@+id/rbCorrectAnswer"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:buttonTint="@color/online_green"
+        android:contentDescription="Mark as correct answer"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
+    <EditText
+        android:id="@+id/etOptionText"
+        android:layout_width="0dp"
+        android:layout_height="42dp"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="6dp"
+        android:layout_weight="1"
+        android:background="@drawable/bg_input_field"
+        android:hint="Option"
+        android:importantForAutofill="no"
+        android:inputType="textCapSentences"
+        android:paddingHorizontal="12dp"
+        android:textColor="@color/gochat_text_primary"
+        android:textColorHint="@color/gochat_text_muted"
+        android:textSize="13.5sp" />
+
+    <ImageView
+        android:id="@+id/btnRemoveOption"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Remove option"
+        android:padding="5dp"
+        android:src="@drawable/ic_close"
+        app:tint="@color/gochat_text_muted" />
+
+</LinearLayout>
