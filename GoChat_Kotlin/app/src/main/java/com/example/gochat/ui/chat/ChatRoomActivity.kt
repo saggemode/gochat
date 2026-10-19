@@ -661,7 +661,16 @@ class ChatRoomActivity : AppCompatActivity() {
                     prefillOffered = offer.offeredPrice * 0.9
                 )
             }
+            onVotePollClicked = { message, optionId ->
+                viewModel.votePoll(message, optionId)
+            }
+            onViewPollResultsClicked = { pollData ->
+                val currentUid = tokenManager.userId ?: ""
+                val sheet = PollVotersBottomSheet(pollData, currentUid)
+                sheet.show(supportFragmentManager, PollVotersBottomSheet.TAG)
+            }
         }
+        messageAdapter.currentUserId = tokenManager.userId ?: ""
 
         val layoutManager = LinearLayoutManager(this).apply {
             reverseLayout = true
@@ -1027,6 +1036,11 @@ class ChatRoomActivity : AppCompatActivity() {
             showQuickRepliesBottomSheet()
         }
 
+        sheetBinding.btnPickPoll.setOnClickListener {
+            sheet.dismiss()
+            showCreatePollBottomSheet()
+        }
+
         sheet.show()
     }
 
@@ -1036,6 +1050,14 @@ class ChatRoomActivity : AppCompatActivity() {
             viewModel.sendCatalogMessage(selectedProducts)
         }
         picker.show(supportFragmentManager, "CatalogPickerBottomSheet")
+    }
+
+    private fun showCreatePollBottomSheet() {
+        val currentUid = tokenManager.userId ?: ""
+        val sheet = CreatePollBottomSheet(currentUid) { pollData ->
+            viewModel.sendPollMessage(pollData)
+        }
+        sheet.show(supportFragmentManager, CreatePollBottomSheet.TAG)
     }
 
     private fun showQuickRepliesBottomSheet() {
