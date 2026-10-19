@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="12dp"
+    android:layout_marginVertical="4dp"
+    android:background="@drawable/bg_card_dark"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="12dp">
+
+    <!-- Shortcut Badge -->
+    <TextView
+        android:id="@+id/tvQuickReplyShortcut"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_username_chip"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="4dp"
+        android:textColor="@color/gochat_emerald_light"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        tools:text="/hours" />
+
+    <!-- Reply Text Content -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="8dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvQuickReplyText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="3"
+            android:textColor="@color/gochat_text_primary"
+            android:textSize="14sp"
+            tools:text="Our business hours are Monday – Saturday, 9:00 AM – 6:00 PM." />
+    </LinearLayout>
+
+    <!-- Insert Action Icon -->
+    <ImageView
+        android:id="@+id/ivInsertReply"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Insert reply"
+        android:padding="4dp"
+        android:src="@drawable/ic_send"
+        app:tint="@color/gochat_emerald_light" />
+
+</LinearLayout>

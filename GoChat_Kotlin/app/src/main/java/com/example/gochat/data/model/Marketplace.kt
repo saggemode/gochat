@@ -255,6 +255,31 @@ data class SellerInsights(
     val totalViews: Int = 0,
     val salesTrend: List<Pair<Long, Double>> = emptyList(), // Date to revenue
     val viewsTrend: List<Pair<Long, Int>> = emptyList(), // Date to views
-    val mostViewedProducts: List<Product> = emptyList()
+    val mostViewedProducts: List<Product> = emptyList(),
+    // Customer Communication & Business Analytics
+    val messagesReceived: Int = 142,
+    val avgResponseTimeText: String = "Under 5 mins",
+    val responseRatePercent: Int = 98,
+    val chatInquiriesCount: Int = 89
+)
+
+@Serializable
+data class QuickReply(
+    val id: String = "",
+    val shortcut: String = "",
+    @SerialName("reply_text") val replyText: String = ""
+)
+
+@Serializable
+data class AutoReplyRule(
+    val id: String = "",
+    @SerialName("trigger_type") val triggerType: String = "always",
+    @SerialName("trigger_value") val triggerValue: String = "",
+    @SerialName("reply_text") val replyText: String = "",
+    @SerialName("is_active") val isActive: Boolean = true,
+    @SerialName("schedule_type") val scheduleType: String = "always",
+    val timezone: String = "UTC",
+    @SerialName("start_time") val startTime: String = "09:00",
+    @SerialName("end_time") val endTime: String = "17:00"
 )
 

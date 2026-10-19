@@ -19,8 +19,10 @@ import com.example.gochat.ui.security.SecurityVerificationActivity
 import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.data.repository.CallRepository
 import androidx.lifecycle.lifecycleScope
+import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.serialization.json.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -666,12 +668,41 @@ class ContactProfileActivity : AppCompatActivity() {
             val userProducts = marketplaceRepository.getUserProducts(sellerUserId, sellerPin)
             val store = marketplaceRepository.getStoreForUser(sellerUserId, sellerPin)
 
+            val isVerified = store?.isVerified == true || userProducts.any { it.isVerifiedSeller }
+            if (isVerified) {
+                binding.ivVerifiedBadge.visibility = View.VISIBLE
+                binding.tvVerifiedBusinessTag.visibility = View.VISIBLE
+                binding.ivVerifiedBadge.setOnClickListener {
+                    val explanation = com.example.gochat.core.marketplace.SellerVerificationHelper.getTrustExplanation(
+                        com.example.gochat.core.marketplace.SellerVerificationLevel.VERIFIED_MERCHANT,
+                        store?.name ?: userName
+                    )
+                    Toast.makeText(this@ContactProfileActivity, explanation, Toast.LENGTH_LONG).show()
+                }
+            } else {
+                binding.ivVerifiedBadge.visibility = View.GONE
+                binding.tvVerifiedBusinessTag.visibility = View.GONE
+            }
+
             // ONLY show the user's products if he has any; NEVER show other people's products!
             if (userProducts.isNotEmpty()) {
                 binding.cardSellerStorefront.visibility = android.view.View.VISIBLE
                 val storeTitle = store?.name?.ifBlank { null } ?: "$userName's Catalog"
                 binding.tvSellerStoreName.text = storeTitle
                 adapter.submitList(userProducts.take(8))
+
+                // Configure Business Hours display
+                binding.layoutBusinessHours.visibility = View.VISIBLE
+                val schedule = formatBusinessHours(store?.hoursJson)
+                binding.tvBusinessHoursSchedule.text = schedule
+                val isOpen = isBusinessOpenNow(store?.hoursJson)
+                if (isOpen) {
+                    binding.tvBusinessHoursStatus.text = "● Open Now"
+                    binding.tvBusinessHoursStatus.setTextColor(ContextCompat.getColor(this@ContactProfileActivity, R.color.online_green))
+                } else {
+                    binding.tvBusinessHoursStatus.text = "● Closed"
+                    binding.tvBusinessHoursStatus.setTextColor(android.graphics.Color.parseColor("#FFB703"))
+                }
 
                 binding.btnVisitFullStore.setOnClickListener {
                     val storeIdToPass = store?.id?.ifBlank { null } ?: sellerUserId.ifBlank { "store_default" }
@@ -686,6 +717,33 @@ class ContactProfileActivity : AppCompatActivity() {
                 binding.cardSellerStorefront.visibility = android.view.View.GONE
                 adapter.submitList(emptyList())
             }
+        }
+    }
+
+    private fun formatBusinessHours(hoursJson: String?): String {
+        if (hoursJson.isNullOrBlank() || hoursJson == "{}" || hoursJson == "null") {
+            return "Mon – Sat: 9:00 AM – 6:00 PM"
+        }
+        return try {
+            val json = kotlinx.serialization.json.Json.parseToJsonElement(hoursJson).jsonObject
+            val days = json["days"]?.jsonPrimitive?.contentOrNull ?: "Mon – Sat"
+            val hours = json["hours"]?.jsonPrimitive?.contentOrNull
+                ?: "${json["open"]?.jsonPrimitive?.contentOrNull ?: "9:00 AM"} – ${json["close"]?.jsonPrimitive?.contentOrNull ?: "6:00 PM"}"
+            "$days: $hours"
+        } catch (e: Exception) {
+            "Mon – Sat: 9:00 AM – 6:00 PM"
+        }
+    }
+
+    private fun isBusinessOpenNow(hoursJson: String?): Boolean {
+        return try {
+            val cal = Calendar.getInstance()
+            val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
+            if (dayOfWeek == Calendar.SUNDAY) return false
+            val hour = cal.get(Calendar.HOUR_OF_DAY)
+            hour in 9..18
+        } catch (e: Exception) {
+            true
         }
     }
 

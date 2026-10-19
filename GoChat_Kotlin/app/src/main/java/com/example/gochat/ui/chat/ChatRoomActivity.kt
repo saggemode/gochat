@@ -452,6 +452,24 @@ class ChatRoomActivity : AppCompatActivity() {
                 }
             } else {
                 ivToolbarVerified.visibility = View.GONE
+                // Asynchronously verify against business profile
+                val partner = currentPartnerId?.ifBlank { null } ?: viewModel.partnerId
+                if (!partner.isNullOrBlank()) {
+                    lifecycleScope.launch {
+                        val store = marketplaceRepository.getStoreForUser(partner, "")
+                        if (store?.isVerified == true) {
+                            ivToolbarVerified.visibility = View.VISIBLE
+                            ivToolbarVerified.imageTintList = ColorStateList.valueOf(Color.parseColor("#00A884"))
+                            ivToolbarVerified.setOnClickListener {
+                                val explanation = com.example.gochat.core.marketplace.SellerVerificationHelper.getTrustExplanation(
+                                    com.example.gochat.core.marketplace.SellerVerificationLevel.VERIFIED_MERCHANT,
+                                    store.name.ifBlank { title }
+                                )
+                                Toast.makeText(this@ChatRoomActivity, explanation, Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
+                }
             }
 
             MediaImageHelper.loadSafeImage(
@@ -1004,6 +1022,11 @@ class ChatRoomActivity : AppCompatActivity() {
             showCreateInvoiceBottomSheet()
         }
 
+        sheetBinding.btnPickQuickReply.setOnClickListener {
+            sheet.dismiss()
+            showQuickRepliesBottomSheet()
+        }
+
         sheet.show()
     }
 
@@ -1013,6 +1036,17 @@ class ChatRoomActivity : AppCompatActivity() {
             viewModel.sendCatalogMessage(selectedProducts)
         }
         picker.show(supportFragmentManager, "CatalogPickerBottomSheet")
+    }
+
+    private fun showQuickRepliesBottomSheet() {
+        val sheet = QuickRepliesBottomSheet(marketplaceRepository) { replyText ->
+            binding.etMessageInput.setText(replyText)
+            binding.etMessageInput.setSelection(replyText.length)
+            binding.etMessageInput.requestFocus()
+            val imm = getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+            imm?.showSoftInput(binding.etMessageInput, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+        }
+        sheet.show(supportFragmentManager, QuickRepliesBottomSheet.TAG)
     }
 
     private fun showCreateInvoiceBottomSheet() {

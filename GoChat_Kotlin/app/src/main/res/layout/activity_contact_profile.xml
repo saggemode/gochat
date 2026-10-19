@@ -82,14 +82,47 @@
                     android:orientation="vertical"
                     android:padding="16dp">
 
-                    <TextView
-                        android:id="@+id/tvProfileName"
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textColor="@color/gochat_text_primary"
-                        android:textSize="22sp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/tvProfileName"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/gochat_text_primary"
+                            android:textSize="22sp"
+                            android:textStyle="bold"
+                            tools:text="Sarah Jenkins" />
+
+                        <ImageView
+                            android:id="@+id/ivVerifiedBadge"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:layout_marginStart="8dp"
+                            android:contentDescription="Verified Business"
+                            android:src="@drawable/ic_verified_badge"
+                            android:visibility="gone"
+                            tools:visibility="visible" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tvVerifiedBusinessTag"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_pill"
+                        android:backgroundTint="#2500A884"
+                        android:paddingHorizontal="8dp"
+                        android:paddingVertical="3dp"
+                        android:text="🛡️ Verified Business"
+                        android:textColor="@color/gochat_emerald_light"
+                        android:textSize="11sp"
                         android:textStyle="bold"
-                        tools:text="Sarah Jenkins" />
+                        android:visibility="gone"
+                        tools:visibility="visible" />
 
                     <TextView
                         android:id="@+id/tvProfilePhone"
@@ -616,6 +649,48 @@
                             android:textColor="@color/white"
                             android:textSize="11sp"
                             android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Business Hours & Status Bar -->
+                    <LinearLayout
+                        android:id="@+id/layoutBusinessHours"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:background="@drawable/bg_pill"
+                        android:backgroundTint="#15FFFFFF"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="8dp">
+
+                        <TextView
+                            android:id="@+id/tvBusinessHoursStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="● Open Now"
+                            android:textColor="@color/online_green"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginHorizontal="6dp"
+                            android:text="|"
+                            android:textColor="@color/gochat_text_secondary"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/tvBusinessHoursSchedule"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:text="Mon - Fri: 9:00 AM - 6:00 PM"
+                            android:textColor="@color/gochat_text_secondary"
+                            android:textSize="12sp" />
                     </LinearLayout>
 
                     <!-- Horizontal or Grid Product Catalog List -->

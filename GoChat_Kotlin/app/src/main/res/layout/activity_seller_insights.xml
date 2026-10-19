@@ -166,6 +166,156 @@
                 </com.google.android.material.card.MaterialCardView>
             </GridLayout>
 
+            <!-- Customer Engagement & Messaging Section -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="8dp"
+                android:text="CUSTOMER ENGAGEMENT &amp; MESSAGING"
+                android:textColor="@color/gochat_text_muted"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <GridLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="2"
+                android:rowCount="2">
+
+                <!-- Messages Received -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="4dp"
+                    app:cardBackgroundColor="#14141C"
+                    app:cardCornerRadius="16dp"
+                    app:strokeWidth="0dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="MESSAGES RECEIVED"
+                            android:textColor="@color/gochat_text_muted"
+                            android:textSize="10sp"
+                            android:textStyle="bold" />
+                        <TextView
+                            android:id="@+id/tvMessagesReceived"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="142"
+                            android:textColor="#38BDF8"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Avg Response Time -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="4dp"
+                    app:cardBackgroundColor="#14141C"
+                    app:cardCornerRadius="16dp"
+                    app:strokeWidth="0dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="AVG RESPONSE TIME"
+                            android:textColor="@color/gochat_text_muted"
+                            android:textSize="10sp"
+                            android:textStyle="bold" />
+                        <TextView
+                            android:id="@+id/tvAvgResponseTime"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Under 5 mins"
+                            android:textColor="@color/gochat_emerald_light"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Response Rate -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="4dp"
+                    app:cardBackgroundColor="#14141C"
+                    app:cardCornerRadius="16dp"
+                    app:strokeWidth="0dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="RESPONSE RATE"
+                            android:textColor="@color/gochat_text_muted"
+                            android:textSize="10sp"
+                            android:textStyle="bold" />
+                        <TextView
+                            android:id="@+id/tvResponseRate"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="98%"
+                            android:textColor="#10B981"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Inquiries Converted -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="4dp"
+                    app:cardBackgroundColor="#14141C"
+                    app:cardCornerRadius="16dp"
+                    app:strokeWidth="0dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="CHAT INQUIRIES"
+                            android:textColor="@color/gochat_text_muted"
+                            android:textSize="10sp"
+                            android:textStyle="bold" />
+                        <TextView
+                            android:id="@+id/tvChatInquiries"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="89"
+                            android:textColor="#F43F5E"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </GridLayout>
+
             <!-- Revenue Trend Chart -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"

@@ -24,6 +24,7 @@ import kotlinx.serialization.json.*
 import java.io.File
 import java.io.FileOutputStream
 import java.util.regex.Pattern
+import com.example.gochat.data.repository.MarketplaceRepository
 import com.example.gochat.core.network.NetworkMonitor
 import javax.inject.Inject
 
@@ -36,7 +37,8 @@ class ChatRoomViewModel @Inject constructor(
     private val webSocket: GoChatWebSocket,
     private val soundManager: ChatSoundManager,
     private val encryptionManager: EncryptionManager,
-    private val networkMonitor: NetworkMonitor
+    private val networkMonitor: NetworkMonitor,
+    private val marketplaceRepository: MarketplaceRepository
 ) : AndroidViewModel(application) {
 
     val isDeviceOnline: Flow<Boolean> = networkMonitor.isOnline
@@ -95,6 +97,16 @@ class ChatRoomViewModel @Inject constructor(
 
     private val _commandSuggestions = MutableStateFlow<List<BotCommand>>(emptyList())
     val commandSuggestions: StateFlow<List<BotCommand>> = _commandSuggestions.asStateFlow()
+
+    private val _quickReplies = MutableStateFlow<List<QuickReply>>(emptyList())
+    val quickReplies: StateFlow<List<QuickReply>> = _quickReplies.asStateFlow()
+
+    fun loadQuickReplies() {
+        viewModelScope.launch {
+            val res = marketplaceRepository.getQuickReplies()
+            _quickReplies.value = res.getOrDefault(emptyList())
+        }
+    }
 
     private val _isGroup = MutableStateFlow(false)
     val isGroup: StateFlow<Boolean> = _isGroup.asStateFlow()
@@ -199,6 +211,9 @@ class ChatRoomViewModel @Inject constructor(
                 }
             }
         }
+
+        // Cache business quick replies
+        loadQuickReplies()
     }
 
     @Volatile
@@ -1168,32 +1183,59 @@ class ChatRoomViewModel @Inject constructor(
         val lastAt = beforeCursor.lastIndexOf('@')
 
         if (beforeCursor.startsWith("/")) {
-            // Only group admins can use slash commands in groups
-            if (!_isGroup.value || !_isGroupAdmin.value) {
-                _commandSuggestions.value = emptyList()
-                _mentionSuggestions.value = emptyList()
-                return
-            }
-            // Slash command mode
             val query = beforeCursor.substring(1).lowercase().trim()
-            if (lastAt != -1 && (lastAt == 0 || beforeCursor[lastAt - 1] == ' ')) {
+
+            if (_isGroup.value && _isGroupAdmin.value) {
                 // User is picking a target mention after a slash command like /ban @
-                val mentionQuery = beforeCursor.substring(lastAt + 1).lowercase()
-                val allMembers = _members.value.map {
-                    GroupMember(id = it.id, displayName = it.displayName, avatarUrl = it.avatarUrl)
+                if (lastAt != -1 && (lastAt == 0 || beforeCursor[lastAt - 1] == ' ')) {
+                    val mentionQuery = beforeCursor.substring(lastAt + 1).lowercase()
+                    val allMembers = _members.value.map {
+                        GroupMember(id = it.id, displayName = it.displayName, avatarUrl = it.avatarUrl)
+                    }
+                    _mentionSuggestions.value = if (mentionQuery.isEmpty()) {
+                        allMembers
+                    } else {
+                        allMembers.filter { it.displayName.lowercase().contains(mentionQuery) }
+                    }
+                    _commandSuggestions.value = emptyList()
+                    return
                 }
-                _mentionSuggestions.value = if (mentionQuery.isEmpty()) {
-                    // Show ALL members when admin just typed '@' with no filter
-                    allMembers
-                } else {
-                    allMembers.filter { it.displayName.lowercase().contains(mentionQuery) }
-                }
-                _commandSuggestions.value = emptyList()
-            } else {
-                _commandSuggestions.value = BotCommand.ALL_COMMANDS.filter {
+
+                // Group bot moderation commands + Business quick replies
+                val botCommands = BotCommand.ALL_COMMANDS.filter {
                     it.command.removePrefix("/").lowercase().contains(query) ||
                             it.syntax.lowercase().contains(query)
                 }
+                val quickReplyCommands = _quickReplies.value.filter {
+                    it.shortcut.removePrefix("/").lowercase().contains(query) ||
+                            it.replyText.lowercase().contains(query)
+                }.map { qr ->
+                    BotCommand(
+                        command = qr.shortcut,
+                        syntax = qr.shortcut,
+                        description = qr.replyText,
+                        example = "Quick Reply",
+                        template = qr.replyText
+                    )
+                }
+                _commandSuggestions.value = botCommands + quickReplyCommands
+                _mentionSuggestions.value = emptyList()
+            } else {
+                // 1:1 chat or standard member: Quick Reply templates for businesses
+                val quickReplyCommands = _quickReplies.value.filter {
+                    query.isEmpty() ||
+                            it.shortcut.removePrefix("/").lowercase().contains(query) ||
+                            it.replyText.lowercase().contains(query)
+                }.map { qr ->
+                    BotCommand(
+                        command = qr.shortcut,
+                        syntax = qr.shortcut,
+                        description = qr.replyText,
+                        example = "Quick Reply",
+                        template = qr.replyText
+                    )
+                }
+                _commandSuggestions.value = quickReplyCommands
                 _mentionSuggestions.value = emptyList()
             }
         } else if (lastAt != -1 && (lastAt == 0 || beforeCursor[lastAt - 1] == ' ')) {

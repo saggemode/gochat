@@ -534,4 +534,34 @@ interface GoChatApiService {
     suspend fun reportUser(
         @Body body: JsonObject
     ): Response<JsonObject>
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── Business: Quick Replies, Auto-Replies & Analytics ─────────
+    // ═══════════════════════════════════════════════════════════════
+
+    @GET("api/v1/business/quick-replies")
+    suspend fun getQuickReplies(): Response<JsonObject>
+
+    @POST("api/v1/business/quick-replies")
+    suspend fun createQuickReply(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @DELETE("api/v1/business/quick-replies/{id}")
+    suspend fun deleteQuickReply(
+        @Path("id") id: String
+    ): Response<JsonObject>
+
+    @GET("api/v1/business/auto-replies")
+    suspend fun getAutoReplies(): Response<JsonObject>
+
+    @POST("api/v1/business/auto-replies")
+    suspend fun setAutoReply(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @GET("api/v1/chat/analytics")
+    suspend fun getChatAnalytics(
+        @Query("conversation_id") conversationId: String? = null
+    ): Response<JsonObject>
 }

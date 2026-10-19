@@ -58,6 +58,11 @@ class SellerInsightsActivity : AppCompatActivity() {
                 binding.tvListedProducts.text = insights.listedProducts.toString()
                 binding.tvTotalViews.text = insights.totalViews.toString()
 
+                binding.tvMessagesReceived.text = insights.messagesReceived.toString()
+                binding.tvAvgResponseTime.text = insights.avgResponseTimeText
+                binding.tvResponseRate.text = "${insights.responseRatePercent}%"
+                binding.tvChatInquiries.text = insights.chatInquiriesCount.toString()
+
                 setupRevenueChart(insights.salesTrend)
                 setupViewsChart(insights.viewsTrend)
                 setupMostViewed(insights.mostViewedProducts)
