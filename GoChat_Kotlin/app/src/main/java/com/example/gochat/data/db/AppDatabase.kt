@@ -19,7 +19,7 @@ import com.example.gochat.data.model.*
         ProductRemoteKeys::class,
         BlockedUser::class
     ],
-    version = 16,
+    version = 18,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
