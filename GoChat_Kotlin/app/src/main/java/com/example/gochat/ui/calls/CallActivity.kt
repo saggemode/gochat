@@ -1,5 +1,8 @@
 package com.example.gochat.ui.calls
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.media.AudioManager
@@ -7,7 +10,9 @@ import android.media.ToneGenerator
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.PopupMenu
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -15,12 +20,14 @@ import coil.load
 import coil.transform.CircleCropTransformation
 import com.example.gochat.R
 import com.example.gochat.core.haptic.HapticEngine
+import com.example.gochat.core.webrtc.CallAudioController
 import com.example.gochat.core.webrtc.WebRTCClient
 import com.example.gochat.core.webrtc.WebRTCReconnectionHandler
 import com.example.gochat.data.model.CallRecord
 import com.example.gochat.data.model.CallStatus
 import com.example.gochat.data.model.CallType
 import com.example.gochat.data.repository.CallRepository
+import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.data.websocket.GoChatWebSocket
 import com.example.gochat.databinding.ActivityCallBinding
 import com.example.gochat.core.notification.NotificationHelper
@@ -28,6 +35,8 @@ import com.example.gochat.core.ui.applyEdgeToEdge
 import com.example.gochat.core.ui.applyNavigationBarInset
 import com.example.gochat.core.ui.applyStatusBarInset
 import com.example.gochat.core.ui.applySystemBarMargins
+import com.example.gochat.ui.chat.ChatRoomActivity
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.contentOrNull
@@ -47,15 +56,23 @@ class CallActivity : AppCompatActivity() {
         const val EXTRA_IS_OUTGOING = "extra_is_outgoing"
         const val EXTRA_CALL_TYPE = "extra_call_type" // "voice" or "video"
         const val EXTRA_AUTO_ACCEPT = "extra_auto_accept"
+
+        private const val MENU_SEND_MESSAGE = 1
+        private const val MENU_NOISE_CANCELLATION = 2
+        private val COLOR_CONTROL_IDLE = Color.parseColor("#1F2C33")
     }
 
     private lateinit var binding: ActivityCallBinding
     private lateinit var rtcClient: WebRTCClient
     private var reconnectionHandler: WebRTCReconnectionHandler? = null
     private var localStream: MediaStream? = null
+    private lateinit var audioController: CallAudioController
 
     @Inject
     lateinit var callRepo: CallRepository
+
+    @Inject
+    lateinit var chatRepo: ChatRepository
 
     @Inject
     lateinit var webSocket: GoChatWebSocket
@@ -82,11 +99,26 @@ class CallActivity : AppCompatActivity() {
     private var pendingOfferSdp: String? = null
     private var serverCallId = ""
 
+    // Candidates that arrive before WebRTC is set up (incoming call still ringing).
+    private val earlyRemoteCandidates = mutableListOf<String>()
+    private var onPermissionsGranted: ((Map<String, Boolean>) -> Unit)? = null
+
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        val action = onPermissionsGranted
+        onPermissionsGranted = null
+        action?.invoke(result)
+    }
+
+    private val isMediaReady: Boolean get() = ::rtcClient.isInitialized
+
     override fun onCreate(savedInstanceState: Bundle?) {
         applyEdgeToEdge()
         super.onCreate(savedInstanceState)
         binding = ActivityCallBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        audioController = CallAudioController(this)
 
         NotificationHelper.cancelCallNotification(this, callId)
 
@@ -94,7 +126,6 @@ class CallActivity : AppCompatActivity() {
         binding.layoutCallControls.applyNavigationBarInset()
         binding.localVideoView.applySystemBarMargins(top = true, right = true)
 
-        setupWebRTC()
         setupUI()
         observeSignaling()
 
@@ -114,9 +145,12 @@ class CallActivity : AppCompatActivity() {
                     )
                 )
             }
-            startOutgoingCall()
-            startCallTimeoutTimer()
-            playRingbackTone()
+            withCallPermissions(callType == "video") {
+                setupWebRTC()
+                startOutgoingCall()
+                startCallTimeoutTimer()
+                playRingbackTone()
+            }
         } else {
             lifecycleScope.launch(Dispatchers.IO) {
                 callRepo.recordCall(
@@ -145,10 +179,63 @@ class CallActivity : AppCompatActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // singleTop: a second incoming call while this one is active is answered as busy.
+        val newCallId = intent.getStringExtra(EXTRA_CALL_ID).orEmpty()
+        val newIsOutgoing = intent.getBooleanExtra(EXTRA_IS_OUTGOING, true)
+        if (newCallId.isBlank() || newCallId == callId || newCallId == serverCallId) {
+            if (intent.getBooleanExtra(EXTRA_AUTO_ACCEPT, false)) acceptIncomingCall()
+            return
+        }
+        if (!newIsOutgoing) {
+            lifecycleScope.launch(Dispatchers.IO) {
+                callRepo.rejectCall(newCallId, isBusy = true)
+            }
+        }
+    }
+
+    /**
+     * Calls cannot work without the microphone, and video needs the camera.
+     * If only the camera is refused the call carries on as voice.
+     */
+    private fun withCallPermissions(needCamera: Boolean, onReady: () -> Unit) {
+        val required = buildList {
+            add(Manifest.permission.RECORD_AUDIO)
+            if (needCamera) add(Manifest.permission.CAMERA)
+        }
+        val missing = required.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isEmpty()) {
+            onReady()
+            return
+        }
+        onPermissionsGranted = { result ->
+            val micGranted = result[Manifest.permission.RECORD_AUDIO]
+                ?: (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
+            if (micGranted) {
+                if (needCamera && result[Manifest.permission.CAMERA] == false) {
+                    Toast.makeText(this, "Camera permission denied — continuing with audio only", Toast.LENGTH_SHORT).show()
+                }
+                onReady()
+            } else {
+                Toast.makeText(this, "Microphone permission is required for calls", Toast.LENGTH_LONG).show()
+                endCall()
+            }
+        }
+        permissionLauncher.launch(missing.toTypedArray())
+    }
+
+    private fun hasCameraPermission() =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+
     private fun setupWebRTC() {
+        if (isMediaReady) return
         rtcClient = WebRTCClient(this, object : PeerConnection.Observer {
             override fun onIceCandidate(candidate: IceCandidate?) {
                 candidate?.let {
+                    rtcClient.recordLocalCandidate(it)
                     lifecycleScope.launch(Dispatchers.IO) {
                         val cid = serverCallId.ifBlank { callId }
                         callRepo.sendSignaling(cid, targetUserId, "ice-candidate", candidate = it.sdp)
@@ -157,9 +244,7 @@ class CallActivity : AppCompatActivity() {
             }
 
             override fun onAddStream(stream: MediaStream?) {
-                runOnUiThread {
-                    stream?.videoTracks?.getOrNull(0)?.addSink(binding.remoteVideoView)
-                }
+                stream?.videoTracks?.getOrNull(0)?.let { showRemoteVideo(it) }
             }
 
             override fun onSignalingChange(p0: PeerConnection.SignalingState?) {}
@@ -197,9 +282,7 @@ class CallActivity : AppCompatActivity() {
             override fun onAddTrack(receiver: RtpReceiver?, mediaStreams: Array<out MediaStream>?) {
                 val track = receiver?.track()
                 if (track is VideoTrack) {
-                    runOnUiThread {
-                        track.addSink(binding.remoteVideoView)
-                    }
+                    showRemoteVideo(track)
                 }
             }
         })
@@ -216,14 +299,32 @@ class CallActivity : AppCompatActivity() {
             }
         }
 
-        localStream = rtcClient.createLocalStream("local_stream", isVideo = callType == "video")
+        val wantsVideo = callType == "video" && hasCameraPermission()
+        localStream = rtcClient.createLocalStream("local_stream", isVideo = wantsVideo)
         localStream?.let { rtcClient.addStream(it) }
 
         binding.remoteVideoView.init(rtcClient.getEglBaseContext(), null)
         binding.localVideoView.init(rtcClient.getEglBaseContext(), null)
 
-        if (callType == "video") {
+        if (wantsVideo) {
             localStream?.videoTracks?.firstOrNull()?.addSink(binding.localVideoView)
+            binding.localVideoView.visibility = View.VISIBLE
+        }
+
+        audioController.start(speakerOn = wantsVideo)
+        renderControlStates()
+
+        synchronized(earlyRemoteCandidates) {
+            earlyRemoteCandidates.forEach { rtcClient.addIceCandidate(IceCandidate("0", 0, it)) }
+            earlyRemoteCandidates.clear()
+        }
+    }
+
+    private fun showRemoteVideo(track: VideoTrack) {
+        runOnUiThread {
+            track.addSink(binding.remoteVideoView)
+            binding.remoteVideoView.visibility = View.VISIBLE
+            binding.ivCallerAvatar.visibility = View.GONE
         }
     }
 
@@ -241,53 +342,144 @@ class CallActivity : AppCompatActivity() {
             binding.ivCallerAvatar.setImageResource(R.drawable.ic_account)
         }
 
-        binding.btnEndCall.setOnClickListener {
-            endCall()
-        }
+        binding.btnEndCall.setOnClickListener { endCall() }
+        binding.btnAnswerCall.setOnClickListener { acceptIncomingCall() }
 
-        binding.btnAnswerCall.setOnClickListener {
-            acceptIncomingCall()
+        binding.btnSpeaker.setOnClickListener {
+            if (!isMediaReady) return@setOnClickListener
+            audioController.setSpeaker(!audioController.isSpeakerOn)
+            renderControlStates()
         }
 
         binding.btnMute.setOnClickListener {
+            if (!isMediaReady) return@setOnClickListener
             isAudioMuted = !isAudioMuted
-            localStream?.audioTracks?.forEach { it.setEnabled(!isAudioMuted) }
-            binding.btnMute.backgroundTintList = ColorStateList.valueOf(
-                if (isAudioMuted) ContextCompat.getColor(this, R.color.gochat_error)
-                else Color.parseColor("#1F2C33")
-            )
+            rtcClient.setMicrophoneEnabled(!isAudioMuted)
+            renderControlStates()
             Toast.makeText(this, if (isAudioMuted) "Microphone muted" else "Microphone unmuted", Toast.LENGTH_SHORT).show()
         }
 
-        binding.btnToggleVideo.setOnClickListener {
-            if (callType == "video") {
-                isVideoMuted = !isVideoMuted
-                localStream?.videoTracks?.forEach { it.setEnabled(!isVideoMuted) }
-                binding.btnToggleVideo.backgroundTintList = ColorStateList.valueOf(
-                    if (isVideoMuted) ContextCompat.getColor(this, R.color.gochat_error)
-                    else Color.parseColor("#1F2C33")
-                )
-            } else {
-                Toast.makeText(this, "Video is not available on voice calls", Toast.LENGTH_SHORT).show()
+        binding.btnToggleVideo.setOnClickListener { onVideoButtonClicked() }
+        binding.btnMore.setOnClickListener { showMoreMenu() }
+
+        // Voice calls start without video surfaces; they appear if either side turns video on.
+        binding.localVideoView.visibility = View.GONE
+        binding.remoteVideoView.visibility = View.GONE
+
+        binding.tvCallStatus.text = when {
+            isOutgoing -> "Calling..."
+            autoAccept -> "Connecting..."
+            else -> "Incoming Call..."
+        }
+        showInCallControls(isOutgoing || autoAccept)
+    }
+
+    /** Ringing incoming calls show only Decline / Accept; everything else shows the full row. */
+    private fun showInCallControls(inCall: Boolean) {
+        val inCallVisibility = if (inCall) View.VISIBLE else View.GONE
+        binding.containerSpeaker.visibility = inCallVisibility
+        binding.containerVideo.visibility = inCallVisibility
+        binding.containerMute.visibility = inCallVisibility
+        binding.containerMore.visibility = inCallVisibility
+        binding.containerAnswer.visibility = if (inCall) View.GONE else View.VISIBLE
+        binding.tvEndLabel.text = if (inCall) "End" else "Decline"
+    }
+
+    private fun renderControlStates() {
+        setControlActive(binding.btnSpeaker, isMediaReady && audioController.isSpeakerOn)
+
+        binding.btnMute.setImageResource(if (isAudioMuted) R.drawable.ic_mic_off else R.drawable.ic_mic)
+        setControlActive(binding.btnMute, isAudioMuted)
+
+        val videoOn = isMediaReady && rtcClient.hasLocalVideo() && !isVideoMuted
+        binding.btnToggleVideo.setImageResource(if (videoOn) R.drawable.ic_videocam else R.drawable.ic_videocam_off)
+        setControlActive(binding.btnToggleVideo, videoOn)
+    }
+
+    private fun setControlActive(button: FloatingActionButton, active: Boolean) {
+        button.backgroundTintList = ColorStateList.valueOf(if (active) Color.WHITE else COLOR_CONTROL_IDLE)
+        button.imageTintList = ColorStateList.valueOf(if (active) COLOR_CONTROL_IDLE else Color.WHITE)
+    }
+
+    private fun onVideoButtonClicked() {
+        if (!isMediaReady) return
+        if (rtcClient.hasLocalVideo()) {
+            isVideoMuted = !isVideoMuted
+            rtcClient.setVideoEnabled(!isVideoMuted)
+            binding.localVideoView.visibility = if (isVideoMuted) View.GONE else View.VISIBLE
+            renderControlStates()
+            return
+        }
+        // Voice call → turn the camera on and renegotiate so the peer receives video.
+        withCallPermissions(needCamera = true) {
+            if (!hasCameraPermission()) return@withCallPermissions
+            val track = rtcClient.startVideoMidCall()
+            if (track == null) {
+                Toast.makeText(this, "Unable to start camera", Toast.LENGTH_SHORT).show()
+                return@withCallPermissions
+            }
+            track.addSink(binding.localVideoView)
+            binding.localVideoView.visibility = View.VISIBLE
+            isVideoMuted = false
+            if (!audioController.isSpeakerOn) audioController.setSpeaker(true)
+            renderControlStates()
+            startOutgoingCall(iceRestart = false)
+        }
+    }
+
+    private fun showMoreMenu() {
+        val popup = PopupMenu(this, binding.btnMore)
+        popup.menu.add(0, MENU_SEND_MESSAGE, 0, "Send message")
+        popup.menu.add(0, MENU_NOISE_CANCELLATION, 1, "Noise cancellation").apply {
+            isCheckable = true
+            isChecked = !isMediaReady || rtcClient.noiseSuppressionEnabled
+        }
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                MENU_SEND_MESSAGE -> {
+                    openChatWithPeer()
+                    true
+                }
+                MENU_NOISE_CANCELLATION -> {
+                    if (isMediaReady) {
+                        val enable = !rtcClient.noiseSuppressionEnabled
+                        rtcClient.setNoiseSuppression(enable)
+                        Toast.makeText(
+                            this,
+                            if (enable) "Noise cancellation on" else "Noise cancellation off",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    true
+                }
+                else -> false
             }
         }
+        popup.show()
+    }
 
-        if (isOutgoing || autoAccept) {
-            binding.tvCallStatus.text = if (isOutgoing) "Calling..." else "Connecting..."
-            binding.btnAnswerCall.visibility = View.GONE
-            binding.btnMute.visibility = View.VISIBLE
-            binding.btnToggleVideo.visibility = if (callType == "video") View.VISIBLE else View.GONE
-        } else {
-            binding.tvCallStatus.text = "Incoming Call..."
-            binding.btnAnswerCall.visibility = View.VISIBLE
-            binding.btnMute.visibility = View.GONE
-            binding.btnToggleVideo.visibility = View.GONE
-        }
-
-        if (callType == "voice") {
-            binding.localVideoView.visibility = View.GONE
-            binding.remoteVideoView.visibility = View.GONE
-            binding.btnToggleVideo.visibility = View.GONE
+    /** Opens the 1:1 chat with the peer while the call keeps running underneath. */
+    private fun openChatWithPeer() {
+        if (targetUserId.isBlank()) return
+        lifecycleScope.launch {
+            val conversation = withContext(Dispatchers.IO) {
+                chatRepo.getAllConversationsList().firstOrNull {
+                    !it.isGroup && it.memberIds.contains(targetUserId)
+                } ?: chatRepo.createConversation(peerName, listOf(targetUserId)).getOrNull()
+            }
+            if (conversation == null) {
+                Toast.makeText(this@CallActivity, "Unable to open chat", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            startActivity(Intent(this@CallActivity, ChatRoomActivity::class.java).apply {
+                putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, conversation.id)
+                putExtra(ChatRoomActivity.EXTRA_CONVERSATION_TITLE, conversation.title.ifBlank { peerName })
+                putExtra(ChatRoomActivity.EXTRA_CONVERSATION_AVATAR, conversation.avatarUrl.ifBlank { peerAvatar })
+                putExtra(ChatRoomActivity.EXTRA_IS_ONLINE, conversation.isOnline)
+                putExtra(ChatRoomActivity.EXTRA_LAST_SEEN, conversation.lastSeen ?: 0L)
+                putExtra(ChatRoomActivity.EXTRA_IS_GROUP, false)
+                putExtra(ChatRoomActivity.EXTRA_PARTNER_ID, targetUserId)
+            })
         }
     }
 
@@ -297,29 +489,26 @@ class CallActivity : AppCompatActivity() {
         HapticEngine.stopIncomingCall(this)
         NotificationHelper.cancelCallNotification(this, callId)
 
-        runOnUiThread {
-            binding.tvCallStatus.text = "Connecting..."
-            binding.btnAnswerCall.visibility = View.GONE
-            binding.btnMute.visibility = View.VISIBLE
-            if (callType == "video") {
-                binding.btnToggleVideo.visibility = View.VISIBLE
-            }
-        }
+        binding.tvCallStatus.text = "Connecting..."
+        showInCallControls(true)
 
         val effectiveCallId = serverCallId.ifBlank { callId }
         lifecycleScope.launch(Dispatchers.IO) {
             callRepo.acceptCall(effectiveCallId)
         }
 
-        if (pendingOfferSdp != null) {
-            val sdp = pendingOfferSdp!!
-            pendingOfferSdp = null
-            handleRemoteOffer(sdp)
-        } else {
-            // Offer has not arrived yet, explicitly ask caller to re-transmit offer
-            lifecycleScope.launch(Dispatchers.IO) {
-                val cid = serverCallId.ifBlank { callId }
-                callRepo.sendSignaling(cid, targetUserId, "request-offer")
+        withCallPermissions(callType == "video") {
+            setupWebRTC()
+            if (pendingOfferSdp != null) {
+                val sdp = pendingOfferSdp!!
+                pendingOfferSdp = null
+                handleRemoteOffer(sdp)
+            } else {
+                // Offer has not arrived yet, explicitly ask caller to re-transmit offer
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val cid = serverCallId.ifBlank { callId }
+                    callRepo.sendSignaling(cid, targetUserId, "request-offer")
+                }
             }
         }
     }
@@ -388,7 +577,7 @@ class CallActivity : AppCompatActivity() {
         }
         playRingbackTone()
         // Remote peer is confirmed ringing; ensure caller's WebRTC offer is sent
-        if (!isCallConnected) {
+        if (!isCallConnected && isMediaReady) {
             startOutgoingCall(iceRestart = false)
         }
     }
@@ -411,12 +600,18 @@ class CallActivity : AppCompatActivity() {
     }
 
     private fun startOutgoingCall(iceRestart: Boolean = false) {
+        if (!isMediaReady) return
         rtcClient.createOffer(object : SdpObserver {
             override fun onCreateSuccess(sdp: SessionDescription?) {
                 sdp?.let {
                     lifecycleScope.launch(Dispatchers.IO) {
                         val cid = serverCallId.ifBlank { callId }
                         callRepo.sendSignaling(cid, targetUserId, if (iceRestart) "ice-restart-offer" else "offer", sdp = it.description)
+                        // Candidates sent before the peer was listening are lost, so resend
+                        // everything gathered so far right behind each offer.
+                        rtcClient.getLocalCandidates().forEach { candidate ->
+                            callRepo.sendSignaling(cid, targetUserId, "ice-candidate", candidate = candidate.sdp)
+                        }
                     }
                 }
             }
@@ -433,7 +628,6 @@ class CallActivity : AppCompatActivity() {
                 val type = event["type"]?.jsonPrimitive?.contentOrNull
                     ?: event["event"]?.jsonPrimitive?.contentOrNull
 
-                // Match on call_id or peer targetUserId to ensure events are never dropped
                 val eventCallId = event["call_id"]?.jsonPrimitive?.contentOrNull
                     ?: event["id"]?.jsonPrimitive?.contentOrNull
                 val actorId = event["actor_id"]?.jsonPrimitive?.contentOrNull
@@ -444,16 +638,19 @@ class CallActivity : AppCompatActivity() {
                 val isPeerMatch = (actorId != null && actorId == targetUserId) ||
                         (eventTargetId != null && eventTargetId == targetUserId)
 
-                val isCallIdMatch = (eventCallId == null || eventCallId.isBlank() ||
-                        eventCallId == callId ||
-                        (serverCallId.isNotBlank() && eventCallId == serverCallId))
-
-                if (!isCallIdMatch && !isPeerMatch) {
-                    return@collect
+                // The WebSocket replays recent call events, so an event carrying a call id must
+                // belong to this call. Matching on the peer alone let a previous call's
+                // "call_ended" kill a new call to the same person.
+                val isThisCall = if (eventCallId.isNullOrBlank()) {
+                    isPeerMatch
+                } else {
+                    eventCallId == callId || (serverCallId.isNotBlank() && eventCallId == serverCallId) ||
+                            (callId.startsWith("call_") && serverCallId.isBlank() && isPeerMatch)
                 }
+                if (!isThisCall) return@collect
 
-                // If we receive the server call_id for the first time, remember it
-                if (eventCallId != null && eventCallId.isNotBlank() && serverCallId.isBlank()) {
+                // Learn the server call id only when this screen was opened with a local placeholder
+                if (!eventCallId.isNullOrBlank() && serverCallId.isBlank() && callId.startsWith("call_")) {
                     serverCallId = eventCallId
                 }
 
@@ -472,21 +669,27 @@ class CallActivity : AppCompatActivity() {
                             handleRinging()
                         } else if (sigType == "request-offer" && isOutgoing) {
                             startOutgoingCall(iceRestart = false)
-                        } else if ((sigType == "offer" || sigType == "ice-restart-offer") && sdp != null) {
-                            if (isCallAccepted) {
+                        } else if ((sigType == "offer" || sigType == "ice-restart-offer") && !sdp.isNullOrBlank()) {
+                            if (isCallAccepted && isMediaReady) {
                                 handleRemoteOffer(sdp)
                             } else {
                                 pendingOfferSdp = sdp
                             }
-                        } else if ((sigType == "answer" || sigType == "sfu-pub-answer" || sigType == "sfu-sub-answer") && sdp != null) {
-                            rtcClient.setRemoteDescription(SessionDescription(SessionDescription.Type.ANSWER, sdp), object : SdpObserver {
-                                override fun onSetSuccess() {}
-                                override fun onCreateSuccess(p0: SessionDescription?) {}
-                                override fun onCreateFailure(p0: String?) {}
-                                override fun onSetFailure(p0: String?) {}
-                            })
-                        } else if (sigType == "ice-candidate" && candidate != null) {
-                            rtcClient.addIceCandidate(IceCandidate("0", 0, candidate))
+                        } else if ((sigType == "answer" || sigType == "sfu-pub-answer" || sigType == "sfu-sub-answer") && !sdp.isNullOrBlank()) {
+                            if (isMediaReady) {
+                                rtcClient.setRemoteDescription(SessionDescription(SessionDescription.Type.ANSWER, sdp), object : SdpObserver {
+                                    override fun onSetSuccess() {}
+                                    override fun onCreateSuccess(p0: SessionDescription?) {}
+                                    override fun onCreateFailure(p0: String?) {}
+                                    override fun onSetFailure(p0: String?) {}
+                                })
+                            }
+                        } else if (sigType == "ice-candidate" && !candidate.isNullOrBlank()) {
+                            if (isMediaReady) {
+                                rtcClient.addIceCandidate(IceCandidate("0", 0, candidate))
+                            } else {
+                                synchronized(earlyRemoteCandidates) { earlyRemoteCandidates.add(candidate) }
+                            }
                         }
                     }
                     "call_accepted" -> {
@@ -552,6 +755,7 @@ class CallActivity : AppCompatActivity() {
         callTimeoutJob = null
         timerJob?.cancel()
         timerJob = null
+        audioController.stop()
 
         val finalStatus = if (callDurationSeconds > 0) {
             if (isOutgoing) CallStatus.OUTGOING else CallStatus.INCOMING
@@ -560,10 +764,13 @@ class CallActivity : AppCompatActivity() {
         }
 
         val effectiveCallId = serverCallId.ifBlank { callId }
-        lifecycleScope.launch(Dispatchers.IO) {
+        val wasAccepted = isCallAccepted
+        // Not tied to lifecycleScope: the activity finishes right away and the
+        // server must still hear about the hang-up.
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 callRepo.updateCallStatus(callId, finalStatus, callDurationSeconds)
-                if (!isOutgoing && !isCallAccepted) {
+                if (!isOutgoing && !wasAccepted) {
                     callRepo.rejectCall(effectiveCallId)
                 } else {
                     callRepo.endCall(effectiveCallId)
@@ -580,6 +787,7 @@ class CallActivity : AppCompatActivity() {
         HapticEngine.stopIncomingCall(this)
         NotificationHelper.cancelCallNotification(this, callId)
         reconnectionHandler?.cancel()
+        audioController.stop()
         if (::rtcClient.isInitialized) {
             rtcClient.close()
         }

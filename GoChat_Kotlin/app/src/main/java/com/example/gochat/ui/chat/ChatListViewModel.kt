@@ -71,7 +71,8 @@ class ChatListViewModel @Inject constructor(
         val callerAvatar: String,
         val callType: String
     )
-    private val _incomingCallEvent = MutableSharedFlow<IncomingCallEvent>(replay = 1, extraBufferCapacity = 8)
+    // No replay: a replayed event would reopen the incoming-call screen for a call that already ended.
+    private val _incomingCallEvent = MutableSharedFlow<IncomingCallEvent>(replay = 0, extraBufferCapacity = 8)
     val incomingCallEvent: SharedFlow<IncomingCallEvent> = _incomingCallEvent.asSharedFlow()
 
     // Paged Conversations Flow
