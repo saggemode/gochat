@@ -84,9 +84,18 @@ class CartActivity : AppCompatActivity() {
 
     private fun updateQuantity(item: CartItem, quantity: Int) {
         lifecycleScope.launch {
-            val result = repository.addToCart(item.productId, quantity)
+            // Use the per-line endpoints keyed by the server cart-item id so quantity is SET,
+            // not added, and so removing one line doesn't clear the whole cart.
+            val result = if (quantity <= 0) {
+                repository.removeCartItemById(item.id)
+            } else {
+                repository.updateCartItem(item.id, quantity)
+            }
             if (result.isSuccess) {
-                loadCart()
+                val items = result.getOrDefault(emptyList())
+                cartAdapter.submitList(items)
+                updateTotal(items)
+                binding.tvEmptyCart.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
             } else {
                 Toast.makeText(this@CartActivity, getString(R.string.error_update_quantity), Toast.LENGTH_SHORT).show()
             }

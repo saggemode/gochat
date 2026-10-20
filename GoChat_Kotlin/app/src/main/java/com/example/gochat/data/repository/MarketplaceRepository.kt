@@ -1150,25 +1150,78 @@ class MarketplaceRepository @Inject constructor(
         return try {
             val response = api.getCart()
             if (response.isSuccessful) {
+                // The gateway returns the Cart object directly: { id, user_id, items: [...], subtotal }.
+                // Older/alternate shapes nest it under "cart". Each item nests the product under "product".
                 val data = response.body()
-                val list = when (data) {
-                    is JsonArray -> data.mapNotNull {
-                        try { json.decodeFromJsonElement<CartItem>(it) } catch (_: Exception) { null }
-                    }
-                    is JsonObject -> {
-                        data["cart"]?.jsonObject?.get("items")?.jsonArray?.mapNotNull {
-                            try { json.decodeFromJsonElement<CartItem>(it) } catch (_: Exception) { null }
-                        } ?: emptyList()
-                    }
-                    else -> emptyList()
+                val itemsArray = when (data) {
+                    is JsonArray -> data
+                    is JsonObject -> (data["items"]
+                        ?: data["cart"]?.jsonObject?.get("items"))?.jsonArray
+                    else -> null
                 }
-                if (list.isNotEmpty()) {
-                    list.forEach { marketplaceDao.insertCartItem(it) }
+                if (itemsArray != null) {
+                    val serverItems = itemsArray.mapNotNull { el ->
+                        (el as? JsonObject)?.let { parseCartItemJson(it) }
+                    }
+                    // Server cart is authoritative: replace the local table so stale/duplicate
+                    // rows (e.g. from optimistic inserts) can't linger and break the quantity UI.
+                    marketplaceDao.clearCart()
+                    serverItems.forEach { marketplaceDao.insertCartItem(it) }
                 }
             }
             Result.success(marketplaceDao.getCartItems())
         } catch (e: Exception) {
             Result.success(marketplaceDao.getCartItems())
+        }
+    }
+
+    /** Maps a server CartItem JSON (with nested "product") to the flat local [CartItem]. */
+    private fun parseCartItemJson(obj: JsonObject): CartItem? {
+        val id = obj["id"]?.jsonPrimitive?.contentOrNull ?: return null
+        val product = obj["product"]?.jsonObject
+        val productId = (obj["product_id"] ?: product?.get("id"))?.jsonPrimitive?.contentOrNull.orEmpty()
+        val quantity = obj["quantity"]?.jsonPrimitive?.intOrNull ?: 1
+        val lockedPrice = obj["locked_price"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+        val productPrice = if (lockedPrice > 0.0) lockedPrice
+            else product?.get("price")?.jsonPrimitive?.doubleOrNull ?: 0.0
+        val productName = product?.get("name")?.jsonPrimitive?.contentOrNull
+            ?: product?.get("title")?.jsonPrimitive?.contentOrNull ?: "Marketplace Item"
+        val productImage = (product?.get("image_url") ?: product?.get("image")
+            ?: product?.get("primary_image"))?.jsonPrimitive?.contentOrNull
+            ?: product?.get("image_urls")?.jsonArray?.firstOrNull()?.jsonPrimitive?.contentOrNull
+        return CartItem(
+            id = id,
+            productId = productId,
+            quantity = quantity,
+            productName = productName,
+            productPrice = productPrice,
+            productImage = productImage,
+            storeId = product?.get("store_id")?.jsonPrimitive?.contentOrNull.orEmpty(),
+            storeName = product?.get("store_name")?.jsonPrimitive?.contentOrNull ?: "Official Store",
+            variantId = obj["variant_id"]?.jsonPrimitive?.contentOrNull,
+            variantTitle = obj["variant_title"]?.jsonPrimitive?.contentOrNull
+        )
+    }
+
+    /** SET a cart line to an exact quantity via PUT /cart/items/{id}, then resync from server. */
+    suspend fun updateCartItem(cartItemId: String, quantity: Int): Result<List<CartItem>> {
+        return try {
+            if (quantity <= 0) return removeCartItemById(cartItemId)
+            val body = buildJsonObject { put("quantity", quantity) }
+            api.updateCartItem(cartItemId, body)
+            getCart()
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** Remove a single cart line via DELETE /cart/items/{id}, then resync from server. */
+    suspend fun removeCartItemById(cartItemId: String): Result<List<CartItem>> {
+        return try {
+            api.deleteCartItem(cartItemId)
+            getCart()
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
@@ -1179,11 +1232,16 @@ class MarketplaceRepository @Inject constructor(
                 put("quantity", quantity)
             }
             val response = api.addToCart(body)
-            if (quantity <= 0) {
+            if (response.isSuccessful) {
+                // Server owns the cart (it merges duplicate products and assigns line ids);
+                // resync so the local table mirrors it exactly — no random duplicate rows.
+                getCart()
+            } else if (quantity <= 0) {
                 marketplaceDao.removeCartItem(productId)
             } else {
+                // Offline best-effort: a deterministic id keyed by product avoids duplicate rows.
                 val item = CartItem(
-                    id = UUID.randomUUID().toString(),
+                    id = "local_$productId",
                     productId = productId,
                     quantity = quantity,
                     productName = product?.name ?: "Marketplace Item",

@@ -496,7 +496,9 @@ class ChatRoomViewModel @Inject constructor(
             handleModerationSlashCommand(trimmed, convId)
         }
 
-        viewModelScope.launch {
+        // Run off the main thread so the optimistic DB insert / network dispatch never
+        // contends with UI rendering while scrolling or animating the new bubble.
+        viewModelScope.launch(Dispatchers.IO) {
             if (!isSlashCommand) {
                 chatRepository.sendMessage(
                     conversationId = convId,

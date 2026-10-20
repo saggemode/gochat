@@ -683,6 +683,11 @@ class ChatRoomActivity : AppCompatActivity() {
 
         binding.rvMessages.layoutManager = layoutManager
         binding.rvMessages.adapter = messageAdapter
+        // Smoothness: don't run a "change" animation every time a bubble rebinds for a
+        // status update (SENDING→SENT→DELIVERED→READ) — that flicker reads as jank.
+        (binding.rvMessages.itemAnimator as? androidx.recyclerview.widget.SimpleItemAnimator)
+            ?.supportsChangeAnimations = false
+        binding.rvMessages.setItemViewCacheSize(20)
 
         // Floating FAB & Unread Messages Pill clicks
         binding.layoutScrollToBottomContainer.setOnClickListener {

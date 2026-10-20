@@ -370,6 +370,19 @@ interface GoChatApiService {
         @Body body: JsonObject
     ): Response<JsonObject>
 
+    // Update a single cart line's quantity (SET, not add): PUT /marketplace/cart/items/{id}
+    @PUT("${ApiConstants.CART}/items/{id}")
+    suspend fun updateCartItem(
+        @Path("id") cartItemId: String,
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    // Remove a single cart line: DELETE /marketplace/cart/items/{id}
+    @DELETE("${ApiConstants.CART}/items/{id}")
+    suspend fun deleteCartItem(
+        @Path("id") cartItemId: String
+    ): Response<JsonObject>
+
     @GET(ApiConstants.ORDERS)
     suspend fun getOrders(): Response<JsonElement>
 
