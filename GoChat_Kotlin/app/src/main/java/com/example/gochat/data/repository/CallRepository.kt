@@ -169,4 +169,41 @@ class CallRepository @Inject constructor(
     suspend fun clearCallHistory() {
         dao.clearAllCalls()
     }
+
+    // ── ICE servers (STUN/TURN) ──────────────────────────────────
+    /**
+     * Fetches the STUN/TURN servers from the backend. TURN is essential for calls
+     * between peers behind carrier/mobile NAT. Falls back to public STUN on any error
+     * so calls still work on the same network even if the endpoint is unreachable.
+     */
+    suspend fun getIceServers(): List<IceServerConfig> {
+        val fallback = listOf(
+            IceServerConfig(listOf("stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"), null, null)
+        )
+        return try {
+            val response = api.getIceServers()
+            if (!response.isSuccessful) return fallback
+            val arr = response.body()?.get("ice_servers")?.jsonArray ?: return fallback
+            val parsed = arr.mapNotNull { el ->
+                val obj = el as? JsonObject ?: return@mapNotNull null
+                val urls = obj["urls"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: return@mapNotNull null
+                if (urls.isEmpty()) return@mapNotNull null
+                IceServerConfig(
+                    urls = urls,
+                    username = obj["username"]?.jsonPrimitive?.contentOrNull,
+                    credential = obj["credential"]?.jsonPrimitive?.contentOrNull
+                )
+            }
+            if (parsed.isEmpty()) fallback else parsed
+        } catch (_: Exception) {
+            fallback
+        }
+    }
 }
+
+/** A STUN/TURN server entry for WebRTC. */
+data class IceServerConfig(
+    val urls: List<String>,
+    val username: String?,
+    val credential: String?
+)

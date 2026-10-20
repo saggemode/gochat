@@ -17,6 +17,8 @@ import com.example.gochat.data.websocket.GoChatWebSocket
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -62,6 +64,11 @@ class ChatRoomViewModel @Inject constructor(
 
     private val _isOtherUserTyping = MutableStateFlow(false)
     val isOtherUserTyping: StateFlow<Boolean> = _isOtherUserTyping.asStateFlow()
+
+    // Who is currently typing (null = nobody). Carries the avatar so group chats can show it.
+    private val _typingParticipant = MutableStateFlow<TypingParticipant?>(null)
+    val typingParticipant: StateFlow<TypingParticipant?> = _typingParticipant.asStateFlow()
+    private var typingClearJob: Job? = null
 
     private val _isPartnerOnline = MutableStateFlow(false)
     val isPartnerOnline: StateFlow<Boolean> = _isPartnerOnline.asStateFlow()
@@ -1575,15 +1582,36 @@ class ChatRoomViewModel @Inject constructor(
             }
             type == "typing" -> {
                 val isTyping = event["is_typing"]?.jsonPrimitive?.booleanOrNull ?: false
-                _isOtherUserTyping.value = isTyping
                 val senderId = (event["sender_id"] ?: event["user_id"])?.jsonPrimitive?.contentOrNull.orEmpty()
                 val currentUserId = tokenManager.userId ?: ""
-                if (senderId.isNotEmpty() && senderId != currentUserId && currentPartnerId.isNullOrEmpty()) {
+                // Ignore our own typing echo.
+                if (senderId.isNotEmpty() && senderId == currentUserId) return
+                _isOtherUserTyping.value = isTyping
+                if (senderId.isNotEmpty() && currentPartnerId.isNullOrEmpty()) {
                     currentPartnerId = senderId
                 }
                 // Typing implies the user is online
                 if (isTyping) {
                     _isPartnerOnline.value = true
+                    // Resolve name/avatar: group chats look the sender up among members;
+                    // the event may also carry them directly.
+                    val member = _members.value.firstOrNull { it.id == senderId }
+                    val name = event["sender_name"]?.jsonPrimitive?.contentOrNull
+                        ?: member?.displayName?.takeIf { it.isNotBlank() }
+                        ?: "Someone"
+                    val avatar = event["sender_avatar"]?.jsonPrimitive?.contentOrNull
+                        ?: member?.avatarUrl.orEmpty()
+                    _typingParticipant.value = TypingParticipant(senderId, name, avatar)
+                    // Safety auto-clear in case the "stopped typing" event is lost.
+                    typingClearJob?.cancel()
+                    typingClearJob = viewModelScope.launch {
+                        delay(6000)
+                        _isOtherUserTyping.value = false
+                        _typingParticipant.value = null
+                    }
+                } else {
+                    typingClearJob?.cancel()
+                    _typingParticipant.value = null
                 }
             }
             type == "read_receipt" || type == "event_read_receipt" -> {
@@ -1719,3 +1747,10 @@ class ChatRoomViewModel @Inject constructor(
         chatRepository.activeConversationId = null
     }
 }
+
+/** The person currently typing — [avatarUrl] lets group chats show their picture. */
+data class TypingParticipant(
+    val id: String,
+    val name: String,
+    val avatarUrl: String
+)

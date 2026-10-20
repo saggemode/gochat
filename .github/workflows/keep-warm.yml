@@ -1,0 +1,22 @@
+name: Keep Render Backend Warm
+
+# Render's free/starter web services sleep after ~15 min of inactivity, which adds
+# multi-second cold-start latency to the first message/call. This pings the gateway
+# health endpoint every 10 minutes so it stays warm.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping gateway health endpoint
+        run: |
+          for url in \
+            "https://gochat-kvpj.onrender.com/healthz" \
+            "https://gochat-gateway.onrender.com/healthz"; do
+            echo "Pinging $url"
+            curl -fsS --max-time 30 "$url" && echo " — OK" || echo " — unreachable (skipping)"
+          done

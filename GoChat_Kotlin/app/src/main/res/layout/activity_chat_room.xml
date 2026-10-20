@@ -554,6 +554,43 @@
 
             </LinearLayout>
 
+            <!-- Typing indicator bubble (incoming-style, bottom-left; avatar shown in groups) -->
+            <LinearLayout
+                android:id="@+id/layoutTypingIndicator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|start"
+                android:layout_marginStart="8dp"
+                android:layout_marginBottom="4dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/ivTypingAvatar"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:layout_marginEnd="6dp"
+                    android:src="@drawable/ic_account"
+                    android:visibility="gone"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+                    tools:visibility="visible" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_bubble_other"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="12dp">
+
+                    <com.example.gochat.ui.custom.TypingIndicatorView
+                        android:id="@+id/typingDots"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+            </LinearLayout>
+
         </FrameLayout>
 
         <!-- Bot Moderation Banner -->

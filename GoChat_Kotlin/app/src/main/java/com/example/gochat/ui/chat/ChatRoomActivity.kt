@@ -200,6 +200,30 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     }
 
+    /** Shows/hides the in-chat typing bubble; renders the sender's avatar in group chats. */
+    private fun renderTypingBubble(participant: TypingParticipant?) {
+        if (participant == null) {
+            binding.layoutTypingIndicator.visibility = View.GONE
+            binding.typingDots.stop()
+            return
+        }
+        val isGroup = intent.getBooleanExtra(EXTRA_IS_GROUP, false)
+        if (isGroup) {
+            binding.ivTypingAvatar.visibility = View.VISIBLE
+            MediaImageHelper.loadSafeImage(
+                imageView = binding.ivTypingAvatar,
+                url = participant.avatarUrl,
+                isCircle = true,
+                placeholderRes = R.drawable.ic_account,
+                errorRes = R.drawable.ic_account
+            )
+        } else {
+            binding.ivTypingAvatar.visibility = View.GONE
+        }
+        binding.layoutTypingIndicator.visibility = View.VISIBLE
+        binding.typingDots.start()
+    }
+
     // Permission launchers
     private val requestAudioPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -1592,6 +1616,12 @@ class ChatRoomActivity : AppCompatActivity() {
                     ) { isTyping, isOnline, lastSeen, isDeviceOnline ->
                         renderPresence(isTyping, isOnline, lastSeen, isDeviceOnline)
                     }.collect {}
+                }
+
+                launch {
+                    viewModel.typingParticipant.collect { participant ->
+                        renderTypingBubble(participant)
+                    }
                 }
 
                 launch {

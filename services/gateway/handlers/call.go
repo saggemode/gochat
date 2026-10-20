@@ -3,7 +3,9 @@ package handlers
 import (
 	"context"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -187,6 +189,46 @@ func (h *CallHandler) SendSignalingMessage(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": resp.Success})
+}
+
+// GetIceServers returns the STUN/TURN servers the WebRTC clients should use.
+// TURN (required for calls between two phones on mobile/carrier NAT) is read from
+// env so a coturn/Twilio/Metered server can be configured without a code change:
+//   TURN_URLS=turn:turn.example.com:3478,turns:turn.example.com:5349
+//   TURN_USERNAME=...   TURN_PASSWORD=...
+// STUN_URLS is optional and defaults to Google's public STUN servers.
+func (h *CallHandler) GetIceServers(c *gin.Context) {
+	iceServers := make([]gin.H, 0, 2)
+
+	stun := os.Getenv("STUN_URLS")
+	if stun == "" {
+		stun = "stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302"
+	}
+	iceServers = append(iceServers, gin.H{"urls": splitCSV(stun)})
+
+	turnURLs := os.Getenv("TURN_URLS")
+	turnUser := os.Getenv("TURN_USERNAME")
+	turnPass := os.Getenv("TURN_PASSWORD")
+	if turnURLs != "" && turnUser != "" && turnPass != "" {
+		iceServers = append(iceServers, gin.H{
+			"urls":       splitCSV(turnURLs),
+			"username":   turnUser,
+			"credential": turnPass,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ice_servers": iceServers})
+}
+
+func splitCSV(s string) []string {
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if t := strings.TrimSpace(p); t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
 }
 
 func (h *CallHandler) GetCallHistory(c *gin.Context) {

@@ -66,6 +66,7 @@ class CallActivity : AppCompatActivity() {
     private lateinit var rtcClient: WebRTCClient
     private var reconnectionHandler: WebRTCReconnectionHandler? = null
     private var localStream: MediaStream? = null
+    private var iceServers: List<PeerConnection.IceServer> = emptyList()
     private lateinit var audioController: CallAudioController
 
     @Inject
@@ -146,10 +147,13 @@ class CallActivity : AppCompatActivity() {
                 )
             }
             withCallPermissions(callType == "video") {
-                setupWebRTC()
-                startOutgoingCall()
-                startCallTimeoutTimer()
-                playRingbackTone()
+                lifecycleScope.launch {
+                    ensureIceServers()
+                    setupWebRTC()
+                    startOutgoingCall()
+                    startCallTimeoutTimer()
+                    playRingbackTone()
+                }
             }
         } else {
             lifecycleScope.launch(Dispatchers.IO) {
@@ -230,6 +234,17 @@ class CallActivity : AppCompatActivity() {
     private fun hasCameraPermission() =
         ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
 
+    /** Fetches STUN/TURN servers once; TURN is what lets calls connect across networks. */
+    private suspend fun ensureIceServers() {
+        if (iceServers.isNotEmpty()) return
+        iceServers = callRepo.getIceServers().map { cfg ->
+            val builder = PeerConnection.IceServer.builder(cfg.urls)
+            if (!cfg.username.isNullOrBlank()) builder.setUsername(cfg.username)
+            if (!cfg.credential.isNullOrBlank()) builder.setPassword(cfg.credential)
+            builder.createIceServer()
+        }
+    }
+
     private fun setupWebRTC() {
         if (isMediaReady) return
         rtcClient = WebRTCClient(this, object : PeerConnection.Observer {
@@ -285,7 +300,7 @@ class CallActivity : AppCompatActivity() {
                     showRemoteVideo(track)
                 }
             }
-        })
+        }, iceServers)
 
         rtcClient.createPeerConnection()
 
@@ -498,16 +513,19 @@ class CallActivity : AppCompatActivity() {
         }
 
         withCallPermissions(callType == "video") {
-            setupWebRTC()
-            if (pendingOfferSdp != null) {
-                val sdp = pendingOfferSdp!!
-                pendingOfferSdp = null
-                handleRemoteOffer(sdp)
-            } else {
-                // Offer has not arrived yet, explicitly ask caller to re-transmit offer
-                lifecycleScope.launch(Dispatchers.IO) {
-                    val cid = serverCallId.ifBlank { callId }
-                    callRepo.sendSignaling(cid, targetUserId, "request-offer")
+            lifecycleScope.launch {
+                ensureIceServers()
+                setupWebRTC()
+                if (pendingOfferSdp != null) {
+                    val sdp = pendingOfferSdp!!
+                    pendingOfferSdp = null
+                    handleRemoteOffer(sdp)
+                } else {
+                    // Offer has not arrived yet, explicitly ask caller to re-transmit offer
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        val cid = serverCallId.ifBlank { callId }
+                        callRepo.sendSignaling(cid, targetUserId, "request-offer")
+                    }
                 }
             }
         }

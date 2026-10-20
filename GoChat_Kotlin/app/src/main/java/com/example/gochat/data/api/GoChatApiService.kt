@@ -299,6 +299,9 @@ interface GoChatApiService {
         @Body body: JsonObject
     ): Response<JsonObject>
 
+    @GET("api/v1/calls/ice-servers")
+    suspend fun getIceServers(): Response<JsonObject>
+
     @GET(ApiConstants.CALL_HISTORY)
     suspend fun getCallHistory(): Response<JsonElement>
 

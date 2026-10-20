@@ -7,17 +7,19 @@ import java.util.ArrayList
 
 class WebRTCClient(
     private val context: Context,
-    private val observer: PeerConnection.Observer
+    private val observer: PeerConnection.Observer,
+    // STUN alone fails between two phones on carrier NAT; pass TURN servers (fetched from
+    // the backend) so relayed connections work. Falls back to public STUN when empty.
+    iceServers: List<PeerConnection.IceServer>? = null
 ) {
     private val eglBaseContext = EglBase.create().eglBaseContext
     private val peerConnectionFactory: PeerConnectionFactory by lazy { createPeerConnectionFactory() }
-    // STUN only works when at least one side has a reachable public address.
-    // Calls between two phones on mobile data (carrier NAT) need a real TURN server added here.
-    private val iceServers = listOf(
-        PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
-        PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer(),
-        PeerConnection.IceServer.builder("stun:stun2.l.google.com:19302").createIceServer()
-    )
+    private val iceServers: List<PeerConnection.IceServer> = iceServers?.takeIf { it.isNotEmpty() }
+        ?: listOf(
+            PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
+            PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer(),
+            PeerConnection.IceServer.builder("stun:stun2.l.google.com:19302").createIceServer()
+        )
     private var peerConnection: PeerConnection? = null
 
     // Remote ICE candidates that arrived before the remote description was applied.

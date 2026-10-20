@@ -30,6 +30,7 @@ import (
 	storypb "gochat/gen/story"
 	"gochat/pkg/cdn"
 	"gochat/pkg/config"
+	"gochat/pkg/fcm"
 	"gochat/pkg/database"
 	"gochat/pkg/discovery"
 	"gochat/pkg/eventbus"
@@ -523,6 +524,7 @@ func main() {
 		authRequired.POST("/calls/:id/end", callHandler.EndCall)
 		authRequired.POST("/calls/:id/signaling", callHandler.SendSignalingMessage)
 		authRequired.GET("/calls/history", callHandler.GetCallHistory)
+		authRequired.GET("/calls/ice-servers", callHandler.GetIceServers)
 
 		// Public Channels
 		authRequired.POST("/channels", channelHandler.CreateChannel)
@@ -881,13 +883,22 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 							hub.SendToUser(actorIDStr, statusAck)
 						}
 					} else if eventType == "new_message" {
-						// Only log push notifications for new messages
-						log.Info("MOCK PUSH NOTIFICATION TRIGGERED (RECIPIENT OFFLINE)",
-							zap.String("recipient_id", memberID),
-							zap.String("conversation_id", convIDStr),
-							zap.String("message_id", msgIDStr),
-							zap.String("sender_id", actorIDStr),
-						)
+						// Recipient is offline — send a real FCM push so their device wakes.
+						go func(recipient, convID, msgID, senderID string) {
+							pushCtx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+							defer cancel()
+							data := map[string]string{
+								"type":            "new_message",
+								"event_type":      "new_message",
+								"conversation_id": convID,
+								"message_id":      msgID,
+								"sender_id":       senderID,
+							}
+							if err := fcm.SendToUser(pushCtx, recipient, "GoChat", "You received a new message", data); err != nil {
+								log.Debug("push notification send failed",
+									zap.String("recipient_id", recipient), zap.Error(err))
+							}
+						}(memberID, convIDStr, msgIDStr, actorIDStr)
 					}
 				}
 			}
