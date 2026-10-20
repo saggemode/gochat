@@ -60,7 +60,10 @@ class ProductDetailsActivity : AppCompatActivity() {
 
     @Inject
     lateinit var authRepository: AuthRepository
-    
+
+    @Inject
+    lateinit var tokenManager: com.example.gochat.data.api.TokenManager
+
     private var product: Product? = null
     private var store: Store? = null
     private var selectedVariant: ProductVariant? = null
@@ -442,6 +445,30 @@ class ProductDetailsActivity : AppCompatActivity() {
         // Store initial display before fetch finishes
         binding.tvStoreName.text = product.storeName
         binding.tvStoreRating.text = String.format(Locale.US, "%s • PIN: %s", product.sellerLocation, product.sellerPin.ifBlank { "1P0YE4WZ" })
+
+        applyOwnershipUI(product)
+    }
+
+    /**
+     * You can't buy from or message yourself: hide the whole Chat/Add-to-Cart/Buy-Now bar
+     * when the product belongs to the current user.
+     */
+    private fun applyOwnershipUI(product: Product) {
+        binding.cardBottomActions.visibility = if (isMyProduct(product)) View.GONE else View.VISIBLE
+    }
+
+    private fun isMyProduct(product: Product): Boolean {
+        val myId = repository.userId?.takeIf { it.isNotBlank() }
+        if (myId != null) {
+            if (product.sellerId == myId) return true
+            if (store?.ownerId == myId) return true
+        }
+        val myPin = tokenManager.userPin?.takeIf { it.isNotBlank() }
+        if (myPin != null) {
+            if (product.sellerPin.isNotBlank() && product.sellerPin.equals(myPin, ignoreCase = true)) return true
+            if (store?.ownerPin?.equals(myPin, ignoreCase = true) == true) return true
+        }
+        return false
     }
 
     private fun setupVariantsUI(product: Product) {
@@ -530,6 +557,9 @@ class ProductDetailsActivity : AppCompatActivity() {
 
     private fun displayStore(store: Store) {
         binding.tvStoreName.text = store.name
+
+        // The store carries owner id/PIN the product fields may lack — re-check ownership now.
+        product?.let { applyOwnershipUI(it) }
 
         val followers = store.followersCount
         val followerText = when (followers) {
