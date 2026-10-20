@@ -67,6 +67,7 @@ class ProductDetailsActivity : AppCompatActivity() {
     private var product: Product? = null
     private var store: Store? = null
     private var selectedVariant: ProductVariant? = null
+    private var selectedQuantity: Int = 1
     private lateinit var variantAdapterPrimary: VariantChipAdapter
     private lateinit var variantAdapterSecondary: VariantChipAdapter
     private lateinit var reviewAdapter: ReviewAdapter
@@ -170,6 +171,9 @@ class ProductDetailsActivity : AppCompatActivity() {
             val p = product ?: return@setOnClickListener
             openChatWithSeller(p)
         }
+
+        binding.btnDecreaseQty.setOnClickListener { changeQuantity(-1) }
+        binding.btnIncreaseQty.setOnClickListener { changeQuantity(1) }
 
         binding.btnAddToCart.setOnClickListener {
             product?.let { addToCart(it, andProceedToCheckout = false) }
@@ -454,7 +458,9 @@ class ProductDetailsActivity : AppCompatActivity() {
      * when the product belongs to the current user.
      */
     private fun applyOwnershipUI(product: Product) {
-        binding.cardBottomActions.visibility = if (isMyProduct(product)) View.GONE else View.VISIBLE
+        val mine = isMyProduct(product)
+        binding.cardBottomActions.visibility = if (mine) View.GONE else View.VISIBLE
+        binding.layoutQuantity.visibility = if (mine) View.GONE else View.VISIBLE
     }
 
     private fun isMyProduct(product: Product): Boolean {
@@ -721,16 +727,31 @@ class ProductDetailsActivity : AppCompatActivity() {
         }
     }
 
+    /** Adjusts the selected quantity, clamped between 1 and available stock. */
+    private fun changeQuantity(delta: Int) {
+        val maxStock = (product?.stock ?: 1).coerceAtLeast(1)
+        val newQty = (selectedQuantity + delta).coerceIn(1, maxStock)
+        if (newQty == selectedQuantity) {
+            if (delta > 0 && newQty == maxStock) {
+                Toast.makeText(this, "Only $maxStock in stock", Toast.LENGTH_SHORT).show()
+            }
+            return
+        }
+        selectedQuantity = newQty
+        binding.tvQuantity.text = newQty.toString()
+    }
+
     private fun addToCart(product: Product, andProceedToCheckout: Boolean) {
         lifecycleScope.launch {
             // Include variant info in cart if selected
             val finalPrice = selectedVariant?.priceOverride?.let { if (it > 0) it else null } ?: product.price
-            val result = repository.addToCart(product.id, 1, product.copy(price = finalPrice))
+            val result = repository.addToCart(product.id, selectedQuantity, product.copy(price = finalPrice))
             if (result.isSuccess) {
                 if (andProceedToCheckout) {
                     startActivity(Intent(this@ProductDetailsActivity, CheckoutActivity::class.java))
                 } else {
-                    Toast.makeText(this@ProductDetailsActivity, "🛒 Added \"${product.displayTitle}\" to cart!", Toast.LENGTH_SHORT).show()
+                    val qtyLabel = if (selectedQuantity > 1) " ×$selectedQuantity" else ""
+                    Toast.makeText(this@ProductDetailsActivity, "🛒 Added \"${product.displayTitle}\"$qtyLabel to cart!", Toast.LENGTH_SHORT).show()
                 }
             } else {
                 Toast.makeText(this@ProductDetailsActivity, getString(R.string.error_add_to_cart), Toast.LENGTH_SHORT).show()
