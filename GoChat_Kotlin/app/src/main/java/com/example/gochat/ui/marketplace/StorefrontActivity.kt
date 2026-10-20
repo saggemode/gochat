@@ -77,17 +77,33 @@ class StorefrontActivity : AppCompatActivity() {
             binding.tvStoreName.text = name
             binding.tvStoreMeta.text = "$category • $address • PIN: $pin"
             binding.tvStoreDescription.text = desc.orEmpty()
-            if (!logo.isNullOrBlank()) {
-                MediaImageHelper.loadSafeImage(binding.ivStoreLogo, logo, isCircle = true)
-            }
-            if (!banner.isNullOrBlank()) {
-                MediaImageHelper.loadSafeImage(binding.ivStoreBanner, banner)
-            }
+            bindStoreLogoAndBanner(logo, banner)
         }
 
         setupAdapter()
         setupListeners(storeId)
         loadStoreData(storeId)
+    }
+
+    /**
+     * Binds the store header images. The logo circle must NEVER display the banner image:
+     * if the store has no distinct logo (blank, or the same URL as the banner), we show a
+     * clean storefront placeholder instead. The banner keeps the layout's default wallpaper
+     * when none is set.
+     */
+    private fun bindStoreLogoAndBanner(logoUrl: String?, bannerUrl: String?) {
+        if (!bannerUrl.isNullOrBlank()) {
+            MediaImageHelper.loadSafeImage(binding.ivStoreBanner, bannerUrl)
+        }
+        val hasDistinctLogo = !logoUrl.isNullOrBlank() && logoUrl != bannerUrl
+        if (hasDistinctLogo) {
+            MediaImageHelper.loadSafeImage(
+                binding.ivStoreLogo, logoUrl, isCircle = true,
+                placeholderRes = R.drawable.ic_storefront, errorRes = R.drawable.ic_storefront
+            )
+        } else {
+            binding.ivStoreLogo.setImageResource(R.drawable.ic_storefront)
+        }
     }
 
     private fun setupAdapter() {
@@ -220,8 +236,7 @@ class StorefrontActivity : AppCompatActivity() {
             "Welcome to ${store.name}! Browse our curated collection on GoChat Marketplace."
         }
         binding.ivStoreVerified.visibility = if (store.isVerified) View.VISIBLE else View.GONE
-        MediaImageHelper.loadSafeImage(binding.ivStoreLogo, store.logoUrl, isCircle = true)
-        MediaImageHelper.loadSafeImage(binding.ivStoreBanner, store.bannerUrl)
+        bindStoreLogoAndBanner(store.logoUrl, store.bannerUrl)
 
         if (isOwner) {
             binding.btnStorefrontAction.visibility = View.VISIBLE
