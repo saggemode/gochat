@@ -63,6 +63,28 @@ class CartActivity : AppCompatActivity() {
                 Toast.makeText(this, getString(R.string.empty_cart_message), Toast.LENGTH_SHORT).show()
             }
         }
+        binding.btnClearCart.setOnClickListener { confirmClearCart() }
+    }
+
+    private fun confirmClearCart() {
+        if (cartAdapter.currentList.isEmpty()) {
+            Toast.makeText(this, getString(R.string.empty_cart_message), Toast.LENGTH_SHORT).show()
+            return
+        }
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Clear cart?")
+            .setMessage("This removes all items from your cart.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Clear all") { _, _ ->
+                lifecycleScope.launch {
+                    repository.clearCart()
+                    cartAdapter.submitList(emptyList())
+                    updateTotal(emptyList())
+                    binding.tvEmptyCart.visibility = View.VISIBLE
+                    Toast.makeText(this@CartActivity, "Cart cleared", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .show()
     }
 
     private fun loadCart() {

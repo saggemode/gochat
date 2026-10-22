@@ -16,7 +16,22 @@
         app:layout_constraintTop_toTopOf="parent"
         app:navigationIcon="@drawable/ic_back"
         app:title="@string/checkout"
-        app:titleTextColor="@color/gochat_text_primary" />
+        app:titleTextColor="@color/gochat_text_primary">
+
+        <ImageView
+            android:id="@+id/btnCartIcon"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="end"
+            android:layout_marginEnd="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:padding="8dp"
+            android:src="@drawable/ic_cart"
+            app:tint="@color/white"
+            android:contentDescription="View Cart" />
+    </androidx.appcompat.widget.Toolbar>
 
     <ScrollView
         android:layout_width="0dp"

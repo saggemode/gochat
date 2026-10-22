@@ -1215,6 +1215,19 @@ class MarketplaceRepository @Inject constructor(
         }
     }
 
+    /** Empties the entire cart (server + local). */
+    suspend fun clearCart(): Result<Unit> {
+        return try {
+            api.clearCart()
+            marketplaceDao.clearCart()
+            Result.success(Unit)
+        } catch (_: Exception) {
+            // Still clear locally so the UI reflects the user's intent.
+            marketplaceDao.clearCart()
+            Result.success(Unit)
+        }
+    }
+
     /** Remove a single cart line via DELETE /cart/items/{id}, then resync from server. */
     suspend fun removeCartItemById(cartItemId: String): Result<List<CartItem>> {
         return try {

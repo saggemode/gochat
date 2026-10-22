@@ -55,6 +55,9 @@ class CheckoutActivity : AppCompatActivity() {
 
     private fun setupListeners() {
         binding.toolbar.setNavigationOnClickListener { finish() }
+        binding.btnCartIcon.setOnClickListener {
+            startActivity(Intent(this, CartActivity::class.java))
+        }
         binding.btnPlaceOrder.setOnClickListener {
             placeOrder()
         }

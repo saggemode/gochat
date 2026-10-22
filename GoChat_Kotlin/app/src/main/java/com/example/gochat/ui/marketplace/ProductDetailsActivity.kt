@@ -172,6 +172,10 @@ class ProductDetailsActivity : AppCompatActivity() {
             openChatWithSeller(p)
         }
 
+        binding.btnCartIcon.setOnClickListener {
+            startActivity(Intent(this, CartActivity::class.java))
+        }
+
         binding.btnDecreaseQty.setOnClickListener { changeQuantity(-1) }
         binding.btnIncreaseQty.setOnClickListener { changeQuantity(1) }
 

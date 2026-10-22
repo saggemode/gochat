@@ -386,6 +386,10 @@ interface GoChatApiService {
         @Path("id") cartItemId: String
     ): Response<JsonObject>
 
+    // Empty the whole cart: DELETE /marketplace/cart
+    @DELETE(ApiConstants.CART)
+    suspend fun clearCart(): Response<JsonObject>
+
     @GET(ApiConstants.ORDERS)
     suspend fun getOrders(): Response<JsonElement>
 
