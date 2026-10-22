@@ -76,8 +76,10 @@ dependencies {
     // Coil & Media3
     implementation(libs.coil)
     implementation(libs.coil.gif)
+    implementation("io.coil-kt:coil-video:2.7.0")
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
+    implementation("androidx.media3:media3-datasource-okhttp:1.4.1")
     implementation("androidx.camera:camera-core:1.3.4")
     implementation("androidx.camera:camera-camera2:1.3.4")
     implementation("androidx.camera:camera-lifecycle:1.3.4")

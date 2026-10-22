@@ -1107,4 +1107,125 @@
 
     </LinearLayout>
 
+    <!-- ===== Video note recorder overlay (hold camera to record, WhatsApp-style) ===== -->
+    <FrameLayout
+        android:id="@+id/layoutVideoNoteOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#D9000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:elevation="20dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <TextView
+            android:id="@+id/tvVideoNoteTimer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="120dp"
+            android:background="@drawable/bg_pill"
+            android:backgroundTint="#CCF44336"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="5dp"
+            android:text="● 00:00"
+            android:textColor="@color/white"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <!-- Circular viewfinder -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardVideoNotePreview"
+            android:layout_width="240dp"
+            android:layout_height="240dp"
+            android:layout_gravity="center"
+            app:cardCornerRadius="120dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/white"
+            app:strokeWidth="3dp">
+
+            <androidx.camera.view.PreviewView
+                android:id="@+id/videoNotePreview"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Slide-to-cancel hint -->
+        <TextView
+            android:id="@+id/tvVideoNoteCancelHint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal|bottom"
+            android:layout_marginBottom="220dp"
+            android:drawablePadding="6dp"
+            android:text="◀  Slide to cancel"
+            android:textColor="#DDFFFFFF"
+            android:textSize="14sp" />
+
+        <!-- Lock column (slide up to lock) -->
+        <LinearLayout
+            android:id="@+id/layoutVideoNoteLockHint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end|bottom"
+            android:layout_marginEnd="28dp"
+            android:layout_marginBottom="140dp"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+
+            <ImageView
+                android:id="@+id/ivVideoNoteLock"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_circle_pulse"
+                android:padding="9dp"
+                android:src="@drawable/ic_lock"
+                app:tint="@color/white" />
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_marginTop="6dp"
+                android:alpha="0.8"
+                android:src="@drawable/ic_arrow_up"
+                app:tint="@color/white" />
+        </LinearLayout>
+
+        <!-- Locked controls (cancel / send) -->
+        <LinearLayout
+            android:id="@+id/layoutVideoNoteLocked"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:layout_marginBottom="48dp"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/btnCancelVideoNote"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_marginEnd="48dp"
+                android:background="@drawable/bg_circle_pulse"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Cancel"
+                android:padding="16dp"
+                android:src="@drawable/ic_delete"
+                app:tint="@color/white" />
+
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/btnSendVideoNote"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="Send video"
+                android:src="@drawable/ic_send"
+                app:backgroundTint="@color/gochat_accent"
+                app:tint="@color/white" />
+        </LinearLayout>
+
+    </FrameLayout>
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -98,6 +98,43 @@
                 android:textSize="13sp" />
         </LinearLayout>
 
+        <!-- Document Option -->
+        <LinearLayout
+            android:id="@+id/btnPickDocument"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <FrameLayout
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:background="@drawable/bg_circle_pulse"
+                android:backgroundTint="#D95B6ABF">
+
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="Document"
+                    android:src="@drawable/ic_document"
+                    app:tint="@color/white" />
+            </FrameLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Document"
+                android:textColor="@color/gochat_text_primary"
+                android:textSize="13sp" />
+        </LinearLayout>
+
         <!-- Audio Option -->
         <LinearLayout
             android:id="@+id/btnPickAudio"

@@ -35,6 +35,18 @@ import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.core.widget.doAfterTextChanged
+import android.view.MotionEvent
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.video.FallbackStrategy
+import androidx.camera.video.FileOutputOptions
+import androidx.camera.video.Quality
+import androidx.camera.video.QualitySelector
+import androidx.camera.video.Recorder
+import androidx.camera.video.Recording
+import androidx.camera.video.VideoCapture
+import androidx.camera.video.VideoRecordEvent
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -237,6 +249,27 @@ class ChatRoomActivity : AppCompatActivity() {
 
     private var cameraTempVideoUri: Uri? = null
 
+    // ── Video note (hold-to-record) state ─────────────────────────
+    private var videoNoteProvider: ProcessCameraProvider? = null
+    private var videoNoteCapture: VideoCapture<Recorder>? = null
+    private var videoNoteRecording: Recording? = null
+    private var videoNoteFile: File? = null
+    private var isVideoNoteRecording = false
+    private var isVideoNoteLocked = false
+    private var isVideoNoteCancelled = false
+    private var videoNoteDownX = 0f
+    private var videoNoteDownY = 0f
+    private var videoNoteStartMs = 0L
+    private val videoNoteHandler = Handler(Looper.getMainLooper())
+    private val videoNoteStartRunnable = Runnable { startVideoNote() }
+    private val videoNoteTimerRunnable = object : Runnable {
+        override fun run() {
+            val elapsed = (System.currentTimeMillis() - videoNoteStartMs) / 1000
+            binding.tvVideoNoteTimer.text = String.format(Locale.US, "● %02d:%02d", elapsed / 60, elapsed % 60)
+            videoNoteHandler.postDelayed(this, 500)
+        }
+    }
+
     private val requestCameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -263,6 +296,16 @@ class ChatRoomActivity : AppCompatActivity() {
     ) { success ->
         if (success) {
             cameraTempVideoUri?.let { viewModel.sendMediaMessage(it.toString(), 2, "🎥 Video") }
+        }
+    }
+
+    private val requestVideoNotePermissions = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        if (result[Manifest.permission.CAMERA] == true && result[Manifest.permission.RECORD_AUDIO] == true) {
+            Toast.makeText(this, "Hold the camera to record a video note", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "Camera and microphone permissions are required", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -295,6 +338,20 @@ class ChatRoomActivity : AppCompatActivity() {
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let { showImagePreviewDialog(it) }
+    }
+
+    // Gallery picker that accepts BOTH photos and videos, routing by MIME type.
+    private val pickMediaLauncher = registerForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        uri?.let { routePickedMedia(it) }
+    }
+
+    // Document picker — any file type (PDF, docs, zips, etc.).
+    private val pickDocumentLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let { sendPickedDocument(it) }
     }
 
     private val pickAudioLauncher = registerForActivityResult(
@@ -922,9 +979,9 @@ class ChatRoomActivity : AppCompatActivity() {
                 showAttachmentPickerBottomSheet()
             }
 
-            btnCameraInput.setOnClickListener {
-                inAppCameraLauncher.launch(Intent(this@ChatRoomActivity, CameraCaptureActivity::class.java))
-            }
+            // Tap the camera = open the full camera. Press-and-hold = instant video note
+            // (circular viewfinder; slide up to lock, release to send, slide left to cancel).
+            setupVideoNoteTouch(btnCameraInput)
         }
     }
 
@@ -1078,7 +1135,17 @@ class ChatRoomActivity : AppCompatActivity() {
 
         sheetBinding.btnPickGallery.setOnClickListener {
             sheet.dismiss()
-            pickGalleryLauncher.launch("image/*")
+            // Photos AND videos, like WhatsApp's gallery.
+            pickMediaLauncher.launch(
+                androidx.activity.result.PickVisualMediaRequest(
+                    ActivityResultContracts.PickVisualMedia.ImageAndVideo
+                )
+            )
+        }
+
+        sheetBinding.btnPickDocument.setOnClickListener {
+            sheet.dismiss()
+            pickDocumentLauncher.launch(arrayOf("*/*"))
         }
 
         sheetBinding.btnPickAudio.setOnClickListener {
@@ -1444,6 +1511,210 @@ class ChatRoomActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Toast.makeText(this, getString(R.string.error_camera_init), Toast.LENGTH_SHORT).show()
         }
+    }
+
+    /** Routes a picked gallery item to the image or video send path based on its MIME type. */
+    private fun routePickedMedia(uri: Uri) {
+        val mime = contentResolver.getType(uri).orEmpty()
+        if (mime.startsWith("video")) {
+            viewModel.sendMediaMessage(uri.toString(), 2, "🎥 Video")
+            HapticEngine.playMessageSent(this)
+        } else {
+            showImagePreviewDialog(uri)
+        }
+    }
+
+    private fun sendPickedDocument(uri: Uri) {
+        val name = queryDisplayName(uri) ?: "Document"
+        viewModel.sendDocumentMessage(uri.toString(), name)
+        HapticEngine.playMessageSent(this)
+    }
+
+    private fun queryDisplayName(uri: Uri): String? {
+        return try {
+            contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                if (c.moveToFirst()) c.getString(0) else null
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Video note: hold the camera icon to record instantly
+    // ══════════════════════════════════════════════════════════════
+
+    private fun hasVideoNotePermissions(): Boolean {
+        val cam = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        val mic = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        return cam && mic
+    }
+
+    @Suppress("ClickableViewAccessibility")
+    private fun setupVideoNoteTouch(view: View) {
+        val lockDistancePx = 120f * resources.displayMetrics.density
+        val cancelDistancePx = 120f * resources.displayMetrics.density
+
+        view.setOnTouchListener { v, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    videoNoteDownX = event.rawX
+                    videoNoteDownY = event.rawY
+                    if (!hasVideoNotePermissions()) {
+                        // Can't start recording mid-gesture; ask once, then user holds again.
+                        requestVideoNotePermissions.launch(
+                            arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
+                        )
+                        return@setOnTouchListener true
+                    }
+                    v.isPressed = true
+                    // Hold past the threshold → start the video note. A quick release = open full camera.
+                    videoNoteHandler.postDelayed(videoNoteStartRunnable, 250L)
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (isVideoNoteRecording && !isVideoNoteLocked) {
+                        val dy = videoNoteDownY - event.rawY  // up is positive
+                        val dx = videoNoteDownX - event.rawX  // left is positive
+                        if (dy > lockDistancePx) {
+                            lockVideoNote()
+                        } else if (dx > cancelDistancePx) {
+                            binding.tvVideoNoteCancelHint.text = "◀  Release to cancel"
+                            binding.tvVideoNoteCancelHint.setTextColor(0xFFFF5252.toInt())
+                        } else {
+                            binding.tvVideoNoteCancelHint.text = "◀  Slide to cancel"
+                            binding.tvVideoNoteCancelHint.setTextColor(0xDDFFFFFF.toInt())
+                        }
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    v.isPressed = false
+                    videoNoteHandler.removeCallbacks(videoNoteStartRunnable)
+                    if (isVideoNoteRecording) {
+                        if (isVideoNoteLocked) {
+                            // Stay recording; user ends with the on-screen buttons.
+                        } else {
+                            val dx = videoNoteDownX - event.rawX
+                            if (dx > cancelDistancePx) cancelVideoNote() else stopVideoNoteAndSend()
+                        }
+                    } else {
+                        // Quick tap → open the full camera screen.
+                        inAppCameraLauncher.launch(Intent(this@ChatRoomActivity, CameraCaptureActivity::class.java))
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    private fun startVideoNote() {
+        if (isVideoNoteRecording) return
+        isVideoNoteCancelled = false
+        isVideoNoteLocked = false
+        binding.layoutVideoNoteOverlay.visibility = View.VISIBLE
+        binding.layoutVideoNoteLocked.visibility = View.GONE
+        binding.layoutVideoNoteLockHint.visibility = View.VISIBLE
+        binding.tvVideoNoteCancelHint.visibility = View.VISIBLE
+        binding.tvVideoNoteCancelHint.text = "◀  Slide to cancel"
+        binding.tvVideoNoteCancelHint.setTextColor(0xDDFFFFFF.toInt())
+        HapticEngine.playMessageSent(this)
+
+        binding.btnCancelVideoNote.setOnClickListener { cancelVideoNote() }
+        binding.btnSendVideoNote.setOnClickListener { stopVideoNoteAndSend() }
+
+        val future = ProcessCameraProvider.getInstance(this)
+        future.addListener({
+            try {
+                val provider = future.get()
+                videoNoteProvider = provider
+                val preview = Preview.Builder().build().also {
+                    it.setSurfaceProvider(binding.videoNotePreview.surfaceProvider)
+                }
+                val recorder = Recorder.Builder()
+                    .setQualitySelector(
+                        QualitySelector.from(Quality.HD, FallbackStrategy.lowerQualityOrHigherThan(Quality.SD))
+                    )
+                    .build()
+                val capture = VideoCapture.withOutput(recorder)
+                videoNoteCapture = capture
+                // Front camera, like a WhatsApp video note.
+                val selector = CameraSelector.Builder().requireLensFacing(CameraSelector.LENS_FACING_FRONT).build()
+                provider.unbindAll()
+                try {
+                    provider.bindToLifecycle(this, selector, preview, capture)
+                } catch (e: Exception) {
+                    // Fallback to back camera if no front camera.
+                    provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, capture)
+                }
+                beginVideoNoteRecording(capture)
+            } catch (e: Exception) {
+                Toast.makeText(this, "Unable to start camera", Toast.LENGTH_SHORT).show()
+                hideVideoNoteOverlay()
+            }
+        }, ContextCompat.getMainExecutor(this))
+    }
+
+    private fun beginVideoNoteRecording(capture: VideoCapture<Recorder>) {
+        val dir = File(cacheDir, "videos").apply { if (!exists()) mkdirs() }
+        val file = File(dir, "note_${System.currentTimeMillis()}.mp4")
+        videoNoteFile = file
+        val outputOptions = FileOutputOptions.Builder(file).build()
+        videoNoteRecording = capture.output
+            .prepareRecording(this, outputOptions)
+            .withAudioEnabled()
+            .start(ContextCompat.getMainExecutor(this)) { event ->
+                when (event) {
+                    is VideoRecordEvent.Start -> {
+                        isVideoNoteRecording = true
+                        videoNoteStartMs = System.currentTimeMillis()
+                        videoNoteHandler.post(videoNoteTimerRunnable)
+                    }
+                    is VideoRecordEvent.Finalize -> {
+                        isVideoNoteRecording = false
+                        videoNoteHandler.removeCallbacks(videoNoteTimerRunnable)
+                        videoNoteProvider?.unbindAll()
+                        hideVideoNoteOverlay()
+                        val f = videoNoteFile
+                        if (isVideoNoteCancelled || event.hasError() || f == null || !f.exists() || f.length() == 0L) {
+                            f?.delete()
+                        } else {
+                            // Marker tells the adapter to render this as a round video note.
+                            viewModel.sendMediaMessage(Uri.fromFile(f).toString(), 2, com.example.gochat.data.model.Message.VIDEO_NOTE_MARKER)
+                        }
+                    }
+                    else -> {}
+                }
+            }
+    }
+
+    private fun lockVideoNote() {
+        if (isVideoNoteLocked) return
+        isVideoNoteLocked = true
+        binding.layoutVideoNoteLockHint.visibility = View.GONE
+        binding.tvVideoNoteCancelHint.visibility = View.GONE
+        binding.layoutVideoNoteLocked.visibility = View.VISIBLE
+        Toast.makeText(this, "Recording locked — hands-free", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun stopVideoNoteAndSend() {
+        if (!isVideoNoteRecording) return
+        isVideoNoteCancelled = false
+        videoNoteRecording?.stop()
+        videoNoteRecording = null
+    }
+
+    private fun cancelVideoNote() {
+        isVideoNoteCancelled = true
+        videoNoteRecording?.stop()
+        videoNoteRecording = null
+        if (!isVideoNoteRecording) hideVideoNoteOverlay()
+    }
+
+    private fun hideVideoNoteOverlay() {
+        binding.layoutVideoNoteOverlay.visibility = View.GONE
+        isVideoNoteLocked = false
     }
 
     private fun showImagePreviewDialog(imageUri: Uri) {
@@ -2449,6 +2720,8 @@ class ChatRoomActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
+        // Release any inline round video-note player.
+        if (::messageAdapter.isInitialized) messageAdapter.stopInlineVideo()
         // Save draft text before leaving
         val convId = intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty()
         if (convId.isNotEmpty()) {
@@ -2637,6 +2910,10 @@ class ChatRoomActivity : AppCompatActivity() {
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
+        if (binding.layoutVideoNoteOverlay.visibility == View.VISIBLE) {
+            cancelVideoNote()
+            return
+        }
         if (messageAdapter.isSelectionMode) {
             exitSelectionMode()
             return
@@ -2777,6 +3054,10 @@ class ChatRoomActivity : AppCompatActivity() {
         stopTypingHandler.removeCallbacks(stopTypingRunnable)
         stopTypingAnimation()
         audioRecorderManager.cancelRecording()
+        videoNoteHandler.removeCallbacks(videoNoteStartRunnable)
+        videoNoteHandler.removeCallbacks(videoNoteTimerRunnable)
+        try { videoNoteRecording?.stop() } catch (_: Exception) {}
+        videoNoteProvider?.unbindAll()
         AudioPlayerManager.release()
         super.onDestroy()
     }

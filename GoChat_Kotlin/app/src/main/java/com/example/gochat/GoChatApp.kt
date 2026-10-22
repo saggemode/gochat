@@ -115,6 +115,10 @@ class GoChatApp : Application(), Configuration.Provider, ImageLoaderFactory {
         return ImageLoader.Builder(this)
             .okHttpClient(NetworkModule.getOkHttpClient(this))
             .crossfade(true)
+            .components {
+                // Lets Coil decode a still frame from video files (video-note thumbnails).
+                add(coil.decode.VideoFrameDecoder.Factory())
+            }
             .build()
     }
 

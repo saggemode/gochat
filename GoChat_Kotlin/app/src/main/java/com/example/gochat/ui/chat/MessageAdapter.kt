@@ -71,6 +71,68 @@ class MessageAdapter(
 
     var onImageClicked: ((String) -> Unit)? = null
     var onMediaClick: ((Message) -> Unit)? = null
+
+    // ── Inline round video-note playback ──────────────────────────
+    private var activePlayer: androidx.media3.exoplayer.ExoPlayer? = null
+    private var activePlayerView: androidx.media3.ui.PlayerView? = null
+    private var activeMessageId: String? = null
+
+    private fun toggleVideoNoteInline(
+        message: Message,
+        card: View,
+        playerView: androidx.media3.ui.PlayerView,
+        playIcon: View,
+        thumb: View
+    ) {
+        val url = message.mediaUrl ?: return
+        // Tapping the one that's playing stops it.
+        if (activeMessageId == message.id && activePlayer != null) {
+            stopInlineVideo()
+            card.visibility = View.GONE
+            playIcon.visibility = View.VISIBLE
+            thumb.visibility = View.VISIBLE
+            return
+        }
+        stopInlineVideo()
+        // Use the app's authenticated OkHttp client so remote media (which needs the bearer
+        // token) streams; DefaultDataSource still handles local file:// and data: URIs.
+        val ctx = playerView.context
+        val httpFactory = androidx.media3.datasource.okhttp.OkHttpDataSource.Factory(
+            com.example.gochat.data.api.NetworkModule.getOkHttpClient(ctx)
+        )
+        val dataSourceFactory = androidx.media3.datasource.DefaultDataSource.Factory(ctx, httpFactory)
+        val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(dataSourceFactory)
+        val player = androidx.media3.exoplayer.ExoPlayer.Builder(ctx)
+            .setMediaSourceFactory(mediaSourceFactory)
+            .build()
+        playerView.player = player
+        player.setMediaItem(androidx.media3.common.MediaItem.fromUri(android.net.Uri.parse(url)))
+        player.repeatMode = androidx.media3.common.Player.REPEAT_MODE_ALL
+        player.prepare()
+        player.playWhenReady = true
+        activePlayer = player
+        activePlayerView = playerView
+        activeMessageId = message.id
+        card.visibility = View.VISIBLE
+        playIcon.visibility = View.GONE
+        thumb.visibility = View.GONE
+    }
+
+    /** Releases the inline player (call from the activity's onPause/onDestroy). */
+    fun stopInlineVideo() {
+        try { activePlayer?.release() } catch (_: Exception) {}
+        activePlayerView?.player = null
+        activePlayer = null
+        activePlayerView = null
+        activeMessageId = null
+    }
+
+    override fun onViewRecycled(holder: RecyclerView.ViewHolder) {
+        super.onViewRecycled(holder)
+        val pv = (holder as? MessageMeViewHolder)?.inlinePlayerView()
+            ?: (holder as? MessageOtherViewHolder)?.inlinePlayerView()
+        if (pv != null && pv === activePlayerView) stopInlineVideo()
+    }
     var onBuyNowClicked: ((productId: String, productName: String, price: Double, image: String) -> Unit)? = null
     var onAddToCartClicked: ((productId: String, productJson: String) -> Unit)? = null
     var onPayInvoiceClicked: ((message: Message, invoiceData: InvoiceData) -> Unit)? = null
@@ -196,7 +258,7 @@ class MessageAdapter(
         return when (msg.type) {
             MessageType.TEXT -> msg.content.take(200)
             MessageType.IMAGE -> if (msg.content.isNotBlank() && msg.content != "Photo" && msg.content != "① Photo") "📷 ${msg.content.take(150)}" else "📷 Photo"
-            MessageType.VIDEO -> if (msg.content.isNotBlank() && msg.content != "Video") "🎥 ${msg.content.take(150)}" else "🎥 Video"
+            MessageType.VIDEO -> if (msg.content == com.example.gochat.data.model.Message.VIDEO_NOTE_MARKER) "🎥 Video note" else if (msg.content.isNotBlank() && msg.content != "Video") "🎥 ${msg.content.take(150)}" else "🎥 Video"
             MessageType.VOICE, MessageType.AUDIO -> "🎵 Voice note"
             MessageType.FILE -> if (msg.content.isNotBlank()) "📄 ${msg.content.take(150)}" else "📄 Document"
             MessageType.POLL -> "📊 Poll: ${msg.content.take(100)}"
@@ -1105,6 +1167,8 @@ class MessageAdapter(
     inner class MessageMeViewHolder(private val binding: ItemMessageMeBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
+        fun inlinePlayerView(): androidx.media3.ui.PlayerView = binding.videoNotePlayer
+
         fun bind(message: Message) {
             with(binding) {
                 // Apply dynamic bubble shape & background
@@ -1150,8 +1214,15 @@ class MessageAdapter(
                     layoutForwarded.visibility = View.GONE
                 }
 
-                val isImage = (message.type == MessageType.IMAGE || message.content.contains("Photo", ignoreCase = true)) && 
+                val isVideoNote = message.type == MessageType.VIDEO &&
+                              message.content == com.example.gochat.data.model.Message.VIDEO_NOTE_MARKER &&
                               !message.isDeleted && !message.mediaUrl.isNullOrBlank()
+                val isVideo = (message.type == MessageType.VIDEO ||
+                              message.content.equals("Video", ignoreCase = true) ||
+                              message.content == com.example.gochat.data.model.Message.VIDEO_NOTE_MARKER) &&
+                              !message.isDeleted && !message.mediaUrl.isNullOrBlank()
+                val isImage = ((message.type == MessageType.IMAGE || message.content.contains("Photo", ignoreCase = true)) &&
+                              !message.isDeleted && !message.mediaUrl.isNullOrBlank()) || isVideo
                 val isVoice = (message.type == MessageType.VOICE || message.type == MessageType.AUDIO || message.content.contains("Voice Note", ignoreCase = true)) && 
                               !message.isDeleted
                 val isProduct = (message.type == MessageType.PRODUCT || (message.content.contains("\"product\"") && message.content.contains("\"price\""))) && !message.isDeleted
@@ -1361,9 +1432,11 @@ class MessageAdapter(
                 )
 
                 // Hide the text label if it's purely a media label
-                val isOnlyMediaLabel = message.content.isBlank() || 
-                    message.content.contains("Photo", ignoreCase = true) || 
-                    message.content.contains("Voice Note", ignoreCase = true)
+                val isOnlyMediaLabel = message.content.isBlank() ||
+                    message.content.contains("Photo", ignoreCase = true) ||
+                    message.content.contains("Voice Note", ignoreCase = true) ||
+                    message.content.equals("Video", ignoreCase = true) ||
+                    message.content == com.example.gochat.data.model.Message.VIDEO_NOTE_MARKER
 
                 val isCatalogMessage = (message.type == MessageType.CATALOG ||
                         (message.content.contains("\"products\"") && (message.content.contains("\"catalog\"") || message.content.contains("\"store_name\""))) ||
@@ -1447,6 +1520,34 @@ class MessageAdapter(
                 // Media Image Preview
                 if (isImage) {
                     layoutImageContainer.visibility = View.VISIBLE
+                    // Video notes render as a round bubble; normal image/video stays rectangular.
+                    val density = itemView.resources.displayMetrics.density
+                    val clp = layoutImageContainer.layoutParams
+                    if (isVideoNote) {
+                        val side = (220 * density).toInt()
+                        clp.width = side
+                        clp.height = side
+                        ivMessageImage.layoutParams = ivMessageImage.layoutParams.apply { height = side }
+                        ivMessageImage.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+                        ivMessageImage.shapeAppearanceModel = com.google.android.material.shape.ShapeAppearanceModel.builder()
+                            .setAllCornerSizes(com.google.android.material.shape.RelativeCornerSize(0.5f)).build()
+                        ivMessageImage.setBackgroundColor(0xFF0B141A.toInt())
+                    } else {
+                        clp.width = (260 * density).toInt()
+                        clp.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                        ivMessageImage.layoutParams = ivMessageImage.layoutParams.apply {
+                            height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                        }
+                        ivMessageImage.scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                        ivMessageImage.shapeAppearanceModel = com.google.android.material.shape.ShapeAppearanceModel.builder()
+                            .setAllCornerSizes(12 * density).build()
+                    }
+                    layoutImageContainer.layoutParams = clp
+                    ivVideoPlayIcon.visibility = if (isVideo) View.VISIBLE else View.GONE
+                    // Reset any inline player on (re)bind so recycled views never show a stale one.
+                    cardVideoNotePlayer.visibility = View.GONE
+                    if (activeMessageId == message.id) stopInlineVideo()
+
                     val isSending = message.status == MessageStatus.SENDING
                     pbImageLoadingContainer.visibility = if (isSending) View.VISIBLE else View.GONE
 
@@ -1480,13 +1581,22 @@ class MessageAdapter(
                         layoutImageContainer.setOnClickListener(null)
                         ivMessageImage.setOnClickListener(null)
                     } else {
-                        layoutImageContainer.setOnClickListener {
-                            if (onMediaClick != null) onMediaClick?.invoke(message)
-                            else message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
-                        }
-                        ivMessageImage.setOnClickListener {
-                            if (onMediaClick != null) onMediaClick?.invoke(message)
-                            else message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
+                        if (isVideoNote) {
+                            // Play the round note inline, in the bubble (not a separate player).
+                            val playInline = View.OnClickListener {
+                                toggleVideoNoteInline(message, cardVideoNotePlayer, videoNotePlayer, ivVideoPlayIcon, ivMessageImage)
+                            }
+                            layoutImageContainer.setOnClickListener(playInline)
+                            ivMessageImage.setOnClickListener(playInline)
+                        } else {
+                            layoutImageContainer.setOnClickListener {
+                                if (onMediaClick != null) onMediaClick?.invoke(message)
+                                else message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
+                            }
+                            ivMessageImage.setOnClickListener {
+                                if (onMediaClick != null) onMediaClick?.invoke(message)
+                                else message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
+                            }
                         }
                     }
                 } else {
@@ -1577,6 +1687,8 @@ class MessageAdapter(
     inner class MessageOtherViewHolder(private val binding: ItemMessageOtherBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
+        fun inlinePlayerView(): androidx.media3.ui.PlayerView = binding.videoNotePlayer
+
         fun bind(message: Message) {
             with(binding) {
                 // Apply dynamic bubble shape & background
@@ -1622,8 +1734,15 @@ class MessageAdapter(
                     layoutForwarded.visibility = View.GONE
                 }
 
-                val isImage = (message.type == MessageType.IMAGE || message.content.contains("Photo", ignoreCase = true)) && 
+                val isVideoNote = message.type == MessageType.VIDEO &&
+                              message.content == com.example.gochat.data.model.Message.VIDEO_NOTE_MARKER &&
                               !message.isDeleted && !message.mediaUrl.isNullOrBlank()
+                val isVideo = (message.type == MessageType.VIDEO ||
+                              message.content.equals("Video", ignoreCase = true) ||
+                              message.content == com.example.gochat.data.model.Message.VIDEO_NOTE_MARKER) &&
+                              !message.isDeleted && !message.mediaUrl.isNullOrBlank()
+                val isImage = ((message.type == MessageType.IMAGE || message.content.contains("Photo", ignoreCase = true)) &&
+                              !message.isDeleted && !message.mediaUrl.isNullOrBlank()) || isVideo
                 val isVoice = (message.type == MessageType.VOICE || message.type == MessageType.AUDIO || message.content.contains("Voice Note", ignoreCase = true)) && 
                               !message.isDeleted
                 val isProduct = (message.type == MessageType.PRODUCT || (message.content.contains("\"product\"") && message.content.contains("\"price\""))) && !message.isDeleted
@@ -1840,9 +1959,11 @@ class MessageAdapter(
                     tvMessageContent = tvMessageContent
                 )
 
-                val isOnlyMediaLabel = message.content.isBlank() || 
-                    message.content.contains("Photo", ignoreCase = true) || 
-                    message.content.contains("Voice Note", ignoreCase = true)
+                val isOnlyMediaLabel = message.content.isBlank() ||
+                    message.content.contains("Photo", ignoreCase = true) ||
+                    message.content.contains("Voice Note", ignoreCase = true) ||
+                    message.content.equals("Video", ignoreCase = true) ||
+                    message.content == com.example.gochat.data.model.Message.VIDEO_NOTE_MARKER
 
                 val isCatalogMessage = (message.type == MessageType.CATALOG ||
                         (message.content.contains("\"products\"") && (message.content.contains("\"catalog\"") || message.content.contains("\"store_name\""))) ||
@@ -1916,6 +2037,34 @@ class MessageAdapter(
                 // Media Image Preview
                 if (isImage) {
                     layoutImageContainer.visibility = View.VISIBLE
+                    // Video notes render as a round bubble; normal image/video stays rectangular.
+                    val density = itemView.resources.displayMetrics.density
+                    val clp = layoutImageContainer.layoutParams
+                    if (isVideoNote) {
+                        val side = (220 * density).toInt()
+                        clp.width = side
+                        clp.height = side
+                        ivMessageImage.layoutParams = ivMessageImage.layoutParams.apply { height = side }
+                        ivMessageImage.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+                        ivMessageImage.shapeAppearanceModel = com.google.android.material.shape.ShapeAppearanceModel.builder()
+                            .setAllCornerSizes(com.google.android.material.shape.RelativeCornerSize(0.5f)).build()
+                        ivMessageImage.setBackgroundColor(0xFF0B141A.toInt())
+                    } else {
+                        clp.width = (260 * density).toInt()
+                        clp.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                        ivMessageImage.layoutParams = ivMessageImage.layoutParams.apply {
+                            height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                        }
+                        ivMessageImage.scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                        ivMessageImage.shapeAppearanceModel = com.google.android.material.shape.ShapeAppearanceModel.builder()
+                            .setAllCornerSizes(12 * density).build()
+                    }
+                    layoutImageContainer.layoutParams = clp
+                    ivVideoPlayIcon.visibility = if (isVideo) View.VISIBLE else View.GONE
+                    // Reset any inline player on (re)bind so recycled views never show a stale one.
+                    cardVideoNotePlayer.visibility = View.GONE
+                    if (activeMessageId == message.id) stopInlineVideo()
+
                     val isSending = message.status == MessageStatus.SENDING
                     pbImageLoadingContainer.visibility = if (isSending) View.VISIBLE else View.GONE
 
@@ -1949,13 +2098,22 @@ class MessageAdapter(
                         layoutImageContainer.setOnClickListener(null)
                         ivMessageImage.setOnClickListener(null)
                     } else {
-                        layoutImageContainer.setOnClickListener {
-                            if (onMediaClick != null) onMediaClick?.invoke(message)
-                            else message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
-                        }
-                        ivMessageImage.setOnClickListener {
-                            if (onMediaClick != null) onMediaClick?.invoke(message)
-                            else message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
+                        if (isVideoNote) {
+                            // Play the round note inline, in the bubble (not a separate player).
+                            val playInline = View.OnClickListener {
+                                toggleVideoNoteInline(message, cardVideoNotePlayer, videoNotePlayer, ivVideoPlayIcon, ivMessageImage)
+                            }
+                            layoutImageContainer.setOnClickListener(playInline)
+                            ivMessageImage.setOnClickListener(playInline)
+                        } else {
+                            layoutImageContainer.setOnClickListener {
+                                if (onMediaClick != null) onMediaClick?.invoke(message)
+                                else message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
+                            }
+                            ivMessageImage.setOnClickListener {
+                                if (onMediaClick != null) onMediaClick?.invoke(message)
+                                else message.mediaUrl?.let { url -> onImageClicked?.invoke(url) }
+                            }
                         }
                     }
                 } else {

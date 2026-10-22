@@ -1233,6 +1233,25 @@ class ChatRoomViewModel @Inject constructor(
         }
     }
 
+    fun sendDocumentMessage(mediaUrl: String, fileName: String) {
+        val convId = _conversationId.value
+        if (convId.isEmpty()) return
+        val reply = _replyingTo.value
+        viewModelScope.launch {
+            chatRepository.sendMessage(
+                conversationId = convId,
+                content = fileName.ifBlank { "Document" },
+                type = 4, // FILE / Document
+                mediaUrl = mediaUrl,
+                replyToId = reply?.id,
+                replyToText = reply?.let { getReplyPreviewText(it) },
+                replyToSenderName = reply?.senderName,
+                disappearingDurationSeconds = _disappearingDuration.value
+            )
+            clearReply()
+        }
+    }
+
     fun sendImageMessage(
         bytes: ByteArray,
         dataUriFallback: String,

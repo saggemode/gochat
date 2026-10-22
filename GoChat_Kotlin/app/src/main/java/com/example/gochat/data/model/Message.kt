@@ -246,6 +246,9 @@ data class Message(
     }
 
     companion object {
+        /** Content sentinel marking a round WhatsApp-style video note (VIDEO type). */
+        const val VIDEO_NOTE_MARKER = "video_note"
+
         fun fromJson(json: JsonObject, currentUserId: String = ""): Message {
             val id = (json["id"] ?: json["Id"] ?: json["message_id"] ?: json["messageId"])
                 ?.jsonPrimitive?.contentOrNull ?: "msg_${System.currentTimeMillis()}"
