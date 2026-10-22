@@ -148,6 +148,12 @@
 
         <!-- Call Activity -->
         <activity
+            android:name=".ui.chat.CameraCaptureActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.GoChat" />
+
+        <activity
             android:name=".ui.calls.CallActivity"
             android:exported="false"
             android:launchMode="singleTop"

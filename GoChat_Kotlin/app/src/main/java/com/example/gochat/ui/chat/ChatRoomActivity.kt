@@ -235,6 +235,8 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     }
 
+    private var cameraTempVideoUri: Uri? = null
+
     private val requestCameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -242,6 +244,41 @@ class ChatRoomActivity : AppCompatActivity() {
             launchCameraCapture()
         } else {
             Toast.makeText(this, getString(R.string.error_camera_permission), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Long-press the camera → record a video, WhatsApp-style.
+    private val requestCameraForVideoPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            launchVideoCapture()
+        } else {
+            Toast.makeText(this, getString(R.string.error_camera_permission), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private val captureVideoLauncher = registerForActivityResult(
+        ActivityResultContracts.CaptureVideo()
+    ) { success ->
+        if (success) {
+            cameraTempVideoUri?.let { viewModel.sendMediaMessage(it.toString(), 2, "🎥 Video") }
+        }
+    }
+
+    // WhatsApp-style in-app camera: tap = photo, hold = video. Returns the captured media.
+    private val inAppCameraLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val uri = result.data?.getStringExtra(CameraCaptureActivity.EXTRA_RESULT_URI)
+            val type = result.data?.getStringExtra(CameraCaptureActivity.EXTRA_RESULT_TYPE)
+            if (!uri.isNullOrBlank()) {
+                when (type) {
+                    "photo" -> viewModel.sendMediaMessage(uri, 1, "")
+                    "video" -> viewModel.sendMediaMessage(uri, 2, "🎥 Video")
+                }
+            }
         }
     }
 
@@ -884,6 +921,10 @@ class ChatRoomActivity : AppCompatActivity() {
             btnAttachment.setOnClickListener {
                 showAttachmentPickerBottomSheet()
             }
+
+            btnCameraInput.setOnClickListener {
+                inAppCameraLauncher.launch(Intent(this@ChatRoomActivity, CameraCaptureActivity::class.java))
+            }
         }
     }
 
@@ -1021,6 +1062,18 @@ class ChatRoomActivity : AppCompatActivity() {
             } else {
                 requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
             }
+        }
+
+        // Hold the camera to record a video (tap = photo), like WhatsApp.
+        sheetBinding.btnPickCamera.setOnLongClickListener {
+            sheet.dismiss()
+            Toast.makeText(this, "Recording video…", Toast.LENGTH_SHORT).show()
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                launchVideoCapture()
+            } else {
+                requestCameraForVideoPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+            true
         }
 
         sheetBinding.btnPickGallery.setOnClickListener {
@@ -1372,6 +1425,22 @@ class ChatRoomActivity : AppCompatActivity() {
             )
             cameraTempPhotoUri = uri
             takePictureLauncher.launch(uri)
+        } catch (e: Exception) {
+            Toast.makeText(this, getString(R.string.error_camera_init), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun launchVideoCapture() {
+        try {
+            val videoDir = File(cacheDir, "videos").apply { if (!exists()) mkdirs() }
+            val videoFile = File(videoDir, "camera_${System.currentTimeMillis()}.mp4")
+            val uri = FileProvider.getUriForFile(
+                this,
+                "${applicationContext.packageName}.fileprovider",
+                videoFile
+            )
+            cameraTempVideoUri = uri
+            captureVideoLauncher.launch(uri)
         } catch (e: Exception) {
             Toast.makeText(this, getString(R.string.error_camera_init), Toast.LENGTH_SHORT).show()
         }

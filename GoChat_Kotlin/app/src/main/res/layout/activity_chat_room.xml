@@ -881,6 +881,19 @@
                     android:textColorHint="@color/gochat_text_muted"
                     android:textSize="15.5sp" />
 
+                <!-- Camera: tap = photo, hold = video -->
+                <ImageView
+                    android:id="@+id/btnCameraInput"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:contentDescription="Camera"
+                    android:focusable="true"
+                    android:padding="7dp"
+                    android:src="@drawable/ic_camera_status"
+                    app:tint="@color/gochat_text_muted" />
+
                 <!-- AI Tone Assistant Button -->
                 <ImageView
                     android:id="@+id/btnToneAssistant"
