@@ -1481,7 +1481,6 @@ class ChatRoomActivity : AppCompatActivity() {
         gifPicker.show(supportFragmentManager, "GifPicker")
     }
 
-    @Deprecated("Deprecated in Java")
     private fun launchCameraCapture() {
         try {
             val imageDir = File(cacheDir, "images").apply {

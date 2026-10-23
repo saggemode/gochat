@@ -38,7 +38,7 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
         } catch (_: Exception) {}
     }
 
-    @Suppress("DEPRECATION") // base onNewToken signature; no non-deprecated override is offered
+    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION") // base onNewToken signature; no non-deprecated override is offered
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         Log.d(TAG, "FCM onNewToken received: $token")
