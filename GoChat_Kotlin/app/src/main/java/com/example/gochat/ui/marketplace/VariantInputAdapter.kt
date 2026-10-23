@@ -51,7 +51,7 @@ class VariantInputAdapter : RecyclerView.Adapter<VariantInputAdapter.VariantView
             val textWatcher = object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                    val currentPos = adapterPosition
+                    val currentPos = bindingAdapterPosition
                     if (currentPos != RecyclerView.NO_POSITION) {
                         val size = binding.etVariantSize.text.toString()
                         val color = binding.etVariantColor.text.toString()
@@ -77,7 +77,7 @@ class VariantInputAdapter : RecyclerView.Adapter<VariantInputAdapter.VariantView
             binding.etVariantStock.addTextChangedListener(textWatcher)
 
             binding.btnRemoveVariant.setOnClickListener {
-                val currentPos = adapterPosition
+                val currentPos = bindingAdapterPosition
                 if (currentPos != RecyclerView.NO_POSITION) {
                     variants.removeAt(currentPos)
                     notifyItemRemoved(currentPos)

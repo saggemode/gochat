@@ -369,6 +369,7 @@
     <string name="action_pause_recording">Pause</string>
     <string name="action_resume_recording">Resume</string>
     <string name="error_camera_init">Unable to initialize camera</string>
+    <string name="compressing_video">Compressing video…</string>
     <string name="caption_photo">📷 Photo</string>
     <string name="error_photo_process">Failed to process photo</string>
     <string name="caption_audio_file">🎵 Audio File</string>

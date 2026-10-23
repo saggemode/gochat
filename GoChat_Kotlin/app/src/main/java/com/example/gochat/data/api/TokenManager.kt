@@ -41,6 +41,9 @@ class TokenManager private constructor(context: Context) {
         private const val KEY_USER_CURRENCY_SYMBOL = "user_currency_symbol"
         private const val KEY_USER_CONTINENT = "user_continent"
 
+        // Reused JSON parser for decoding JWT payload claims (creating one per call is slow).
+        private val JWT_JSON = Json { ignoreUnknownKeys = true }
+
         @Volatile
         private var INSTANCE: TokenManager? = null
 
@@ -171,7 +174,7 @@ class TokenManager private constructor(context: Context) {
                 Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
             )
             val payloadJson = String(payloadBytes, Charsets.UTF_8)
-            val json = Json { ignoreUnknownKeys = true }.parseToJsonElement(payloadJson).jsonObject
+            val json = JWT_JSON.parseToJsonElement(payloadJson).jsonObject
             val exp = json["exp"]?.jsonPrimitive?.longOrNull ?: return false
             val nowSeconds = System.currentTimeMillis() / 1000L
             nowSeconds >= (exp - bufferSeconds)
@@ -195,7 +198,7 @@ class TokenManager private constructor(context: Context) {
                         Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
                     )
                     val payloadJson = String(payloadBytes, Charsets.UTF_8)
-                    val json = Json { ignoreUnknownKeys = true }.parseToJsonElement(payloadJson).jsonObject
+                    val json = JWT_JSON.parseToJsonElement(payloadJson).jsonObject
                     val uid = (json["uid"] ?: json["sub"] ?: json["user_id"])?.jsonPrimitive?.contentOrNull
                     if (!uid.isNullOrBlank()) {
                         prefs.edit().putString(KEY_USER_ID, uid).apply()

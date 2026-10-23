@@ -457,7 +457,6 @@ class ChatRoomViewModel @Inject constructor(
             MessageType.STICKER -> "🏷️ Sticker"
             MessageType.ORDER -> "📦 Order"
             MessageType.SYSTEM -> "System message"
-            else -> message.content.take(200).ifBlank { "Media" }
         }
     }
 

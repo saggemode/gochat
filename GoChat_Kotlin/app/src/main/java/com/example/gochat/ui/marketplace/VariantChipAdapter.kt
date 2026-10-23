@@ -53,7 +53,7 @@ class VariantChipAdapter(
 
             binding.root.setOnClickListener {
                 val prev = selectedIndex
-                selectedIndex = adapterPosition
+                selectedIndex = bindingAdapterPosition
                 notifyItemChanged(prev)
                 notifyItemChanged(selectedIndex)
                 onVariantSelected(variant)

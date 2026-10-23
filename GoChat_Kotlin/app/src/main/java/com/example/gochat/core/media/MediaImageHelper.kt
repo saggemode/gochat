@@ -27,6 +27,7 @@ object MediaImageHelper {
     /**
      * Clears both memory and disk cache for Coil.
      */
+    @OptIn(coil.annotation.ExperimentalCoilApi::class) // diskCache accessor is experimental in Coil
     fun clearImageCache(context: Context) {
         context.imageLoader.memoryCache?.clear()
         context.imageLoader.diskCache?.clear()

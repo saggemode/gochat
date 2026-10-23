@@ -295,7 +295,20 @@ class ChatRoomActivity : AppCompatActivity() {
         ActivityResultContracts.CaptureVideo()
     ) { success ->
         if (success) {
-            cameraTempVideoUri?.let { viewModel.sendMediaMessage(it.toString(), 2, "🎥 Video") }
+            cameraTempVideoUri?.let { sendVideoCompressed(it) }
+        }
+    }
+
+    // Location picker result (replaces the deprecated startActivityForResult/onActivityResult path)
+    private val locationPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            result.data?.let { data ->
+                val lat = data.getDoubleExtra("lat", 0.0)
+                val lng = data.getDoubleExtra("lng", 0.0)
+                viewModel.sendTextMessage("📍 Location: https://maps.google.com/maps?q=$lat,$lng")
+            }
         }
     }
 
@@ -319,7 +332,7 @@ class ChatRoomActivity : AppCompatActivity() {
             if (!uri.isNullOrBlank()) {
                 when (type) {
                     "photo" -> viewModel.sendMediaMessage(uri, 1, "")
-                    "video" -> viewModel.sendMediaMessage(uri, 2, "🎥 Video")
+                    "video" -> sendVideoCompressed(Uri.parse(uri))
                 }
             }
         }
@@ -1458,8 +1471,7 @@ class ChatRoomActivity : AppCompatActivity() {
     }
 
     private fun startLocationPicker() {
-        val intent = Intent(this, LocationPickerActivity::class.java)
-        startActivityForResult(intent, 1002)
+        locationPickerLauncher.launch(Intent(this, LocationPickerActivity::class.java))
     }
 
     private fun showGifPicker() {
@@ -1470,15 +1482,6 @@ class ChatRoomActivity : AppCompatActivity() {
     }
 
     @Deprecated("Deprecated in Java")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 1002 && resultCode == RESULT_OK && data != null) {
-            val lat = data.getDoubleExtra("lat", 0.0)
-            val lng = data.getDoubleExtra("lng", 0.0)
-            viewModel.sendTextMessage("📍 Location: https://maps.google.com/maps?q=$lat,$lng")
-        }
-    }
-
     private fun launchCameraCapture() {
         try {
             val imageDir = File(cacheDir, "images").apply {
@@ -1517,10 +1520,76 @@ class ChatRoomActivity : AppCompatActivity() {
     private fun routePickedMedia(uri: Uri) {
         val mime = contentResolver.getType(uri).orEmpty()
         if (mime.startsWith("video")) {
-            viewModel.sendMediaMessage(uri.toString(), 2, "🎥 Video")
-            HapticEngine.playMessageSent(this)
+            sendVideoCompressed(uri)
         } else {
             showImagePreviewDialog(uri)
+        }
+    }
+
+    /**
+     * Compresses a video down to the ~15 MB send limit (so it can be served back from the
+     * Telegram-backed CDN) and then sends it. Shows a progress dialog while transcoding.
+     * Falls back to sending the original only if it is already under the limit.
+     */
+    private fun sendVideoCompressed(uri: Uri) {
+        val progress = buildVideoProgressDialog()
+        progress.show()
+        lifecycleScope.launch {
+            val result = com.example.gochat.core.media.VideoCompressor.compress(this@ChatRoomActivity, uri)
+            progress.dismiss()
+            when (result) {
+                is com.example.gochat.core.media.VideoCompressor.Result.Success -> {
+                    viewModel.sendMediaMessage(Uri.fromFile(result.file).toString(), 2, "🎥 Video")
+                    HapticEngine.playMessageSent(this@ChatRoomActivity)
+                }
+                is com.example.gochat.core.media.VideoCompressor.Result.TooLarge -> {
+                    Toast.makeText(
+                        this@ChatRoomActivity,
+                        "Video is too long to send — keep it under 15 MB.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                is com.example.gochat.core.media.VideoCompressor.Result.Failed -> {
+                    // Transcode failed; send the original only if it already fits.
+                    val size = originalSize(uri)
+                    if (size in 1..com.example.gochat.core.media.VideoCompressor.MAX_BYTES) {
+                        viewModel.sendMediaMessage(uri.toString(), 2, "🎥 Video")
+                        HapticEngine.playMessageSent(this@ChatRoomActivity)
+                    } else {
+                        Toast.makeText(
+                            this@ChatRoomActivity,
+                            "Couldn't prepare this video for sending.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun buildVideoProgressDialog(): AlertDialog {
+        val padding = (24 * resources.displayMetrics.density).toInt()
+        val container = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            setPadding(padding, padding, padding, padding)
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            addView(android.widget.ProgressBar(this@ChatRoomActivity))
+            addView(android.widget.TextView(this@ChatRoomActivity).apply {
+                text = getString(R.string.compressing_video)
+                setPadding(padding, 0, 0, 0)
+            })
+        }
+        return AlertDialog.Builder(this)
+            .setView(container)
+            .setCancelable(false)
+            .create()
+    }
+
+    private fun originalSize(uri: Uri): Long {
+        return try {
+            contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: -1L
+        } catch (_: Exception) {
+            -1L
         }
     }
 
@@ -2884,10 +2953,12 @@ class ChatRoomActivity : AppCompatActivity() {
             }
 
             // Otherwise, observe viewModel.messages until found or timeout
-            val found = kotlinx.coroutines.withTimeoutOrNull(2500) {
+            var found = false
+            kotlinx.coroutines.withTimeoutOrNull(2500) {
                 viewModel.messages.collect { list ->
                     val idx = list.indexOfFirst { it.id == targetMsgId }
                     if (idx != -1) {
+                        found = true
                         val layoutMgr = binding.rvMessages.layoutManager as? LinearLayoutManager
                         val currentPos = layoutMgr?.findFirstVisibleItemPosition() ?: 0
                         if (Math.abs(currentPos - idx) > 25) {
@@ -2902,13 +2973,14 @@ class ChatRoomActivity : AppCompatActivity() {
                     }
                 }
             }
-            if (found == null) {
+            if (!found) {
                 Toast.makeText(this@ChatRoomActivity, getString(R.string.original_message_not_found), Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     @Deprecated("Deprecated in Java")
+    @Suppress("DEPRECATION") // calls super.onBackPressed(); OnBackPressedDispatcher migration tracked separately
     override fun onBackPressed() {
         if (binding.layoutVideoNoteOverlay.visibility == View.VISIBLE) {
             cancelVideoNote()

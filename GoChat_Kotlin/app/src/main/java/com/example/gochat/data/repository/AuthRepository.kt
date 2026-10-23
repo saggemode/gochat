@@ -716,6 +716,7 @@ class AuthRepository @Inject constructor(
         )
     }
 
+    @Suppress("DEPRECATION") // FirebaseMessaging.token Task API; still the supported retrieval path
     suspend fun syncPushTokenIfAvailable() {
         var pushToken = tokenManager.fcmToken
         if (pushToken.isNullOrBlank()) {

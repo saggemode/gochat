@@ -271,7 +271,6 @@ class MessageAdapter(
             MessageType.STICKER -> "🏷️ Sticker"
             MessageType.ORDER -> "📦 Order"
             MessageType.SYSTEM -> "System message"
-            else -> msg.content.take(200).ifBlank { "Media" }
         }
     }
 

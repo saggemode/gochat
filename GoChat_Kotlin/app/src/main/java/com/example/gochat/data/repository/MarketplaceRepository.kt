@@ -1522,10 +1522,8 @@ class MarketplaceRepository @Inject constructor(
             )
             val finalOrder = if (response.isSuccessful) {
                 val bodyEl = response.body()
-                val order = when (bodyEl) {
-                    is JsonArray -> bodyEl.firstOrNull()?.let { parseSingleOrderJson(it) }
-                    is JsonObject -> bodyEl["order"]?.let { parseSingleOrderJson(it) } ?: parseSingleOrderJson(bodyEl)
-                    else -> null
+                val order = bodyEl?.let { obj ->
+                    obj["order"]?.let { parseSingleOrderJson(it) } ?: parseSingleOrderJson(obj)
                 }
                 order ?: fallbackOrder
             } else {

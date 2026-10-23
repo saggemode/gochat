@@ -38,6 +38,15 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        // Apply parameter annotations (e.g. Hilt qualifiers on @Inject constructor params)
+        // to both the value parameter and the backing field — the forward-compatible
+        // behavior recommended by KT-73255. Silences the project-wide annotation-target warning.
+        freeCompilerArgs.add("-Xannotation-default-target=param-property")
+    }
+}
+
 dependencies {
     implementation(project(":shared"))
     implementation(libs.androidx.core.ktx)
@@ -80,6 +89,10 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
     implementation("androidx.media3:media3-datasource-okhttp:1.4.1")
+    // Video transcoding/compression so clips fit under the ~15MB send limit
+    implementation("androidx.media3:media3-transformer:1.4.1")
+    implementation("androidx.media3:media3-effect:1.4.1")
+    implementation("androidx.media3:media3-common:1.4.1")
     implementation("androidx.camera:camera-core:1.3.4")
     implementation("androidx.camera:camera-camera2:1.3.4")
     implementation("androidx.camera:camera-lifecycle:1.3.4")

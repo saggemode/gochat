@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -120,20 +119,21 @@ func (s *MediaServer) UploadMedia(stream mediapb.MediaService_UploadMediaServer)
 	var objectKey, publicURL string
 	var sizeBytes int64
 
-	// 0. Videos and large files can't be served back from Telegram — the bot download
-	//    API caps at ~20MB, so a video uploaded via sendDocument (up to 50MB) later 404s
-	//    on getFile. Store those in the DB store, which the download endpoint can serve.
-	isVideo := strings.HasPrefix(optResult.MimeType, "video")
+	// 0. Telegram's bot download API caps at ~20MB, so anything larger can be uploaded
+	//    (sendDocument allows 50MB) but later 404s on getFile. The client trims videos to
+	//    ~15MB so they serve back fine from Telegram; this is only a safety net for any
+	//    oversized file that slips through — it goes to the DB store, which the download
+	//    endpoint can serve directly.
 	tooBigForTelegram := optSize > 19*1024*1024
-	if objectKey == "" && (isVideo || tooBigForTelegram) && s.dbStore != nil && s.dbStore.IsConfigured() {
+	if objectKey == "" && tooBigForTelegram && s.dbStore != nil && s.dbStore.IsConfigured() {
 		if dbResult, dbErr := s.dbStore.Upload(ctx, bytes.NewReader(optBytes), h.FileName, optResult.MimeType, h.UploaderId, optSize); dbErr == nil {
 			objectKey = dbResult.FileID
 			publicURL = dbResult.URL
 			sizeBytes = dbResult.Size
-			s.log.Info("video/large media stored in DB (Telegram can't serve it back)",
+			s.log.Info("oversized media stored in DB (Telegram can't serve it back)",
 				zap.String("file_id", dbResult.FileID), zap.Int64("size", optSize))
 		} else {
-			s.log.Warn("DB storage upload failed for video/large file", zap.Error(dbErr))
+			s.log.Warn("DB storage upload failed for oversized file", zap.Error(dbErr))
 		}
 	}
 

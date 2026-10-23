@@ -38,6 +38,7 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
         } catch (_: Exception) {}
     }
 
+    @Suppress("DEPRECATION") // base onNewToken signature; no non-deprecated override is offered
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         Log.d(TAG, "FCM onNewToken received: $token")
@@ -75,7 +76,7 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
 
         var isOrderPush = false
         // Sanitize body: if it looks like raw JSON, replace with a friendly label
-        if (body != null && body.trimStart().startsWith("{")) {
+        if (body.trimStart().startsWith("{")) {
             body = try {
                 val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true; isLenient = true }
                 val root = json.decodeFromString<kotlinx.serialization.json.JsonObject>(body.trim())
@@ -106,7 +107,7 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
                     "New message"
                 }
             }
-        } else if (body != null && (body.contains("\"order_number\"") || body.contains("\"type\":\"order\""))) {
+        } else if (body.contains("\"order_number\"") || body.contains("\"type\":\"order\"")) {
             isOrderPush = true
             body = "📦 New Order Placed"
         }

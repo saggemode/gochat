@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION") // Google Sign-In SDK is deprecated; Credential Manager migration tracked separately
+
 package com.example.gochat.core.backup
 
 import android.content.Context

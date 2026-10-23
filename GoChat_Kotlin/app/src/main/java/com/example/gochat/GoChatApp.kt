@@ -135,6 +135,7 @@ class GoChatApp : Application(), Configuration.Provider, ImageLoaderFactory {
     @Inject lateinit var authRepository: AuthRepository
     @Inject lateinit var tokenManager: TokenManager
 
+    @Suppress("DEPRECATION") // FirebaseMessaging.token Task API; still the supported retrieval path
     private fun initFcm() {
         try {
             if (FirebaseApp.getApps(this).isEmpty()) {

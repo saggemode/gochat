@@ -971,7 +971,6 @@ class ChatRepository @Inject constructor(
             MessageType.CONTACT -> "👤 Contact"
             MessageType.STICKER -> "🏷️ Sticker"
             MessageType.SYSTEM -> "System message"
-            else -> "Media"
         }
     }
 
