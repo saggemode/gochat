@@ -137,7 +137,25 @@ func (s *MediaServer) UploadMedia(stream mediapb.MediaService_UploadMediaServer)
 		}
 	}
 
-	// 1. Try Telegram Storage if configured (images / small files)
+	// 1. Prefer MinIO / S3-compatible object storage (e.g. Cloudflare R2) when configured.
+	//    This is the proper primary store: no size ceiling and it serves media directly,
+	//    unlike Telegram (which can't return files >~20MB). Falls through if not configured.
+	if objectKey == "" && s.store != nil {
+		minioResult, minioErr := s.store.Upload(ctx, bytes.NewReader(optBytes), h.FileName, optResult.MimeType, optSize)
+		if minioErr == nil {
+			objectKey = minioResult.ObjectKey
+			publicURL = minioResult.URL
+			sizeBytes = minioResult.Size
+			s.log.Info("media uploaded via MinIO/S3 (R2)",
+				zap.String("key", minioResult.ObjectKey),
+				zap.String("url", minioResult.URL),
+			)
+		} else {
+			s.log.Warn("minio/S3 storage upload failed, attempting fallback to Telegram/DB", zap.Error(minioErr))
+		}
+	}
+
+	// 2. Fallback to Telegram Storage if object storage is not configured or failed (small files).
 	if objectKey == "" && s.tgStore != nil && s.tgStore.IsConfigured() {
 		tgResult, tgErr := s.tgStore.Upload(ctx, bytes.NewReader(optBytes), h.FileName, optResult.MimeType, optSize)
 		if tgErr == nil {
@@ -149,23 +167,7 @@ func (s *MediaServer) UploadMedia(stream mediapb.MediaService_UploadMediaServer)
 				zap.String("url", tgResult.URL),
 			)
 		} else {
-			s.log.Warn("telegram storage upload failed, attempting fallback to MinIO/DB", zap.Error(tgErr))
-		}
-	}
-
-	// 2. Fallback to MinIO if Telegram was not configured or failed
-	if objectKey == "" && s.store != nil {
-		minioResult, minioErr := s.store.Upload(ctx, bytes.NewReader(optBytes), h.FileName, optResult.MimeType, optSize)
-		if minioErr == nil {
-			objectKey = minioResult.ObjectKey
-			publicURL = minioResult.URL
-			sizeBytes = minioResult.Size
-			s.log.Info("media uploaded via MinIO/S3",
-				zap.String("key", minioResult.ObjectKey),
-				zap.String("url", minioResult.URL),
-			)
-		} else {
-			s.log.Warn("minio storage upload failed, attempting fallback to DB", zap.Error(minioErr))
+			s.log.Warn("telegram storage upload failed, attempting fallback to DB", zap.Error(tgErr))
 		}
 	}
 
