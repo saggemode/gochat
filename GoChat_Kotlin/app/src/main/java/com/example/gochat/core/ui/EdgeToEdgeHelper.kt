@@ -1,8 +1,10 @@
 package com.example.gochat.core.ui
 
+import android.graphics.Color
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -29,15 +31,27 @@ object EdgeToEdgeHelper {
      * Enables proper edge-to-edge rendering and transparent system bars.
      */
     fun ComponentActivity.applyEdgeToEdge() {
-        enableEdgeToEdge()
+        enableEdgeToEdgeDark()
     }
 }
 
 /**
  * Top-level extension to enable Edge-to-Edge easily from any ComponentActivity.
+ *
+ * GoChat is a dark-themed app, so we force the DARK system-bar style (light/white status-bar
+ * icons and clock). The default `enableEdgeToEdge()` uses `auto`, which picks icon color from
+ * the PHONE's light/dark setting — on a phone in light mode that makes the status-bar time/date
+ * dark and invisible against our dark top bar. Forcing dark keeps them readable on every phone.
  */
 fun ComponentActivity.applyEdgeToEdge() {
-    enableEdgeToEdge()
+    enableEdgeToEdgeDark()
+}
+
+private fun ComponentActivity.enableEdgeToEdgeDark() {
+    enableEdgeToEdge(
+        statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+        navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
+    )
 }
 
 /**

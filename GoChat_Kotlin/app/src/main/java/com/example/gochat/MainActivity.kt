@@ -162,6 +162,17 @@ class MainActivity : AppCompatActivity() {
                 startActivity(productIntent)
             }
         }
+
+        // gochat://user/{pin} — a scanned contact QR code → resolve and open the chat
+        if (data.scheme == "gochat" && data.host == "user") {
+            val pin = data.lastPathSegment
+            if (!pin.isNullOrBlank()) {
+                val qrIntent = Intent(this, com.example.gochat.ui.contacts.ContactQrActivity::class.java).apply {
+                    putExtra(com.example.gochat.ui.contacts.ContactQrActivity.EXTRA_RESOLVE_PIN, pin)
+                }
+                startActivity(qrIntent)
+            }
+        }
     }
 
     private fun checkNotificationPermission() {

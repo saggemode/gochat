@@ -68,7 +68,21 @@
                 <data android:scheme="gochat" android:host="product" />
             </intent-filter>
 
+            <!-- Deep Link: gochat://user/{pin} (contact QR code) -->
+            <intent-filter android:label="GoChat Contact">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="gochat" android:host="user" />
+            </intent-filter>
+
         </activity>
+
+        <!-- Contact QR code: show my code / scan a contact's code -->
+        <activity
+            android:name=".ui.contacts.ContactQrActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
 
         <!-- Main Navigation Activity -->
         <activity

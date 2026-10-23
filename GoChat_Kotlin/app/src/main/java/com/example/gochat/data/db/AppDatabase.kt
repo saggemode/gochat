@@ -7,6 +7,25 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.example.gochat.data.model.*
 
+/**
+ * Local message/chat/marketplace store (WhatsApp-style: the UI reads from here, works offline,
+ * and history survives app restarts).
+ *
+ * KEEPING HISTORY ACROSS APP UPDATES:
+ * Schemas are exported to app/schemas (exportSchema = true). On each future schema change,
+ * bump [version] and add an @AutoMigration here, e.g.:
+ *
+ *     @Database(
+ *         ...,
+ *         version = 20,
+ *         autoMigrations = [AutoMigration(from = 19, to = 20)]
+ *     )
+ *
+ * Room then migrates the existing database and KEEPS all messages for additive changes
+ * (new column/table). For a destructive change (dropped/renamed column) Room will ask for an
+ * @DeleteColumn/@RenameColumn spec. We no longer wipe the database on upgrade; only a DOWNGRADE
+ * (rare, dev-only) falls back to recreating it.
+ */
 @Database(
     entities = [
         Conversation::class,
@@ -20,7 +39,7 @@ import com.example.gochat.data.model.*
         BlockedUser::class
     ],
     version = 19,
-    exportSchema = false
+    exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -38,7 +57,8 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "gochat_database"
                 )
-                    .fallbackToDestructiveMigration(true)
+                    // Upgrades keep history (via auto-migrations above). Only a downgrade recreates.
+                    .fallbackToDestructiveMigrationOnDowngrade(true)
                     .build()
                 INSTANCE = instance
                 instance

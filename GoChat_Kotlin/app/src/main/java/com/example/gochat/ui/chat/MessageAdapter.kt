@@ -290,6 +290,21 @@ class MessageAdapter(
     private var accentColor: Int = 0xFF00A884.toInt() // Default emerald
     private var bubbleShape: BubbleShape = BubbleShape.CLASSIC
 
+    // Reused across binds to avoid per-row allocations that cause jank on open/scroll.
+    private val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
+    private val lenientJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true; isLenient = true }
+    private var cachedMeBubble: android.graphics.drawable.Drawable.ConstantState? = null
+    private var cachedOtherBubble: android.graphics.drawable.Drawable.ConstantState? = null
+
+    /** Bubble background for the current theme; built once per (isMe) and cheaply copied after. */
+    private fun bubbleBackground(context: android.content.Context, isMe: Boolean): android.graphics.drawable.Drawable {
+        val cached = if (isMe) cachedMeBubble else cachedOtherBubble
+        if (cached != null) return cached.newDrawable().mutate()
+        val d = ChatBubbleHelper.getBubbleDrawable(context, isMe, bubbleShape, accentColor)
+        if (isMe) cachedMeBubble = d.constantState else cachedOtherBubble = d.constantState
+        return d
+    }
+
     fun setBubbleTheme(shape: BubbleShape, accent: Int) {
         var changed = false
         if (this.bubbleShape != shape) {
@@ -301,6 +316,9 @@ class MessageAdapter(
             changed = true
         }
         if (changed) {
+            // Theme changed → drop cached bubble drawables so they rebuild with the new look.
+            cachedMeBubble = null
+            cachedOtherBubble = null
             notifyDataSetChanged()
         }
     }
@@ -424,7 +442,7 @@ class MessageAdapter(
         if (isOffer) {
             layoutCustomOfferCard.visibility = View.VISIBLE
             try {
-                val json = Json { ignoreUnknownKeys = true; isLenient = true }
+                val json = lenientJson
                 val rootObj = json.decodeFromString<JsonObject>(message.content)
                 val offerObj = rootObj["custom_offer"]?.let { if (it is JsonObject) it else null } ?: rootObj
 
@@ -673,7 +691,7 @@ class MessageAdapter(
         tvMessageContent.text = ""
 
         try {
-            val json = Json { ignoreUnknownKeys = true }
+            val json = lenientJson
             val rootObj = json.decodeFromString<JsonObject>(message.content)
             val catalogObj = rootObj["catalog"]?.jsonObject ?: rootObj
             val storeTitle = catalogObj["title"]?.jsonPrimitive?.contentOrNull
@@ -1126,7 +1144,7 @@ class MessageAdapter(
                 else -> rawContent
             }
             binding.tvSystemMessageContent.text = displayText
-            binding.tvSystemMessageTime.text = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(message.createdAt))
+            binding.tvSystemMessageTime.text = formatTime(message.createdAt)
 
             val contentLower = rawContent.lowercase(Locale.ROOT)
             when {
@@ -1183,13 +1201,8 @@ class MessageAdapter(
 
         fun bind(message: Message) {
             with(binding) {
-                // Apply dynamic bubble shape & background
-                layoutBubbleContainer.background = ChatBubbleHelper.getBubbleDrawable(
-                    context = root.context,
-                    isMe = true,
-                    shape = bubbleShape,
-                    accentColor = accentColor
-                )
+                // Apply dynamic bubble shape & background (cached per theme to avoid per-bind allocation)
+                layoutBubbleContainer.background = bubbleBackground(root.context, isMe = true)
 
                 val textColor = ChatBubbleHelper.getMessageTextColor(isMe = true, shape = bubbleShape)
                 val timeColor = ChatBubbleHelper.getTimestampTextColor(isMe = true, shape = bubbleShape)
@@ -1352,7 +1365,7 @@ class MessageAdapter(
                 if (isOrder) {
                     layoutOrderCard.visibility = View.VISIBLE
                     try {
-                        val json = Json { ignoreUnknownKeys = true; isLenient = true }
+                        val json = lenientJson
                         val orderObj = json.decodeFromString<JsonObject>(message.content)
                         val orderData = orderObj["order"]?.let { if (it is JsonObject) it else null } ?: orderObj
 
@@ -1703,13 +1716,8 @@ class MessageAdapter(
 
         fun bind(message: Message) {
             with(binding) {
-                // Apply dynamic bubble shape & background
-                layoutBubbleContainer.background = ChatBubbleHelper.getBubbleDrawable(
-                    context = root.context,
-                    isMe = false,
-                    shape = bubbleShape,
-                    accentColor = accentColor
-                )
+                // Apply dynamic bubble shape & background (cached per theme to avoid per-bind allocation)
+                layoutBubbleContainer.background = bubbleBackground(root.context, isMe = false)
 
                 val textColor = ChatBubbleHelper.getMessageTextColor(isMe = false, shape = bubbleShape)
                 val timeColor = ChatBubbleHelper.getTimestampTextColor(isMe = false, shape = bubbleShape)
@@ -1880,7 +1888,7 @@ class MessageAdapter(
                 if (isOrder) {
                     layoutOrderCard.visibility = View.VISIBLE
                     try {
-                        val json = Json { ignoreUnknownKeys = true; isLenient = true }
+                        val json = lenientJson
                         val orderObj = json.decodeFromString<JsonObject>(message.content)
                         val orderData = orderObj["order"]?.let { if (it is JsonObject) it else null } ?: orderObj
 
@@ -2215,7 +2223,8 @@ class MessageAdapter(
     }
 
     private fun formatTime(timeMillis: Long): String {
-        return SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(timeMillis))
+        // Reuses one formatter (bind runs on the main thread, so no thread-safety concern).
+        return timeFormat.format(Date(timeMillis))
     }
 
     private fun formatDuration(durationSeconds: Int): String {

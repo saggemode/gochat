@@ -297,6 +297,9 @@ class LoginActivity : AppCompatActivity() {
         } else {
             val intent = Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                // Forward any gochat:// deep link (store/product/contact QR) so MainActivity
+                // routes it — the deep-link filters live on this launcher activity.
+                getIntent()?.data?.let { data = it }
             }
             startActivity(intent)
             finish()

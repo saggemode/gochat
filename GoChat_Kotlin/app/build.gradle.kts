@@ -38,6 +38,11 @@ android {
     }
 }
 
+// Export Room schemas so upgrades can migrate (and keep) existing message history instead of wiping.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 kotlin {
     compilerOptions {
         // Apply parameter annotations (e.g. Hilt qualifiers on @Inject constructor params)

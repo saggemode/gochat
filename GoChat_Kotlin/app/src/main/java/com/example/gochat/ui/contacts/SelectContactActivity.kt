@@ -140,6 +140,17 @@ class SelectContactActivity : AppCompatActivity() {
     private fun setupToolbar() {
         binding.toolbar.setNavigationOnClickListener { finish() }
 
+        // QR action: open My QR code / scan a contact's code to start a chat.
+        binding.toolbar.inflateMenu(com.example.gochat.R.menu.menu_select_contact)
+        binding.toolbar.setOnMenuItemClickListener { item ->
+            if (item.itemId == com.example.gochat.R.id.action_contact_qr) {
+                startActivity(android.content.Intent(this, ContactQrActivity::class.java))
+                true
+            } else {
+                false
+            }
+        }
+
         binding.btnSearch.setOnClickListener {
             binding.layoutSearchBar.visibility = View.VISIBLE
             binding.etSearchQuery.requestFocus()
