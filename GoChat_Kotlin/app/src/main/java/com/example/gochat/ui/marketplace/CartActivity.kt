@@ -125,7 +125,7 @@ class CartActivity : AppCompatActivity() {
     }
 
     private fun updateTotal(items: List<CartItem>) {
-        val total = items.sumOf { (it.productPrice ?: 0.0) * it.quantity }
+        val total = com.example.gochat.core.marketplace.CartMath.total(items)
         binding.tvTotalAmount.text = CurrencyManager.formatPrice(total)
     }
 }

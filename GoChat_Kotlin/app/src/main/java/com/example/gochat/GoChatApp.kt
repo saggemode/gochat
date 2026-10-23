@@ -45,6 +45,14 @@ class GoChatApp : Application(), Configuration.Provider, ImageLoaderFactory {
         // 1. Initialize FirebaseApp explicitly (prevents IllegalStateException in all processes)
         initFirebase()
 
+        // 1b. Crash reporting: tag crash reports with the user id (if signed in) for easier triage.
+        try {
+            val crashlytics = com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance()
+            crashlytics.setCrashlyticsCollectionEnabled(true)
+            tokenManager.userId?.takeIf { it.isNotBlank() }?.let { crashlytics.setUserId(it) }
+        } catch (_: Exception) {
+        }
+
         // 2. Initialize Adaptive DayNight Theme
         ThemeManager.init(this)
 

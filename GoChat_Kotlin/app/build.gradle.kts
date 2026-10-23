@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.google.gms.google.services)
+    alias(libs.plugins.firebase.crashlytics)
 }
 
 android {
@@ -58,6 +59,10 @@ dependencies {
 
     implementation(libs.androidx.appcompat)
     implementation(libs.firebase.messaging)
+    // Firebase Crashlytics (crash/error reporting — uses the existing Firebase project)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.analytics)
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.activity.ktx)
