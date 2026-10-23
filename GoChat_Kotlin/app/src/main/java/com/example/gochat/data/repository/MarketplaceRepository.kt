@@ -1280,19 +1280,25 @@ class MarketplaceRepository @Inject constructor(
         val currentUserId = tokenManager.userId ?: ""
         return try {
             val response = api.getBuyerOrders()
-            if (response.isSuccessful) {
-                val data = response.body()
-                val list = parseOrdersJson(data)
-                if (list.isNotEmpty()) {
-                    marketplaceDao.insertOrders(list)
-                }
-                Result.success(list)
-            } else {
-                Result.success(marketplaceDao.getBuyerOrders(currentUserId))
+            val serverList = if (response.isSuccessful) parseOrdersJson(response.body()) else emptyList()
+            if (serverList.isNotEmpty()) {
+                marketplaceDao.insertOrders(serverList)
             }
+            // Merge server orders with locally-saved ones so EVERY placed order shows — including
+            // ones still PENDING or that failed to reach the server (which the server list omits).
+            Result.success(mergeWithLocalBuyerOrders(serverList, currentUserId))
         } catch (e: Exception) {
             Result.success(marketplaceDao.getBuyerOrders(currentUserId))
         }
+    }
+
+    /** Server orders plus any local buyer orders not present on the server, newest first. */
+    private suspend fun mergeWithLocalBuyerOrders(serverList: List<Order>, buyerId: String): List<Order> {
+        val local = marketplaceDao.getBuyerOrders(buyerId)
+        val serverIds = serverList.map { it.id }.toSet()
+        val serverNums = serverList.mapNotNull { it.orderNumber.ifBlank { null } }.toSet()
+        val localOnly = local.filter { it.id !in serverIds && (it.orderNumber.isBlank() || it.orderNumber !in serverNums) }
+        return (serverList + localOnly).sortedByDescending { it.createdAt }
     }
 
     suspend fun getSellerOrders(): Result<List<Order>> {
@@ -1509,42 +1515,57 @@ class MarketplaceRepository @Inject constructor(
                 put("items", JsonArray(items.map { json.encodeToJsonElement(it) }))
             }
             val response = api.placeOrder(body)
+            val confirmed = response.isSuccessful
+            // On success the order is PAID; if the server rejected/failed it, keep a PENDING
+            // record (not PAID) so the buyer can still SEE the attempt and that it didn't go through.
             val fallbackOrder = Order(
                 id = UUID.randomUUID().toString(),
                 orderNumber = "ORD-${System.currentTimeMillis().toString().takeLast(6)}",
                 storeId = storeId,
                 storeName = items.firstOrNull()?.storeName ?: "Official Store",
+                buyerId = tokenManager.userId.orEmpty(),
+                buyerName = customerName,
+                buyerPin = tokenManager.userPin.orEmpty(),
                 items = items.toList(),
                 totalAmount = totalAmount,
-                status = OrderStatus.PAID,
+                status = if (confirmed) OrderStatus.PAID else OrderStatus.PENDING,
                 shippingAddress = address,
                 createdAt = System.currentTimeMillis()
             )
-            val finalOrder = if (response.isSuccessful) {
+            val finalOrder = if (confirmed) {
                 val bodyEl = response.body()
                 val order = bodyEl?.let { obj ->
                     obj["order"]?.let { parseSingleOrderJson(it) } ?: parseSingleOrderJson(obj)
                 }
-                order ?: fallbackOrder
+                (order ?: fallbackOrder).let {
+                    // Ensure the buyer id is set so it shows up under "My orders".
+                    if (it.buyerId.isBlank()) it.copy(buyerId = tokenManager.userId.orEmpty()) else it
+                }
             } else {
                 fallbackOrder
             }
             marketplaceDao.insertOrder(finalOrder)
-            marketplaceDao.clearCart()
+            // Only empty the cart when the order actually went through, so a failed order
+            // doesn't silently wipe the buyer's cart.
+            if (confirmed) marketplaceDao.clearCart()
             Result.success(finalOrder)
         } catch (e: Exception) {
+            // Network/exception: record a PENDING order locally so it's visible and retryable.
             val fallbackOrder = Order(
                 id = UUID.randomUUID().toString(),
                 orderNumber = "ORD-${System.currentTimeMillis().toString().takeLast(6)}",
                 storeId = storeId,
                 storeName = items.firstOrNull()?.storeName ?: "Official Store",
+                buyerId = tokenManager.userId.orEmpty(),
+                buyerName = tokenManager.userDisplayName ?: "Customer",
+                buyerPin = tokenManager.userPin.orEmpty(),
                 items = items.toList(),
                 totalAmount = totalAmount,
-                status = OrderStatus.PAID,
-                shippingAddress = address
+                status = OrderStatus.PENDING,
+                shippingAddress = address,
+                createdAt = System.currentTimeMillis()
             )
             marketplaceDao.insertOrder(fallbackOrder)
-            marketplaceDao.clearCart()
             Result.success(fallbackOrder)
         }
     }
