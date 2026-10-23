@@ -106,6 +106,19 @@ class MessageAdapter(
             .setMediaSourceFactory(mediaSourceFactory)
             .build()
         playerView.player = player
+        // Fail gracefully: a 404 (e.g. an older video too large for the Telegram CDN to serve
+        // back) or any network error restores the thumbnail instead of leaving a blank card.
+        player.addListener(object : androidx.media3.common.Player.Listener {
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                val is404 = (error.cause as? androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException)?.responseCode == 404
+                val msg = if (is404) "This video is no longer available" else "Couldn't play this video"
+                android.widget.Toast.makeText(ctx, msg, android.widget.Toast.LENGTH_SHORT).show()
+                stopInlineVideo()
+                card.visibility = View.GONE
+                playIcon.visibility = View.VISIBLE
+                thumb.visibility = View.VISIBLE
+            }
+        })
         player.setMediaItem(androidx.media3.common.MediaItem.fromUri(android.net.Uri.parse(url)))
         player.repeatMode = androidx.media3.common.Player.REPEAT_MODE_ALL
         player.prepare()

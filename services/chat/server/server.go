@@ -197,6 +197,11 @@ func (s *ChatServer) SendMessage(ctx context.Context, req *chatpb.SendMessageReq
 	// Verify sender is a member
 	isMember, err := s.convRepo.IsMember(ctx, convID, senderID)
 	if err != nil {
+		s.log.Error("membership check failed",
+			zap.String("conv_id", convID.String()),
+			zap.String("sender_id", senderID.String()),
+			zap.Error(err),
+		)
 		return nil, status.Error(codes.Internal, "membership check failed")
 	}
 	if !isMember {

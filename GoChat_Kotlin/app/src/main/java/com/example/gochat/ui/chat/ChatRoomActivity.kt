@@ -260,6 +260,8 @@ class ChatRoomActivity : AppCompatActivity() {
     private var videoNoteDownX = 0f
     private var videoNoteDownY = 0f
     private var videoNoteStartMs = 0L
+    // Video notes aren't re-compressed, so cap the recording itself at 15 MB (Telegram's serve-back limit).
+    private val VIDEO_NOTE_MAX_BYTES = 15L * 1024 * 1024
     private val videoNoteHandler = Handler(Looper.getMainLooper())
     private val videoNoteStartRunnable = Runnable { startVideoNote() }
     private val videoNoteTimerRunnable = object : Runnable {
@@ -1681,6 +1683,7 @@ class ChatRoomActivity : AppCompatActivity() {
         if (isVideoNoteRecording) return
         isVideoNoteCancelled = false
         isVideoNoteLocked = false
+        binding.progressVideoNote.progress = 0
         binding.layoutVideoNoteOverlay.visibility = View.VISIBLE
         binding.layoutVideoNoteLocked.visibility = View.GONE
         binding.layoutVideoNoteLockHint.visibility = View.VISIBLE
@@ -1739,6 +1742,17 @@ class ChatRoomActivity : AppCompatActivity() {
                         videoNoteStartMs = System.currentTimeMillis()
                         videoNoteHandler.post(videoNoteTimerRunnable)
                     }
+                    is VideoRecordEvent.Status -> {
+                        // Drive the ring from bytes recorded and auto-send at the 15 MB cap so the
+                        // note stays small enough to be served back from the Telegram-backed CDN.
+                        val bytes = event.recordingStats.numBytesRecorded
+                        val pct = ((bytes.toDouble() / VIDEO_NOTE_MAX_BYTES) * 100).toInt().coerceIn(0, 100)
+                        binding.progressVideoNote.progress = pct
+                        if (bytes >= VIDEO_NOTE_MAX_BYTES && videoNoteRecording != null) {
+                            Toast.makeText(this, "Reached 15 MB — sending", Toast.LENGTH_SHORT).show()
+                            stopVideoNoteAndSend()
+                        }
+                    }
                     is VideoRecordEvent.Finalize -> {
                         isVideoNoteRecording = false
                         videoNoteHandler.removeCallbacks(videoNoteTimerRunnable)
@@ -1782,6 +1796,7 @@ class ChatRoomActivity : AppCompatActivity() {
 
     private fun hideVideoNoteOverlay() {
         binding.layoutVideoNoteOverlay.visibility = View.GONE
+        binding.progressVideoNote.progress = 0
         isVideoNoteLocked = false
     }
 

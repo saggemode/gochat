@@ -367,7 +367,11 @@ class ChatListFragment : Fragment() {
         val ctx = context ?: return
         val isWhitelisted = BatteryOptimizationHelper.isIgnoringBatteryOptimizations(ctx)
         val isDismissed = BatteryOptimizationHelper.isDismissed(ctx)
-        if (!isWhitelisted && !isDismissed) {
+        // Aggressive-OEM devices (MIUI/HyperOS, ColorOS, etc.) need the Autostart toggle too,
+        // which is separate from battery-optimization whitelisting — so keep offering the card
+        // (which routes to the Autostart guidance) even once battery exemption is granted.
+        val needsAttention = !isWhitelisted || BatteryOptimizationHelper.needsAutostartWarning()
+        if (needsAttention && !isDismissed) {
             binding.layoutBatteryOptimizationCard.visibility = View.VISIBLE
         } else {
             binding.layoutBatteryOptimizationCard.visibility = View.GONE

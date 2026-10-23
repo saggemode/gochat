@@ -1151,6 +1151,21 @@
                 android:layout_height="match_parent" />
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Size progress ring around the viewfinder; fills as the note nears the 15 MB cap -->
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/progressVideoNote"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:indeterminate="false"
+            android:max="100"
+            android:progress="0"
+            app:indicatorColor="@color/gochat_accent"
+            app:indicatorSize="252dp"
+            app:trackColor="#33FFFFFF"
+            app:trackThickness="6dp"
+            tools:progress="40" />
+
         <!-- Slide-to-cancel hint -->
         <TextView
             android:id="@+id/tvVideoNoteCancelHint"

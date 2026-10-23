@@ -10,6 +10,7 @@ import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.example.gochat.data.repository.ChatRepository
@@ -61,30 +62,15 @@ class NotificationActionReceiver : BroadcastReceiver() {
                         senderTitle = senderTitle
                     )
 
-                    // 2. Attempt immediate dispatch; only fallback to WorkManager if immediate send fails
-                    scope.launch {
-                        try {
-                            Log.d(TAG, "Attempting direct reply to $conversationId: $replyText")
-                            val sendResult = chatRepository.sendMessage(
-                                conversationId = conversationId,
-                                content = replyText
-                            )
-                            if (sendResult.isSuccess) {
-                                chatRepository.markConversationAsRead(conversationId)
-                            } else {
-                                Log.w(TAG, "Direct reply failed, enqueuing WorkManager fallback: ${sendResult.exceptionOrNull()?.message}")
-                                enqueueDirectReplyWork(context, conversationId, replyText, notificationId)
-                            }
-                        } catch (e: Exception) {
-                            Log.w(TAG, "Direct reply threw exception, enqueuing WorkManager fallback: ${e.message}")
-                            enqueueDirectReplyWork(context, conversationId, replyText, notificationId)
-                        } finally {
-                            pendingResult.finish()
-                        }
-                    }
-                } else {
-                    pendingResult.finish()
+                    // 2. Hand the send to an expedited WorkManager job instead of sending inline here.
+                    //    Aggressive OEM battery managers (MIUI/HyperOS on Redmi, ColorOS, etc.) kill the
+                    //    receiver's process mid-send, so a coroutine started in onReceive can be dropped
+                    //    before the network call finishes. An expedited job survives process death and
+                    //    runs under background restrictions, so the reply reliably goes out.
+                    Log.d(TAG, "Enqueuing expedited direct reply to $conversationId: $replyText")
+                    enqueueDirectReplyWork(context, conversationId, replyText, notificationId)
                 }
+                pendingResult.finish()
             }
 
             NotificationHelper.ACTION_MARK_AS_READ -> {
@@ -151,6 +137,9 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val replyWorkRequest = OneTimeWorkRequestBuilder<DirectReplyWorker>()
             .setInputData(workData)
             .setConstraints(constraints)
+            // Run ASAP even under background restrictions; fall back to normal work if the
+            // expedited quota is exhausted (so it never throws on heavily restricted devices).
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
             .build()
 

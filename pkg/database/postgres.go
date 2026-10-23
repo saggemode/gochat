@@ -21,9 +21,22 @@ func NewPostgres(ctx context.Context, dsn string, log *zap.Logger) (*pgxpool.Poo
 	// Disable prepared statements for PgBouncer transaction pooling compatibility
 	cfg.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 
-	// Set default schema search_path on every pooled connection
+	const searchPath = "core, auth, authz, chat, grp, story, call, channel, social, miniapp, business, media, public"
+
+	// Set the search_path as a connection STARTUP parameter, not a session-level SET.
+	// Under PgBouncer transaction pooling a `SET search_path` does not reliably persist
+	// across transactions (each transaction may land on a different server connection),
+	// which makes unqualified table references fail intermittently with "relation does
+	// not exist" — surfacing to clients as spurious 500s (e.g. "membership check failed").
+	// A startup parameter is applied when the backend connection is established, so it is
+	// reliable. The AfterConnect SET is kept as a belt-and-suspenders fallback.
+	if cfg.ConnConfig.RuntimeParams == nil {
+		cfg.ConnConfig.RuntimeParams = map[string]string{}
+	}
+	cfg.ConnConfig.RuntimeParams["search_path"] = searchPath
+
 	cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
-		_, err := conn.Exec(ctx, "SET search_path TO core, auth, authz, chat, grp, story, call, channel, social, miniapp, business, media, public;")
+		_, err := conn.Exec(ctx, "SET search_path TO "+searchPath+";")
 		return err
 	}
 
