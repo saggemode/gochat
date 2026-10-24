@@ -135,7 +135,24 @@ class MessageSyncWorker @AssistedInject constructor(
             }
         }
 
-        return if (hasFailure) Result.retry() else Result.success()
+        if (!hasFailure) return Result.success()
+
+        // Bounded retry: after several backed-off attempts (~several minutes), stop retrying and
+        // mark still-pending messages as FAILED so the UI shows a failure + tap-to-retry instead
+        // of an endless "sending" clock. Only messages older than the grace window are failed, so
+        // a freshly-queued message isn't failed by an older message's exhausted attempt.
+        if (runAttemptCount >= MAX_ATTEMPTS) {
+            val graceCutoff = System.currentTimeMillis() - FAIL_GRACE_MS
+            val failed = dao.markStalePendingAsFailed(graceCutoff)
+            Log.w("MessageSyncWorker", "Giving up after $runAttemptCount attempts; marked $failed message(s) FAILED")
+            return Result.success()
+        }
+        return Result.retry()
+    }
+
+    companion object {
+        private const val MAX_ATTEMPTS = 4
+        private const val FAIL_GRACE_MS = 60_000L
     }
 
     private fun readUriBytes(uri: Uri): ByteArray? {

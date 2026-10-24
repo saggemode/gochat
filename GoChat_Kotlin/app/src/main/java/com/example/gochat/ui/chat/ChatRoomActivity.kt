@@ -710,6 +710,10 @@ class ChatRoomActivity : AppCompatActivity() {
             onEditHistoryClicked = { msg ->
                 showEditHistoryDialog(msg)
             }
+            onRetryClicked = { msg ->
+                viewModel.retryFailedMessage(msg.id)
+                Toast.makeText(this@ChatRoomActivity, "Retrying…", Toast.LENGTH_SHORT).show()
+            }
             onMediaClick = { message ->
                 message.mediaUrl?.let { url ->
                     showFullScreenImage(

@@ -158,6 +158,8 @@ class MessageAdapter(
     var currentUserId: String = ""
     var onQuotedMessageClicked: ((replyToId: String) -> Unit)? = null
     var onEditHistoryClicked: ((message: Message) -> Unit)? = null
+    /** Invoked when the user taps the failed-status icon on an outgoing message to retry sending. */
+    var onRetryClicked: ((message: Message) -> Unit)? = null
 
     private val quotedMessageCache = LruCache<String, Message>(150)
     private val pendingQuotedFetches = mutableSetOf<String>()
@@ -1531,6 +1533,13 @@ class MessageAdapter(
                     MessageStatus.DELIVERED -> ivMessageStatus.setImageResource(R.drawable.ic_status_delivered)
                     MessageStatus.READ -> ivMessageStatus.setImageResource(R.drawable.ic_status_read)
                     MessageStatus.FAILED -> ivMessageStatus.setImageResource(R.drawable.ic_error)
+                }
+                // Tap the failed indicator to retry sending (outbox).
+                if (message.status == MessageStatus.FAILED) {
+                    ivMessageStatus.setOnClickListener { onRetryClicked?.invoke(message) }
+                } else {
+                    ivMessageStatus.setOnClickListener(null)
+                    ivMessageStatus.isClickable = false
                 }
 
                 // Quoted Reply container

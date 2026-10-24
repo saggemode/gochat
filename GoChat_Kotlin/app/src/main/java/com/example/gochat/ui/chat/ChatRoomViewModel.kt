@@ -1320,6 +1320,11 @@ class ChatRoomViewModel @Inject constructor(
         }
     }
 
+    /** Retry a message that the outbox marked FAILED. */
+    fun retryFailedMessage(messageId: String) {
+        viewModelScope.launch { chatRepository.retryFailedMessage(messageId) }
+    }
+
     fun sendTypingEvent(isTyping: Boolean) {
         val convId = _conversationId.value
         if (convId.isEmpty()) return

@@ -535,6 +535,12 @@ class ChatRepository @Inject constructor(
         }
     }
 
+    /** Manual retry of a FAILED outgoing message: flip it back to SENDING and re-enqueue the sender. */
+    suspend fun retryFailedMessage(messageId: String) {
+        val requeued = dao.requeueFailedMessage(messageId)
+        if (requeued > 0) enqueueSyncWorker(messageId)
+    }
+
     private fun enqueueSyncWorker(messageId: String) {
         try {
             val syncRequest = OneTimeWorkRequestBuilder<MessageSyncWorker>()

@@ -97,16 +97,24 @@ interface ChatDao {
     suspend fun getPendingMessages(): List<Message>
 
     @Query("""
-        UPDATE messages SET status = :status 
-        WHERE id = :messageId 
+        UPDATE messages SET status = :status
+        WHERE id = :messageId
         AND (
-            status = :status 
-            OR :status = 'READ' 
-            OR (:status = 'DELIVERED' AND status != 'READ') 
+            status = :status
+            OR :status = 'READ'
+            OR (:status = 'DELIVERED' AND status != 'READ')
             OR (:status = 'SENT' AND status NOT IN ('DELIVERED', 'READ'))
         )
     """)
     suspend fun updateMessageStatus(messageId: String, status: MessageStatus): Int
+
+    /** Marks a still-sending message as FAILED (outbox gave up). Bypasses the transition guard above. */
+    @Query("UPDATE messages SET status = 'FAILED' WHERE status = 'SENDING' AND createdAt < :olderThan")
+    suspend fun markStalePendingAsFailed(olderThan: Long): Int
+
+    /** Re-queues a FAILED message for sending (manual retry). */
+    @Query("UPDATE messages SET status = 'SENDING' WHERE id = :messageId AND status = 'FAILED'")
+    suspend fun requeueFailedMessage(messageId: String): Int
 
     @Query("UPDATE messages SET content = :newContent, isEdited = 1 WHERE id = :messageId")
     suspend fun updateMessageContent(messageId: String, newContent: String): Int
