@@ -1379,5 +1379,18 @@ func (h *AuthHandler) SyncContacts(c *gin.Context) {
 		})
 	}
 
+	// Persist the matched contacts so the story feed can scope visibility to a user's contacts.
+	if ownerID := getUserID(c); ownerID != "" && len(resp.Users) > 0 {
+		ids := make([]string, 0, len(resp.Users))
+		for _, u := range resp.Users {
+			ids = append(ids, u.Id)
+		}
+		if _, err := h.client.SaveContacts(c.Request.Context(), &authpb.SaveContactsRequest{
+			OwnerId: ownerID, ContactUserIds: ids,
+		}); err != nil {
+			h.log.Warn("failed to persist synced contacts", zap.Error(err))
+		}
+	}
+
 	c.JSON(http.StatusOK, clientUsers)
 }

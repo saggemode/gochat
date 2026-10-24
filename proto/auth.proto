@@ -33,6 +33,7 @@ service AuthService {
 
   // Batch-fetch users by IDs (for populating conversation member info)
   rpc GetUsers(GetUsersRequest) returns (GetUsersResponse);
+  rpc SaveContacts(SaveContactsRequest) returns (SaveContactsResponse);
 
   // Set user online/offline status
   rpc SetPresence(SetPresenceRequest) returns (SetPresenceResponse);
@@ -166,6 +167,15 @@ message GetUsersRequest {
 
 message GetUsersResponse {
   repeated User users = 1;
+}
+
+message SaveContactsRequest {
+  string owner_id = 1;
+  repeated string contact_user_ids = 2;
+}
+
+message SaveContactsResponse {
+  bool success = 1;
 }
 
 message UpdateUserRequest {

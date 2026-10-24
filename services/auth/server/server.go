@@ -280,6 +280,23 @@ func (s *AuthServer) GetUsers(ctx context.Context, req *authpb.GetUsersRequest) 
 	return &authpb.GetUsersResponse{Users: protoUsers}, nil
 }
 
+func (s *AuthServer) SaveContacts(ctx context.Context, req *authpb.SaveContactsRequest) (*authpb.SaveContactsResponse, error) {
+	ownerID, err := uuid.Parse(req.OwnerId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid owner_id")
+	}
+	contactIDs := make([]uuid.UUID, 0, len(req.ContactUserIds))
+	for _, idStr := range req.ContactUserIds {
+		if cid, err := uuid.Parse(idStr); err == nil {
+			contactIDs = append(contactIDs, cid)
+		}
+	}
+	if err := s.repo.SaveContacts(ctx, ownerID, contactIDs); err != nil {
+		return nil, status.Error(codes.Internal, "failed to save contacts")
+	}
+	return &authpb.SaveContactsResponse{Success: true}, nil
+}
+
 func (s *AuthServer) UpdateUser(ctx context.Context, req *authpb.UpdateUserRequest) (*authpb.UpdateUserResponse, error) {
 	uid, err := uuid.Parse(req.UserId)
 	if err != nil {

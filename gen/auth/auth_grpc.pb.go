@@ -28,6 +28,7 @@ const (
 	AuthService_DeleteUser_FullMethodName             = "/auth.AuthService/DeleteUser"
 	AuthService_Logout_FullMethodName                 = "/auth.AuthService/Logout"
 	AuthService_GetUsers_FullMethodName               = "/auth.AuthService/GetUsers"
+	AuthService_SaveContacts_FullMethodName           = "/auth.AuthService/SaveContacts"
 	AuthService_SetPresence_FullMethodName            = "/auth.AuthService/SetPresence"
 	AuthService_SetTwoStepPIN_FullMethodName          = "/auth.AuthService/SetTwoStepPIN"
 	AuthService_VerifyTwoStepPIN_FullMethodName       = "/auth.AuthService/VerifyTwoStepPIN"
@@ -67,6 +68,7 @@ type AuthServiceClient interface {
 	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
 	// Batch-fetch users by IDs (for populating conversation member info)
 	GetUsers(ctx context.Context, in *GetUsersRequest, opts ...grpc.CallOption) (*GetUsersResponse, error)
+	SaveContacts(ctx context.Context, in *SaveContactsRequest, opts ...grpc.CallOption) (*SaveContactsResponse, error)
 	// Set user online/offline status
 	SetPresence(ctx context.Context, in *SetPresenceRequest, opts ...grpc.CallOption) (*SetPresenceResponse, error)
 	// Two-Step Verification (2FA PIN)
@@ -184,6 +186,16 @@ func (c *authServiceClient) GetUsers(ctx context.Context, in *GetUsersRequest, o
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetUsersResponse)
 	err := c.cc.Invoke(ctx, AuthService_GetUsers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) SaveContacts(ctx context.Context, in *SaveContactsRequest, opts ...grpc.CallOption) (*SaveContactsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SaveContactsResponse)
+	err := c.cc.Invoke(ctx, AuthService_SaveContacts_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -362,6 +374,7 @@ type AuthServiceServer interface {
 	Logout(context.Context, *LogoutRequest) (*LogoutResponse, error)
 	// Batch-fetch users by IDs (for populating conversation member info)
 	GetUsers(context.Context, *GetUsersRequest) (*GetUsersResponse, error)
+	SaveContacts(context.Context, *SaveContactsRequest) (*SaveContactsResponse, error)
 	// Set user online/offline status
 	SetPresence(context.Context, *SetPresenceRequest) (*SetPresenceResponse, error)
 	// Two-Step Verification (2FA PIN)
@@ -421,6 +434,9 @@ func (UnimplementedAuthServiceServer) Logout(context.Context, *LogoutRequest) (*
 }
 func (UnimplementedAuthServiceServer) GetUsers(context.Context, *GetUsersRequest) (*GetUsersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetUsers not implemented")
+}
+func (UnimplementedAuthServiceServer) SaveContacts(context.Context, *SaveContactsRequest) (*SaveContactsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SaveContacts not implemented")
 }
 func (UnimplementedAuthServiceServer) SetPresence(context.Context, *SetPresenceRequest) (*SetPresenceResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetPresence not implemented")
@@ -646,6 +662,24 @@ func _AuthService_GetUsers_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AuthServiceServer).GetUsers(ctx, req.(*GetUsersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_SaveContacts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SaveContactsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).SaveContacts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_SaveContacts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).SaveContacts(ctx, req.(*SaveContactsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -962,6 +996,10 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUsers",
 			Handler:    _AuthService_GetUsers_Handler,
+		},
+		{
+			MethodName: "SaveContacts",
+			Handler:    _AuthService_SaveContacts_Handler,
 		},
 		{
 			MethodName: "SetPresence",

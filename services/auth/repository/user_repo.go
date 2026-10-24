@@ -369,6 +369,23 @@ func (r *UserRepository) UpdateUser(ctx context.Context, id uuid.UUID, displayNa
 	return user, nil
 }
 
+// SaveContacts upserts the set of GoChat users found in the owner's phone address book.
+// Used to scope the story feed to a person's contacts. Self-references are ignored.
+func (r *UserRepository) SaveContacts(ctx context.Context, ownerID uuid.UUID, contactIDs []uuid.UUID) error {
+	for _, cid := range contactIDs {
+		if cid == ownerID {
+			continue
+		}
+		if _, err := r.db.Exec(ctx, `
+			INSERT INTO user_contacts (owner_id, contact_user_id)
+			VALUES ($1, $2) ON CONFLICT (owner_id, contact_user_id) DO NOTHING
+		`, ownerID, cid); err != nil {
+			return fmt.Errorf("saving contact: %w", err)
+		}
+	}
+	return nil
+}
+
 // DeleteUser removes the user record and its auth tokens.
 func (r *UserRepository) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	_, err := r.db.Exec(ctx, `DELETE FROM refresh_tokens WHERE user_id = $1`, id)

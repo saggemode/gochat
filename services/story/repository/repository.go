@@ -139,6 +139,7 @@ func (r *StoryRepository) GetStoriesFeed(ctx context.Context, requesterID uuid.U
 	const visibility = `
 		AND (
 		    s.user_id = $1
+		    OR s.user_id IN (SELECT contact_user_id FROM auth.user_contacts WHERE owner_id = $1)
 		    OR s.user_id IN (SELECT following_id FROM social.user_followers WHERE follower_id = $1)
 		    OR s.user_id IN (SELECT store_id FROM business.store_followers WHERE user_id = $1)
 		    OR s.user_id IN (
