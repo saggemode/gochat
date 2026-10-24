@@ -428,6 +428,18 @@
                 android:paddingBottom="80dp"
                 tools:listitem="@layout/item_conversation" />
 
+            <!-- Global message-content search results (shown during an active search) -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvMessageSearchResults"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@color/gochat_surface_dark"
+                android:clipToPadding="false"
+                android:paddingBottom="80dp"
+                android:visibility="gone"
+                tools:listitem="@layout/item_message_search_result"
+                tools:visibility="visible" />
+
             <!-- Empty State View -->
             <LinearLayout
                 android:id="@+id/layoutEmptyState"

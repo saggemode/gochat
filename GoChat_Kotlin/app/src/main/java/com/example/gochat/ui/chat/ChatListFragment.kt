@@ -41,6 +41,7 @@ class ChatListFragment : Fragment() {
     private val viewModel: ChatListViewModel by activityViewModels()
 
     private lateinit var conversationAdapter: ConversationAdapter
+    private lateinit var messageSearchAdapter: MessageSearchResultAdapter
     private lateinit var storyCarouselAdapter: StoryCarouselAdapter
 
     override fun onCreateView(
@@ -107,6 +108,18 @@ class ChatListFragment : Fragment() {
         )
         binding.rvConversations.layoutManager = LinearLayoutManager(requireContext())
         binding.rvConversations.adapter = conversationAdapter
+
+        // Global message-content search results
+        messageSearchAdapter = MessageSearchResultAdapter(
+            onClick = { message ->
+                viewModel.resolveConversation(message.conversationId) { conv ->
+                    if (conv != null) openChatRoom(conv, targetMessageId = message.id)
+                    else Toast.makeText(requireContext(), "Conversation not found", Toast.LENGTH_SHORT).show()
+                }
+            }
+        )
+        binding.rvMessageSearchResults.layoutManager = LinearLayoutManager(requireContext())
+        binding.rvMessageSearchResults.adapter = messageSearchAdapter
 
         // Pull to refresh
         binding.swipeRefresh.setColorSchemeColors(
@@ -241,6 +254,17 @@ class ChatListFragment : Fragment() {
                 launch {
                     viewModel.pagedConversations.collectLatest { pagingData ->
                         conversationAdapter.submitData(pagingData)
+                    }
+                }
+
+                // Global message-content search: show matching messages during an active search.
+                launch {
+                    viewModel.globalMessageSearchResults.collectLatest { results ->
+                        val query = viewModel.searchQuery.value.trim()
+                        val show = query.isNotEmpty() && results.isNotEmpty()
+                        messageSearchAdapter.submitList(results)
+                        binding.rvMessageSearchResults.visibility = if (show) View.VISIBLE else View.GONE
+                        if (show) binding.layoutEmptyState.visibility = View.GONE
                     }
                 }
 
@@ -569,7 +593,7 @@ class ChatListFragment : Fragment() {
             .show()
     }
 
-    private fun openChatRoom(conversation: Conversation) {
+    private fun openChatRoom(conversation: Conversation, targetMessageId: String? = null) {
         val partnerId = conversation.memberIds.find { it != viewModel.currentUserId }
         val intent = Intent(requireContext(), ChatRoomActivity::class.java).apply {
             putExtra(ChatRoomActivity.EXTRA_CONVERSATION_ID, conversation.id)
@@ -580,6 +604,9 @@ class ChatListFragment : Fragment() {
             putExtra(ChatRoomActivity.EXTRA_IS_GROUP, conversation.isGroup)
             if (!partnerId.isNullOrEmpty()) {
                 putExtra(ChatRoomActivity.EXTRA_PARTNER_ID, partnerId)
+            }
+            if (!targetMessageId.isNullOrBlank()) {
+                putExtra(ChatRoomActivity.EXTRA_TARGET_MESSAGE_ID, targetMessageId)
             }
         }
         startActivity(intent)

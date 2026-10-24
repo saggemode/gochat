@@ -357,6 +357,13 @@ class ChatListViewModel @Inject constructor(
      * Start chat via GoChat unique PIN.
      * Looks up user by PIN and creates a direct conversation.
      */
+    /** Resolves a conversation by id (for opening a global message-search result). */
+    fun resolveConversation(conversationId: String, onResult: (Conversation?) -> Unit) {
+        viewModelScope.launch {
+            onResult(chatRepository.getConversationById(conversationId))
+        }
+    }
+
     fun startChatByPin(pin: String, onResult: (Result<Conversation>) -> Unit) {
         viewModelScope.launch {
             val userResult = authRepository.lookupUserByPin(pin)
