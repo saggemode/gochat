@@ -33,6 +33,8 @@ class ContactQrActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityContactQrBinding
 
+    private var qrBitmap: android.graphics.Bitmap? = null
+
     @Inject lateinit var tokenManager: TokenManager
     @Inject lateinit var authRepository: AuthRepository
     @Inject lateinit var chatRepository: ChatRepository
@@ -55,6 +57,7 @@ class ContactQrActivity : AppCompatActivity() {
 
         binding.toolbarContactQr.setNavigationOnClickListener { finish() }
         binding.btnScanContactQr.setOnClickListener { launchScanner() }
+        binding.btnShareMyQr.setOnClickListener { shareMyCode() }
 
         renderMyCode()
 
@@ -78,9 +81,46 @@ class ContactQrActivity : AppCompatActivity() {
             val content = "gochat://user/$pin"
             val bitmap = BarcodeEncoder().encodeBitmap(content, BarcodeFormat.QR_CODE, 600, 600)
             binding.ivQr.setImageBitmap(bitmap)
+            qrBitmap = bitmap
         } catch (_: Exception) {
             binding.ivQr.visibility = View.INVISIBLE
         }
+    }
+
+    /** Shares the user's QR image plus the gochat://user/<pin> deep link via the system share sheet. */
+    private fun shareMyCode() {
+        val pin = tokenManager.userPin.orEmpty()
+        if (pin.isBlank()) {
+            Toast.makeText(this, "Your code isn't available yet", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val name = tokenManager.userDisplayName?.ifBlank { null } ?: "me"
+        val link = "gochat://user/$pin"
+        val text = "Add $name on GoChat 👋\nTap this link (or scan my QR code): $link"
+
+        val imageUri = try {
+            qrBitmap?.let { bmp ->
+                val file = java.io.File(cacheDir, "my_gochat_qr.png")
+                java.io.FileOutputStream(file).use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+                androidx.core.content.FileProvider.getUriForFile(
+                    this, "${applicationContext.packageName}.fileprovider", file
+                )
+            }
+        } catch (_: Exception) {
+            null
+        }
+
+        val share = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            putExtra(android.content.Intent.EXTRA_TEXT, text)
+            if (imageUri != null) {
+                type = "image/png"
+                putExtra(android.content.Intent.EXTRA_STREAM, imageUri)
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            } else {
+                type = "text/plain"
+            }
+        }
+        startActivity(android.content.Intent.createChooser(share, "Share my GoChat code"))
     }
 
     private fun launchScanner() {
