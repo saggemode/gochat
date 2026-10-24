@@ -2495,6 +2495,20 @@ class ChatRoomActivity : AppCompatActivity() {
                 }
                 startActivity(intent)
             }
+
+            // End-to-end encryption toggle (direct chats only; opt-in, off by default).
+            val e2eeOn = com.example.gochat.core.crypto.E2EESettings.isEnabled(this, convId)
+            menuItems.add(if (e2eeOn) "Turn off encryption" else "Turn on encryption (end-to-end)")
+            actions.add {
+                val newState = !e2eeOn
+                com.example.gochat.core.crypto.E2EESettings.setEnabled(this, convId, newState)
+                Toast.makeText(
+                    this,
+                    if (newState) "End-to-end encryption ON for this chat. The other person needs a recent app version."
+                    else "End-to-end encryption OFF for this chat.",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
         } else {
             menuItems.add("Group info")
             actions.add {

@@ -357,15 +357,19 @@ class ChatRepository @Inject constructor(
         var encryptedContent = content
         var blurHash: String? = null
 
-        // NOTE: Client-side Signal Protocol encryption is disabled until session
-        // management is fully stable. Messages are already secured in transit
-        // via HTTPS/WSS. Re-enable once E2EE key exchange is verified end-to-end.
-        // if (conv != null && conv.isDirect && type == 0) {
-        //     val targetUserId = conv.memberIds.find { it != currentUserId }
-        //     if (targetUserId != null) {
-        //         encryptedContent = encryptionManager.encryptMessage(targetUserId, content)
-        //     }
-        // }
+        // Opt-in end-to-end encryption (direct text chats only). Off by default per conversation,
+        // so existing plaintext chats are unaffected. encryptMessage() falls back to plaintext if
+        // a Signal session can't be established, so a message is never lost. The local copy keeps
+        // the plaintext (below) so the sender always sees their own text; only the wire copy is
+        // encrypted and the recipient decrypts it.
+        if (conv != null && conv.isDirect && type == 0 &&
+            com.example.gochat.core.crypto.E2EESettings.isEnabled(context, conversationId)
+        ) {
+            val targetUserId = conv.memberIds.find { it != currentUserId }
+            if (!targetUserId.isNullOrBlank()) {
+                encryptedContent = encryptionManager.encryptMessage(targetUserId, content)
+            }
+        }
 
         // 1. Pre-read media bytes and generate BlurHash BEFORE the optimistic insert,
         //    so the UI immediately shows the blurry placeholder while uploading.

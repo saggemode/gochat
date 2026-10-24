@@ -73,6 +73,14 @@ class GoChatApp : Application(), Configuration.Provider, ImageLoaderFactory {
             initFcm()
         }
 
+        // 5b. Publish E2EE keys (so other users can start an encrypted session with us).
+        //     Safe no-op if not logged in; failures are swallowed inside the manager.
+        if (tokenManager.isLoggedIn) {
+            appScope.launch {
+                try { encryptionManager.initializeAndRegisterKeys() } catch (_: Exception) {}
+            }
+        }
+
         // 6. Schedule Disappearing Messages Cleanup
         scheduleCleanupWorker()
 
@@ -142,6 +150,7 @@ class GoChatApp : Application(), Configuration.Provider, ImageLoaderFactory {
 
     @Inject lateinit var authRepository: AuthRepository
     @Inject lateinit var tokenManager: TokenManager
+    @Inject lateinit var encryptionManager: com.example.gochat.core.crypto.EncryptionManager
 
     @Suppress("DEPRECATION") // FirebaseMessaging.token Task API; still the supported retrieval path
     private fun initFcm() {
