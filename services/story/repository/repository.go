@@ -133,6 +133,25 @@ func (r *StoryRepository) Delete(ctx context.Context, storyID, userID uuid.UUID)
 }
 
 func (r *StoryRepository) GetStoriesFeed(ctx context.Context, requesterID uuid.UUID) ([]*UserStories, error) {
+	// Visibility: a viewer only sees stories from their own account, people they follow,
+	// stores they follow, and people they've had a two-way chat with (both sides have sent a
+	// message). Relies on all services sharing one database (social/business/chat schemas).
+	const visibility = `
+		AND (
+		    s.user_id = $1
+		    OR s.user_id IN (SELECT following_id FROM social.user_followers WHERE follower_id = $1)
+		    OR s.user_id IN (SELECT store_id FROM business.store_followers WHERE user_id = $1)
+		    OR s.user_id IN (
+		        SELECT cm2.user_id
+		        FROM chat.conversation_members cm1
+		        JOIN chat.conversation_members cm2
+		          ON cm1.conversation_id = cm2.conversation_id AND cm2.user_id <> $1
+		        WHERE cm1.user_id = $1
+		          AND EXISTS (SELECT 1 FROM chat.messages m WHERE m.conversation_id = cm1.conversation_id AND m.sender_id = $1)
+		          AND EXISTS (SELECT 1 FROM chat.messages m WHERE m.conversation_id = cm1.conversation_id AND m.sender_id = cm2.user_id)
+		    )
+		)
+	`
 	queryWithJoin := `
 		SELECT s.id, s.user_id, COALESCE(NULLIF(u.display_name, ''), u.phone, u.pin, 'Contact'), COALESCE(u.avatar_url, ''),
 		       s.media_url, s.media_type, s.content, s.background_color, s.font_style, s.expires_at, s.created_at,
@@ -142,7 +161,7 @@ func (r *StoryRepository) GetStoriesFeed(ctx context.Context, requesterID uuid.U
 		       (SELECT COUNT(*) FROM story_views WHERE story_id = s.id) as viewer_count
 		FROM stories s
 		LEFT JOIN core.users u ON s.user_id = u.id
-		WHERE s.expires_at > NOW()
+		WHERE s.expires_at > NOW()` + visibility + `
 		ORDER BY s.created_at DESC
 	`
 	queryStandalone := `
@@ -153,7 +172,7 @@ func (r *StoryRepository) GetStoriesFeed(ctx context.Context, requesterID uuid.U
 		       COALESCE(s.original_author_name, ''),
 		       (SELECT COUNT(*) FROM story_views WHERE story_id = s.id) as viewer_count
 		FROM stories s
-		WHERE s.expires_at > NOW()
+		WHERE s.expires_at > NOW()` + visibility + `
 		ORDER BY s.created_at DESC
 	`
 	rows, err := r.db.Query(ctx, queryWithJoin, requesterID)
