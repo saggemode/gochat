@@ -108,9 +108,25 @@ func startInProcessGRPC(
 	lis := bufconn.Listen(1024 * 1024)
 	s := grpc.NewServer()
 
+	// Reuse ONE connection pool per distinct DSN. When every service shares one database
+	// (POSTGRES_DSN), they share a single pool instead of opening ~11 — which otherwise blows
+	// past a connection pooler's client limit (e.g. Supabase session mode's 15).
+	poolCache := map[string]*pgxpool.Pool{}
+	getPool := func(dsn string) (*pgxpool.Pool, error) {
+		if p, ok := poolCache[dsn]; ok {
+			return p, nil
+		}
+		p, err := database.NewPostgres(ctx, dsn, log)
+		if err != nil {
+			return nil, err
+		}
+		poolCache[dsn] = p
+		return p, nil
+	}
+
 	// 1. Auth Service
 	authDSN := getServiceDSN("AUTH_DB_DSN", "auth-gochat-db")
-	authDB, err := database.NewPostgres(ctx, authDSN, log)
+	authDB, err := getPool(authDSN)
 	if err != nil {
 		log.Warn("in-process fallback: auth postgres error", zap.Error(err))
 	} else {
@@ -127,7 +143,7 @@ func startInProcessGRPC(
 
 	// 2. Authz Service
 	authzDSN := getServiceDSN("AUTHZ_DB_DSN", "authz-gochat-db")
-	authzDB, err := database.NewPostgres(ctx, authzDSN, log)
+	authzDB, err := getPool(authzDSN)
 	if err == nil {
 		_ = database.AutoMigrate(ctx, authzDB, "authz", log)
 		authzRepoInst := authzrepo.NewAuthzRepository(authzDB)
@@ -136,7 +152,7 @@ func startInProcessGRPC(
 
 	// 3. Chat Service
 	chatDSN := getServiceDSN("CHAT_DB_DSN", "chat-gochat-db")
-	chatDB, err := database.NewPostgres(ctx, chatDSN, log)
+	chatDB, err := getPool(chatDSN)
 	if err != nil {
 		log.Warn("in-process fallback: chat postgres error", zap.Error(err))
 	} else {
@@ -168,7 +184,7 @@ func startInProcessGRPC(
 	groupDB := chatDB
 	if groupDB == nil {
 		groupDSN := getServiceDSN("GROUP_DB_DSN", "group-gochat-db")
-		groupDB, _ = database.NewPostgres(ctx, groupDSN, log)
+		groupDB, _ = getPool(groupDSN)
 	}
 	if groupDB != nil {
 		_ = database.AutoMigrate(ctx, groupDB, "grp", log)
@@ -179,42 +195,42 @@ func startInProcessGRPC(
 
 	// 5. Story Service
 	storyDSN := getServiceDSN("STORY_DB_DSN", "story-gochat-db")
-	if storyDB, err := database.NewPostgres(ctx, storyDSN, log); err == nil {
+	if storyDB, err := getPool(storyDSN); err == nil {
 		_ = database.AutoMigrate(ctx, storyDB, "story", log)
 		storypb.RegisterStoryServiceServer(s, storyserver.New(storyrepo.New(storyDB), redisClient, log))
 	}
 
 	// 6. Call Service
 	callDSN := getServiceDSN("CALL_DB_DSN", "call-gochat-db")
-	if callDB, err := database.NewPostgres(ctx, callDSN, log); err == nil {
+	if callDB, err := getPool(callDSN); err == nil {
 		_ = database.AutoMigrate(ctx, callDB, "call", log)
 		callpb.RegisterCallServiceServer(s, callserver.New(callrepo.New(callDB), redisClient, log))
 	}
 
 	// 7. Channel Service
 	channelDSN := getServiceDSN("CHANNEL_DB_DSN", "channel-gochat-db")
-	if channelDB, err := database.NewPostgres(ctx, channelDSN, log); err == nil {
+	if channelDB, err := getPool(channelDSN); err == nil {
 		_ = database.AutoMigrate(ctx, channelDB, "channel", log)
 		channelpb.RegisterChannelServiceServer(s, channelserver.New(channelrepo.New(channelDB), log))
 	}
 
 	// 8. Social Service
 	socialDSN := getServiceDSN("SOCIAL_DB_DSN", "social-gochat-db")
-	if socialDB, err := database.NewPostgres(ctx, socialDSN, log); err == nil {
+	if socialDB, err := getPool(socialDSN); err == nil {
 		_ = database.AutoMigrate(ctx, socialDB, "social", log)
 		socialpb.RegisterSocialServiceServer(s, socialserver.NewSocialServer(socialDB, log))
 	}
 
 	// 9. MiniApp Service
 	miniAppDSN := getServiceDSN("MINIAPP_DB_DSN", "miniapp-gochat-db")
-	if miniAppDB, err := database.NewPostgres(ctx, miniAppDSN, log); err == nil {
+	if miniAppDB, err := getPool(miniAppDSN); err == nil {
 		_ = database.AutoMigrate(ctx, miniAppDB, "miniapp", log)
 		miniapppb.RegisterMiniAppServiceServer(s, miniappserver.NewMiniAppServer(miniAppDB, log))
 	}
 
 	// 10. Business Service
 	bizDSN := getServiceDSN("BUSINESS_DB_DSN", "business-gochat-db")
-	if bizDB, err := database.NewPostgres(ctx, bizDSN, log); err == nil {
+	if bizDB, err := getPool(bizDSN); err == nil {
 		_ = database.AutoMigrate(ctx, bizDB, "business", log)
 		businesspb.RegisterBusinessServiceServer(s, businessserver.NewBusinessServer(bizDB, log))
 	}
@@ -243,7 +259,7 @@ func startInProcessGRPC(
 	)
 	var dbStore *mediastorage.DatabaseStorage
 	mediaDSN := getServiceDSN("MEDIA_DB_DSN", "chat-gochat-db")
-	if mediaDB, err := database.NewPostgres(ctx, mediaDSN, log); err == nil {
+	if mediaDB, err := getPool(mediaDSN); err == nil {
 		_ = database.AutoMigrate(ctx, mediaDB, "media", log)
 		dbStore = mediastorage.NewDatabaseStorage(mediaDB, log)
 	}
