@@ -3,12 +3,24 @@ package database
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 )
+
+// envInt32 reads an int32 from an env var, falling back to def when unset/invalid.
+func envInt32(key string, def int32) int32 {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return int32(n)
+		}
+	}
+	return def
+}
 
 // NewPostgres creates and validates a PostgreSQL connection pool.
 // It retries up to 10 times with exponential backoff to handle slow container starts.
@@ -40,9 +52,11 @@ func NewPostgres(ctx context.Context, dsn string, log *zap.Logger) (*pgxpool.Poo
 		return err
 	}
 
-	// High-performance connection pool settings
-	cfg.MaxConns = 50
-	cfg.MinConns = 5
+	// Connection pool sizing. Kept modest because all services share one database via a
+	// connection pooler (e.g. Supabase/Supavisor or PgBouncer) — large per-service pools would
+	// exhaust the pooler's / Postgres' connection limit. Tunable via DB_MAX_CONNS / DB_MIN_CONNS.
+	cfg.MaxConns = envInt32("DB_MAX_CONNS", 8)
+	cfg.MinConns = envInt32("DB_MIN_CONNS", 1)
 	cfg.MaxConnLifetime = 30 * time.Minute
 	cfg.MaxConnIdleTime = 5 * time.Minute
 	cfg.HealthCheckPeriod = 30 * time.Second
