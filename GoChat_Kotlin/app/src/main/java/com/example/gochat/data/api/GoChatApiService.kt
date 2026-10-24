@@ -268,6 +268,12 @@ interface GoChatApiService {
         @Path("id") storyId: String
     ): Response<JsonElement>
 
+    @POST("api/v1/stories/{id}/react")
+    suspend fun reactToStory(
+        @Path("id") storyId: String,
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
     // ═══════════════════════════════════════════════════════════════
     // ── Calls ────────────────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════

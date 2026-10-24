@@ -25,6 +25,7 @@ const (
 	StoryService_GetStories_FullMethodName         = "/story.StoryService/GetStories"
 	StoryService_ViewStory_FullMethodName          = "/story.StoryService/ViewStory"
 	StoryService_GetStoryViewerList_FullMethodName = "/story.StoryService/GetStoryViewerList"
+	StoryService_ReactToStory_FullMethodName       = "/story.StoryService/ReactToStory"
 )
 
 // StoryServiceClient is the client API for StoryService service.
@@ -37,6 +38,7 @@ type StoryServiceClient interface {
 	GetStories(ctx context.Context, in *GetStoriesRequest, opts ...grpc.CallOption) (*GetStoriesResponse, error)
 	ViewStory(ctx context.Context, in *ViewStoryRequest, opts ...grpc.CallOption) (*ViewStoryResponse, error)
 	GetStoryViewerList(ctx context.Context, in *GetStoryViewerListRequest, opts ...grpc.CallOption) (*GetStoryViewerListResponse, error)
+	ReactToStory(ctx context.Context, in *ReactToStoryRequest, opts ...grpc.CallOption) (*ReactToStoryResponse, error)
 }
 
 type storyServiceClient struct {
@@ -107,6 +109,16 @@ func (c *storyServiceClient) GetStoryViewerList(ctx context.Context, in *GetStor
 	return out, nil
 }
 
+func (c *storyServiceClient) ReactToStory(ctx context.Context, in *ReactToStoryRequest, opts ...grpc.CallOption) (*ReactToStoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReactToStoryResponse)
+	err := c.cc.Invoke(ctx, StoryService_ReactToStory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // StoryServiceServer is the server API for StoryService service.
 // All implementations must embed UnimplementedStoryServiceServer
 // for forward compatibility.
@@ -117,6 +129,7 @@ type StoryServiceServer interface {
 	GetStories(context.Context, *GetStoriesRequest) (*GetStoriesResponse, error)
 	ViewStory(context.Context, *ViewStoryRequest) (*ViewStoryResponse, error)
 	GetStoryViewerList(context.Context, *GetStoryViewerListRequest) (*GetStoryViewerListResponse, error)
+	ReactToStory(context.Context, *ReactToStoryRequest) (*ReactToStoryResponse, error)
 	mustEmbedUnimplementedStoryServiceServer()
 }
 
@@ -144,6 +157,9 @@ func (UnimplementedStoryServiceServer) ViewStory(context.Context, *ViewStoryRequ
 }
 func (UnimplementedStoryServiceServer) GetStoryViewerList(context.Context, *GetStoryViewerListRequest) (*GetStoryViewerListResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetStoryViewerList not implemented")
+}
+func (UnimplementedStoryServiceServer) ReactToStory(context.Context, *ReactToStoryRequest) (*ReactToStoryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReactToStory not implemented")
 }
 func (UnimplementedStoryServiceServer) mustEmbedUnimplementedStoryServiceServer() {}
 func (UnimplementedStoryServiceServer) testEmbeddedByValue()                      {}
@@ -274,6 +290,24 @@ func _StoryService_GetStoryViewerList_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _StoryService_ReactToStory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReactToStoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StoryServiceServer).ReactToStory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StoryService_ReactToStory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StoryServiceServer).ReactToStory(ctx, req.(*ReactToStoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // StoryService_ServiceDesc is the grpc.ServiceDesc for StoryService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -304,6 +338,10 @@ var StoryService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetStoryViewerList",
 			Handler:    _StoryService_GetStoryViewerList_Handler,
+		},
+		{
+			MethodName: "ReactToStory",
+			Handler:    _StoryService_ReactToStory_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

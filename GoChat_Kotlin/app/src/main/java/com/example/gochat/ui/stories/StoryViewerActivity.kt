@@ -210,6 +210,7 @@ class StoryViewerActivity : AppCompatActivity() {
         if (user.isMe) {
             binding.layoutOwnStoryFooter.visibility = View.VISIBLE
             binding.layoutReplyStoryFooter.visibility = View.GONE
+            binding.layoutStoryReactions.visibility = View.GONE
 
             binding.layoutOwnStoryFooter.setOnClickListener {
                 val stories = user.stories
@@ -221,6 +222,8 @@ class StoryViewerActivity : AppCompatActivity() {
         } else {
             binding.layoutOwnStoryFooter.visibility = View.GONE
             binding.layoutReplyStoryFooter.visibility = View.VISIBLE
+            binding.layoutStoryReactions.visibility = View.VISIBLE
+            setupStoryReactions()
 
             binding.etStoryReplyInput.setOnFocusChangeListener { _, hasFocus ->
                 if (hasFocus) pauseStory()
@@ -236,6 +239,33 @@ class StoryViewerActivity : AppCompatActivity() {
                     showReshareConfirmDialog(stories[currentIndex])
                 }
             }
+        }
+    }
+
+    /** Wires each emoji in the reaction bar to send a reaction for the current story. */
+    private fun setupStoryReactions() {
+        val bar = binding.layoutStoryReactions
+        for (i in 0 until bar.childCount) {
+            val tv = bar.getChildAt(i) as? android.widget.TextView ?: continue
+            val emoji = tv.text.toString()
+            tv.setOnClickListener { reactToCurrentStory(emoji, tv) }
+        }
+    }
+
+    private fun reactToCurrentStory(emoji: String, view: View) {
+        val stories = userStories?.stories ?: return
+        val storyId = stories.getOrNull(currentIndex)?.id ?: return
+        // Quick pop animation for feedback.
+        view.animate().scaleX(1.5f).scaleY(1.5f).setDuration(120).withEndAction {
+            view.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
+        }.start()
+        lifecycleScope.launch {
+            val ok = storyRepository.reactToStory(storyId, emoji)
+            android.widget.Toast.makeText(
+                this@StoryViewerActivity,
+                if (ok) "Reacted $emoji" else "Couldn't send reaction",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
         }
     }
 

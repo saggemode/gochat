@@ -516,6 +516,7 @@ func main() {
 		authRequired.GET("/stories", storyHandler.GetStories)
 		authRequired.POST("/stories/:id/view", storyHandler.ViewStory)
 		authRequired.GET("/stories/:id/viewers", storyHandler.GetStoryViewerList)
+		authRequired.POST("/stories/:id/react", storyHandler.ReactToStory)
 
 		// Voice & Video calling with WebRTC signaling
 		authRequired.POST("/calls", callHandler.StartCall)

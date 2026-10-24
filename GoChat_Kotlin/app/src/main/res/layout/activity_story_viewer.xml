@@ -281,6 +281,28 @@
             tools:text="3 views" />
     </LinearLayout>
 
+    <!-- Quick emoji reactions (floats above the reply footer for other users' stories) -->
+    <LinearLayout
+        android:id="@+id/layoutStoryReactions"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="74dp"
+        android:background="@drawable/bg_view_count_pill"
+        android:orientation="horizontal"
+        android:paddingHorizontal="6dp"
+        android:paddingVertical="2dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="?attr/selectableItemBackgroundBorderless" android:padding="8dp" android:text="❤️" android:textSize="26sp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="?attr/selectableItemBackgroundBorderless" android:padding="8dp" android:text="😂" android:textSize="26sp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="?attr/selectableItemBackgroundBorderless" android:padding="8dp" android:text="😮" android:textSize="26sp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="?attr/selectableItemBackgroundBorderless" android:padding="8dp" android:text="😢" android:textSize="26sp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="?attr/selectableItemBackgroundBorderless" android:padding="8dp" android:text="🙏" android:textSize="26sp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="?attr/selectableItemBackgroundBorderless" android:padding="8dp" android:text="👍" android:textSize="26sp" />
+    </LinearLayout>
+
     <!-- Bottom Footer for Other User Story (Reply Input + Reshare) -->
     <LinearLayout
         android:id="@+id/layoutReplyStoryFooter"

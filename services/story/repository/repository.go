@@ -31,10 +31,11 @@ type Story struct {
 }
 
 type StoryViewer struct {
-	UserID      uuid.UUID
-	DisplayName string
-	AvatarURL   string
-	ViewedAt    time.Time
+	UserID        uuid.UUID
+	DisplayName   string
+	AvatarURL     string
+	ViewedAt      time.Time
+	ReactionEmoji string
 }
 
 type UserStories struct {
@@ -220,15 +221,17 @@ func (r *StoryRepository) ViewStory(ctx context.Context, storyID, viewerID uuid.
 
 func (r *StoryRepository) GetViewerList(ctx context.Context, storyID uuid.UUID) ([]*StoryViewer, error) {
 	rows, err := r.db.Query(ctx, `
-		SELECT v.viewer_id, COALESCE(NULLIF(u.display_name, ''), u.phone, u.pin, 'Contact'), COALESCE(u.avatar_url, ''), v.viewed_at
+		SELECT v.viewer_id, COALESCE(NULLIF(u.display_name, ''), u.phone, u.pin, 'Contact'), COALESCE(u.avatar_url, ''), v.viewed_at,
+		       COALESCE(rx.emoji, '')
 		FROM story_views v
 		LEFT JOIN core.users u ON v.viewer_id = u.id
+		LEFT JOIN story_reactions rx ON rx.story_id = v.story_id AND rx.user_id = v.viewer_id
 		WHERE v.story_id = $1
 		ORDER BY v.viewed_at DESC
 	`, storyID)
 	if err != nil {
 		rows, err = r.db.Query(ctx, `
-			SELECT v.viewer_id, 'User ' || SUBSTRING(v.viewer_id::text, 1, 4), '', v.viewed_at
+			SELECT v.viewer_id, 'User ' || SUBSTRING(v.viewer_id::text, 1, 4), '', v.viewed_at, ''
 			FROM story_views v
 			WHERE v.story_id = $1
 			ORDER BY v.viewed_at DESC
@@ -242,13 +245,32 @@ func (r *StoryRepository) GetViewerList(ctx context.Context, storyID uuid.UUID) 
 	var viewers []*StoryViewer
 	for rows.Next() {
 		v := &StoryViewer{}
-		err := rows.Scan(&v.UserID, &v.DisplayName, &v.AvatarURL, &v.ViewedAt)
+		err := rows.Scan(&v.UserID, &v.DisplayName, &v.AvatarURL, &v.ViewedAt, &v.ReactionEmoji)
 		if err != nil {
 			return nil, err
 		}
 		viewers = append(viewers, v)
 	}
 	return viewers, nil
+}
+
+// ReactToStory upserts a viewer's emoji reaction. An empty emoji removes it. Reacting also
+// counts as a view so the reactor appears in the owner's viewer list.
+func (r *StoryRepository) ReactToStory(ctx context.Context, storyID, userID uuid.UUID, emoji string) error {
+	if emoji == "" {
+		_, err := r.db.Exec(ctx, `DELETE FROM story_reactions WHERE story_id = $1 AND user_id = $2`, storyID, userID)
+		return err
+	}
+	_, _ = r.db.Exec(ctx, `
+		INSERT INTO story_views (story_id, viewer_id, viewed_at)
+		VALUES ($1, $2, NOW()) ON CONFLICT (story_id, viewer_id) DO NOTHING
+	`, storyID, userID)
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO story_reactions (story_id, user_id, emoji, created_at)
+		VALUES ($1, $2, $3, NOW())
+		ON CONFLICT (story_id, user_id) DO UPDATE SET emoji = EXCLUDED.emoji, created_at = NOW()
+	`, storyID, userID, emoji)
+	return err
 }
 
 func (r *StoryRepository) DeleteExpiredStories(ctx context.Context) (int64, error) {

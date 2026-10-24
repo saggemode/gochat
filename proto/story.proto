@@ -11,6 +11,7 @@ service StoryService {
   rpc GetStories(GetStoriesRequest) returns (GetStoriesResponse);
   rpc ViewStory(ViewStoryRequest) returns (ViewStoryResponse);
   rpc GetStoryViewerList(GetStoryViewerListRequest) returns (GetStoryViewerListResponse);
+  rpc ReactToStory(ReactToStoryRequest) returns (ReactToStoryResponse);
 }
 
 message Story {
@@ -92,6 +93,17 @@ message StoryViewer {
   string display_name = 2;
   string avatar_url = 3;
   int64 viewed_at = 4;
+  string reaction_emoji = 5; // emoji this viewer reacted with, if any
+}
+
+message ReactToStoryRequest {
+  string story_id = 1;
+  string user_id = 2;
+  string emoji = 3; // empty string removes the reaction
+}
+
+message ReactToStoryResponse {
+  bool success = 1;
 }
 
 message GetStoryViewerListRequest {

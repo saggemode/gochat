@@ -9,7 +9,8 @@ data class StoryViewer(
     @SerialName("user_id") val userId: String = "",
     @SerialName("display_name") val displayName: String = "",
     @SerialName("avatar_url") val avatarUrl: String = "",
-    @SerialName("viewed_at") val viewedAt: String = ""
+    @SerialName("viewed_at") val viewedAt: String = "",
+    @SerialName("reaction_emoji") val reactionEmoji: String = ""
 ) {
     companion object {
         fun fromJson(json: JsonObject): StoryViewer {
@@ -31,11 +32,14 @@ data class StoryViewer(
                 else -> "Just now"
             }
 
+            val reactionEmoji = (json["reaction_emoji"] ?: json["reactionEmoji"])?.jsonPrimitive?.contentOrNull.orEmpty()
+
             return StoryViewer(
                 userId = userId,
                 displayName = displayName,
                 avatarUrl = avatarUrl,
-                viewedAt = viewedAtStr
+                viewedAt = viewedAtStr,
+                reactionEmoji = reactionEmoji
             )
         }
     }

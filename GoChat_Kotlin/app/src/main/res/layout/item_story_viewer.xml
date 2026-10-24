@@ -44,6 +44,16 @@
             tools:text="Today at 10:45 AM" />
     </LinearLayout>
 
+    <TextView
+        android:id="@+id/tvViewerReaction"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="10dp"
+        android:textSize="18sp"
+        android:visibility="gone"
+        tools:text="❤️"
+        tools:visibility="visible" />
+
     <ImageView
         android:layout_width="18dp"
         android:layout_height="18dp"

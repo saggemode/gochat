@@ -751,6 +751,7 @@ type StoryViewer struct {
 	DisplayName   string                 `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
 	AvatarUrl     string                 `protobuf:"bytes,3,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
 	ViewedAt      int64                  `protobuf:"varint,4,opt,name=viewed_at,json=viewedAt,proto3" json:"viewed_at,omitempty"`
+	ReactionEmoji string                 `protobuf:"bytes,5,opt,name=reaction_emoji,json=reactionEmoji,proto3" json:"reaction_emoji,omitempty"` // emoji this viewer reacted with, if any
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -813,6 +814,117 @@ func (x *StoryViewer) GetViewedAt() int64 {
 	return 0
 }
 
+func (x *StoryViewer) GetReactionEmoji() string {
+	if x != nil {
+		return x.ReactionEmoji
+	}
+	return ""
+}
+
+type ReactToStoryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StoryId       string                 `protobuf:"bytes,1,opt,name=story_id,json=storyId,proto3" json:"story_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Emoji         string                 `protobuf:"bytes,3,opt,name=emoji,proto3" json:"emoji,omitempty"` // empty string removes the reaction
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReactToStoryRequest) Reset() {
+	*x = ReactToStoryRequest{}
+	mi := &file_proto_story_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReactToStoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReactToStoryRequest) ProtoMessage() {}
+
+func (x *ReactToStoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_story_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReactToStoryRequest.ProtoReflect.Descriptor instead.
+func (*ReactToStoryRequest) Descriptor() ([]byte, []int) {
+	return file_proto_story_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ReactToStoryRequest) GetStoryId() string {
+	if x != nil {
+		return x.StoryId
+	}
+	return ""
+}
+
+func (x *ReactToStoryRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *ReactToStoryRequest) GetEmoji() string {
+	if x != nil {
+		return x.Emoji
+	}
+	return ""
+}
+
+type ReactToStoryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReactToStoryResponse) Reset() {
+	*x = ReactToStoryResponse{}
+	mi := &file_proto_story_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReactToStoryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReactToStoryResponse) ProtoMessage() {}
+
+func (x *ReactToStoryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_story_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReactToStoryResponse.ProtoReflect.Descriptor instead.
+func (*ReactToStoryResponse) Descriptor() ([]byte, []int) {
+	return file_proto_story_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ReactToStoryResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
 type GetStoryViewerListRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	StoryId       string                 `protobuf:"bytes,1,opt,name=story_id,json=storyId,proto3" json:"story_id,omitempty"`
@@ -823,7 +935,7 @@ type GetStoryViewerListRequest struct {
 
 func (x *GetStoryViewerListRequest) Reset() {
 	*x = GetStoryViewerListRequest{}
-	mi := &file_proto_story_proto_msgTypes[12]
+	mi := &file_proto_story_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -835,7 +947,7 @@ func (x *GetStoryViewerListRequest) String() string {
 func (*GetStoryViewerListRequest) ProtoMessage() {}
 
 func (x *GetStoryViewerListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_story_proto_msgTypes[12]
+	mi := &file_proto_story_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -848,7 +960,7 @@ func (x *GetStoryViewerListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStoryViewerListRequest.ProtoReflect.Descriptor instead.
 func (*GetStoryViewerListRequest) Descriptor() ([]byte, []int) {
-	return file_proto_story_proto_rawDescGZIP(), []int{12}
+	return file_proto_story_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GetStoryViewerListRequest) GetStoryId() string {
@@ -874,7 +986,7 @@ type GetStoryViewerListResponse struct {
 
 func (x *GetStoryViewerListResponse) Reset() {
 	*x = GetStoryViewerListResponse{}
-	mi := &file_proto_story_proto_msgTypes[13]
+	mi := &file_proto_story_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -886,7 +998,7 @@ func (x *GetStoryViewerListResponse) String() string {
 func (*GetStoryViewerListResponse) ProtoMessage() {}
 
 func (x *GetStoryViewerListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_story_proto_msgTypes[13]
+	mi := &file_proto_story_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -899,7 +1011,7 @@ func (x *GetStoryViewerListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStoryViewerListResponse.ProtoReflect.Descriptor instead.
 func (*GetStoryViewerListResponse) Descriptor() ([]byte, []int) {
-	return file_proto_story_proto_rawDescGZIP(), []int{13}
+	return file_proto_story_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GetStoryViewerListResponse) GetViewers() []*StoryViewer {
@@ -973,18 +1085,25 @@ const file_proto_story_proto_rawDesc = "" +
 	"\bstory_id\x18\x01 \x01(\tR\astoryId\x12\x1b\n" +
 	"\tviewer_id\x18\x02 \x01(\tR\bviewerId\"-\n" +
 	"\x11ViewStoryResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"\x85\x01\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xac\x01\n" +
 	"\vStoryViewer\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12\x1d\n" +
 	"\n" +
 	"avatar_url\x18\x03 \x01(\tR\tavatarUrl\x12\x1b\n" +
-	"\tviewed_at\x18\x04 \x01(\x03R\bviewedAt\"O\n" +
+	"\tviewed_at\x18\x04 \x01(\x03R\bviewedAt\x12%\n" +
+	"\x0ereaction_emoji\x18\x05 \x01(\tR\rreactionEmoji\"_\n" +
+	"\x13ReactToStoryRequest\x12\x19\n" +
+	"\bstory_id\x18\x01 \x01(\tR\astoryId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x14\n" +
+	"\x05emoji\x18\x03 \x01(\tR\x05emoji\"0\n" +
+	"\x14ReactToStoryResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"O\n" +
 	"\x19GetStoryViewerListRequest\x12\x19\n" +
 	"\bstory_id\x18\x01 \x01(\tR\astoryId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"J\n" +
 	"\x1aGetStoryViewerListResponse\x12,\n" +
-	"\aviewers\x18\x01 \x03(\v2\x12.story.StoryViewerR\aviewers2\xb8\x03\n" +
+	"\aviewers\x18\x01 \x03(\v2\x12.story.StoryViewerR\aviewers2\x81\x04\n" +
 	"\fStoryService\x12>\n" +
 	"\tPostStory\x12\x17.story.PostStoryRequest\x1a\x18.story.PostStoryResponse\x12D\n" +
 	"\fReshareStory\x12\x1a.story.ReshareStoryRequest\x1a\x18.story.PostStoryResponse\x12D\n" +
@@ -992,7 +1111,8 @@ const file_proto_story_proto_rawDesc = "" +
 	"\n" +
 	"GetStories\x12\x18.story.GetStoriesRequest\x1a\x19.story.GetStoriesResponse\x12>\n" +
 	"\tViewStory\x12\x17.story.ViewStoryRequest\x1a\x18.story.ViewStoryResponse\x12Y\n" +
-	"\x12GetStoryViewerList\x12 .story.GetStoryViewerListRequest\x1a!.story.GetStoryViewerListResponseB\x12Z\x10gochat/gen/storyb\x06proto3"
+	"\x12GetStoryViewerList\x12 .story.GetStoryViewerListRequest\x1a!.story.GetStoryViewerListResponse\x12G\n" +
+	"\fReactToStory\x12\x1a.story.ReactToStoryRequest\x1a\x1b.story.ReactToStoryResponseB\x12Z\x10gochat/gen/storyb\x06proto3"
 
 var (
 	file_proto_story_proto_rawDescOnce sync.Once
@@ -1006,7 +1126,7 @@ func file_proto_story_proto_rawDescGZIP() []byte {
 	return file_proto_story_proto_rawDescData
 }
 
-var file_proto_story_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_proto_story_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_proto_story_proto_goTypes = []any{
 	(*Story)(nil),                      // 0: story.Story
 	(*PostStoryRequest)(nil),           // 1: story.PostStoryRequest
@@ -1020,8 +1140,10 @@ var file_proto_story_proto_goTypes = []any{
 	(*ViewStoryRequest)(nil),           // 9: story.ViewStoryRequest
 	(*ViewStoryResponse)(nil),          // 10: story.ViewStoryResponse
 	(*StoryViewer)(nil),                // 11: story.StoryViewer
-	(*GetStoryViewerListRequest)(nil),  // 12: story.GetStoryViewerListRequest
-	(*GetStoryViewerListResponse)(nil), // 13: story.GetStoryViewerListResponse
+	(*ReactToStoryRequest)(nil),        // 12: story.ReactToStoryRequest
+	(*ReactToStoryResponse)(nil),       // 13: story.ReactToStoryResponse
+	(*GetStoryViewerListRequest)(nil),  // 14: story.GetStoryViewerListRequest
+	(*GetStoryViewerListResponse)(nil), // 15: story.GetStoryViewerListResponse
 }
 var file_proto_story_proto_depIdxs = []int32{
 	0,  // 0: story.PostStoryResponse.story:type_name -> story.Story
@@ -1033,15 +1155,17 @@ var file_proto_story_proto_depIdxs = []int32{
 	4,  // 6: story.StoryService.DeleteStory:input_type -> story.DeleteStoryRequest
 	6,  // 7: story.StoryService.GetStories:input_type -> story.GetStoriesRequest
 	9,  // 8: story.StoryService.ViewStory:input_type -> story.ViewStoryRequest
-	12, // 9: story.StoryService.GetStoryViewerList:input_type -> story.GetStoryViewerListRequest
-	3,  // 10: story.StoryService.PostStory:output_type -> story.PostStoryResponse
-	3,  // 11: story.StoryService.ReshareStory:output_type -> story.PostStoryResponse
-	5,  // 12: story.StoryService.DeleteStory:output_type -> story.DeleteStoryResponse
-	8,  // 13: story.StoryService.GetStories:output_type -> story.GetStoriesResponse
-	10, // 14: story.StoryService.ViewStory:output_type -> story.ViewStoryResponse
-	13, // 15: story.StoryService.GetStoryViewerList:output_type -> story.GetStoryViewerListResponse
-	10, // [10:16] is the sub-list for method output_type
-	4,  // [4:10] is the sub-list for method input_type
+	14, // 9: story.StoryService.GetStoryViewerList:input_type -> story.GetStoryViewerListRequest
+	12, // 10: story.StoryService.ReactToStory:input_type -> story.ReactToStoryRequest
+	3,  // 11: story.StoryService.PostStory:output_type -> story.PostStoryResponse
+	3,  // 12: story.StoryService.ReshareStory:output_type -> story.PostStoryResponse
+	5,  // 13: story.StoryService.DeleteStory:output_type -> story.DeleteStoryResponse
+	8,  // 14: story.StoryService.GetStories:output_type -> story.GetStoriesResponse
+	10, // 15: story.StoryService.ViewStory:output_type -> story.ViewStoryResponse
+	15, // 16: story.StoryService.GetStoryViewerList:output_type -> story.GetStoryViewerListResponse
+	13, // 17: story.StoryService.ReactToStory:output_type -> story.ReactToStoryResponse
+	11, // [11:18] is the sub-list for method output_type
+	4,  // [4:11] is the sub-list for method input_type
 	4,  // [4:4] is the sub-list for extension type_name
 	4,  // [4:4] is the sub-list for extension extendee
 	0,  // [0:4] is the sub-list for field type_name
@@ -1058,7 +1182,7 @@ func file_proto_story_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_story_proto_rawDesc), len(file_proto_story_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

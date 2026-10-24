@@ -172,6 +172,18 @@ class StoryRepository @Inject constructor(
         }
     }
 
+    /** React to a story with an emoji (empty string removes the reaction). */
+    suspend fun reactToStory(storyId: String, emoji: String): Boolean {
+        return try {
+            val body = kotlinx.serialization.json.buildJsonObject {
+                put("emoji", kotlinx.serialization.json.JsonPrimitive(emoji))
+            }
+            api.reactToStory(storyId, body).isSuccessful
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // ── Get Story Viewers ────────────────────────────────────────
     // ═══════════════════════════════════════════════════════════════

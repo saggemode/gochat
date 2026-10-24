@@ -28,6 +28,13 @@ class StoryViewersAdapter(
             tvViewerName.text = viewer.displayName.ifBlank { "Contact" }
             tvViewedTime.text = viewer.viewedAt.ifBlank { "Just now" }
 
+            if (viewer.reactionEmoji.isNotBlank()) {
+                tvViewerReaction.text = viewer.reactionEmoji
+                tvViewerReaction.visibility = android.view.View.VISIBLE
+            } else {
+                tvViewerReaction.visibility = android.view.View.GONE
+            }
+
             MediaImageHelper.loadSafeImage(
                 imageView = ivViewerAvatar,
                 url = viewer.avatarUrl,

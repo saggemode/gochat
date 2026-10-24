@@ -367,14 +367,32 @@ func (s *StoryServer) GetStoryViewerList(ctx context.Context, req *storypb.GetSt
 	pbViewers := make([]*storypb.StoryViewer, len(viewers))
 	for i, v := range viewers {
 		pbViewers[i] = &storypb.StoryViewer{
-			UserId:      v.UserID.String(),
-			DisplayName: v.DisplayName,
-			AvatarUrl:   v.AvatarURL,
-			ViewedAt:    v.ViewedAt.Unix(),
+			UserId:        v.UserID.String(),
+			DisplayName:   v.DisplayName,
+			AvatarUrl:     v.AvatarURL,
+			ViewedAt:      v.ViewedAt.Unix(),
+			ReactionEmoji: v.ReactionEmoji,
 		}
 	}
 
 	return &storypb.GetStoryViewerListResponse{
 		Viewers: pbViewers,
 	}, nil
+}
+
+func (s *StoryServer) ReactToStory(ctx context.Context, req *storypb.ReactToStoryRequest) (*storypb.ReactToStoryResponse, error) {
+	storyID, err := uuid.Parse(req.StoryId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid story_id")
+	}
+	userID, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+
+	if err := s.repo.ReactToStory(ctx, storyID, userID, req.Emoji); err != nil {
+		return nil, status.Errorf(codes.Internal, "react to story: %v", err)
+	}
+
+	return &storypb.ReactToStoryResponse{Success: true}, nil
 }

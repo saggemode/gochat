@@ -180,6 +180,31 @@ func (h *StoryHandler) GetStoryViewerList(c *gin.Context) {
 	c.JSON(http.StatusOK, resp.Viewers)
 }
 
+func (h *StoryHandler) ReactToStory(c *gin.Context) {
+	storyID := c.Param("id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+
+	var req struct {
+		Emoji string `json:"emoji"`
+	}
+	_ = c.ShouldBindJSON(&req)
+
+	resp, err := h.client.ReactToStory(c.Request.Context(), &storypb.ReactToStoryRequest{
+		StoryId: storyID,
+		UserId:  userID,
+		Emoji:   req.Emoji,
+	})
+	if err != nil {
+		h.handleGrpcError(c, err, "failed to react to story")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": resp.Success})
+}
+
 func (h *StoryHandler) handleGrpcError(c *gin.Context, err error, actionMsg string) {
 	st, ok := status.FromError(err)
 	if !ok {
