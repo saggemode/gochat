@@ -4,7 +4,6 @@ import (
 	"context"
 	"net"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -57,27 +56,19 @@ import (
 	storyserver "gochat/services/story/server"
 )
 
-const (
-	neonAuthDSN     = "postgres://neondb_owner:npg_GfPRWH95xneU@ep-dark-forest-a2188hsu-pooler.eu-central-1.aws.neon.tech/auth-gochat-db?sslmode=require"
-	neonChatDSN     = "postgres://neondb_owner:npg_GfPRWH95xneU@ep-dark-forest-a2188hsu-pooler.eu-central-1.aws.neon.tech/chat-gochat-db?sslmode=require"
-	neonAuthzDSN    = "postgres://neondb_owner:npg_GfPRWH95xneU@ep-dark-forest-a2188hsu-pooler.eu-central-1.aws.neon.tech/authz-gochat-db?sslmode=require"
-	neonGroupDSN    = "postgres://neondb_owner:npg_GfPRWH95xneU@ep-dark-forest-a2188hsu-pooler.eu-central-1.aws.neon.tech/group-gochat-db?sslmode=require"
-	neonStoryDSN    = "postgres://neondb_owner:npg_GfPRWH95xneU@ep-dark-forest-a2188hsu-pooler.eu-central-1.aws.neon.tech/story-gochat-db?sslmode=require"
-	neonCallDSN     = "postgres://neondb_owner:npg_GfPRWH95xneU@ep-dark-forest-a2188hsu-pooler.eu-central-1.aws.neon.tech/call-gochat-db?sslmode=require"
-	neonChannelDSN  = "postgres://neondb_owner:npg_GfPRWH95xneU@ep-dark-forest-a2188hsu-pooler.eu-central-1.aws.neon.tech/channel-gochat-db?sslmode=require"
-	neonSocialDSN   = "postgres://neondb_owner:npg_GfPRWH95xneU@ep-dark-forest-a2188hsu-pooler.eu-central-1.aws.neon.tech/social-gochat-db?sslmode=require"
-	neonMiniAppDSN  = "postgres://neondb_owner:npg_GfPRWH95xneU@ep-dark-forest-a2188hsu-pooler.eu-central-1.aws.neon.tech/miniapp-gochat-db?sslmode=require"
-	neonBusinessDSN = "postgres://neondb_owner:npg_GfPRWH95xneU@ep-dark-forest-a2188hsu-pooler.eu-central-1.aws.neon.tech/business-gochat-db?sslmode=require"
-)
-
-func getServiceDSN(envKey, fallbackNeonDSN string) string {
+// Database DSNs are read from the environment only — no credentials in source code.
+// Precedence: the service-specific env var (e.g. AUTH_DB_DSN) → POSTGRES_DSN (one database for
+// all services, e.g. Supabase or Neon) → a local Postgres default for development.
+// All services are schema-isolated (core/auth/chat/story/…) and AutoMigrate creates the schemas,
+// so a single POSTGRES_DSN pointing at one database works for the whole app.
+func getServiceDSN(envKey, devDbName string) string {
 	if v := os.Getenv(envKey); v != "" {
 		return v
 	}
-	if v := os.Getenv("POSTGRES_DSN"); v != "" && !strings.Contains(v, "localhost:5432") {
+	if v := os.Getenv("POSTGRES_DSN"); v != "" {
 		return v
 	}
-	return fallbackNeonDSN
+	return "postgres://postgres:postgres@localhost:5432/" + devDbName + "?sslmode=disable"
 }
 
 func isHostResolvable(addr string) bool {
@@ -118,7 +109,7 @@ func startInProcessGRPC(
 	s := grpc.NewServer()
 
 	// 1. Auth Service
-	authDSN := getServiceDSN("AUTH_DB_DSN", neonAuthDSN)
+	authDSN := getServiceDSN("AUTH_DB_DSN", "auth-gochat-db")
 	authDB, err := database.NewPostgres(ctx, authDSN, log)
 	if err != nil {
 		log.Warn("in-process fallback: auth postgres error", zap.Error(err))
@@ -135,7 +126,7 @@ func startInProcessGRPC(
 	}
 
 	// 2. Authz Service
-	authzDSN := getServiceDSN("AUTHZ_DB_DSN", neonAuthzDSN)
+	authzDSN := getServiceDSN("AUTHZ_DB_DSN", "authz-gochat-db")
 	authzDB, err := database.NewPostgres(ctx, authzDSN, log)
 	if err == nil {
 		_ = database.AutoMigrate(ctx, authzDB, "authz", log)
@@ -144,7 +135,7 @@ func startInProcessGRPC(
 	}
 
 	// 3. Chat Service
-	chatDSN := getServiceDSN("CHAT_DB_DSN", neonChatDSN)
+	chatDSN := getServiceDSN("CHAT_DB_DSN", "chat-gochat-db")
 	chatDB, err := database.NewPostgres(ctx, chatDSN, log)
 	if err != nil {
 		log.Warn("in-process fallback: chat postgres error", zap.Error(err))
@@ -176,7 +167,7 @@ func startInProcessGRPC(
 	// and chat.conversation_members. Therefore, grp schema must reside on the same database pool as chat.
 	groupDB := chatDB
 	if groupDB == nil {
-		groupDSN := getServiceDSN("GROUP_DB_DSN", neonGroupDSN)
+		groupDSN := getServiceDSN("GROUP_DB_DSN", "group-gochat-db")
 		groupDB, _ = database.NewPostgres(ctx, groupDSN, log)
 	}
 	if groupDB != nil {
@@ -187,42 +178,42 @@ func startInProcessGRPC(
 	}
 
 	// 5. Story Service
-	storyDSN := getServiceDSN("STORY_DB_DSN", neonStoryDSN)
+	storyDSN := getServiceDSN("STORY_DB_DSN", "story-gochat-db")
 	if storyDB, err := database.NewPostgres(ctx, storyDSN, log); err == nil {
 		_ = database.AutoMigrate(ctx, storyDB, "story", log)
 		storypb.RegisterStoryServiceServer(s, storyserver.New(storyrepo.New(storyDB), redisClient, log))
 	}
 
 	// 6. Call Service
-	callDSN := getServiceDSN("CALL_DB_DSN", neonCallDSN)
+	callDSN := getServiceDSN("CALL_DB_DSN", "call-gochat-db")
 	if callDB, err := database.NewPostgres(ctx, callDSN, log); err == nil {
 		_ = database.AutoMigrate(ctx, callDB, "call", log)
 		callpb.RegisterCallServiceServer(s, callserver.New(callrepo.New(callDB), redisClient, log))
 	}
 
 	// 7. Channel Service
-	channelDSN := getServiceDSN("CHANNEL_DB_DSN", neonChannelDSN)
+	channelDSN := getServiceDSN("CHANNEL_DB_DSN", "channel-gochat-db")
 	if channelDB, err := database.NewPostgres(ctx, channelDSN, log); err == nil {
 		_ = database.AutoMigrate(ctx, channelDB, "channel", log)
 		channelpb.RegisterChannelServiceServer(s, channelserver.New(channelrepo.New(channelDB), log))
 	}
 
 	// 8. Social Service
-	socialDSN := getServiceDSN("SOCIAL_DB_DSN", neonSocialDSN)
+	socialDSN := getServiceDSN("SOCIAL_DB_DSN", "social-gochat-db")
 	if socialDB, err := database.NewPostgres(ctx, socialDSN, log); err == nil {
 		_ = database.AutoMigrate(ctx, socialDB, "social", log)
 		socialpb.RegisterSocialServiceServer(s, socialserver.NewSocialServer(socialDB, log))
 	}
 
 	// 9. MiniApp Service
-	miniAppDSN := getServiceDSN("MINIAPP_DB_DSN", neonMiniAppDSN)
+	miniAppDSN := getServiceDSN("MINIAPP_DB_DSN", "miniapp-gochat-db")
 	if miniAppDB, err := database.NewPostgres(ctx, miniAppDSN, log); err == nil {
 		_ = database.AutoMigrate(ctx, miniAppDB, "miniapp", log)
 		miniapppb.RegisterMiniAppServiceServer(s, miniappserver.NewMiniAppServer(miniAppDB, log))
 	}
 
 	// 10. Business Service
-	bizDSN := getServiceDSN("BUSINESS_DB_DSN", neonBusinessDSN)
+	bizDSN := getServiceDSN("BUSINESS_DB_DSN", "business-gochat-db")
 	if bizDB, err := database.NewPostgres(ctx, bizDSN, log); err == nil {
 		_ = database.AutoMigrate(ctx, bizDB, "business", log)
 		businesspb.RegisterBusinessServiceServer(s, businessserver.NewBusinessServer(bizDB, log))
@@ -251,7 +242,7 @@ func startInProcessGRPC(
 		log,
 	)
 	var dbStore *mediastorage.DatabaseStorage
-	mediaDSN := getServiceDSN("MEDIA_DB_DSN", chatDSN)
+	mediaDSN := getServiceDSN("MEDIA_DB_DSN", "chat-gochat-db")
 	if mediaDB, err := database.NewPostgres(ctx, mediaDSN, log); err == nil {
 		_ = database.AutoMigrate(ctx, mediaDB, "media", log)
 		dbStore = mediastorage.NewDatabaseStorage(mediaDB, log)
