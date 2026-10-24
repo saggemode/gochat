@@ -147,6 +147,16 @@ class ChatListFragment : Fragment() {
 
     private fun setupSearch() {
         with(binding) {
+            // Top-bar QR button → My QR code / scan a contact's code to start a chat.
+            btnQrScanner.setOnClickListener {
+                startActivity(
+                    android.content.Intent(
+                        requireContext(),
+                        com.example.gochat.ui.contacts.ContactQrActivity::class.java
+                    )
+                )
+            }
+
             btnOpenSearch.setOnClickListener {
                 layoutToolbarNormal.visibility = View.GONE
                 layoutToolbarSearch.visibility = View.VISIBLE
