@@ -157,7 +157,9 @@ func (s *MinIOStorage) GetFile(ctx context.Context, objectKey string) (io.ReadCl
 
 func (s *MinIOStorage) publicURL(objectKey string) string {
 	if custom := os.Getenv("MINIO_PUBLIC_URL"); custom != "" {
-		return fmt.Sprintf("%s/%s/%s", strings.TrimSuffix(custom, "/"), s.bucket, objectKey)
+		// A custom public base (Cloudflare R2 public bucket URL, CDN, or custom domain) is already
+		// bucket-rooted, so objects live at <base>/<objectKey> — don't re-insert the bucket name.
+		return fmt.Sprintf("%s/%s", strings.TrimSuffix(custom, "/"), objectKey)
 	}
 	scheme := "http"
 	if s.client.EndpointURL().Scheme == "https" {
