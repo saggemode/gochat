@@ -82,6 +82,10 @@ interface MarketplaceDao {
     @Query("SELECT * FROM cart_items")
     suspend fun getCartItems(): List<CartItem>
 
+    /** Live total quantity across all cart items — single source of truth for the cart badge. */
+    @Query("SELECT COALESCE(SUM(quantity), 0) FROM cart_items")
+    fun observeCartItemCount(): Flow<Int>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCartItem(item: CartItem)
 

@@ -1146,6 +1146,9 @@ class MarketplaceRepository @Inject constructor(
     }
 
     // ── Cart Operations ──────────────────────────────────────────────────────
+    /** Live cart item-count (total quantity) — observe for a consistent badge across all screens. */
+    fun observeCartCount(): kotlinx.coroutines.flow.Flow<Int> = marketplaceDao.observeCartItemCount()
+
     suspend fun getCart(): Result<List<CartItem>> {
         return try {
             val response = api.getCart()

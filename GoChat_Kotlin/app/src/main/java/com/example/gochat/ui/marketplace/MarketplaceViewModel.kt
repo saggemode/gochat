@@ -66,6 +66,14 @@ class MarketplaceViewModel @Inject constructor(
     private val _cartCount = MutableStateFlow(0)
     val cartCount: StateFlow<Int> = _cartCount.asStateFlow()
 
+    init {
+        // Drive the cart count live from the local cart table so the badge stays consistent
+        // everywhere (and auto-clears when an order is placed).
+        viewModelScope.launch {
+            repository.observeCartCount().collect { _cartCount.value = it }
+        }
+    }
+
     private val _myStore = MutableStateFlow<Store?>(null)
     val myStore: StateFlow<Store?> = _myStore.asStateFlow()
 

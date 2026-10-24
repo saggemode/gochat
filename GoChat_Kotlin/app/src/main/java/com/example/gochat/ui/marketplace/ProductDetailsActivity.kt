@@ -96,8 +96,17 @@ class ProductDetailsActivity : AppCompatActivity() {
         binding = ActivityProductDetailsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.toolbar.applyStatusBarInset()
+        // Status-bar inset is handled by fitsSystemWindows on the collapsing toolbar chain,
+        // so the cart/back icons sit below the clock. (No manual toolbar padding here.)
         binding.cardBottomActions.applyNavigationBarInset()
+
+        // Live cart badge — same source of truth as every other cart icon in the app.
+        lifecycleScope.launch {
+            repository.observeCartCount().collect { count ->
+                binding.tvCartBadge.visibility = if (count > 0) View.VISIBLE else View.GONE
+                binding.tvCartBadge.text = if (count > 99) "99+" else count.toString()
+            }
+        }
 
         val productId = intent.getStringExtra("product_id") ?: return finish()
         binding.ivProductImage.transitionName = "product_image_$productId"
