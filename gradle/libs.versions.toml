@@ -36,6 +36,8 @@ ktor = "2.3.12"
 ksp = "2.0.20-1.0.25"
 googleGmsGoogleServices = "4.5.0"
 firebaseMessaging = "25.1.2"
+firebaseBom = "33.7.0"
+firebaseCrashlyticsPlugin = "3.0.2"
 signalProtocol = "2.8.1"
 
 [libraries]
@@ -109,6 +111,9 @@ zxing-android-embedded = { group = "com.journeyapps", name = "zxing-android-embe
 mpandroidchart = { group = "com.github.PhilJay", name = "MPAndroidChart", version.ref = "mpandroidchart" }
 
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging", version.ref = "firebaseMessaging" }
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
+firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
 signal-protocol = { group = "org.whispersystems", name = "signal-protocol-android", version.ref = "signalProtocol" }
 
 [plugins]
@@ -117,5 +122,6 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "googleGmsGoogleServices" }
+firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebaseCrashlyticsPlugin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version = "2.0.20" }
 android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
