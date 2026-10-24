@@ -40,8 +40,33 @@ class ChatRoomViewModel @Inject constructor(
     private val soundManager: ChatSoundManager,
     private val encryptionManager: EncryptionManager,
     private val networkMonitor: NetworkMonitor,
-    private val marketplaceRepository: MarketplaceRepository
+    private val marketplaceRepository: MarketplaceRepository,
+    private val authRepository: com.example.gochat.data.repository.AuthRepository
 ) : AndroidViewModel(application) {
+
+    // First-contact country hint (derived from the partner's phone/registration country, like WhatsApp).
+    private val _partnerCountry = MutableStateFlow<com.example.gochat.ui.auth.Country?>(null)
+    val partnerCountry: StateFlow<com.example.gochat.ui.auth.Country?> = _partnerCountry.asStateFlow()
+
+    /** Resolves the partner's country for a direct chat (best-effort, by country code then phone). */
+    fun resolvePartnerCountry() {
+        if (_isGroup.value) return
+        val convId = _conversationId.value
+        if (convId.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                val pin = chatRepository.getConversationById(convId)?.partnerPin?.ifBlank { null } ?: return@launch
+                val user = authRepository.lookupUserByPin(pin).getOrNull() ?: return@launch
+                val country = when {
+                    user.countryCode.isNotBlank() -> com.example.gochat.ui.auth.CountryData.getByCountryCode(user.countryCode)
+                    user.phone.isNotBlank() -> com.example.gochat.ui.auth.CountryData.matchByPhoneOrNull(user.phone)
+                    else -> null
+                }
+                _partnerCountry.value = country
+            } catch (_: Exception) {
+            }
+        }
+    }
 
     val isDeviceOnline: Flow<Boolean> = networkMonitor.isOnline
 

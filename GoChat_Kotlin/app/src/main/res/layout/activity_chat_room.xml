@@ -192,6 +192,21 @@
             </LinearLayout>
         </androidx.appcompat.widget.Toolbar>
 
+        <!-- First-contact country hint (from the partner's registration country, like WhatsApp) -->
+        <TextView
+            android:id="@+id/tvCountryBanner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#14000000"
+            android:gravity="center"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="6dp"
+            android:textColor="@color/gochat_text_secondary"
+            android:textSize="12sp"
+            android:visibility="gone"
+            tools:text="🇳🇬  This person may be messaging from Nigeria"
+            tools:visibility="visible" />
+
         <!-- In-Chat Search Bar Overlay -->
         <LinearLayout
             android:id="@+id/layoutInChatSearch"

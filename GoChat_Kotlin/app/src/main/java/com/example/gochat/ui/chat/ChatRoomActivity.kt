@@ -482,6 +482,7 @@ class ChatRoomActivity : AppCompatActivity() {
                 binding.tvBotBanner.visibility = View.GONE
             }
             viewModel.initConversation(convId, isGroupChat)
+            if (!isGroupChat) viewModel.resolvePartnerCountry()
         }
 
         setupLinkedOrderBanner()
@@ -2048,6 +2049,17 @@ class ChatRoomActivity : AppCompatActivity() {
                 launch {
                     viewModel.typingParticipant.collect { participant ->
                         renderTypingBubble(participant)
+                    }
+                }
+
+                launch {
+                    viewModel.partnerCountry.collect { country ->
+                        if (country != null) {
+                            binding.tvCountryBanner.text = "${country.flag}  This person may be messaging from ${country.name}"
+                            binding.tvCountryBanner.visibility = View.VISIBLE
+                        } else {
+                            binding.tvCountryBanner.visibility = View.GONE
+                        }
                     }
                 }
 
