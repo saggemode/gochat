@@ -64,11 +64,13 @@
 
                 <ImageView
                     android:id="@+id/btnRemove"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:src="@drawable/ic_close"
-                    app:tint="@color/gochat_error" />
+                    android:contentDescription="Decrease quantity"
+                    android:padding="2dp"
+                    android:src="@drawable/ic_minus"
+                    app:tint="@color/gochat_text_primary" />
 
                 <TextView
                     android:id="@+id/tvQuantity"
@@ -82,12 +84,27 @@
 
                 <ImageView
                     android:id="@+id/btnAdd"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:src="@drawable/ic_message_add"
+                    android:contentDescription="Increase quantity"
+                    android:padding="2dp"
+                    android:src="@drawable/ic_add"
                     app:tint="@color/gochat_accent" />
             </LinearLayout>
         </LinearLayout>
+
+        <ImageView
+            android:id="@+id/btnDelete"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Remove item from cart"
+            android:padding="8dp"
+            android:src="@drawable/ic_delete"
+            app:tint="@color/gochat_error" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

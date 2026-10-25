@@ -35,11 +35,13 @@ class CartAdapter(
             
             MediaImageHelper.loadSafeImage(binding.ivProductImage, item.productImage)
 
-            // Left button is the stepper's minus: decrement, and remove the line at qty 1.
+            // Stepper minus: decrement down to a minimum of 1 (use the trash button to remove).
             binding.btnRemove.setOnClickListener {
-                if (item.quantity > 1) onQuantityChange(item, item.quantity - 1) else onRemove(item)
+                if (item.quantity > 1) onQuantityChange(item, item.quantity - 1)
             }
             binding.btnAdd.setOnClickListener { onQuantityChange(item, item.quantity + 1) }
+            // Dedicated delete: removes this item from the cart regardless of quantity.
+            binding.btnDelete.setOnClickListener { onRemove(item) }
         }
     }
 
