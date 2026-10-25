@@ -49,6 +49,14 @@ class CheckoutActivity : AppCompatActivity() {
         binding.toolbar.applyStatusBarInset()
         binding.btnPlaceOrder.applySystemBarMargins(bottom = true)
 
+        // Live cart badge — shared source of truth with every other cart icon.
+        lifecycleScope.launch {
+            repository.observeCartCount().collect { count ->
+                binding.tvCartBadge.visibility = if (count > 0) View.VISIBLE else View.GONE
+                binding.tvCartBadge.text = if (count > 99) "99+" else count.toString()
+            }
+        }
+
         setupListeners()
         loadSummary()
     }
