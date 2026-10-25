@@ -39,15 +39,16 @@ func NewRedis(ctx context.Context, addr, password string, db int, log *zap.Logge
 	client := redis.NewClient(opts)
 
 	backoff := 100 * time.Millisecond
+	safeAddr := redactRedisAddr(addr)
 	for attempt := 1; attempt <= 2; attempt++ {
 		if err := client.Ping(ctx).Err(); err == nil {
-			log.Info("Redis connected", zap.Int("attempt", attempt), zap.String("addr", addr))
+			log.Info("Redis connected", zap.Int("attempt", attempt), zap.String("addr", safeAddr))
 			return client, nil
 		} else {
 			log.Warn("Redis not ready, retrying...",
 				zap.Int("attempt", attempt),
 				zap.Duration("backoff", backoff),
-				zap.String("addr", addr),
+				zap.String("addr", safeAddr),
 				zap.Error(err),
 			)
 		}
@@ -56,5 +57,16 @@ func NewRedis(ctx context.Context, addr, password string, db int, log *zap.Logge
 		}
 	}
 
-	return nil, fmt.Errorf("failed to connect to Redis at %q", addr)
+	return nil, fmt.Errorf("failed to connect to Redis at %q", redactRedisAddr(addr))
+}
+
+// redactRedisAddr strips any embedded credentials (user:password@) so the password is never logged.
+func redactRedisAddr(addr string) string {
+	if i := strings.LastIndex(addr, "@"); i != -1 {
+		if j := strings.Index(addr, "://"); j != -1 && j+3 <= i {
+			return addr[:j+3] + "***@" + addr[i+1:]
+		}
+		return "***@" + addr[i+1:]
+	}
+	return addr
 }

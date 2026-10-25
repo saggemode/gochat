@@ -119,7 +119,7 @@ func main() {
 
 	var inProcessConn *grpc.ClientConn
 	if !isHostResolvable(cfg.AuthGRPCAddr) || os.Getenv("STANDALONE_MODE") == "true" {
-		log.Info("remote gRPC services unreachable or standalone mode enabled — booting in-process services with Neon Cloud DB")
+		log.Info("remote gRPC services unreachable or standalone mode enabled — booting in-process services with the cloud database")
 		inConn, inErr := startInProcessGRPC(ctx, cfg, redisClient, log)
 		if inErr != nil {
 			log.Warn("failed to initialize in-process services", zap.Error(inErr))
@@ -741,6 +741,13 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 		log.Info("Push Notification background worker skipped (no Redis client configured)")
 		return
 	}
+	// Surface FCM credential status clearly at startup so push issues are easy to diagnose.
+	if fcm.GetDefaultClient() != nil {
+		log.Info("FCM credentials loaded ✓ — push notifications enabled")
+	} else {
+		log.Warn("FCM credentials NOT loaded ✗ — push notifications disabled (set FIREBASE_CREDENTIALS_JSON)")
+	}
+
 	pubsub := redisClient.PSubscribe(ctx, "chat:*", "marketplace:*")
 	go func() {
 		defer pubsub.Close()
