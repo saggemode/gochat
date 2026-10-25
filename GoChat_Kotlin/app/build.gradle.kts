@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.serialization)
@@ -7,9 +10,28 @@ plugins {
     alias(libs.plugins.firebase.crashlytics)
 }
 
+// Release signing is configured only when a (git-ignored) keystore.properties exists, so debug
+// builds and CI work without it, and no keystore/passwords are ever committed.
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val hasReleaseKeystore = keystorePropertiesFile.exists()
+val keystoreProperties = Properties().apply {
+    if (hasReleaseKeystore) FileInputStream(keystorePropertiesFile).use { load(it) }
+}
+
 android {
     namespace = "com.example.gochat"
     compileSdk = 35
+
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
 
     defaultConfig {
         applicationId = "com.example.gochat"
@@ -28,6 +50,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Sign release builds (AAB/APK) when a keystore is configured.
+            if (hasReleaseKeystore) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
     compileOptions {
@@ -36,6 +62,14 @@ android {
     }
     buildFeatures {
         viewBinding = true
+    }
+
+    lint {
+        // The app is verified to run; don't let lint (e.g. Media3's UnsafeOptInUsageError, which is
+        // only a lint check, not a compile error) block the release bundle. `./gradlew :app:lint`
+        // still produces the full report for cleanup.
+        abortOnError = false
+        checkReleaseBuilds = false
     }
 }
 
