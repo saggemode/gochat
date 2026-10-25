@@ -673,6 +673,36 @@
                     android:textSize="15sp" />
             </LinearLayout>
 
+            <!-- Delete Account Row (Google Play requirement) -->
+            <LinearLayout
+                android:id="@+id/tileDeleteAccount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="20dp"
+                android:paddingVertical="16dp">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:contentDescription="Delete account"
+                    android:src="@drawable/ic_delete"
+                    app:tint="@color/gochat_error" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="22dp"
+                    android:layout_weight="1"
+                    android:text="@string/btn_delete_account"
+                    android:textColor="@color/gochat_error"
+                    android:textSize="15sp" />
+            </LinearLayout>
+
             <!-- App Info Footer -->
             <LinearLayout
                 android:layout_width="match_parent"

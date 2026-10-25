@@ -104,6 +104,9 @@ interface GoChatApiService {
         @Path("id") deviceId: String
     ): Response<JsonObject>
 
+    @DELETE("api/v1/users/me")
+    suspend fun deleteAccount(): Response<JsonObject>
+
     @DELETE("api/v1/auth/sessions/other")
     suspend fun unlinkAllOtherDevices(): Response<JsonObject>
 

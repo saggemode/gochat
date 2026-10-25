@@ -232,6 +232,9 @@ class SettingsFragment : Fragment() {
             tileLogout.setOnClickListener {
                 showLogoutConfirmation()
             }
+            tileDeleteAccount.setOnClickListener {
+                showDeleteAccountConfirmation()
+            }
         }
     }
 
@@ -492,6 +495,38 @@ class SettingsFragment : Fragment() {
                     }
                     startActivity(intent)
                 }
+            }
+            .setNegativeButton(getString(R.string.btn_cancel), null)
+            .show()
+    }
+
+    private fun showDeleteAccountConfirmation() {
+        // Two-step confirmation for an irreversible, destructive action.
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.delete_account_title))
+            .setMessage(getString(R.string.delete_account_desc))
+            .setPositiveButton(getString(R.string.delete_account_continue)) { _, _ ->
+                AlertDialog.Builder(requireContext())
+                    .setTitle(getString(R.string.delete_account_final_title))
+                    .setMessage(getString(R.string.delete_account_final_desc))
+                    .setPositiveButton(getString(R.string.btn_delete_account)) { _, _ ->
+                        viewLifecycleOwner.lifecycleScope.launch {
+                            val result = authRepository.deleteAccount()
+                            if (result.isFailure) {
+                                Toast.makeText(
+                                    requireContext(),
+                                    getString(R.string.delete_account_server_warning),
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                            val intent = Intent(requireContext(), LoginActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            }
+                            startActivity(intent)
+                        }
+                    }
+                    .setNegativeButton(getString(R.string.btn_cancel), null)
+                    .show()
             }
             .setNegativeButton(getString(R.string.btn_cancel), null)
             .show()

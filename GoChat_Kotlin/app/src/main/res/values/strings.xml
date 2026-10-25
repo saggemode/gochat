@@ -370,6 +370,13 @@
     <string name="action_resume_recording">Resume</string>
     <string name="error_camera_init">Unable to initialize camera</string>
     <string name="compressing_video">Compressing video…</string>
+    <string name="btn_delete_account">Delete my account</string>
+    <string name="delete_account_title">Delete account?</string>
+    <string name="delete_account_desc">This permanently deletes your GoChat account and your data (profile, chats, orders, and stories). This cannot be undone.</string>
+    <string name="delete_account_continue">Continue</string>
+    <string name="delete_account_final_title">Are you absolutely sure?</string>
+    <string name="delete_account_final_desc">Your account and all associated data will be permanently removed. You will be signed out immediately.</string>
+    <string name="delete_account_server_warning">Signed out. Your account deletion is being processed; if it didn\'t complete, please try again or contact support.</string>
     <string name="caption_photo">📷 Photo</string>
     <string name="error_photo_process">Failed to process photo</string>
     <string name="caption_audio_file">🎵 Audio File</string>

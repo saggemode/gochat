@@ -565,6 +565,25 @@ class AuthRepository @Inject constructor(
     }
 
     /**
+     * Permanently deletes the user's account on the server, then wipes all local data and the
+     * session. Local wipe + sign-out happen even if the network call fails, so the user is always
+     * signed out; returns failure so the UI can tell them the server deletion may need a retry.
+     */
+    suspend fun deleteAccount(): Result<Unit> {
+        val serverResult = try {
+            val response = api.deleteAccount()
+            if (response.isSuccessful) Result.success(Unit)
+            else Result.failure(Exception("Server returned ${response.code()}"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+        // Always clear local data + session regardless of server outcome.
+        resetLocalDatabaseAndSession()
+        tokenManager.clearAll()
+        return serverResult
+    }
+
+    /**
      * Purges all local room tables, disconnects WebSocket, and resets backup prefs.
      */
     private suspend fun resetLocalDatabaseAndSession() {
