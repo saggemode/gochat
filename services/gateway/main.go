@@ -363,7 +363,13 @@ func main() {
 		authRequired.PATCH("/users/me", authHandler.UpdateUser)
 		authRequired.DELETE("/users/me", authHandler.DeleteUser)
 		authRequired.POST("/users/presence", authHandler.UpdatePresence)
-		authRequired.POST("/users/sync", authHandler.SyncContacts)
+		contactsLimiter := middleware.RateLimitMiddleware(redisClient, middleware.RateLimitConfig{
+			Prefix:             "rl:contacts:sync",
+			Limit:              10,
+			Window:             time.Minute,
+			UseUserIfAvailable: true,
+		})
+		authRequired.POST("/users/sync", contactsLimiter, authHandler.SyncContacts)
 
 		// Sessions, Linked Devices & Security Audit Logs
 		authRequired.GET("/auth/sessions", authHandler.GetActiveSessions)
@@ -430,7 +436,13 @@ func main() {
 		authRequired.DELETE("/chat/messages/:id/reactions", chatHandler.RemoveReaction)
 
 		// Forwarding
-		authRequired.POST("/chat/messages/:id/forward", chatHandler.ForwardMessage)
+		forwardLimiter := middleware.RateLimitMiddleware(redisClient, middleware.RateLimitConfig{
+			Prefix:             "rl:chat:forward",
+			Limit:              30,
+			Window:             time.Minute,
+			UseUserIfAvailable: true,
+		})
+		authRequired.POST("/chat/messages/:id/forward", forwardLimiter, chatHandler.ForwardMessage)
 
 		// Message Status & Pins
 		authRequired.POST("/chat/conversations/:id/read", chatHandler.MarkRead)
@@ -510,8 +522,14 @@ func main() {
 		authRequired.GET("/broadcasts/:id", groupHandler.GetBroadcastList)
 
 		// Ephemeral status/stories
-		authRequired.POST("/stories", storyHandler.PostStory)
-		authRequired.POST("/stories/:id/reshare", storyHandler.ReshareStory)
+		storyLimiter := middleware.RateLimitMiddleware(redisClient, middleware.RateLimitConfig{
+			Prefix:             "rl:story:post",
+			Limit:              20,
+			Window:             time.Minute,
+			UseUserIfAvailable: true,
+		})
+		authRequired.POST("/stories", storyLimiter, storyHandler.PostStory)
+		authRequired.POST("/stories/:id/reshare", storyLimiter, storyHandler.ReshareStory)
 		authRequired.DELETE("/stories/:id", storyHandler.DeleteStory)
 		authRequired.GET("/stories", storyHandler.GetStories)
 		authRequired.POST("/stories/:id/view", storyHandler.ViewStory)
