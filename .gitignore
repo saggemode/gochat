@@ -18,6 +18,11 @@ Thumbs.db
 # Environment
 .env
 
+# Gradle / Android & Flutter build artifacts (generated — never commit)
+.gradle/
+build/
+*.hprof
+
 # Third-party tools (downloaded locally)
 third_party/
 
