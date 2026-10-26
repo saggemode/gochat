@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -452,6 +454,106 @@ func (h *SocialHandler) LeaveAudioRoom(c *gin.Context) {
 
 func (h *SocialHandler) ListAudioRooms(c *gin.Context) {
 	resp, err := h.client.ListAudioRooms(c.Request.Context(), &pb.ListAudioRoomsRequest{Limit: 20})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// ── Moderation / Reports ──────────────────────────────────────────────────────
+
+// isAdmin reports whether the authenticated user is a moderator. Admins are
+// configured out-of-band via the ADMIN_USER_IDS env var (comma-separated user
+// IDs); there is no self-service admin role, so the review queue is locked down
+// by default (empty list ⇒ nobody is an admin).
+func isAdmin(userID string) bool {
+	if userID == "" {
+		return false
+	}
+	for _, id := range strings.Split(os.Getenv("ADMIN_USER_IDS"), ",") {
+		if strings.TrimSpace(id) == userID {
+			return true
+		}
+	}
+	return false
+}
+
+// CreateReport lets any authenticated user flag a story/product/message/user
+// for moderator review.
+func (h *SocialHandler) CreateReport(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	var req struct {
+		TargetType string `json:"target_type" binding:"required"`
+		TargetID   string `json:"target_id" binding:"required"`
+		Reason     string `json:"reason"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	resp, err := h.client.CreateReport(c.Request.Context(), &pb.CreateReportRequest{
+		ReporterId: userID,
+		TargetType: strings.ToLower(strings.TrimSpace(req.TargetType)),
+		TargetId:   req.TargetID,
+		Reason:     req.Reason,
+	})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, resp)
+}
+
+// ListReports returns the moderation queue. Admin-only.
+func (h *SocialHandler) ListReports(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	if !isAdmin(userID) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	resp, err := h.client.ListReports(c.Request.Context(), &pb.ListReportsRequest{
+		Status: strings.TrimSpace(c.Query("status")),
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// UpdateReportStatus moves a report through the review workflow. Admin-only.
+func (h *SocialHandler) UpdateReportStatus(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	if !isAdmin(userID) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
+	var req struct {
+		Status string `json:"status" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	resp, err := h.client.UpdateReportStatus(c.Request.Context(), &pb.UpdateReportStatusRequest{
+		ReportId:   c.Param("id"),
+		Status:     strings.ToLower(strings.TrimSpace(req.Status)),
+		ReviewerId: userID,
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

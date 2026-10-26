@@ -318,8 +318,10 @@ func main() {
 			auth.GET("/qr/status", authHandler.GetQRPairingStatus)
 		}
 
-		// Public Marketplace Routes
+		// Public Marketplace Routes (optional auth: personalises for signed-in
+		// viewers, e.g. hides listings from users they've blocked)
 		marketplace := api.Group("/marketplace")
+		marketplace.Use(middleware.OptionalAuthMiddleware(authClient))
 		{
 			marketplace.GET("/products", businessHandler.ListMarketplaceProducts)
 			marketplace.GET("/products/:id", businessHandler.GetMarketplaceProduct)
@@ -573,6 +575,11 @@ func main() {
 		authRequired.POST("/social/audio-rooms/:id/join", socialHandler.JoinAudioRoom)
 		authRequired.POST("/social/audio-rooms/:id/leave", socialHandler.LeaveAudioRoom)
 		authRequired.GET("/social/audio-rooms", socialHandler.ListAudioRooms)
+
+		// Moderation: user reports + admin review queue (admin gated by ADMIN_USER_IDS)
+		authRequired.POST("/reports", socialHandler.CreateReport)
+		authRequired.GET("/reports", socialHandler.ListReports)
+		authRequired.PUT("/reports/:id", socialHandler.UpdateReportStatus)
 
 		// ── Phase 9: Mini-Apps & Developer Platform ────────────────────────
 		authRequired.POST("/bots", miniappHandler.RegisterBot)

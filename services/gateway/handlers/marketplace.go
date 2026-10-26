@@ -429,6 +429,7 @@ func (h *BusinessHandler) ListMarketplaceProducts(c *gin.Context) {
 		Search:     search,
 		Limit:      int32(limit),
 		Offset:     int32(offset),
+		ViewerId:   c.GetString("user_id"), // optional (public route w/ optional auth)
 	}, jsonOpt)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

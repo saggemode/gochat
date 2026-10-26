@@ -336,3 +336,68 @@ func (r *SocialRepository) ListAudioRooms(ctx context.Context, limit, offset int
 	}
 	return rooms, total, nil
 }
+
+// ── Moderation / Reports ────────────────────────────────────────────────────
+
+type Report struct {
+	ID         string
+	ReporterID string
+	TargetType string
+	TargetID   string
+	Reason     string
+	Status     string
+	CreatedAt  time.Time
+}
+
+// CreateReport records a report. A reporter's duplicate pending report on the same target is
+// ignored (partial unique index), so reporting twice is harmless.
+func (r *SocialRepository) CreateReport(ctx context.Context, reporterID, targetType, targetID, reason string) error {
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO reports (reporter_id, target_type, target_id, reason)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT DO NOTHING
+	`, reporterID, targetType, targetID, reason)
+	return err
+}
+
+// ListReports returns the review queue, optionally filtered by status, newest first.
+func (r *SocialRepository) ListReports(ctx context.Context, status string, limit, offset int) ([]Report, int, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	where := ""
+	args := []interface{}{}
+	if status != "" {
+		where = "WHERE status = $1"
+		args = append(args, status)
+	}
+
+	var total int
+	_ = r.db.QueryRow(ctx, "SELECT COUNT(*) FROM reports "+where, args...).Scan(&total)
+
+	q := fmt.Sprintf(`SELECT id, reporter_id, target_type, target_id, reason, status, created_at
+		FROM reports %s ORDER BY created_at DESC LIMIT %d OFFSET %d`, where, limit, offset)
+	rows, err := r.db.Query(ctx, q, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var out []Report
+	for rows.Next() {
+		var rep Report
+		if err := rows.Scan(&rep.ID, &rep.ReporterID, &rep.TargetType, &rep.TargetID, &rep.Reason, &rep.Status, &rep.CreatedAt); err != nil {
+			return nil, 0, err
+		}
+		out = append(out, rep)
+	}
+	return out, total, nil
+}
+
+// UpdateReportStatus moves a report through the review workflow.
+func (r *SocialRepository) UpdateReportStatus(ctx context.Context, reportID, status, reviewerID string) error {
+	_, err := r.db.Exec(ctx,
+		`UPDATE reports SET status = $1, reviewer_id = NULLIF($2, ''), updated_at = NOW() WHERE id = $3`,
+		status, reviewerID, reportID)
+	return err
+}

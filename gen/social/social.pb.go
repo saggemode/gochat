@@ -2185,6 +2185,435 @@ func (x *ListAudioRoomsResponse) GetTotal() int32 {
 	return 0
 }
 
+// ── Moderation / Reports ────────────────────────────────────────────────────
+type CreateReportRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ReporterId    string                 `protobuf:"bytes,1,opt,name=reporter_id,json=reporterId,proto3" json:"reporter_id,omitempty"`
+	TargetType    string                 `protobuf:"bytes,2,opt,name=target_type,json=targetType,proto3" json:"target_type,omitempty"` // "user" | "story" | "product" | "message"
+	TargetId      string                 `protobuf:"bytes,3,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
+	Reason        string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateReportRequest) Reset() {
+	*x = CreateReportRequest{}
+	mi := &file_proto_social_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateReportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateReportRequest) ProtoMessage() {}
+
+func (x *CreateReportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_social_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateReportRequest.ProtoReflect.Descriptor instead.
+func (*CreateReportRequest) Descriptor() ([]byte, []int) {
+	return file_proto_social_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *CreateReportRequest) GetReporterId() string {
+	if x != nil {
+		return x.ReporterId
+	}
+	return ""
+}
+
+func (x *CreateReportRequest) GetTargetType() string {
+	if x != nil {
+		return x.TargetType
+	}
+	return ""
+}
+
+func (x *CreateReportRequest) GetTargetId() string {
+	if x != nil {
+		return x.TargetId
+	}
+	return ""
+}
+
+func (x *CreateReportRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type CreateReportResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	ReportId      string                 `protobuf:"bytes,2,opt,name=report_id,json=reportId,proto3" json:"report_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateReportResponse) Reset() {
+	*x = CreateReportResponse{}
+	mi := &file_proto_social_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateReportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateReportResponse) ProtoMessage() {}
+
+func (x *CreateReportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_social_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateReportResponse.ProtoReflect.Descriptor instead.
+func (*CreateReportResponse) Descriptor() ([]byte, []int) {
+	return file_proto_social_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *CreateReportResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *CreateReportResponse) GetReportId() string {
+	if x != nil {
+		return x.ReportId
+	}
+	return ""
+}
+
+type Report struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ReporterId    string                 `protobuf:"bytes,2,opt,name=reporter_id,json=reporterId,proto3" json:"reporter_id,omitempty"`
+	TargetType    string                 `protobuf:"bytes,3,opt,name=target_type,json=targetType,proto3" json:"target_type,omitempty"`
+	TargetId      string                 `protobuf:"bytes,4,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
+	Reason        string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
+	Status        string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"` // "pending" | "reviewed" | "actioned" | "dismissed"
+	CreatedAt     int64                  `protobuf:"varint,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Report) Reset() {
+	*x = Report{}
+	mi := &file_proto_social_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Report) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Report) ProtoMessage() {}
+
+func (x *Report) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_social_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Report.ProtoReflect.Descriptor instead.
+func (*Report) Descriptor() ([]byte, []int) {
+	return file_proto_social_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *Report) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Report) GetReporterId() string {
+	if x != nil {
+		return x.ReporterId
+	}
+	return ""
+}
+
+func (x *Report) GetTargetType() string {
+	if x != nil {
+		return x.TargetType
+	}
+	return ""
+}
+
+func (x *Report) GetTargetId() string {
+	if x != nil {
+		return x.TargetId
+	}
+	return ""
+}
+
+func (x *Report) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *Report) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *Report) GetCreatedAt() int64 {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return 0
+}
+
+type ListReportsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset        int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListReportsRequest) Reset() {
+	*x = ListReportsRequest{}
+	mi := &file_proto_social_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListReportsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListReportsRequest) ProtoMessage() {}
+
+func (x *ListReportsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_social_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListReportsRequest.ProtoReflect.Descriptor instead.
+func (*ListReportsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_social_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *ListReportsRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ListReportsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListReportsRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+type ListReportsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Reports       []*Report              `protobuf:"bytes,1,rep,name=reports,proto3" json:"reports,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListReportsResponse) Reset() {
+	*x = ListReportsResponse{}
+	mi := &file_proto_social_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListReportsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListReportsResponse) ProtoMessage() {}
+
+func (x *ListReportsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_social_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListReportsResponse.ProtoReflect.Descriptor instead.
+func (*ListReportsResponse) Descriptor() ([]byte, []int) {
+	return file_proto_social_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *ListReportsResponse) GetReports() []*Report {
+	if x != nil {
+		return x.Reports
+	}
+	return nil
+}
+
+func (x *ListReportsResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type UpdateReportStatusRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ReportId      string                 `protobuf:"bytes,1,opt,name=report_id,json=reportId,proto3" json:"report_id,omitempty"`
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	ReviewerId    string                 `protobuf:"bytes,3,opt,name=reviewer_id,json=reviewerId,proto3" json:"reviewer_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateReportStatusRequest) Reset() {
+	*x = UpdateReportStatusRequest{}
+	mi := &file_proto_social_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateReportStatusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateReportStatusRequest) ProtoMessage() {}
+
+func (x *UpdateReportStatusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_social_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateReportStatusRequest.ProtoReflect.Descriptor instead.
+func (*UpdateReportStatusRequest) Descriptor() ([]byte, []int) {
+	return file_proto_social_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *UpdateReportStatusRequest) GetReportId() string {
+	if x != nil {
+		return x.ReportId
+	}
+	return ""
+}
+
+func (x *UpdateReportStatusRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *UpdateReportStatusRequest) GetReviewerId() string {
+	if x != nil {
+		return x.ReviewerId
+	}
+	return ""
+}
+
+type UpdateReportStatusResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateReportStatusResponse) Reset() {
+	*x = UpdateReportStatusResponse{}
+	mi := &file_proto_social_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateReportStatusResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateReportStatusResponse) ProtoMessage() {}
+
+func (x *UpdateReportStatusResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_social_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateReportStatusResponse.ProtoReflect.Descriptor instead.
+func (*UpdateReportStatusResponse) Descriptor() ([]byte, []int) {
+	return file_proto_social_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *UpdateReportStatusResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
 var File_proto_social_proto protoreflect.FileDescriptor
 
 const file_proto_social_proto_rawDesc = "" +
@@ -2343,8 +2772,42 @@ const file_proto_social_proto_rawDesc = "" +
 	"\x06offset\x18\x02 \x01(\x05R\x06offset\"W\n" +
 	"\x16ListAudioRoomsResponse\x12'\n" +
 	"\x05rooms\x18\x01 \x03(\v2\x11.social.AudioRoomR\x05rooms\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x05R\x05total2\xb7\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"\x8c\x01\n" +
+	"\x13CreateReportRequest\x12\x1f\n" +
+	"\vreporter_id\x18\x01 \x01(\tR\n" +
+	"reporterId\x12\x1f\n" +
+	"\vtarget_type\x18\x02 \x01(\tR\n" +
+	"targetType\x12\x1b\n" +
+	"\ttarget_id\x18\x03 \x01(\tR\btargetId\x12\x16\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\"M\n" +
+	"\x14CreateReportResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1b\n" +
+	"\treport_id\x18\x02 \x01(\tR\breportId\"\xc6\x01\n" +
+	"\x06Report\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
+	"\vreporter_id\x18\x02 \x01(\tR\n" +
+	"reporterId\x12\x1f\n" +
+	"\vtarget_type\x18\x03 \x01(\tR\n" +
+	"targetType\x12\x1b\n" +
+	"\ttarget_id\x18\x04 \x01(\tR\btargetId\x12\x16\n" +
+	"\x06reason\x18\x05 \x01(\tR\x06reason\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\x12\x1d\n" +
 	"\n" +
+	"created_at\x18\a \x01(\x03R\tcreatedAt\"Z\n" +
+	"\x12ListReportsRequest\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x03 \x01(\x05R\x06offset\"U\n" +
+	"\x13ListReportsResponse\x12(\n" +
+	"\areports\x18\x01 \x03(\v2\x0e.social.ReportR\areports\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"q\n" +
+	"\x19UpdateReportStatusRequest\x12\x1b\n" +
+	"\treport_id\x18\x01 \x01(\tR\breportId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12\x1f\n" +
+	"\vreviewer_id\x18\x03 \x01(\tR\n" +
+	"reviewerId\"6\n" +
+	"\x1aUpdateReportStatusResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess2\xa7\f\n" +
 	"\rSocialService\x12C\n" +
 	"\n" +
 	"FollowUser\x12\x19.social.FollowUserRequest\x1a\x1a.social.FollowUserResponse\x12I\n" +
@@ -2356,7 +2819,10 @@ const file_proto_social_proto_rawDesc = "" +
 	"LikeMoment\x12\x19.social.LikeMomentRequest\x1a\x1a.social.LikeMomentResponse\x12L\n" +
 	"\rCommentMoment\x12\x1c.social.CommentMomentRequest\x1a\x1d.social.CommentMomentResponse\x12O\n" +
 	"\x0eGetMomentsFeed\x12\x1d.social.GetMomentsFeedRequest\x1a\x1e.social.GetMomentsFeedResponse\x12I\n" +
-	"\fDeleteMoment\x12\x1b.social.DeleteMomentRequest\x1a\x1c.social.DeleteMomentResponse\x12U\n" +
+	"\fDeleteMoment\x12\x1b.social.DeleteMomentRequest\x1a\x1c.social.DeleteMomentResponse\x12I\n" +
+	"\fCreateReport\x12\x1b.social.CreateReportRequest\x1a\x1c.social.CreateReportResponse\x12F\n" +
+	"\vListReports\x12\x1a.social.ListReportsRequest\x1a\x1b.social.ListReportsResponse\x12[\n" +
+	"\x12UpdateReportStatus\x12!.social.UpdateReportStatusRequest\x1a\".social.UpdateReportStatusResponse\x12U\n" +
 	"\x10SetNearbyVisible\x12\x1f.social.SetNearbyVisibleRequest\x1a .social.SetNearbyVisibleResponse\x12O\n" +
 	"\x0eGetNearbyUsers\x12\x1d.social.GetNearbyUsersRequest\x1a\x1e.social.GetNearbyUsersResponse\x12L\n" +
 	"\rApplyForBadge\x12\x1c.social.ApplyForBadgeRequest\x1a\x1d.social.ApplyForBadgeResponse\x12L\n" +
@@ -2378,47 +2844,54 @@ func file_proto_social_proto_rawDescGZIP() []byte {
 	return file_proto_social_proto_rawDescData
 }
 
-var file_proto_social_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
+var file_proto_social_proto_msgTypes = make([]protoimpl.MessageInfo, 46)
 var file_proto_social_proto_goTypes = []any{
-	(*Moment)(nil),                   // 0: social.Moment
-	(*MomentComment)(nil),            // 1: social.MomentComment
-	(*NearbyUser)(nil),               // 2: social.NearbyUser
-	(*Badge)(nil),                    // 3: social.Badge
-	(*AudioRoom)(nil),                // 4: social.AudioRoom
-	(*FollowUserRequest)(nil),        // 5: social.FollowUserRequest
-	(*FollowUserResponse)(nil),       // 6: social.FollowUserResponse
-	(*UnfollowUserRequest)(nil),      // 7: social.UnfollowUserRequest
-	(*UnfollowUserResponse)(nil),     // 8: social.UnfollowUserResponse
-	(*GetFollowersRequest)(nil),      // 9: social.GetFollowersRequest
-	(*GetFollowersResponse)(nil),     // 10: social.GetFollowersResponse
-	(*GetFollowingRequest)(nil),      // 11: social.GetFollowingRequest
-	(*GetFollowingResponse)(nil),     // 12: social.GetFollowingResponse
-	(*CreateMomentRequest)(nil),      // 13: social.CreateMomentRequest
-	(*CreateMomentResponse)(nil),     // 14: social.CreateMomentResponse
-	(*LikeMomentRequest)(nil),        // 15: social.LikeMomentRequest
-	(*LikeMomentResponse)(nil),       // 16: social.LikeMomentResponse
-	(*CommentMomentRequest)(nil),     // 17: social.CommentMomentRequest
-	(*CommentMomentResponse)(nil),    // 18: social.CommentMomentResponse
-	(*GetMomentsFeedRequest)(nil),    // 19: social.GetMomentsFeedRequest
-	(*GetMomentsFeedResponse)(nil),   // 20: social.GetMomentsFeedResponse
-	(*DeleteMomentRequest)(nil),      // 21: social.DeleteMomentRequest
-	(*DeleteMomentResponse)(nil),     // 22: social.DeleteMomentResponse
-	(*SetNearbyVisibleRequest)(nil),  // 23: social.SetNearbyVisibleRequest
-	(*SetNearbyVisibleResponse)(nil), // 24: social.SetNearbyVisibleResponse
-	(*GetNearbyUsersRequest)(nil),    // 25: social.GetNearbyUsersRequest
-	(*GetNearbyUsersResponse)(nil),   // 26: social.GetNearbyUsersResponse
-	(*ApplyForBadgeRequest)(nil),     // 27: social.ApplyForBadgeRequest
-	(*ApplyForBadgeResponse)(nil),    // 28: social.ApplyForBadgeResponse
-	(*GetUserBadgesRequest)(nil),     // 29: social.GetUserBadgesRequest
-	(*GetUserBadgesResponse)(nil),    // 30: social.GetUserBadgesResponse
-	(*CreateAudioRoomRequest)(nil),   // 31: social.CreateAudioRoomRequest
-	(*CreateAudioRoomResponse)(nil),  // 32: social.CreateAudioRoomResponse
-	(*JoinAudioRoomRequest)(nil),     // 33: social.JoinAudioRoomRequest
-	(*JoinAudioRoomResponse)(nil),    // 34: social.JoinAudioRoomResponse
-	(*LeaveAudioRoomRequest)(nil),    // 35: social.LeaveAudioRoomRequest
-	(*LeaveAudioRoomResponse)(nil),   // 36: social.LeaveAudioRoomResponse
-	(*ListAudioRoomsRequest)(nil),    // 37: social.ListAudioRoomsRequest
-	(*ListAudioRoomsResponse)(nil),   // 38: social.ListAudioRoomsResponse
+	(*Moment)(nil),                     // 0: social.Moment
+	(*MomentComment)(nil),              // 1: social.MomentComment
+	(*NearbyUser)(nil),                 // 2: social.NearbyUser
+	(*Badge)(nil),                      // 3: social.Badge
+	(*AudioRoom)(nil),                  // 4: social.AudioRoom
+	(*FollowUserRequest)(nil),          // 5: social.FollowUserRequest
+	(*FollowUserResponse)(nil),         // 6: social.FollowUserResponse
+	(*UnfollowUserRequest)(nil),        // 7: social.UnfollowUserRequest
+	(*UnfollowUserResponse)(nil),       // 8: social.UnfollowUserResponse
+	(*GetFollowersRequest)(nil),        // 9: social.GetFollowersRequest
+	(*GetFollowersResponse)(nil),       // 10: social.GetFollowersResponse
+	(*GetFollowingRequest)(nil),        // 11: social.GetFollowingRequest
+	(*GetFollowingResponse)(nil),       // 12: social.GetFollowingResponse
+	(*CreateMomentRequest)(nil),        // 13: social.CreateMomentRequest
+	(*CreateMomentResponse)(nil),       // 14: social.CreateMomentResponse
+	(*LikeMomentRequest)(nil),          // 15: social.LikeMomentRequest
+	(*LikeMomentResponse)(nil),         // 16: social.LikeMomentResponse
+	(*CommentMomentRequest)(nil),       // 17: social.CommentMomentRequest
+	(*CommentMomentResponse)(nil),      // 18: social.CommentMomentResponse
+	(*GetMomentsFeedRequest)(nil),      // 19: social.GetMomentsFeedRequest
+	(*GetMomentsFeedResponse)(nil),     // 20: social.GetMomentsFeedResponse
+	(*DeleteMomentRequest)(nil),        // 21: social.DeleteMomentRequest
+	(*DeleteMomentResponse)(nil),       // 22: social.DeleteMomentResponse
+	(*SetNearbyVisibleRequest)(nil),    // 23: social.SetNearbyVisibleRequest
+	(*SetNearbyVisibleResponse)(nil),   // 24: social.SetNearbyVisibleResponse
+	(*GetNearbyUsersRequest)(nil),      // 25: social.GetNearbyUsersRequest
+	(*GetNearbyUsersResponse)(nil),     // 26: social.GetNearbyUsersResponse
+	(*ApplyForBadgeRequest)(nil),       // 27: social.ApplyForBadgeRequest
+	(*ApplyForBadgeResponse)(nil),      // 28: social.ApplyForBadgeResponse
+	(*GetUserBadgesRequest)(nil),       // 29: social.GetUserBadgesRequest
+	(*GetUserBadgesResponse)(nil),      // 30: social.GetUserBadgesResponse
+	(*CreateAudioRoomRequest)(nil),     // 31: social.CreateAudioRoomRequest
+	(*CreateAudioRoomResponse)(nil),    // 32: social.CreateAudioRoomResponse
+	(*JoinAudioRoomRequest)(nil),       // 33: social.JoinAudioRoomRequest
+	(*JoinAudioRoomResponse)(nil),      // 34: social.JoinAudioRoomResponse
+	(*LeaveAudioRoomRequest)(nil),      // 35: social.LeaveAudioRoomRequest
+	(*LeaveAudioRoomResponse)(nil),     // 36: social.LeaveAudioRoomResponse
+	(*ListAudioRoomsRequest)(nil),      // 37: social.ListAudioRoomsRequest
+	(*ListAudioRoomsResponse)(nil),     // 38: social.ListAudioRoomsResponse
+	(*CreateReportRequest)(nil),        // 39: social.CreateReportRequest
+	(*CreateReportResponse)(nil),       // 40: social.CreateReportResponse
+	(*Report)(nil),                     // 41: social.Report
+	(*ListReportsRequest)(nil),         // 42: social.ListReportsRequest
+	(*ListReportsResponse)(nil),        // 43: social.ListReportsResponse
+	(*UpdateReportStatusRequest)(nil),  // 44: social.UpdateReportStatusRequest
+	(*UpdateReportStatusResponse)(nil), // 45: social.UpdateReportStatusResponse
 }
 var file_proto_social_proto_depIdxs = []int32{
 	1,  // 0: social.Moment.comments:type_name -> social.MomentComment
@@ -2429,45 +2902,52 @@ var file_proto_social_proto_depIdxs = []int32{
 	3,  // 5: social.GetUserBadgesResponse.badges:type_name -> social.Badge
 	4,  // 6: social.CreateAudioRoomResponse.room:type_name -> social.AudioRoom
 	4,  // 7: social.ListAudioRoomsResponse.rooms:type_name -> social.AudioRoom
-	5,  // 8: social.SocialService.FollowUser:input_type -> social.FollowUserRequest
-	7,  // 9: social.SocialService.UnfollowUser:input_type -> social.UnfollowUserRequest
-	9,  // 10: social.SocialService.GetFollowers:input_type -> social.GetFollowersRequest
-	11, // 11: social.SocialService.GetFollowing:input_type -> social.GetFollowingRequest
-	13, // 12: social.SocialService.CreateMoment:input_type -> social.CreateMomentRequest
-	15, // 13: social.SocialService.LikeMoment:input_type -> social.LikeMomentRequest
-	17, // 14: social.SocialService.CommentMoment:input_type -> social.CommentMomentRequest
-	19, // 15: social.SocialService.GetMomentsFeed:input_type -> social.GetMomentsFeedRequest
-	21, // 16: social.SocialService.DeleteMoment:input_type -> social.DeleteMomentRequest
-	23, // 17: social.SocialService.SetNearbyVisible:input_type -> social.SetNearbyVisibleRequest
-	25, // 18: social.SocialService.GetNearbyUsers:input_type -> social.GetNearbyUsersRequest
-	27, // 19: social.SocialService.ApplyForBadge:input_type -> social.ApplyForBadgeRequest
-	29, // 20: social.SocialService.GetUserBadges:input_type -> social.GetUserBadgesRequest
-	31, // 21: social.SocialService.CreateAudioRoom:input_type -> social.CreateAudioRoomRequest
-	33, // 22: social.SocialService.JoinAudioRoom:input_type -> social.JoinAudioRoomRequest
-	35, // 23: social.SocialService.LeaveAudioRoom:input_type -> social.LeaveAudioRoomRequest
-	37, // 24: social.SocialService.ListAudioRooms:input_type -> social.ListAudioRoomsRequest
-	6,  // 25: social.SocialService.FollowUser:output_type -> social.FollowUserResponse
-	8,  // 26: social.SocialService.UnfollowUser:output_type -> social.UnfollowUserResponse
-	10, // 27: social.SocialService.GetFollowers:output_type -> social.GetFollowersResponse
-	12, // 28: social.SocialService.GetFollowing:output_type -> social.GetFollowingResponse
-	14, // 29: social.SocialService.CreateMoment:output_type -> social.CreateMomentResponse
-	16, // 30: social.SocialService.LikeMoment:output_type -> social.LikeMomentResponse
-	18, // 31: social.SocialService.CommentMoment:output_type -> social.CommentMomentResponse
-	20, // 32: social.SocialService.GetMomentsFeed:output_type -> social.GetMomentsFeedResponse
-	22, // 33: social.SocialService.DeleteMoment:output_type -> social.DeleteMomentResponse
-	24, // 34: social.SocialService.SetNearbyVisible:output_type -> social.SetNearbyVisibleResponse
-	26, // 35: social.SocialService.GetNearbyUsers:output_type -> social.GetNearbyUsersResponse
-	28, // 36: social.SocialService.ApplyForBadge:output_type -> social.ApplyForBadgeResponse
-	30, // 37: social.SocialService.GetUserBadges:output_type -> social.GetUserBadgesResponse
-	32, // 38: social.SocialService.CreateAudioRoom:output_type -> social.CreateAudioRoomResponse
-	34, // 39: social.SocialService.JoinAudioRoom:output_type -> social.JoinAudioRoomResponse
-	36, // 40: social.SocialService.LeaveAudioRoom:output_type -> social.LeaveAudioRoomResponse
-	38, // 41: social.SocialService.ListAudioRooms:output_type -> social.ListAudioRoomsResponse
-	25, // [25:42] is the sub-list for method output_type
-	8,  // [8:25] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	41, // 8: social.ListReportsResponse.reports:type_name -> social.Report
+	5,  // 9: social.SocialService.FollowUser:input_type -> social.FollowUserRequest
+	7,  // 10: social.SocialService.UnfollowUser:input_type -> social.UnfollowUserRequest
+	9,  // 11: social.SocialService.GetFollowers:input_type -> social.GetFollowersRequest
+	11, // 12: social.SocialService.GetFollowing:input_type -> social.GetFollowingRequest
+	13, // 13: social.SocialService.CreateMoment:input_type -> social.CreateMomentRequest
+	15, // 14: social.SocialService.LikeMoment:input_type -> social.LikeMomentRequest
+	17, // 15: social.SocialService.CommentMoment:input_type -> social.CommentMomentRequest
+	19, // 16: social.SocialService.GetMomentsFeed:input_type -> social.GetMomentsFeedRequest
+	21, // 17: social.SocialService.DeleteMoment:input_type -> social.DeleteMomentRequest
+	39, // 18: social.SocialService.CreateReport:input_type -> social.CreateReportRequest
+	42, // 19: social.SocialService.ListReports:input_type -> social.ListReportsRequest
+	44, // 20: social.SocialService.UpdateReportStatus:input_type -> social.UpdateReportStatusRequest
+	23, // 21: social.SocialService.SetNearbyVisible:input_type -> social.SetNearbyVisibleRequest
+	25, // 22: social.SocialService.GetNearbyUsers:input_type -> social.GetNearbyUsersRequest
+	27, // 23: social.SocialService.ApplyForBadge:input_type -> social.ApplyForBadgeRequest
+	29, // 24: social.SocialService.GetUserBadges:input_type -> social.GetUserBadgesRequest
+	31, // 25: social.SocialService.CreateAudioRoom:input_type -> social.CreateAudioRoomRequest
+	33, // 26: social.SocialService.JoinAudioRoom:input_type -> social.JoinAudioRoomRequest
+	35, // 27: social.SocialService.LeaveAudioRoom:input_type -> social.LeaveAudioRoomRequest
+	37, // 28: social.SocialService.ListAudioRooms:input_type -> social.ListAudioRoomsRequest
+	6,  // 29: social.SocialService.FollowUser:output_type -> social.FollowUserResponse
+	8,  // 30: social.SocialService.UnfollowUser:output_type -> social.UnfollowUserResponse
+	10, // 31: social.SocialService.GetFollowers:output_type -> social.GetFollowersResponse
+	12, // 32: social.SocialService.GetFollowing:output_type -> social.GetFollowingResponse
+	14, // 33: social.SocialService.CreateMoment:output_type -> social.CreateMomentResponse
+	16, // 34: social.SocialService.LikeMoment:output_type -> social.LikeMomentResponse
+	18, // 35: social.SocialService.CommentMoment:output_type -> social.CommentMomentResponse
+	20, // 36: social.SocialService.GetMomentsFeed:output_type -> social.GetMomentsFeedResponse
+	22, // 37: social.SocialService.DeleteMoment:output_type -> social.DeleteMomentResponse
+	40, // 38: social.SocialService.CreateReport:output_type -> social.CreateReportResponse
+	43, // 39: social.SocialService.ListReports:output_type -> social.ListReportsResponse
+	45, // 40: social.SocialService.UpdateReportStatus:output_type -> social.UpdateReportStatusResponse
+	24, // 41: social.SocialService.SetNearbyVisible:output_type -> social.SetNearbyVisibleResponse
+	26, // 42: social.SocialService.GetNearbyUsers:output_type -> social.GetNearbyUsersResponse
+	28, // 43: social.SocialService.ApplyForBadge:output_type -> social.ApplyForBadgeResponse
+	30, // 44: social.SocialService.GetUserBadges:output_type -> social.GetUserBadgesResponse
+	32, // 45: social.SocialService.CreateAudioRoom:output_type -> social.CreateAudioRoomResponse
+	34, // 46: social.SocialService.JoinAudioRoom:output_type -> social.JoinAudioRoomResponse
+	36, // 47: social.SocialService.LeaveAudioRoom:output_type -> social.LeaveAudioRoomResponse
+	38, // 48: social.SocialService.ListAudioRooms:output_type -> social.ListAudioRoomsResponse
+	29, // [29:49] is the sub-list for method output_type
+	9,  // [9:29] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_proto_social_proto_init() }
@@ -2481,7 +2961,7 @@ func file_proto_social_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_social_proto_rawDesc), len(file_proto_social_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   39,
+			NumMessages:   46,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

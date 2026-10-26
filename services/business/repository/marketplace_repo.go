@@ -614,10 +614,17 @@ func (r *BusinessRepository) ListFollowedMarketplaceProducts(ctx context.Context
 
 // ── Global Marketplace Feed (with Amazon/Shopify-style ranking score) ────────
 
-func (r *BusinessRepository) ListMarketplaceProducts(ctx context.Context, categoryID, sortBy, search string, limit, offset int32) ([]*MarketplaceProduct, int32, error) {
+func (r *BusinessRepository) ListMarketplaceProducts(ctx context.Context, categoryID, sortBy, search, viewerID string, limit, offset int32) ([]*MarketplaceProduct, int32, error) {
 	whereClause := "WHERE p.is_published = TRUE"
 	args := []interface{}{}
 	argIdx := 1
+
+	// Hide listings from sellers the signed-in viewer has blocked.
+	if viewerID != "" {
+		whereClause += fmt.Sprintf(" AND p.owner_id NOT IN (SELECT blocked_id FROM auth.user_blocks WHERE blocker_id = $%d)", argIdx)
+		args = append(args, viewerID)
+		argIdx++
+	}
 
 	if categoryID != "" && categoryID != "all" {
 		resolvedID := r.resolveOrCreateCategoryID(ctx, categoryID)

@@ -2980,6 +2980,7 @@ type ListMarketplaceProductsRequest struct {
 	Search        string                 `protobuf:"bytes,3,opt,name=search,proto3" json:"search,omitempty"`
 	Limit         int32                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
 	Offset        int32                  `protobuf:"varint,5,opt,name=offset,proto3" json:"offset,omitempty"`
+	ViewerId      string                 `protobuf:"bytes,6,opt,name=viewer_id,json=viewerId,proto3" json:"viewer_id,omitempty"` // optional: signed-in viewer, used to hide blocked sellers
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3047,6 +3048,13 @@ func (x *ListMarketplaceProductsRequest) GetOffset() int32 {
 		return x.Offset
 	}
 	return 0
+}
+
+func (x *ListMarketplaceProductsRequest) GetViewerId() string {
+	if x != nil {
+		return x.ViewerId
+	}
+	return ""
 }
 
 type ListMarketplaceProductsResponse struct {
@@ -10668,14 +10676,15 @@ const file_proto_business_proto_rawDesc = "" +
 	"\x06offset\x18\x03 \x01(\x05R\x06offset\"n\n" +
 	"\x1cListBusinessProductsResponse\x128\n" +
 	"\bproducts\x18\x01 \x03(\v2\x1c.business.MarketplaceProductR\bproducts\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x05R\x05total\"\xa0\x01\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"\xbd\x01\n" +
 	"\x1eListMarketplaceProductsRequest\x12\x1f\n" +
 	"\vcategory_id\x18\x01 \x01(\tR\n" +
 	"categoryId\x12\x17\n" +
 	"\asort_by\x18\x02 \x01(\tR\x06sortBy\x12\x16\n" +
 	"\x06search\x18\x03 \x01(\tR\x06search\x12\x14\n" +
 	"\x05limit\x18\x04 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x05 \x01(\x05R\x06offset\"q\n" +
+	"\x06offset\x18\x05 \x01(\x05R\x06offset\x12\x1b\n" +
+	"\tviewer_id\x18\x06 \x01(\tR\bviewerId\"q\n" +
 	"\x1fListMarketplaceProductsResponse\x128\n" +
 	"\bproducts\x18\x01 \x03(\v2\x1c.business.MarketplaceProductR\bproducts\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\"o\n" +

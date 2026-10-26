@@ -20,6 +20,11 @@ service SocialService {
   rpc GetMomentsFeed(GetMomentsFeedRequest) returns (GetMomentsFeedResponse);
   rpc DeleteMoment(DeleteMomentRequest) returns (DeleteMomentResponse);
 
+  // Moderation: user reports + admin review queue
+  rpc CreateReport(CreateReportRequest) returns (CreateReportResponse);
+  rpc ListReports(ListReportsRequest) returns (ListReportsResponse);
+  rpc UpdateReportStatus(UpdateReportStatusRequest) returns (UpdateReportStatusResponse);
+
   // Nearby discovery
   rpc SetNearbyVisible(SetNearbyVisibleRequest) returns (SetNearbyVisibleResponse);
   rpc GetNearbyUsers(GetNearbyUsersRequest) returns (GetNearbyUsersResponse);
@@ -156,3 +161,27 @@ message LeaveAudioRoomResponse { bool success = 1; }
 
 message ListAudioRoomsRequest { int32 limit = 1; int32 offset = 2; }
 message ListAudioRoomsResponse { repeated AudioRoom rooms = 1; int32 total = 2; }
+
+// ── Moderation / Reports ────────────────────────────────────────────────────
+message CreateReportRequest {
+  string reporter_id = 1;
+  string target_type = 2; // "user" | "story" | "product" | "message"
+  string target_id = 3;
+  string reason = 4;
+}
+message CreateReportResponse { bool success = 1; string report_id = 2; }
+
+message Report {
+  string id = 1;
+  string reporter_id = 2;
+  string target_type = 3;
+  string target_id = 4;
+  string reason = 5;
+  string status = 6; // "pending" | "reviewed" | "actioned" | "dismissed"
+  int64 created_at = 7;
+}
+message ListReportsRequest { string status = 1; int32 limit = 2; int32 offset = 3; }
+message ListReportsResponse { repeated Report reports = 1; int32 total = 2; }
+
+message UpdateReportStatusRequest { string report_id = 1; string status = 2; string reviewer_id = 3; }
+message UpdateReportStatusResponse { bool success = 1; }

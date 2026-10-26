@@ -19,23 +19,26 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	SocialService_FollowUser_FullMethodName       = "/social.SocialService/FollowUser"
-	SocialService_UnfollowUser_FullMethodName     = "/social.SocialService/UnfollowUser"
-	SocialService_GetFollowers_FullMethodName     = "/social.SocialService/GetFollowers"
-	SocialService_GetFollowing_FullMethodName     = "/social.SocialService/GetFollowing"
-	SocialService_CreateMoment_FullMethodName     = "/social.SocialService/CreateMoment"
-	SocialService_LikeMoment_FullMethodName       = "/social.SocialService/LikeMoment"
-	SocialService_CommentMoment_FullMethodName    = "/social.SocialService/CommentMoment"
-	SocialService_GetMomentsFeed_FullMethodName   = "/social.SocialService/GetMomentsFeed"
-	SocialService_DeleteMoment_FullMethodName     = "/social.SocialService/DeleteMoment"
-	SocialService_SetNearbyVisible_FullMethodName = "/social.SocialService/SetNearbyVisible"
-	SocialService_GetNearbyUsers_FullMethodName   = "/social.SocialService/GetNearbyUsers"
-	SocialService_ApplyForBadge_FullMethodName    = "/social.SocialService/ApplyForBadge"
-	SocialService_GetUserBadges_FullMethodName    = "/social.SocialService/GetUserBadges"
-	SocialService_CreateAudioRoom_FullMethodName  = "/social.SocialService/CreateAudioRoom"
-	SocialService_JoinAudioRoom_FullMethodName    = "/social.SocialService/JoinAudioRoom"
-	SocialService_LeaveAudioRoom_FullMethodName   = "/social.SocialService/LeaveAudioRoom"
-	SocialService_ListAudioRooms_FullMethodName   = "/social.SocialService/ListAudioRooms"
+	SocialService_FollowUser_FullMethodName         = "/social.SocialService/FollowUser"
+	SocialService_UnfollowUser_FullMethodName       = "/social.SocialService/UnfollowUser"
+	SocialService_GetFollowers_FullMethodName       = "/social.SocialService/GetFollowers"
+	SocialService_GetFollowing_FullMethodName       = "/social.SocialService/GetFollowing"
+	SocialService_CreateMoment_FullMethodName       = "/social.SocialService/CreateMoment"
+	SocialService_LikeMoment_FullMethodName         = "/social.SocialService/LikeMoment"
+	SocialService_CommentMoment_FullMethodName      = "/social.SocialService/CommentMoment"
+	SocialService_GetMomentsFeed_FullMethodName     = "/social.SocialService/GetMomentsFeed"
+	SocialService_DeleteMoment_FullMethodName       = "/social.SocialService/DeleteMoment"
+	SocialService_CreateReport_FullMethodName       = "/social.SocialService/CreateReport"
+	SocialService_ListReports_FullMethodName        = "/social.SocialService/ListReports"
+	SocialService_UpdateReportStatus_FullMethodName = "/social.SocialService/UpdateReportStatus"
+	SocialService_SetNearbyVisible_FullMethodName   = "/social.SocialService/SetNearbyVisible"
+	SocialService_GetNearbyUsers_FullMethodName     = "/social.SocialService/GetNearbyUsers"
+	SocialService_ApplyForBadge_FullMethodName      = "/social.SocialService/ApplyForBadge"
+	SocialService_GetUserBadges_FullMethodName      = "/social.SocialService/GetUserBadges"
+	SocialService_CreateAudioRoom_FullMethodName    = "/social.SocialService/CreateAudioRoom"
+	SocialService_JoinAudioRoom_FullMethodName      = "/social.SocialService/JoinAudioRoom"
+	SocialService_LeaveAudioRoom_FullMethodName     = "/social.SocialService/LeaveAudioRoom"
+	SocialService_ListAudioRooms_FullMethodName     = "/social.SocialService/ListAudioRooms"
 )
 
 // SocialServiceClient is the client API for SocialService service.
@@ -53,6 +56,10 @@ type SocialServiceClient interface {
 	CommentMoment(ctx context.Context, in *CommentMomentRequest, opts ...grpc.CallOption) (*CommentMomentResponse, error)
 	GetMomentsFeed(ctx context.Context, in *GetMomentsFeedRequest, opts ...grpc.CallOption) (*GetMomentsFeedResponse, error)
 	DeleteMoment(ctx context.Context, in *DeleteMomentRequest, opts ...grpc.CallOption) (*DeleteMomentResponse, error)
+	// Moderation: user reports + admin review queue
+	CreateReport(ctx context.Context, in *CreateReportRequest, opts ...grpc.CallOption) (*CreateReportResponse, error)
+	ListReports(ctx context.Context, in *ListReportsRequest, opts ...grpc.CallOption) (*ListReportsResponse, error)
+	UpdateReportStatus(ctx context.Context, in *UpdateReportStatusRequest, opts ...grpc.CallOption) (*UpdateReportStatusResponse, error)
 	// Nearby discovery
 	SetNearbyVisible(ctx context.Context, in *SetNearbyVisibleRequest, opts ...grpc.CallOption) (*SetNearbyVisibleResponse, error)
 	GetNearbyUsers(ctx context.Context, in *GetNearbyUsersRequest, opts ...grpc.CallOption) (*GetNearbyUsersResponse, error)
@@ -164,6 +171,36 @@ func (c *socialServiceClient) DeleteMoment(ctx context.Context, in *DeleteMoment
 	return out, nil
 }
 
+func (c *socialServiceClient) CreateReport(ctx context.Context, in *CreateReportRequest, opts ...grpc.CallOption) (*CreateReportResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateReportResponse)
+	err := c.cc.Invoke(ctx, SocialService_CreateReport_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *socialServiceClient) ListReports(ctx context.Context, in *ListReportsRequest, opts ...grpc.CallOption) (*ListReportsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListReportsResponse)
+	err := c.cc.Invoke(ctx, SocialService_ListReports_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *socialServiceClient) UpdateReportStatus(ctx context.Context, in *UpdateReportStatusRequest, opts ...grpc.CallOption) (*UpdateReportStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateReportStatusResponse)
+	err := c.cc.Invoke(ctx, SocialService_UpdateReportStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *socialServiceClient) SetNearbyVisible(ctx context.Context, in *SetNearbyVisibleRequest, opts ...grpc.CallOption) (*SetNearbyVisibleResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SetNearbyVisibleResponse)
@@ -259,6 +296,10 @@ type SocialServiceServer interface {
 	CommentMoment(context.Context, *CommentMomentRequest) (*CommentMomentResponse, error)
 	GetMomentsFeed(context.Context, *GetMomentsFeedRequest) (*GetMomentsFeedResponse, error)
 	DeleteMoment(context.Context, *DeleteMomentRequest) (*DeleteMomentResponse, error)
+	// Moderation: user reports + admin review queue
+	CreateReport(context.Context, *CreateReportRequest) (*CreateReportResponse, error)
+	ListReports(context.Context, *ListReportsRequest) (*ListReportsResponse, error)
+	UpdateReportStatus(context.Context, *UpdateReportStatusRequest) (*UpdateReportStatusResponse, error)
 	// Nearby discovery
 	SetNearbyVisible(context.Context, *SetNearbyVisibleRequest) (*SetNearbyVisibleResponse, error)
 	GetNearbyUsers(context.Context, *GetNearbyUsersRequest) (*GetNearbyUsersResponse, error)
@@ -306,6 +347,15 @@ func (UnimplementedSocialServiceServer) GetMomentsFeed(context.Context, *GetMome
 }
 func (UnimplementedSocialServiceServer) DeleteMoment(context.Context, *DeleteMomentRequest) (*DeleteMomentResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteMoment not implemented")
+}
+func (UnimplementedSocialServiceServer) CreateReport(context.Context, *CreateReportRequest) (*CreateReportResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateReport not implemented")
+}
+func (UnimplementedSocialServiceServer) ListReports(context.Context, *ListReportsRequest) (*ListReportsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListReports not implemented")
+}
+func (UnimplementedSocialServiceServer) UpdateReportStatus(context.Context, *UpdateReportStatusRequest) (*UpdateReportStatusResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateReportStatus not implemented")
 }
 func (UnimplementedSocialServiceServer) SetNearbyVisible(context.Context, *SetNearbyVisibleRequest) (*SetNearbyVisibleResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetNearbyVisible not implemented")
@@ -514,6 +564,60 @@ func _SocialService_DeleteMoment_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SocialService_CreateReport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateReportRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SocialServiceServer).CreateReport(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SocialService_CreateReport_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SocialServiceServer).CreateReport(ctx, req.(*CreateReportRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SocialService_ListReports_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListReportsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SocialServiceServer).ListReports(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SocialService_ListReports_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SocialServiceServer).ListReports(ctx, req.(*ListReportsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SocialService_UpdateReportStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateReportStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SocialServiceServer).UpdateReportStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SocialService_UpdateReportStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SocialServiceServer).UpdateReportStatus(ctx, req.(*UpdateReportStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _SocialService_SetNearbyVisible_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetNearbyVisibleRequest)
 	if err := dec(in); err != nil {
@@ -700,6 +804,18 @@ var SocialService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteMoment",
 			Handler:    _SocialService_DeleteMoment_Handler,
+		},
+		{
+			MethodName: "CreateReport",
+			Handler:    _SocialService_CreateReport_Handler,
+		},
+		{
+			MethodName: "ListReports",
+			Handler:    _SocialService_ListReports_Handler,
+		},
+		{
+			MethodName: "UpdateReportStatus",
+			Handler:    _SocialService_UpdateReportStatus_Handler,
 		},
 		{
 			MethodName: "SetNearbyVisible",

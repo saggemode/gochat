@@ -229,3 +229,50 @@ func (s *SocialServer) ListAudioRooms(ctx context.Context, req *pb.ListAudioRoom
 	}
 	return &pb.ListAudioRoomsResponse{Rooms: pbRooms, Total: int32(total)}, nil
 }
+
+// ── Moderation / Reports ────────────────────────────────────────────────────
+
+func (s *SocialServer) CreateReport(ctx context.Context, req *pb.CreateReportRequest) (*pb.CreateReportResponse, error) {
+	if req.ReporterId == "" || req.TargetType == "" || req.TargetId == "" {
+		return nil, status.Error(codes.InvalidArgument, "reporter_id, target_type and target_id are required")
+	}
+	switch req.TargetType {
+	case "user", "story", "product", "message":
+	default:
+		return nil, status.Error(codes.InvalidArgument, "invalid target_type")
+	}
+	if err := s.repo.CreateReport(ctx, req.ReporterId, req.TargetType, req.TargetId, req.Reason); err != nil {
+		return nil, status.Errorf(codes.Internal, "create report: %v", err)
+	}
+	return &pb.CreateReportResponse{Success: true}, nil
+}
+
+func (s *SocialServer) ListReports(ctx context.Context, req *pb.ListReportsRequest) (*pb.ListReportsResponse, error) {
+	reports, total, err := s.repo.ListReports(ctx, req.Status, int(req.Limit), int(req.Offset))
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list reports: %v", err)
+	}
+	out := make([]*pb.Report, len(reports))
+	for i, r := range reports {
+		out[i] = &pb.Report{
+			Id:         r.ID,
+			ReporterId: r.ReporterID,
+			TargetType: r.TargetType,
+			TargetId:   r.TargetID,
+			Reason:     r.Reason,
+			Status:     r.Status,
+			CreatedAt:  r.CreatedAt.Unix(),
+		}
+	}
+	return &pb.ListReportsResponse{Reports: out, Total: int32(total)}, nil
+}
+
+func (s *SocialServer) UpdateReportStatus(ctx context.Context, req *pb.UpdateReportStatusRequest) (*pb.UpdateReportStatusResponse, error) {
+	if req.ReportId == "" || req.Status == "" {
+		return nil, status.Error(codes.InvalidArgument, "report_id and status are required")
+	}
+	if err := s.repo.UpdateReportStatus(ctx, req.ReportId, req.Status, req.ReviewerId); err != nil {
+		return nil, status.Errorf(codes.Internal, "update report: %v", err)
+	}
+	return &pb.UpdateReportStatusResponse{Success: true}, nil
+}

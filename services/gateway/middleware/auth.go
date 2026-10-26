@@ -95,3 +95,35 @@ func AuthMiddleware(authClient authpb.AuthServiceClient, rdb ...*redis.Client) g
 		c.Next()
 	}
 }
+
+// OptionalAuthMiddleware validates a token when one is supplied and populates
+// user_id/email, but — unlike AuthMiddleware — never aborts the request when the
+// token is missing or invalid. It is used on otherwise-public routes (e.g. the
+// marketplace feed) that personalise their response for signed-in viewers, such
+// as hiding content from users the viewer has blocked.
+func OptionalAuthMiddleware(authClient authpb.AuthServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := ""
+		if authHeader := c.GetHeader("Authorization"); authHeader != "" {
+			if parts := strings.Split(authHeader, " "); len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
+				token = parts[1]
+			}
+		}
+		if token == "" {
+			token = c.Query("token")
+		}
+		if token == "" {
+			if cookieToken, err := c.Cookie("gochat_access_token"); err == nil {
+				token = cookieToken
+			}
+		}
+		if token != "" && authClient != nil {
+			ctx := metadata.AppendToOutgoingContext(c.Request.Context(), "authorization", "Bearer "+token)
+			if resp, err := authClient.ValidateToken(ctx, &authpb.ValidateTokenRequest{Token: token}); err == nil && resp != nil && resp.Valid {
+				c.Set("user_id", resp.UserId)
+				c.Set("email", resp.Email)
+			}
+		}
+		c.Next()
+	}
+}

@@ -100,7 +100,7 @@ func (s *BusinessServer) ListMarketplaceProducts(ctx context.Context, req *pb.Li
 	if limit <= 0 {
 		limit = 20
 	}
-	products, total, err := s.repo.ListMarketplaceProducts(ctx, req.CategoryId, req.SortBy, req.Search, limit, req.Offset)
+	products, total, err := s.repo.ListMarketplaceProducts(ctx, req.CategoryId, req.SortBy, req.Search, req.ViewerId, limit, req.Offset)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list marketplace products: %v", err)
 	}
