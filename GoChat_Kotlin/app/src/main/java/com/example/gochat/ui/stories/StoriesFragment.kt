@@ -38,6 +38,9 @@ class StoriesFragment : Fragment() {
     private val viewModel: StoriesViewModel by viewModels()
     private lateinit var storyAdapter: StoryAdapter
 
+    @javax.inject.Inject
+    lateinit var tokenManager: com.example.gochat.data.api.TokenManager
+
     private val bgColors = listOf(
         "#00A884", // WhatsApp Emerald
         "#128C7E", // Dark Teal
@@ -190,18 +193,13 @@ class StoriesFragment : Fragment() {
         currentColorIndex = 0
         dialogBinding.layoutTextStatusRoot.setBackgroundColor(Color.parseColor(bgColors[currentColorIndex]))
 
-        var allowReshare = true
+        // Inherit the global "Allow resharing of my status" privacy setting;
+        // can still be overridden for this one status.
+        var allowReshare = tokenManager.allowStoryReshare
+        applyReshareToggleVisual(dialogBinding.ivReshareToggleIcon, dialogBinding.tvReshareToggleText, allowReshare)
         dialogBinding.layoutReshareToggle.setOnClickListener {
             allowReshare = !allowReshare
-            if (allowReshare) {
-                dialogBinding.ivReshareToggleIcon.setColorFilter(ContextCompat.getColor(requireContext(), R.color.gochat_emerald_light))
-                dialogBinding.tvReshareToggleText.text = "Reshare: Allowed"
-                dialogBinding.tvReshareToggleText.setTextColor(Color.WHITE)
-            } else {
-                dialogBinding.ivReshareToggleIcon.setColorFilter(Color.parseColor("#99FFFFFF"))
-                dialogBinding.tvReshareToggleText.text = "Reshare: Off"
-                dialogBinding.tvReshareToggleText.setTextColor(Color.parseColor("#99FFFFFF"))
-            }
+            applyReshareToggleVisual(dialogBinding.ivReshareToggleIcon, dialogBinding.tvReshareToggleText, allowReshare)
         }
 
         dialogBinding.btnCloseTextStatus.setOnClickListener {
@@ -260,6 +258,19 @@ class StoriesFragment : Fragment() {
         }
     }
 
+    /** Updates a reshare toggle's icon + label to reflect the allowed/off state. */
+    private fun applyReshareToggleVisual(icon: android.widget.ImageView, label: android.widget.TextView, allowed: Boolean) {
+        if (allowed) {
+            icon.setColorFilter(ContextCompat.getColor(requireContext(), R.color.gochat_emerald_light))
+            label.text = "Reshare: Allowed"
+            label.setTextColor(Color.WHITE)
+        } else {
+            icon.setColorFilter(Color.parseColor("#99FFFFFF"))
+            label.text = "Reshare: Off"
+            label.setTextColor(Color.parseColor("#99FFFFFF"))
+        }
+    }
+
     private fun showCreateMediaStatusDialog(compressed: com.example.gochat.core.media.ImageCompressor.CompressedImage) {
         val dialog = Dialog(requireContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -273,18 +284,12 @@ class StoriesFragment : Fragment() {
             isCircle = false
         )
 
-        var allowReshare = true
+        // Inherit the global "Allow resharing of my status" privacy setting.
+        var allowReshare = tokenManager.allowStoryReshare
+        applyReshareToggleVisual(dialogBinding.ivMediaReshareIcon, dialogBinding.tvMediaReshareText, allowReshare)
         dialogBinding.layoutMediaReshareToggle.setOnClickListener {
             allowReshare = !allowReshare
-            if (allowReshare) {
-                dialogBinding.ivMediaReshareIcon.setColorFilter(ContextCompat.getColor(requireContext(), R.color.gochat_emerald_light))
-                dialogBinding.tvMediaReshareText.text = "Reshare: Allowed"
-                dialogBinding.tvMediaReshareText.setTextColor(Color.WHITE)
-            } else {
-                dialogBinding.ivMediaReshareIcon.setColorFilter(Color.parseColor("#99FFFFFF"))
-                dialogBinding.tvMediaReshareText.text = "Reshare: Off"
-                dialogBinding.tvMediaReshareText.setTextColor(Color.parseColor("#99FFFFFF"))
-            }
+            applyReshareToggleVisual(dialogBinding.ivMediaReshareIcon, dialogBinding.tvMediaReshareText, allowReshare)
         }
 
         dialogBinding.btnCloseMediaStatus.setOnClickListener {

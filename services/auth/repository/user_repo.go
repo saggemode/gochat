@@ -754,6 +754,7 @@ type PrivacySettings struct {
 	ReadReceiptsEnabled bool   `json:"read_receipts_enabled"`
 	OnlinePrivacy       string `json:"online_privacy"`
 	LastSeenPrivacy     string `json:"last_seen_privacy"`
+	AllowStoryReshare   bool   `json:"allow_story_reshare"`
 }
 
 // ── Session Management Methods ──────────────────────────────────────────────
@@ -977,16 +978,17 @@ func (r *UserRepository) VerifyAndResetPin(ctx context.Context, identifier, reco
 
 // ── Granular Privacy Settings Methods ───────────────────────────────────────
 
-func (r *UserRepository) UpdatePrivacySettings(ctx context.Context, userID uuid.UUID, profilePhoto, statusPrivacy string, readReceipts bool, onlinePrivacy, lastSeenPrivacy string) error {
+func (r *UserRepository) UpdatePrivacySettings(ctx context.Context, userID uuid.UUID, profilePhoto, statusPrivacy string, readReceipts bool, onlinePrivacy, lastSeenPrivacy string, allowStoryReshare bool) error {
 	_, err := r.db.Exec(ctx, `
-		UPDATE users 
+		UPDATE users
 		SET profile_photo_privacy = $2,
 		    status_privacy = $3,
 		    read_receipts_enabled = $4,
 		    online_privacy = $5,
-		    last_seen_privacy = $6
+		    last_seen_privacy = $6,
+		    allow_story_reshare = $7
 		WHERE id = $1
-	`, userID, profilePhoto, statusPrivacy, readReceipts, onlinePrivacy, lastSeenPrivacy)
+	`, userID, profilePhoto, statusPrivacy, readReceipts, onlinePrivacy, lastSeenPrivacy, allowStoryReshare)
 	return err
 }
 
@@ -997,9 +999,10 @@ func (r *UserRepository) GetPrivacySettings(ctx context.Context, userID uuid.UUI
 		       COALESCE(status_privacy, 'everyone'),
 		       COALESCE(read_receipts_enabled, true),
 		       COALESCE(online_privacy, 'everyone'),
-		       COALESCE(last_seen_privacy, 'everyone')
+		       COALESCE(last_seen_privacy, 'everyone'),
+		       COALESCE(allow_story_reshare, true)
 		FROM users WHERE id = $1
-	`, userID).Scan(&ps.ProfilePhotoPrivacy, &ps.StatusPrivacy, &ps.ReadReceiptsEnabled, &ps.OnlinePrivacy, &ps.LastSeenPrivacy)
+	`, userID).Scan(&ps.ProfilePhotoPrivacy, &ps.StatusPrivacy, &ps.ReadReceiptsEnabled, &ps.OnlinePrivacy, &ps.LastSeenPrivacy, &ps.AllowStoryReshare)
 	if err != nil {
 		return nil, err
 	}

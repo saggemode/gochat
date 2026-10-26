@@ -158,8 +158,9 @@ type PrivacySettings struct {
 	ProfilePhotoPrivacy string                 `protobuf:"bytes,1,opt,name=profile_photo_privacy,json=profilePhotoPrivacy,proto3" json:"profile_photo_privacy,omitempty"` // "everyone", "contacts", "nobody"
 	StatusPrivacy       string                 `protobuf:"bytes,2,opt,name=status_privacy,json=statusPrivacy,proto3" json:"status_privacy,omitempty"`                     // "everyone", "contacts", "nobody"
 	ReadReceiptsEnabled bool                   `protobuf:"varint,3,opt,name=read_receipts_enabled,json=readReceiptsEnabled,proto3" json:"read_receipts_enabled,omitempty"`
-	OnlinePrivacy       string                 `protobuf:"bytes,4,opt,name=online_privacy,json=onlinePrivacy,proto3" json:"online_privacy,omitempty"`         // "everyone", "contacts", "nobody"
-	LastSeenPrivacy     string                 `protobuf:"bytes,5,opt,name=last_seen_privacy,json=lastSeenPrivacy,proto3" json:"last_seen_privacy,omitempty"` // "everyone", "contacts", "nobody"
+	OnlinePrivacy       string                 `protobuf:"bytes,4,opt,name=online_privacy,json=onlinePrivacy,proto3" json:"online_privacy,omitempty"`                // "everyone", "contacts", "nobody"
+	LastSeenPrivacy     string                 `protobuf:"bytes,5,opt,name=last_seen_privacy,json=lastSeenPrivacy,proto3" json:"last_seen_privacy,omitempty"`        // "everyone", "contacts", "nobody"
+	AllowStoryReshare   bool                   `protobuf:"varint,6,opt,name=allow_story_reshare,json=allowStoryReshare,proto3" json:"allow_story_reshare,omitempty"` // may others reshare my status (default true)
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -227,6 +228,13 @@ func (x *PrivacySettings) GetLastSeenPrivacy() string {
 		return x.LastSeenPrivacy
 	}
 	return ""
+}
+
+func (x *PrivacySettings) GetAllowStoryReshare() bool {
+	if x != nil {
+		return x.AllowStoryReshare
+	}
+	return false
 }
 
 type UpdatePrivacySettingsRequest struct {
@@ -2862,13 +2870,14 @@ const file_proto_auth_proto_rawDesc = "" +
 	"\x0ephone_verified\x18\n" +
 	" \x01(\bR\rphoneVerified\x12\x10\n" +
 	"\x03pin\x18\v \x01(\tR\x03pin\x12!\n" +
-	"\fcountry_code\x18\f \x01(\tR\vcountryCode\"\xf3\x01\n" +
+	"\fcountry_code\x18\f \x01(\tR\vcountryCode\"\xa3\x02\n" +
 	"\x0fPrivacySettings\x122\n" +
 	"\x15profile_photo_privacy\x18\x01 \x01(\tR\x13profilePhotoPrivacy\x12%\n" +
 	"\x0estatus_privacy\x18\x02 \x01(\tR\rstatusPrivacy\x122\n" +
 	"\x15read_receipts_enabled\x18\x03 \x01(\bR\x13readReceiptsEnabled\x12%\n" +
 	"\x0eonline_privacy\x18\x04 \x01(\tR\ronlinePrivacy\x12*\n" +
-	"\x11last_seen_privacy\x18\x05 \x01(\tR\x0flastSeenPrivacy\"j\n" +
+	"\x11last_seen_privacy\x18\x05 \x01(\tR\x0flastSeenPrivacy\x12.\n" +
+	"\x13allow_story_reshare\x18\x06 \x01(\bR\x11allowStoryReshare\"j\n" +
 	"\x1cUpdatePrivacySettingsRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x121\n" +
 	"\bsettings\x18\x02 \x01(\v2\x15.auth.PrivacySettingsR\bsettings\"9\n" +

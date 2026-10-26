@@ -242,6 +242,13 @@ class TokenManager private constructor(context: Context) {
         get() = prefs.getBoolean("has_completed_migration_check", false)
         set(value) = prefs.edit().putBoolean("has_completed_migration_check", value).apply()
 
+    // Cached global privacy preference: may others reshare my status? Defaults to
+    // true (allowed). Used by the status composers so a new status inherits the
+    // setting without a per-post prompt.
+    var allowStoryReshare: Boolean
+        get() = prefs.getBoolean("allow_story_reshare", true)
+        set(value) = prefs.edit().putBoolean("allow_story_reshare", value).apply()
+
     var userCountryCode: String
         get() {
             val phone = userPhone.orEmpty()

@@ -90,6 +90,7 @@ message PrivacySettings {
   bool   read_receipts_enabled = 3;
   string online_privacy        = 4; // "everyone", "contacts", "nobody"
   string last_seen_privacy     = 5; // "everyone", "contacts", "nobody"
+  bool   allow_story_reshare   = 6; // may others reshare my status (default true)
 }
 
 message UpdatePrivacySettingsRequest {

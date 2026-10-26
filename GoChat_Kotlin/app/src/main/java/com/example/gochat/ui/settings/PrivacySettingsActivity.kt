@@ -59,6 +59,9 @@ class PrivacySettingsActivity : AppCompatActivity() {
                 binding.tvProfilePhotoValue.text = json["profile_photo_privacy"]?.jsonPrimitive?.contentOrNull?.replaceFirstChar { it.uppercase() } ?: everyone
                 binding.tvStatusValue.text = json["status_privacy"]?.jsonPrimitive?.contentOrNull?.replaceFirstChar { it.uppercase() } ?: everyone
                 binding.switchReadReceipts.isChecked = json["read_receipts_enabled"]?.jsonPrimitive?.booleanOrNull ?: true
+                val allowReshare = json["allow_story_reshare"]?.jsonPrimitive?.booleanOrNull ?: true
+                binding.switchAllowReshare.isChecked = allowReshare
+                tokenManager.allowStoryReshare = allowReshare
             }
         }
         binding.switchAppLock.isChecked = tokenManager.isBiometricLockEnabled
@@ -82,6 +85,17 @@ class PrivacySettingsActivity : AppCompatActivity() {
                 val res = authRepo.updatePrivacySettings(readReceipts = isChecked)
                 if (res.isFailure) {
                     Toast.makeText(this@PrivacySettingsActivity, "Failed to update read receipts", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
+        binding.switchAllowReshare.setOnCheckedChangeListener { btn, isChecked ->
+            if (!btn.isPressed) return@setOnCheckedChangeListener // ignore programmatic set during load
+            tokenManager.allowStoryReshare = isChecked
+            lifecycleScope.launch {
+                val res = authRepo.updatePrivacySettings(allowStoryReshare = isChecked)
+                if (res.isFailure) {
+                    Toast.makeText(this@PrivacySettingsActivity, "Failed to update reshare setting", Toast.LENGTH_SHORT).show()
                 }
             }
         }

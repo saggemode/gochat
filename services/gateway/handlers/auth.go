@@ -925,12 +925,15 @@ func (h *AuthHandler) UpdatePrivacySettings(c *gin.Context) {
 		return
 	}
 
+	// Pointer fields so we can tell "omitted" from "set to zero value" and only
+	// update what the client actually sent (clients send partial updates).
 	var req struct {
-		ProfilePhotoPrivacy string `json:"profile_photo_privacy"`
-		StatusPrivacy       string `json:"status_privacy"`
-		ReadReceiptsEnabled bool   `json:"read_receipts_enabled"`
-		OnlinePrivacy       string `json:"online_privacy"`
-		LastSeenPrivacy     string `json:"last_seen_privacy"`
+		ProfilePhotoPrivacy *string `json:"profile_photo_privacy"`
+		StatusPrivacy       *string `json:"status_privacy"`
+		ReadReceiptsEnabled *bool   `json:"read_receipts_enabled"`
+		OnlinePrivacy       *string `json:"online_privacy"`
+		LastSeenPrivacy     *string `json:"last_seen_privacy"`
+		AllowStoryReshare   *bool   `json:"allow_story_reshare"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -938,15 +941,38 @@ func (h *AuthHandler) UpdatePrivacySettings(c *gin.Context) {
 		return
 	}
 
+	// Start from the current settings so omitted fields are preserved.
+	cur, err := h.client.GetPrivacySettings(c.Request.Context(), &authpb.GetPrivacySettingsRequest{UserId: userID})
+	if err != nil {
+		h.handleGrpcError(c, err, "failed to load current privacy settings")
+		return
+	}
+	merged := cur.Settings
+	if merged == nil {
+		merged = &authpb.PrivacySettings{}
+	}
+	if req.ProfilePhotoPrivacy != nil {
+		merged.ProfilePhotoPrivacy = *req.ProfilePhotoPrivacy
+	}
+	if req.StatusPrivacy != nil {
+		merged.StatusPrivacy = *req.StatusPrivacy
+	}
+	if req.ReadReceiptsEnabled != nil {
+		merged.ReadReceiptsEnabled = *req.ReadReceiptsEnabled
+	}
+	if req.OnlinePrivacy != nil {
+		merged.OnlinePrivacy = *req.OnlinePrivacy
+	}
+	if req.LastSeenPrivacy != nil {
+		merged.LastSeenPrivacy = *req.LastSeenPrivacy
+	}
+	if req.AllowStoryReshare != nil {
+		merged.AllowStoryReshare = *req.AllowStoryReshare
+	}
+
 	resp, err := h.client.UpdatePrivacySettings(c.Request.Context(), &authpb.UpdatePrivacySettingsRequest{
-		UserId: userID,
-		Settings: &authpb.PrivacySettings{
-			ProfilePhotoPrivacy: req.ProfilePhotoPrivacy,
-			StatusPrivacy:       req.StatusPrivacy,
-			ReadReceiptsEnabled: req.ReadReceiptsEnabled,
-			OnlinePrivacy:       req.OnlinePrivacy,
-			LastSeenPrivacy:     req.LastSeenPrivacy,
-		},
+		UserId:   userID,
+		Settings: merged,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to update privacy settings")
