@@ -508,6 +508,45 @@ func (h *SocialHandler) CreateReport(c *gin.Context) {
 	c.JSON(http.StatusCreated, resp)
 }
 
+// ReportUserLegacy adapts the pre-existing POST /users/report body
+// (reported_user_id/reason/details/evidence_msg_ids) onto the real reports
+// backend so the existing contact-report UI actually persists a report.
+func (h *SocialHandler) ReportUserLegacy(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	var req struct {
+		ReportedUserID string   `json:"reported_user_id" binding:"required"`
+		Reason         string   `json:"reason" binding:"required"`
+		Details        string   `json:"details"`
+		EvidenceMsgIDs []string `json:"evidence_msg_ids"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	reason := req.Reason
+	if strings.TrimSpace(req.Details) != "" {
+		reason += " — " + req.Details
+	}
+	if len(req.EvidenceMsgIDs) > 0 {
+		reason += " [evidence: " + strings.Join(req.EvidenceMsgIDs, ",") + "]"
+	}
+	if _, err := h.client.CreateReport(c.Request.Context(), &pb.CreateReportRequest{
+		ReporterId: userID,
+		TargetType: "user",
+		TargetId:   req.ReportedUserID,
+		Reason:     reason,
+	}); err != nil {
+		h.log.Warn("failed to persist user report", zap.Error(err))
+	}
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"message": "Report submitted successfully. Our trust & safety team will review it.",
+	})
+}
+
 // ListReports returns the moderation queue. Admin-only.
 func (h *SocialHandler) ListReports(c *gin.Context) {
 	userID := getUserID(c)
