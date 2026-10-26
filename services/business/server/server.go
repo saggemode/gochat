@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	pb "gochat/gen/business"
+	"gochat/pkg/moderator"
 	"gochat/services/business/repository"
 
 	"go.uber.org/zap"
@@ -69,6 +70,9 @@ func (s *BusinessServer) CreateCatalog(ctx context.Context, req *pb.CreateCatalo
 }
 
 func (s *BusinessServer) AddProduct(ctx context.Context, req *pb.AddProductRequest) (*pb.AddProductResponse, error) {
+	if mod := moderator.CheckContent(req.Name + " " + req.Description); !mod.Allowed {
+		return nil, status.Error(codes.InvalidArgument, mod.Reason)
+	}
 	p, err := s.repo.AddProduct(ctx, req.CatalogId, req.Name, req.Description, req.Price, req.Currency, req.ImageUrl)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "add product: %v", err)

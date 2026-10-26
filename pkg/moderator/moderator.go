@@ -64,6 +64,34 @@ func CheckMessage(ctx context.Context, config *grouppb.BotConfig, content string
 	return &ModerationResult{Allowed: true}
 }
 
+// prohibitedTerms is a conservative baseline block-list for user-generated content
+// (marketplace listings, stories). Kept narrow to avoid false positives on normal commerce
+// language; extend per your content policy. This is a first-layer filter, not full moderation.
+var prohibitedTerms = []string{
+	"child porn", "childporn", "rape video", "revenge porn",
+	"cocaine", "heroin", "meth for sale", "illegal drugs for sale",
+	"counterfeit cash", "fake currency", "stolen cards", "cc dumps", "cvv dumps",
+	"fake passport", "fake id for sale", "ssn for sale",
+	"buy gun online", "firearm for sale", "explosives for sale",
+	"money doubling", "ponzi scheme",
+}
+
+// CheckContent screens user-generated text (listings, stories) against the prohibited block-list.
+// Returns Allowed=false with a reason when content should be rejected.
+func CheckContent(text string) *ModerationResult {
+	lower := strings.ToLower(text)
+	for _, term := range prohibitedTerms {
+		if term != "" && strings.Contains(lower, term) {
+			return &ModerationResult{
+				Allowed: false,
+				Reason:  "This content violates our policy (prohibited or illegal content).",
+				Action:  "reject",
+			}
+		}
+	}
+	return &ModerationResult{Allowed: true}
+}
+
 func hasPermission(config *grouppb.BotConfig, perm grouppb.BotPermission) bool {
 	for _, p := range config.Permissions {
 		if p == perm {

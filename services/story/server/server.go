@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"gochat/pkg/moderator"
 	storypb "gochat/gen/story"
 	"gochat/services/story/repository"
 )
@@ -35,6 +36,10 @@ func (s *StoryServer) PostStory(ctx context.Context, req *storypb.PostStoryReque
 	userID, err := uuid.Parse(req.UserId)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+
+	if mod := moderator.CheckContent(req.Content); !mod.Allowed {
+		return nil, status.Error(codes.InvalidArgument, mod.Reason)
 	}
 
 	story := &repository.Story{
