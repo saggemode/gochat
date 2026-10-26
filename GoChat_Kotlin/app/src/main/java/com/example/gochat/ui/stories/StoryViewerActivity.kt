@@ -151,6 +151,30 @@ class StoryViewerActivity : AppCompatActivity() {
 
         binding.btnBackStory.setOnClickListener { finish() }
         binding.btnCloseStory.setOnClickListener { finish() }
+
+        // "Report" is only meaningful on other people's stories.
+        binding.btnMoreStory.visibility = if (user.isMe) View.GONE else View.VISIBLE
+        binding.btnMoreStory.setOnClickListener { showStoryReportDialog() }
+    }
+
+    private fun showStoryReportDialog() {
+        val user = userStories ?: return
+        val story = user.stories.getOrNull(currentIndex) ?: return
+        pauseStory()
+        com.example.gochat.ui.common.ReportContentDialog.show(
+            context = this,
+            title = "Report this status?",
+        ) { reason ->
+            lifecycleScope.launch {
+                chatRepository.reportContent("story", story.id, reason)
+                Toast.makeText(
+                    this@StoryViewerActivity,
+                    getString(R.string.report_submitted_toast),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+        resumeStory()
     }
 
     @SuppressLint("ClickableViewAccessibility")

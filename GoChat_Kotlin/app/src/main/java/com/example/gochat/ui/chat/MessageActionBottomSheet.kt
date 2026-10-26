@@ -17,7 +17,7 @@ class MessageActionBottomSheet(
     private val binding get() = _binding!!
 
     enum class Action {
-        REPLY, FORWARD, STAR, TRANSLATE, PIN, EDIT, VIEW_EDIT_HISTORY, EXPORT, DELETE, REACT_LIKE, REACT_HEART, REACT_LAUGH, REACT_WOW, REACT_SAD, REACT_PRAY
+        REPLY, FORWARD, STAR, TRANSLATE, PIN, EDIT, VIEW_EDIT_HISTORY, EXPORT, DELETE, REPORT, REACT_LIKE, REACT_HEART, REACT_LAUGH, REACT_WOW, REACT_SAD, REACT_PRAY
     }
 
     override fun onCreateView(
@@ -52,6 +52,10 @@ class MessageActionBottomSheet(
 
         // Pin toggle text
         binding.btnPin.text = if (message.isPinned) "Unpin from Top" else "Pin to Top"
+
+        // Report only applies to other people's messages
+        binding.btnReport.visibility = if (!message.isMe && !message.isDeleted) View.VISIBLE else View.GONE
+        binding.btnReport.setOnClickListener { dismiss(); onAction(Action.REPORT) }
 
         // Setup click listeners
         binding.btnReply.setOnClickListener { dismiss(); onAction(Action.REPLY) }

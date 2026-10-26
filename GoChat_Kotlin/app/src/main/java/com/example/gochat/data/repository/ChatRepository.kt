@@ -1687,6 +1687,30 @@ class ChatRepository @Inject constructor(
     }
 
     /**
+     * Reports a piece of content (story | product | message | user) to the
+     * moderation queue. Used by the story viewer, product detail and message
+     * long-press "Report" actions.
+     */
+    suspend fun reportContent(
+        targetType: String,
+        targetId: String,
+        reason: String = ""
+    ): Result<Unit> {
+        return try {
+            val body = buildJsonObject {
+                put("target_type", targetType)
+                put("target_id", targetId)
+                if (reason.isNotBlank()) put("reason", reason)
+            }
+            api.reportContent(body)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.w("ChatRepository", "Failed to report $targetType: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Submits a report for a user to the backend and optionally blocks them.
      */
     suspend fun reportUser(

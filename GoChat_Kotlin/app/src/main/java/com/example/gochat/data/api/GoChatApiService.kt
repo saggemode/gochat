@@ -564,6 +564,11 @@ interface GoChatApiService {
         @Body body: JsonObject
     ): Response<JsonObject>
 
+    @POST(ApiConstants.REPORT_CONTENT)
+    suspend fun reportContent(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
     // ═══════════════════════════════════════════════════════════════
     // ── Business: Quick Replies, Auto-Replies & Analytics ─────────
     // ═══════════════════════════════════════════════════════════════

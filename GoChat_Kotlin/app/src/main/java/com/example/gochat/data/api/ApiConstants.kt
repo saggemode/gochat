@@ -31,6 +31,7 @@ object ApiConstants {
     fun unblockUser(userId: String) = "api/v1/privacy/blocks/$userId"
     const val BLOCKED_USERS = "api/v1/privacy/blocks"
     const val REPORT_USER = "api/v1/users/report"
+    const val REPORT_CONTENT = "api/v1/reports" // generic: story | product | message | user
 
     // ── Conversations & Messages ─────────────────────────────────
     const val CONVERSATIONS = "api/v1/chat/conversations"

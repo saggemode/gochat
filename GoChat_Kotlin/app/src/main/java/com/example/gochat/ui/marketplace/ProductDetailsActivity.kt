@@ -175,6 +175,23 @@ class ProductDetailsActivity : AppCompatActivity() {
             shareProductDirectlyToStatus(p)
         }
 
+        binding.btnReportProduct.setOnClickListener {
+            val p = product ?: return@setOnClickListener
+            com.example.gochat.ui.common.ReportContentDialog.show(
+                context = this,
+                title = "Report this product?",
+            ) { reason ->
+                lifecycleScope.launch {
+                    chatRepository.reportContent("product", p.id, reason)
+                    Toast.makeText(
+                        this@ProductDetailsActivity,
+                        getString(R.string.report_submitted_toast),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+
         // WhatsApp-style inquiry: Chat with Seller
         binding.btnChatSeller.setOnClickListener {
             val p = product ?: return@setOnClickListener

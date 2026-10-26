@@ -165,6 +165,18 @@
             </LinearLayout>
 
             <ImageView
+                android:id="@+id/btnMoreStory"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="More options"
+                android:focusable="true"
+                android:padding="6dp"
+                android:src="@drawable/ic_more_vert"
+                app:tint="@color/white" />
+
+            <ImageView
                 android:id="@+id/btnCloseStory"
                 android:layout_width="36dp"
                 android:layout_height="36dp"

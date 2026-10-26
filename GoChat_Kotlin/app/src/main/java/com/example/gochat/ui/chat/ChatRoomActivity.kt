@@ -2356,6 +2356,21 @@ class ChatRoomActivity : AppCompatActivity() {
                 MessageActionBottomSheet.Action.EXPORT -> {
                     showExportChatBottomSheet(targetMessages = listOf(message))
                 }
+                MessageActionBottomSheet.Action.REPORT -> {
+                    com.example.gochat.ui.common.ReportContentDialog.show(
+                        context = this,
+                        title = "Report this message?",
+                    ) { reason ->
+                        lifecycleScope.launch {
+                            chatRepository.reportContent("message", message.id, reason)
+                            Toast.makeText(
+                                this@ChatRoomActivity,
+                                getString(R.string.report_submitted_toast),
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                }
                 MessageActionBottomSheet.Action.DELETE -> {
                     val isGroup = intent.getBooleanExtra(EXTRA_IS_GROUP, false)
                     val canDeleteForEveryone = message.isMe || (isGroup && viewModel.isGroupAdmin.value)
