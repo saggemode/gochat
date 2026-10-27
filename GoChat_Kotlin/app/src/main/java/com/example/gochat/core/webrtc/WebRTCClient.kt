@@ -240,6 +240,37 @@ class WebRTCClient(
         localVideoTrack?.setEnabled(enabled)
     }
 
+    /**
+     * Tears down the local camera mid-call (e.g. the peer declined a video
+     * upgrade, so we revert to audio). Removes the sending track and releases
+     * the capturer. The caller renegotiates afterwards.
+     */
+    fun stopVideo() {
+        try { videoCapturer?.stopCapture() } catch (_: Exception) {}
+        videoSender?.let { sender -> try { peerConnection?.removeTrack(sender) } catch (_: Exception) {} }
+        videoSender = null
+        try { localVideoTrack?.dispose() } catch (_: Exception) {}
+        localVideoTrack = null
+        try { videoCapturer?.dispose() } catch (_: Exception) {}
+        videoCapturer = null
+        try { videoSource?.dispose() } catch (_: Exception) {}
+        videoSource = null
+    }
+
+    /**
+     * Rolls a pending local offer back to the last stable state. Used when a
+     * video-upgrade offer we sent is declined by the peer, so the connection
+     * returns to its pre-offer (audio-only) state without needing an answer.
+     */
+    fun rollbackLocalDescription() {
+        peerConnection?.setLocalDescription(object : SdpObserver {
+            override fun onCreateSuccess(p0: SessionDescription?) {}
+            override fun onSetSuccess() {}
+            override fun onCreateFailure(p0: String?) {}
+            override fun onSetFailure(p0: String?) {}
+        }, SessionDescription(SessionDescription.Type.ROLLBACK, ""))
+    }
+
     private fun startCamera(trackId: String): VideoTrack? {
         return try {
             val capturer = createCameraCapturer() ?: return null

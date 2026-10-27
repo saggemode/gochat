@@ -438,7 +438,9 @@ class CallActivity : AppCompatActivity() {
             isVideoMuted = false
             if (!audioController.isSpeakerOn) audioController.setSpeaker(true)
             renderControlStates()
-            startOutgoingCall(iceRestart = false)
+            binding.tvCallStatus.text = "Switching to video…"
+            // Distinct signal so the peer is prompted to accept the upgrade.
+            startOutgoingCall(signalTypeOverride = "video-offer")
         }
     }
 
@@ -531,9 +533,68 @@ class CallActivity : AppCompatActivity() {
         }
     }
 
-    private fun handleRemoteOffer(sdp: String) {
+    /**
+     * Prompts the user to accept an incoming voice→video upgrade. On accept we
+     * turn on our own camera and answer with video (two-way); on decline we tell
+     * the peer so they can revert to audio.
+     */
+    private fun promptVideoUpgrade(sdp: String) {
+        if (isCallEnded) return
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Video call")
+            .setMessage("$peerName wants to switch to a video call.")
+            .setCancelable(false)
+            .setPositiveButton("Accept") { _, _ -> acceptVideoUpgrade(sdp) }
+            .setNegativeButton("Decline") { _, _ ->
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val cid = serverCallId.ifBlank { callId }
+                    callRepo.sendSignaling(cid, targetUserId, "video-declined")
+                }
+            }
+            .show()
+    }
+
+    private fun acceptVideoUpgrade(sdp: String) {
+        withCallPermissions(needCamera = true) {
+            if (!hasCameraPermission()) {
+                // No camera: still accept so we can see their video, but send none.
+                handleRemoteOffer(sdp, enableLocalVideo = false)
+                return@withCallPermissions
+            }
+            if (!audioController.isSpeakerOn) audioController.setSpeaker(true)
+            handleRemoteOffer(sdp, enableLocalVideo = true)
+        }
+    }
+
+    /** Peer declined our video upgrade: tear down our camera and revert to audio. */
+    private fun onVideoUpgradeDeclined() {
+        rtcClient.rollbackLocalDescription()
+        rtcClient.stopVideo()
+        isVideoMuted = false
+        binding.localVideoView.visibility = View.GONE
+        if (isCallConnected) binding.tvCallStatus.text = "Connected"
+        renderControlStates()
+        Toast.makeText(this, "$peerName declined video", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun handleRemoteOffer(sdp: String, enableLocalVideo: Boolean = false) {
         rtcClient.setRemoteDescription(SessionDescription(SessionDescription.Type.OFFER, sdp), object : SdpObserver {
             override fun onSetSuccess() {
+                // Turn on our camera (if accepting a video upgrade) BEFORE creating
+                // the answer, so the answer advertises our outgoing video too. The
+                // addTrack must happen synchronously here; only the UI touches the
+                // main thread.
+                if (enableLocalVideo && !rtcClient.hasLocalVideo()) {
+                    val track = rtcClient.startVideoMidCall()
+                    if (track != null) {
+                        runOnUiThread {
+                            track.addSink(binding.localVideoView)
+                            binding.localVideoView.visibility = View.VISIBLE
+                            isVideoMuted = false
+                            renderControlStates()
+                        }
+                    }
+                }
                 rtcClient.createAnswer(object : SdpObserver {
                     override fun onCreateSuccess(answerSdp: SessionDescription?) {
                         answerSdp?.let {
@@ -617,14 +678,15 @@ class CallActivity : AppCompatActivity() {
         }
     }
 
-    private fun startOutgoingCall(iceRestart: Boolean = false) {
+    private fun startOutgoingCall(iceRestart: Boolean = false, signalTypeOverride: String? = null) {
         if (!isMediaReady) return
         rtcClient.createOffer(object : SdpObserver {
             override fun onCreateSuccess(sdp: SessionDescription?) {
                 sdp?.let {
                     lifecycleScope.launch(Dispatchers.IO) {
                         val cid = serverCallId.ifBlank { callId }
-                        callRepo.sendSignaling(cid, targetUserId, if (iceRestart) "ice-restart-offer" else "offer", sdp = it.description)
+                        val sigType = signalTypeOverride ?: if (iceRestart) "ice-restart-offer" else "offer"
+                        callRepo.sendSignaling(cid, targetUserId, sigType, sdp = it.description)
                         // Candidates sent before the peer was listening are lost, so resend
                         // everything gathered so far right behind each offer.
                         rtcClient.getLocalCandidates().forEach { candidate ->
@@ -687,6 +749,15 @@ class CallActivity : AppCompatActivity() {
                             handleRinging()
                         } else if (sigType == "request-offer" && isOutgoing) {
                             startOutgoingCall(iceRestart = false)
+                        } else if (sigType == "video-offer" && !sdp.isNullOrBlank()) {
+                            // Peer wants to upgrade a voice call to video.
+                            if (isCallAccepted && isMediaReady) {
+                                runOnUiThread { promptVideoUpgrade(sdp) }
+                            } else {
+                                pendingOfferSdp = sdp
+                            }
+                        } else if (sigType == "video-declined") {
+                            runOnUiThread { onVideoUpgradeDeclined() }
                         } else if ((sigType == "offer" || sigType == "ice-restart-offer") && !sdp.isNullOrBlank()) {
                             if (isCallAccepted && isMediaReady) {
                                 handleRemoteOffer(sdp)
