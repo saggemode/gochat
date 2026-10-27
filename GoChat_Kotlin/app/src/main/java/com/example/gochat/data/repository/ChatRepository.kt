@@ -386,6 +386,21 @@ class ChatRepository @Inject constructor(
                         blurHash = BlurHashUtil.encode(scaled, 4, 3)
                     }
                 } catch (_: Exception) {}
+            } else if (type == 2) { // VIDEO (incl. round notes): blur preview from first frame
+                val retriever = android.media.MediaMetadataRetriever()
+                try {
+                    val path = cachedMediaUri?.path
+                    if (!path.isNullOrBlank()) {
+                        retriever.setDataSource(path)
+                        val frame = retriever.getFrameAtTime(0, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                        if (frame != null) {
+                            val scaled = Bitmap.createScaledBitmap(frame, 100, 100, false)
+                            blurHash = BlurHashUtil.encode(scaled, 4, 3)
+                        }
+                    }
+                } catch (_: Exception) {} finally {
+                    try { retriever.release() } catch (_: Exception) {}
+                }
             }
         }
 

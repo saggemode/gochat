@@ -4,8 +4,10 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.Base64
+import android.util.LruCache
 import android.widget.ImageView
 import coil.imageLoader
 import coil.load
@@ -14,6 +16,12 @@ import coil.transform.RoundedCornersTransformation
 import com.example.gochat.R
 import com.example.gochat.core.utils.BlurHashUtil
 import com.example.gochat.data.api.ApiConstants
+import com.example.gochat.data.api.TokenManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -31,6 +39,102 @@ object MediaImageHelper {
     fun clearImageCache(context: Context) {
         context.imageLoader.memoryCache?.clear()
         context.imageLoader.diskCache?.clear()
+    }
+
+    // Small in-memory cache of decoded video first-frames, keyed by media URL,
+    // so scrolling a chat doesn't re-decode the same note repeatedly.
+    private val videoThumbCache = LruCache<String, Bitmap>(40)
+    private val thumbScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    /**
+     * Loads a still preview frame for a VIDEO message (incl. round video notes).
+     * Coil can only decode a video frame when it recognises the source as video
+     * (via Content-Type/extension); extensionless download URLs or odd MIME types
+     * silently fall through to the image decoder and show a placeholder. This
+     * decodes the first frame directly with MediaMetadataRetriever — local or
+     * remote (auth header attached) — so the preview always renders. The target
+     * ImageView keeps its own shape (circle for notes, rounded for video).
+     */
+    fun loadVideoThumbnail(
+        imageView: ImageView,
+        url: String?,
+        placeholderRes: Int = R.drawable.ic_gallery,
+        blurHash: String? = null,
+    ) {
+        val clean = url?.trim().orEmpty()
+        if (clean.isBlank()) {
+            imageView.setImageResource(placeholderRes)
+            return
+        }
+
+        videoThumbCache.get(clean)?.let {
+            imageView.setImageBitmap(it)
+            return
+        }
+
+        // Placeholder (blur if we have one) while the frame decodes off the main thread.
+        val blur = blurHash?.takeIf { it.isNotBlank() }?.let { BlurHashUtil.decode(it, 32, 32) }
+        if (blur != null) {
+            imageView.setImageDrawable(BitmapDrawable(imageView.context.resources, blur))
+        } else {
+            imageView.setImageResource(placeholderRes)
+        }
+
+        val appCtx = imageView.context.applicationContext
+        imageView.setTag(R.id.tag_video_thumb_url, clean)
+        thumbScope.launch {
+            val frame = extractVideoFrame(appCtx, clean)
+            if (frame != null) videoThumbCache.put(clean, frame)
+            withContext(Dispatchers.Main) {
+                // Ignore if this view was recycled onto a different message.
+                if (imageView.getTag(R.id.tag_video_thumb_url) == clean && frame != null) {
+                    imageView.setImageBitmap(frame)
+                }
+            }
+        }
+    }
+
+    private fun extractVideoFrame(ctx: Context, url: String): Bitmap? {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            val resolved = resolveUrl(url)
+            when {
+                resolved.startsWith("content://") -> retriever.setDataSource(ctx, Uri.parse(resolved))
+                resolved.startsWith("file://") -> retriever.setDataSource(resolved.removePrefix("file://"))
+                resolved.startsWith("/") -> retriever.setDataSource(resolved)
+                resolved.startsWith("http") -> {
+                    val headers = HashMap<String, String>()
+                    TokenManager.getInstance(ctx).getToken()?.let { headers["Authorization"] = "Bearer $it" }
+                    retriever.setDataSource(resolved, headers)
+                }
+                else -> retriever.setDataSource(resolved)
+            }
+            retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                ?: retriever.frameAtTime
+        } catch (_: Throwable) {
+            null
+        } finally {
+            try { retriever.release() } catch (_: Throwable) {}
+        }
+    }
+
+    /** Resolves relative/internal media URLs the same way [loadSafeImage] does. */
+    private fun resolveUrl(clean: String): String {
+        var finalUrl = when {
+            clean.startsWith("http://") || clean.startsWith("https://") -> clean
+            clean.startsWith("/") && isLocalDevicePath(clean) -> clean
+            clean.startsWith("file://") || clean.startsWith("content://") -> clean
+            clean.startsWith("/") -> "${ApiConstants.BASE_URL.removeSuffix("/")}$clean"
+            clean.startsWith("api/") -> "${ApiConstants.BASE_URL.removeSuffix("/")}/$clean"
+            clean.startsWith("media/") -> "${ApiConstants.BASE_URL.removeSuffix("/")}/api/v1/$clean"
+            else -> clean
+        }
+        if (finalUrl.contains("localhost:9000") || finalUrl.contains("127.0.0.1:9000") || finalUrl.contains("minio:9000")) {
+            finalUrl = finalUrl.replace("localhost:9000", "10.0.2.2:9000")
+                .replace("127.0.0.1:9000", "10.0.2.2:9000")
+                .replace("minio:9000", "10.0.2.2:9000")
+        }
+        return finalUrl
     }
 
     fun isLocalDevicePath(path: String?): Boolean {

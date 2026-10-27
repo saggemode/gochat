@@ -1596,6 +1596,17 @@ class MessageAdapter(
                             ivMessageImage.setImageResource(R.drawable.ic_gallery)
                         }
                         ivMessageImage.alpha = 1.0f
+                    } else if (isVideo) {
+                        // Videos (incl. round notes): decode a real first-frame preview.
+                        // Coil can't reliably decode a video from an extensionless
+                        // download URL, so extract the frame explicitly.
+                        ivMessageImage.alpha = 1.0f
+                        MediaImageHelper.loadVideoThumbnail(
+                            imageView = ivMessageImage,
+                            url = message.mediaUrl,
+                            placeholderRes = R.drawable.ic_gallery,
+                            blurHash = message.blurHash
+                        )
                     } else {
                         // Load real image (with blur as placeholder for crossfade)
                         ivMessageImage.alpha = if (isSending) 0.6f else 1.0f
@@ -2108,6 +2119,17 @@ class MessageAdapter(
                             ivMessageImage.setImageResource(R.drawable.ic_gallery)
                         }
                         ivMessageImage.alpha = 1.0f
+                    } else if (isVideo) {
+                        // Videos (incl. round notes): decode a real first-frame preview.
+                        // Coil can't reliably decode a video from an extensionless
+                        // download URL, so extract the frame explicitly.
+                        ivMessageImage.alpha = 1.0f
+                        MediaImageHelper.loadVideoThumbnail(
+                            imageView = ivMessageImage,
+                            url = message.mediaUrl,
+                            placeholderRes = R.drawable.ic_gallery,
+                            blurHash = message.blurHash
+                        )
                     } else {
                         // Load real image (with blur as placeholder for crossfade)
                         ivMessageImage.alpha = if (isSending) 0.6f else 1.0f
