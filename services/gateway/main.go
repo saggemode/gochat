@@ -348,6 +348,8 @@ func main() {
 		// Carrier Webhooks (public endpoint for shipping couriers e.g., DHL, FedEx, GIG)
 		api.POST("/webhooks/shipping/carrier", businessHandler.CarrierTrackingWebhook)
 		api.POST("/marketplace/orders/webhook/carrier", businessHandler.CarrierTrackingWebhook)
+		// Paystack sends server-to-server webhooks (no user auth); verified by signature.
+		api.POST("/payments/paystack/webhook", businessHandler.PaystackWebhook)
 		r.POST("/webhooks/shipping/carrier", businessHandler.CarrierTrackingWebhook)
 	}
 
@@ -637,6 +639,10 @@ func main() {
 		authRequired.GET("/marketplace/orders", businessHandler.ListBuyerOrders)
 		authRequired.GET("/marketplace/orders/:id", businessHandler.GetOrder)
 		authRequired.GET("/marketplace/orders/:id/history", businessHandler.GetOrderStatusHistory)
+
+		// Payments (Paystack)
+		authRequired.POST("/payments/paystack/init", businessHandler.InitPaystackPayment)
+		authRequired.GET("/payments/paystack/verify/:reference", businessHandler.VerifyPaystackPayment)
 		authRequired.GET("/business/orders", businessHandler.ListSellerOrders)
 		authRequired.PUT("/business/orders/:id/status", businessHandler.UpdateOrderStatus)
 		authRequired.PUT("/business/orders/:id/tracking", businessHandler.UpdateOrderTracking)

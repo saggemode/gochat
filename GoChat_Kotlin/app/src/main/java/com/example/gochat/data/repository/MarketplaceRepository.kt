@@ -1231,6 +1231,53 @@ class MarketplaceRepository @Inject constructor(
         }
     }
 
+    /** Result of starting a Paystack checkout. */
+    data class PaymentInit(val authorizationUrl: String, val reference: String)
+
+    /**
+     * Starts a Paystack payment for the given orders. Returns the checkout URL
+     * to open and the reference to verify afterwards. [notConfigured] is true
+     * when the backend has no Paystack key (HTTP 503) so the caller can fall
+     * back to the legacy immediate-order flow.
+     */
+    suspend fun initPaystackPayment(orderIds: List<String>, email: String?): Result<PaymentInit> {
+        return try {
+            val body = buildJsonObject {
+                put("order_ids", buildJsonArray { orderIds.forEach { add(it) } })
+                if (!email.isNullOrBlank()) put("email", email)
+            }
+            val response = api.initPaystackPayment(body)
+            if (response.code() == 503) {
+                return Result.failure(PaymentsNotConfigured())
+            }
+            val obj = response.body()
+            val url = obj?.get("authorization_url")?.jsonPrimitive?.contentOrNull
+            val ref = obj?.get("reference")?.jsonPrimitive?.contentOrNull
+            if (response.isSuccessful && !url.isNullOrBlank() && !ref.isNullOrBlank()) {
+                Result.success(PaymentInit(url, ref))
+            } else {
+                Result.failure(Exception("Could not start payment"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** Confirms a Paystack payment by reference. Returns true when paid. */
+    suspend fun verifyPaystackPayment(reference: String): Result<Boolean> {
+        return try {
+            val response = api.verifyPaystackPayment(reference)
+            val paid = response.body()?.get("paid")?.jsonPrimitive?.booleanOrNull ?: false
+            if (response.isSuccessful) Result.success(paid)
+            else Result.failure(Exception("Could not verify payment"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** Thrown when the backend has no payment provider configured (HTTP 503). */
+    class PaymentsNotConfigured : Exception("payments not configured")
+
     /** Remove a single cart line via DELETE /cart/items/{id}, then resync from server. */
     suspend fun removeCartItemById(cartItemId: String): Result<List<CartItem>> {
         return try {
@@ -1490,7 +1537,14 @@ class MarketplaceRepository @Inject constructor(
         }
     }
 
-    suspend fun placeOrder(storeId: String, items: List<CartItem>, totalAmount: Double, address: String): Result<Order> {
+    suspend fun placeOrder(
+        storeId: String,
+        items: List<CartItem>,
+        totalAmount: Double,
+        address: String,
+        paymentMethod: String = "card",
+        clearCartOnSuccess: Boolean = true
+    ): Result<Order> {
         return try {
             val customerName = tokenManager.userDisplayName ?: "Customer"
             val customerPhone = tokenManager.userPhone ?: ""
@@ -1498,7 +1552,7 @@ class MarketplaceRepository @Inject constructor(
                 put("shipping_name", customerName)
                 put("shipping_phone", customerPhone.ifBlank { "N/A" })
                 put("shipping_address", address)
-                put("payment_method", "card")
+                put("payment_method", paymentMethod)
                 put("store_id", storeId)
                 put("business_id", storeId)
                 put("total_amount", totalAmount)
@@ -1549,8 +1603,9 @@ class MarketplaceRepository @Inject constructor(
             }
             marketplaceDao.insertOrder(finalOrder)
             // Only empty the cart when the order actually went through, so a failed order
-            // doesn't silently wipe the buyer's cart.
-            if (confirmed) marketplaceDao.clearCart()
+            // doesn't silently wipe the buyer's cart. For online payment the cart is kept
+            // until payment is confirmed (clearCartOnSuccess = false).
+            if (confirmed && clearCartOnSuccess) marketplaceDao.clearCart()
             Result.success(finalOrder)
         } catch (e: Exception) {
             // Network/exception: record a PENDING order locally so it's visible and retryable.

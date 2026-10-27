@@ -6,8 +6,11 @@ import android.os.Bundle
 import android.view.View
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import com.example.gochat.R
 import com.example.gochat.core.haptic.HapticEngine
 import com.example.gochat.data.model.CartItem
@@ -39,6 +42,16 @@ class CheckoutActivity : AppCompatActivity() {
     lateinit var authRepository: com.example.gochat.data.repository.AuthRepository
     
     private var cartItems: List<CartItem> = emptyList()
+
+    // Bridges the Paystack checkout Activity result back to the awaiting coroutine.
+    private var paymentContinuation: ((String?) -> Unit)? = null
+    private val paymentLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { res ->
+        val ref = res.data?.getStringExtra(PaystackPaymentActivity.RESULT_REFERENCE)
+        paymentContinuation?.invoke(ref)
+        paymentContinuation = null
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         applyEdgeToEdge()
@@ -118,11 +131,26 @@ class CheckoutActivity : AppCompatActivity() {
             val total = cartItems.sumOf { (it.productPrice ?: 0.0) * it.quantity }
             val storeId = cartItems.firstOrNull()?.storeId?.ifBlank { "store_istore" } ?: "store_istore"
             
-            val result = repository.placeOrder(storeId, cartItems, total, address)
+            // Keep the cart until payment is confirmed (online payment flow).
+            val result = repository.placeOrder(storeId, cartItems, total, address, clearCartOnSuccess = false)
             binding.progressBar.visibility = View.GONE
 
             if (result.isSuccess) {
                 val order = result.getOrNull()
+
+                // Collect payment before finalising. If payments aren't configured
+                // on the backend, runPaystack returns true (legacy immediate order).
+                val paid = if (order != null) runPaystack(order.id) else false
+                if (!paid) {
+                    Toast.makeText(
+                        this@CheckoutActivity,
+                        "Payment not completed. You can finish it from My Orders.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@launch
+                }
+                repository.clearCart()
+
                 if (order != null) {
                     val store = repository.getStore(order.storeId).getOrNull()
                     val targetUserId = if (!store?.ownerId.isNullOrBlank()) {
@@ -242,5 +270,32 @@ class CheckoutActivity : AppCompatActivity() {
                 Toast.makeText(this@CheckoutActivity, getString(R.string.error_place_order), Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    /**
+     * Runs the Paystack checkout for an order and returns whether it was paid.
+     * Opens the hosted checkout in [PaystackPaymentActivity], then confirms the
+     * result server-side via verify. If the backend has no Paystack key, returns
+     * true so checkout falls back to the legacy immediate-order behaviour.
+     */
+    private suspend fun runPaystack(orderId: String): Boolean {
+        val initRes = repository.initPaystackPayment(listOf(orderId), null)
+        if (initRes.isFailure) {
+            return initRes.exceptionOrNull() is MarketplaceRepository.PaymentsNotConfigured
+        }
+        val init = initRes.getOrNull() ?: return false
+
+        val returnedRef = suspendCancellableCoroutine<String?> { cont ->
+            paymentContinuation = { ref -> if (cont.isActive) cont.resume(ref) }
+            val intent = Intent(this, PaystackPaymentActivity::class.java).apply {
+                putExtra(PaystackPaymentActivity.EXTRA_AUTHORIZATION_URL, init.authorizationUrl)
+                putExtra(PaystackPaymentActivity.EXTRA_REFERENCE, init.reference)
+            }
+            paymentLauncher.launch(intent)
+            cont.invokeOnCancellation { paymentContinuation = null }
+        }
+
+        val reference = returnedRef ?: init.reference
+        return repository.verifyPaystackPayment(reference).getOrDefault(false)
     }
 }

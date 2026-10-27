@@ -592,17 +592,28 @@ func (r *BusinessRepository) CreateOrders(ctx context.Context, input *CreateOrde
 			s := string(b)
 			fxQuoteStr = &s
 		}
+		// Online card payments (Paystack) start as pending and are confirmed by
+		// the payment webhook/verify; other methods (e.g. cash on delivery) keep
+		// the previous immediate-paid behaviour.
+		orderStatus := "paid"
+		paymentStatus := "paid"
+		if strings.EqualFold(input.PaymentMethod, "paystack") {
+			orderStatus = "pending"
+			paymentStatus = "pending"
+		}
+
 		_, err = tx.Exec(ctx,
 			`INSERT INTO business.orders (
 				id, order_number, buyer_id, business_id,
 				total_amount, shipping_fee, discount_amount, grand_total, coupon_code,
 				status, shipping_name, shipping_phone, shipping_address, shipping_city,
 				shipping_state, shipping_country, payment_method, payment_status, notes, created_at, updated_at, fx_quote
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'paid', $10, $11, $12, $13, $14, $15, $16, 'paid', $17, $18, $18, $19)`,
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $20, $10, $11, $12, $13, $14, $15, $16, $21, $17, $18, $18, $19)`,
 			orderID, orderNum, input.BuyerID, oInput.BusinessID,
 			totalAmount, oInput.ShippingFee, discountAmount, grandTotal, oInput.CouponCode,
 			input.ShippingName, input.ShippingPhone, input.ShippingAddress, input.ShippingCity,
 			input.ShippingState, input.ShippingCountry, input.PaymentMethod, input.Notes, now, fxQuoteStr,
+			orderStatus, paymentStatus,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("insert order: %w", err)
@@ -867,6 +878,61 @@ func (r *BusinessRepository) ListSellerOrders(ctx context.Context, businessID, s
 	}
 
 	return orders, total, nil
+}
+
+// AttachPaymentReference links a payment reference to the buyer's orders and
+// marks them pending payment, returning the total amount to charge. It is the
+// server-trusted source of the charge amount (the client never sets it).
+func (r *BusinessRepository) AttachPaymentReference(ctx context.Context, reference, buyerID string, orderIDs []string) (float64, string, error) {
+	rows, err := r.db.Query(ctx,
+		`UPDATE business.orders
+		 SET payment_reference = $1, status = 'pending', payment_status = 'pending', updated_at = NOW()
+		 WHERE id = ANY($2) AND buyer_id = $3
+		 RETURNING grand_total`, reference, orderIDs, buyerID)
+	if err != nil {
+		return 0, "", fmt.Errorf("attach payment reference: %w", err)
+	}
+	defer rows.Close()
+
+	var total float64
+	var n int
+	for rows.Next() {
+		var g float64
+		if err := rows.Scan(&g); err != nil {
+			return 0, "", err
+		}
+		total += g
+		n++
+	}
+	if n == 0 {
+		return 0, "", fmt.Errorf("no matching orders for buyer")
+	}
+	return total, "NGN", nil
+}
+
+// ConfirmPaymentByReference flips every pending order carrying this reference to
+// paid. Idempotent: a re-delivered webhook (payment_status already 'paid')
+// updates nothing and reports success with order_count 0.
+func (r *BusinessRepository) ConfirmPaymentByReference(ctx context.Context, reference string) (int, string, error) {
+	rows, err := r.db.Query(ctx,
+		`UPDATE business.orders
+		 SET status = 'paid', payment_status = 'paid', updated_at = NOW()
+		 WHERE payment_reference = $1 AND payment_status <> 'paid'
+		 RETURNING buyer_id`, reference)
+	if err != nil {
+		return 0, "", fmt.Errorf("confirm payment: %w", err)
+	}
+	defer rows.Close()
+
+	var count int
+	var buyerID string
+	for rows.Next() {
+		if err := rows.Scan(&buyerID); err != nil {
+			return 0, "", err
+		}
+		count++
+	}
+	return count, buyerID, nil
 }
 
 func (r *BusinessRepository) UpdateOrderStatus(ctx context.Context, orderID, businessID, newStatus string) (*Order, error) {

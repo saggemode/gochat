@@ -335,6 +335,28 @@ func (s *BusinessServer) UpdateOrderStatus(ctx context.Context, req *pb.UpdateOr
 	return &pb.UpdateOrderStatusResponse{Order: orderToPB(ord)}, nil
 }
 
+func (s *BusinessServer) AttachPaymentReference(ctx context.Context, req *pb.AttachPaymentReferenceRequest) (*pb.AttachPaymentReferenceResponse, error) {
+	if req.Reference == "" || req.BuyerId == "" || len(req.OrderIds) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "reference, buyer_id and order_ids are required")
+	}
+	amount, currency, err := s.repo.AttachPaymentReference(ctx, req.Reference, req.BuyerId, req.OrderIds)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "attach payment reference: %v", err)
+	}
+	return &pb.AttachPaymentReferenceResponse{Amount: amount, Currency: currency}, nil
+}
+
+func (s *BusinessServer) ConfirmPaymentByReference(ctx context.Context, req *pb.ConfirmPaymentByReferenceRequest) (*pb.ConfirmPaymentByReferenceResponse, error) {
+	if req.Reference == "" {
+		return nil, status.Error(codes.InvalidArgument, "reference is required")
+	}
+	count, buyerID, err := s.repo.ConfirmPaymentByReference(ctx, req.Reference)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "confirm payment: %v", err)
+	}
+	return &pb.ConfirmPaymentByReferenceResponse{Success: true, OrderCount: int32(count), BuyerId: buyerID}, nil
+}
+
 func (s *BusinessServer) UpdateOrderTracking(ctx context.Context, req *pb.UpdateOrderTrackingRequest) (*pb.UpdateOrderTrackingResponse, error) {
 	if req.Id == "" || req.BusinessId == "" {
 		return nil, status.Error(codes.InvalidArgument, "id and business_id are required")

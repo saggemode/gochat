@@ -61,6 +61,8 @@ const (
 	BusinessService_ListSellerOrders_FullMethodName                = "/business.BusinessService/ListSellerOrders"
 	BusinessService_UpdateOrderStatus_FullMethodName               = "/business.BusinessService/UpdateOrderStatus"
 	BusinessService_UpdateOrderTracking_FullMethodName             = "/business.BusinessService/UpdateOrderTracking"
+	BusinessService_AttachPaymentReference_FullMethodName          = "/business.BusinessService/AttachPaymentReference"
+	BusinessService_ConfirmPaymentByReference_FullMethodName       = "/business.BusinessService/ConfirmPaymentByReference"
 	BusinessService_CreateCoupon_FullMethodName                    = "/business.BusinessService/CreateCoupon"
 	BusinessService_ListBusinessCoupons_FullMethodName             = "/business.BusinessService/ListBusinessCoupons"
 	BusinessService_ValidateCoupon_FullMethodName                  = "/business.BusinessService/ValidateCoupon"
@@ -144,6 +146,9 @@ type BusinessServiceClient interface {
 	ListSellerOrders(ctx context.Context, in *ListSellerOrdersRequest, opts ...grpc.CallOption) (*ListSellerOrdersResponse, error)
 	UpdateOrderStatus(ctx context.Context, in *UpdateOrderStatusRequest, opts ...grpc.CallOption) (*UpdateOrderStatusResponse, error)
 	UpdateOrderTracking(ctx context.Context, in *UpdateOrderTrackingRequest, opts ...grpc.CallOption) (*UpdateOrderTrackingResponse, error)
+	// Payments (Paystack): link a payment reference to orders, then confirm on webhook/verify
+	AttachPaymentReference(ctx context.Context, in *AttachPaymentReferenceRequest, opts ...grpc.CallOption) (*AttachPaymentReferenceResponse, error)
+	ConfirmPaymentByReference(ctx context.Context, in *ConfirmPaymentByReferenceRequest, opts ...grpc.CallOption) (*ConfirmPaymentByReferenceResponse, error)
 	// Coupons
 	CreateCoupon(ctx context.Context, in *CreateCouponRequest, opts ...grpc.CallOption) (*CreateCouponResponse, error)
 	ListBusinessCoupons(ctx context.Context, in *ListBusinessCouponsRequest, opts ...grpc.CallOption) (*ListBusinessCouponsResponse, error)
@@ -605,6 +610,26 @@ func (c *businessServiceClient) UpdateOrderTracking(ctx context.Context, in *Upd
 	return out, nil
 }
 
+func (c *businessServiceClient) AttachPaymentReference(ctx context.Context, in *AttachPaymentReferenceRequest, opts ...grpc.CallOption) (*AttachPaymentReferenceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AttachPaymentReferenceResponse)
+	err := c.cc.Invoke(ctx, BusinessService_AttachPaymentReference_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *businessServiceClient) ConfirmPaymentByReference(ctx context.Context, in *ConfirmPaymentByReferenceRequest, opts ...grpc.CallOption) (*ConfirmPaymentByReferenceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ConfirmPaymentByReferenceResponse)
+	err := c.cc.Invoke(ctx, BusinessService_ConfirmPaymentByReference_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *businessServiceClient) CreateCoupon(ctx context.Context, in *CreateCouponRequest, opts ...grpc.CallOption) (*CreateCouponResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateCouponResponse)
@@ -893,6 +918,9 @@ type BusinessServiceServer interface {
 	ListSellerOrders(context.Context, *ListSellerOrdersRequest) (*ListSellerOrdersResponse, error)
 	UpdateOrderStatus(context.Context, *UpdateOrderStatusRequest) (*UpdateOrderStatusResponse, error)
 	UpdateOrderTracking(context.Context, *UpdateOrderTrackingRequest) (*UpdateOrderTrackingResponse, error)
+	// Payments (Paystack): link a payment reference to orders, then confirm on webhook/verify
+	AttachPaymentReference(context.Context, *AttachPaymentReferenceRequest) (*AttachPaymentReferenceResponse, error)
+	ConfirmPaymentByReference(context.Context, *ConfirmPaymentByReferenceRequest) (*ConfirmPaymentByReferenceResponse, error)
 	// Coupons
 	CreateCoupon(context.Context, *CreateCouponRequest) (*CreateCouponResponse, error)
 	ListBusinessCoupons(context.Context, *ListBusinessCouponsRequest) (*ListBusinessCouponsResponse, error)
@@ -1059,6 +1087,12 @@ func (UnimplementedBusinessServiceServer) UpdateOrderStatus(context.Context, *Up
 }
 func (UnimplementedBusinessServiceServer) UpdateOrderTracking(context.Context, *UpdateOrderTrackingRequest) (*UpdateOrderTrackingResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateOrderTracking not implemented")
+}
+func (UnimplementedBusinessServiceServer) AttachPaymentReference(context.Context, *AttachPaymentReferenceRequest) (*AttachPaymentReferenceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AttachPaymentReference not implemented")
+}
+func (UnimplementedBusinessServiceServer) ConfirmPaymentByReference(context.Context, *ConfirmPaymentByReferenceRequest) (*ConfirmPaymentByReferenceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ConfirmPaymentByReference not implemented")
 }
 func (UnimplementedBusinessServiceServer) CreateCoupon(context.Context, *CreateCouponRequest) (*CreateCouponResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateCoupon not implemented")
@@ -1906,6 +1940,42 @@ func _BusinessService_UpdateOrderTracking_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BusinessService_AttachPaymentReference_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AttachPaymentReferenceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BusinessServiceServer).AttachPaymentReference(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BusinessService_AttachPaymentReference_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BusinessServiceServer).AttachPaymentReference(ctx, req.(*AttachPaymentReferenceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BusinessService_ConfirmPaymentByReference_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConfirmPaymentByReferenceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BusinessServiceServer).ConfirmPaymentByReference(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BusinessService_ConfirmPaymentByReference_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BusinessServiceServer).ConfirmPaymentByReference(ctx, req.(*ConfirmPaymentByReferenceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _BusinessService_CreateCoupon_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateCouponRequest)
 	if err := dec(in); err != nil {
@@ -2494,6 +2564,14 @@ var BusinessService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateOrderTracking",
 			Handler:    _BusinessService_UpdateOrderTracking_Handler,
+		},
+		{
+			MethodName: "AttachPaymentReference",
+			Handler:    _BusinessService_AttachPaymentReference_Handler,
+		},
+		{
+			MethodName: "ConfirmPaymentByReference",
+			Handler:    _BusinessService_ConfirmPaymentByReference_Handler,
 		},
 		{
 			MethodName: "CreateCoupon",

@@ -74,6 +74,10 @@ service BusinessService {
   rpc UpdateOrderStatus(UpdateOrderStatusRequest) returns (UpdateOrderStatusResponse);
   rpc UpdateOrderTracking(UpdateOrderTrackingRequest) returns (UpdateOrderTrackingResponse);
 
+  // Payments (Paystack): link a payment reference to orders, then confirm on webhook/verify
+  rpc AttachPaymentReference(AttachPaymentReferenceRequest) returns (AttachPaymentReferenceResponse);
+  rpc ConfirmPaymentByReference(ConfirmPaymentByReferenceRequest) returns (ConfirmPaymentByReferenceResponse);
+
   // Coupons
   rpc CreateCoupon(CreateCouponRequest) returns (CreateCouponResponse);
   rpc ListBusinessCoupons(ListBusinessCouponsRequest) returns (ListBusinessCouponsResponse);
@@ -687,6 +691,23 @@ message CreateOrdersRequest {
 
 message CreateOrdersResponse {
   repeated Order orders = 1;
+}
+
+// ── Payments ────────────────────────────────────────────────────────────────
+message AttachPaymentReferenceRequest {
+  string reference = 1;
+  string buyer_id  = 2;
+  repeated string order_ids = 3;
+}
+message AttachPaymentReferenceResponse {
+  double amount   = 1; // sum of grand_total across the orders
+  string currency = 2;
+}
+message ConfirmPaymentByReferenceRequest { string reference = 1; }
+message ConfirmPaymentByReferenceResponse {
+  bool   success     = 1;
+  int32  order_count = 2;
+  string buyer_id    = 3;
 }
 
 message GetOrderRequest {

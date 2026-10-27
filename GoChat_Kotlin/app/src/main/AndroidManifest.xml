@@ -230,6 +230,10 @@
             android:exported="false"
             android:theme="@style/Theme.GoChat" />
         <activity
+            android:name=".ui.marketplace.PaystackPaymentActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+        <activity
             android:name=".ui.marketplace.OrdersActivity"
             android:exported="false"
             android:theme="@style/Theme.GoChat" />

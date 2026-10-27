@@ -429,6 +429,16 @@ interface GoChatApiService {
         @Body body: JsonObject
     ): Response<JsonObject>
 
+    @POST("api/v1/payments/paystack/init")
+    suspend fun initPaystackPayment(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @GET("api/v1/payments/paystack/verify/{reference}")
+    suspend fun verifyPaystackPayment(
+        @Path("reference") reference: String
+    ): Response<JsonObject>
+
     @GET(ApiConstants.BUSINESS_PROFILE)
     suspend fun getBusinessProfile(): Response<JsonObject>
 
