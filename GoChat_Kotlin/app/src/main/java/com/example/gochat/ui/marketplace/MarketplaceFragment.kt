@@ -338,6 +338,10 @@ class MarketplaceFragment : Fragment() {
             startActivity(Intent(requireContext(), SellerInsightsActivity::class.java))
         }
 
+        binding.cardPayoutAccount.setOnClickListener {
+            startActivity(Intent(requireContext(), PayoutAccountActivity::class.java))
+        }
+
         binding.cardMetricRevenue.setOnClickListener {
             val intent = Intent(requireContext(), OrdersActivity::class.java).apply {
                 putExtra("IS_SELLER_VIEW", true)
@@ -1084,6 +1088,21 @@ class MarketplaceFragment : Fragment() {
                     }
                 }
 
+                // 4b. Payout account display
+                launch {
+                    viewModel.payoutAccount.collect { payout ->
+                        val b = _binding ?: return@collect
+                        if (payout?.exists == true) {
+                            val bank = if (payout.bankName.isNotBlank()) " • ${payout.bankName}" else ""
+                            b.tvPayoutAccount.text = "${payout.accountName} • ${payout.accountNumber}$bank"
+                            b.tvPayoutAction.text = "CHANGE"
+                        } else {
+                            b.tvPayoutAccount.text = "Not set — tap to add"
+                            b.tvPayoutAction.text = "SET UP"
+                        }
+                    }
+                }
+
                 // 5. Store Inventory
                 launch {
                     viewModel.myProducts.collect { products ->
@@ -1199,6 +1218,9 @@ class MarketplaceFragment : Fragment() {
 
             // Update store tab title
             binding.tabLayoutMain.getTabAt(2)?.text = store.name.take(12)
+
+            // Surface the seller's payout account on the dashboard.
+            viewModel.refreshPayoutAccount()
         } else {
             binding.layoutNoStore.visibility = View.VISIBLE
             binding.layoutHasStore.visibility = View.GONE

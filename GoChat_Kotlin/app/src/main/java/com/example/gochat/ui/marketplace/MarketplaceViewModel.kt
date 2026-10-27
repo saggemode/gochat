@@ -63,6 +63,16 @@ class MarketplaceViewModel @Inject constructor(
     val searchSuggestions: StateFlow<List<String>> = _searchSuggestions.asStateFlow()
 
 
+    private val _payoutAccount = MutableStateFlow<MarketplaceRepository.PayoutAccount?>(null)
+    val payoutAccount: StateFlow<MarketplaceRepository.PayoutAccount?> = _payoutAccount.asStateFlow()
+
+    /** Refreshes the seller's saved payout account for the Seller Hub display. */
+    fun refreshPayoutAccount() {
+        viewModelScope.launch {
+            _payoutAccount.value = repository.getPayoutAccount().getOrNull()
+        }
+    }
+
     private val _cartCount = MutableStateFlow(0)
     val cartCount: StateFlow<Int> = _cartCount.asStateFlow()
 
