@@ -1312,12 +1312,13 @@ class MarketplaceRepository @Inject constructor(
     }
 
     /** Registers the seller's bank account as a Paystack subaccount for payouts. */
-    suspend fun createSellerSubaccount(bankCode: String, accountNumber: String, businessName: String?): Result<String> {
+    suspend fun createSellerSubaccount(bankCode: String, accountNumber: String, businessName: String?, bankName: String? = null): Result<String> {
         return try {
             val body = buildJsonObject {
                 put("bank_code", bankCode)
                 put("account_number", accountNumber)
                 if (!businessName.isNullOrBlank()) put("business_name", businessName)
+                if (!bankName.isNullOrBlank()) put("bank_name", bankName)
             }
             val response = api.createSellerSubaccount(body)
             val name = response.body()?.get("account_name")?.jsonPrimitive?.contentOrNull.orEmpty()

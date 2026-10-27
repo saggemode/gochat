@@ -158,7 +158,8 @@ class PayoutAccountActivity : AppCompatActivity() {
             val current = repository.getPayoutAccount().getOrNull()
             hasPayoutAccount = current?.exists == true
             currentView.text = if (hasPayoutAccount) {
-                "Current: ${current?.accountName} • ${current?.accountNumber}"
+                val bank = current?.bankName?.takeIf { it.isNotBlank() }?.let { " • $it" } ?: ""
+                "Current: ${current?.accountName} • ${current?.accountNumber}$bank"
             } else {
                 "No payout account yet. Add one so your sales are paid to you."
             }
@@ -185,6 +186,7 @@ class PayoutAccountActivity : AppCompatActivity() {
     }
 
     private fun selectedBankCode(): String? = banks.getOrNull(bankSpinner.selectedItemPosition)?.code
+    private fun selectedBankName(): String? = banks.getOrNull(bankSpinner.selectedItemPosition)?.name
 
     private fun verify() {
         val acct = accountInput.text.toString().trim()
@@ -217,7 +219,7 @@ class PayoutAccountActivity : AppCompatActivity() {
         progress.visibility = View.VISIBLE
         saveBtn.isEnabled = false
         lifecycleScope.launch {
-            val res = repository.createSellerSubaccount(bankCode, acct, resolvedName)
+            val res = repository.createSellerSubaccount(bankCode, acct, resolvedName, selectedBankName())
             progress.visibility = View.GONE
             if (res.isSuccess) {
                 Toast.makeText(this@PayoutAccountActivity, "Payout account saved", Toast.LENGTH_LONG).show()

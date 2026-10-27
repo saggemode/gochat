@@ -343,6 +343,7 @@ func (h *BusinessHandler) CreateSellerSubaccount(c *gin.Context) {
 		BankCode      string `json:"bank_code" binding:"required"`
 		AccountNumber string `json:"account_number" binding:"required"`
 		BusinessName  string `json:"business_name"`
+		BankName      string `json:"bank_name"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "bank_code and account_number are required"})
@@ -416,6 +417,7 @@ func (h *BusinessHandler) CreateSellerSubaccount(c *gin.Context) {
 		BankCode:       req.BankCode,
 		AccountNumber:  req.AccountNumber,
 		AccountName:    accountName,
+		BankName:       req.BankName,
 	}, jsonOpt); err != nil {
 		h.log.Error("persist seller subaccount failed", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not save payout account"})
