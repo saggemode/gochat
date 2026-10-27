@@ -1983,13 +1983,22 @@ class ChatRoomActivity : AppCompatActivity() {
                             if (isVisual && !mediaUrl.isNullOrBlank()) {
                                 binding.ivReplyPreviewThumbnail.visibility = View.VISIBLE
                                 binding.ivReplyPreviewThumbnail.imageTintList = null
-                                MediaImageHelper.loadSafeImage(
-                                    imageView = binding.ivReplyPreviewThumbnail,
-                                    url = mediaUrl,
-                                    cornerRadiusDp = 6f,
-                                    placeholderRes = R.drawable.ic_gallery,
-                                    errorRes = R.drawable.ic_gallery
-                                )
+                                if (replyMsg.type == MessageType.VIDEO) {
+                                    // Video/video note: extract a real first frame.
+                                    MediaImageHelper.loadVideoThumbnail(
+                                        imageView = binding.ivReplyPreviewThumbnail,
+                                        url = mediaUrl,
+                                        placeholderRes = R.drawable.ic_gallery
+                                    )
+                                } else {
+                                    MediaImageHelper.loadSafeImage(
+                                        imageView = binding.ivReplyPreviewThumbnail,
+                                        url = mediaUrl,
+                                        cornerRadiusDp = 6f,
+                                        placeholderRes = R.drawable.ic_gallery,
+                                        errorRes = R.drawable.ic_gallery
+                                    )
+                                }
                             } else if (replyMsg.type == MessageType.VOICE || replyMsg.type == MessageType.AUDIO) {
                                 binding.ivReplyPreviewThumbnail.visibility = View.VISIBLE
                                 binding.ivReplyPreviewThumbnail.setImageResource(R.drawable.ic_mic)

@@ -236,13 +236,24 @@ class MessageAdapter(
         if (isVisualMedia && !targetMediaUrl.isNullOrBlank()) {
             ivQuotedThumbnail.visibility = View.VISIBLE
             ivQuotedThumbnail.imageTintList = null
-            MediaImageHelper.loadSafeImage(
-                imageView = ivQuotedThumbnail,
-                url = targetMediaUrl,
-                cornerRadiusDp = 4f,
-                placeholderRes = R.drawable.ic_gallery,
-                errorRes = R.drawable.ic_gallery
-            )
+            // Videos need an extracted first frame; images decode directly.
+            val isVideoReply = parentType == MessageType.VIDEO ||
+                    (!message.replyToMediaUrl.isNullOrBlank() && displayText?.contains("🎥") == true)
+            if (isVideoReply) {
+                MediaImageHelper.loadVideoThumbnail(
+                    imageView = ivQuotedThumbnail,
+                    url = targetMediaUrl,
+                    placeholderRes = R.drawable.ic_gallery
+                )
+            } else {
+                MediaImageHelper.loadSafeImage(
+                    imageView = ivQuotedThumbnail,
+                    url = targetMediaUrl,
+                    cornerRadiusDp = 4f,
+                    placeholderRes = R.drawable.ic_gallery,
+                    errorRes = R.drawable.ic_gallery
+                )
+            }
         } else if (parentType == MessageType.VOICE || parentType == MessageType.AUDIO ||
             displayText?.contains("Voice note") == true || displayText?.contains("🎵") == true || displayText?.contains("🎙️") == true) {
             ivQuotedThumbnail.visibility = View.VISIBLE
