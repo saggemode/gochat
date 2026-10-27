@@ -1278,6 +1278,75 @@ class MarketplaceRepository @Inject constructor(
     /** Thrown when the backend has no payment provider configured (HTTP 503). */
     class PaymentsNotConfigured : Exception("payments not configured")
 
+    data class Bank(val name: String, val code: String)
+    data class PayoutAccount(val exists: Boolean, val accountNumber: String, val accountName: String, val bankName: String)
+
+    /** Banks a seller can choose for their payout account. */
+    suspend fun getPaystackBanks(): Result<List<Bank>> {
+        return try {
+            val response = api.getPaystackBanks()
+            if (response.code() == 503) return Result.failure(PaymentsNotConfigured())
+            val arr = response.body()?.get("data")?.jsonArray ?: JsonArray(emptyList())
+            val banks = arr.mapNotNull { el ->
+                val o = el.jsonObject
+                val name = o["name"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+                val code = o["code"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+                Bank(name, code)
+            }.sortedBy { it.name }
+            Result.success(banks)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** Verifies a bank account and returns the owner name. */
+    suspend fun resolveAccount(accountNumber: String, bankCode: String): Result<String> {
+        return try {
+            val response = api.resolvePaystackAccount(accountNumber, bankCode)
+            val name = response.body()?.get("account_name")?.jsonPrimitive?.contentOrNull
+            if (response.isSuccessful && !name.isNullOrBlank()) Result.success(name)
+            else Result.failure(Exception("Could not verify account"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** Registers the seller's bank account as a Paystack subaccount for payouts. */
+    suspend fun createSellerSubaccount(bankCode: String, accountNumber: String, businessName: String?): Result<String> {
+        return try {
+            val body = buildJsonObject {
+                put("bank_code", bankCode)
+                put("account_number", accountNumber)
+                if (!businessName.isNullOrBlank()) put("business_name", businessName)
+            }
+            val response = api.createSellerSubaccount(body)
+            val name = response.body()?.get("account_name")?.jsonPrimitive?.contentOrNull.orEmpty()
+            if (response.isSuccessful) Result.success(name)
+            else Result.failure(Exception("Could not save payout account"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** The seller's saved payout account, if any. */
+    suspend fun getPayoutAccount(): Result<PayoutAccount> {
+        return try {
+            val response = api.getPayoutAccount()
+            val o = response.body()
+            val exists = o?.get("exists")?.jsonPrimitive?.booleanOrNull ?: false
+            Result.success(
+                PayoutAccount(
+                    exists = exists,
+                    accountNumber = o?.get("account_number")?.jsonPrimitive?.contentOrNull.orEmpty(),
+                    accountName = o?.get("account_name")?.jsonPrimitive?.contentOrNull.orEmpty(),
+                    bankName = o?.get("bank_name")?.jsonPrimitive?.contentOrNull.orEmpty()
+                )
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     /** Remove a single cart line via DELETE /cart/items/{id}, then resync from server. */
     suspend fun removeCartItemById(cartItemId: String): Result<List<CartItem>> {
         return try {

@@ -883,31 +883,86 @@ func (r *BusinessRepository) ListSellerOrders(ctx context.Context, businessID, s
 // AttachPaymentReference links a payment reference to the buyer's orders and
 // marks them pending payment, returning the total amount to charge. It is the
 // server-trusted source of the charge amount (the client never sets it).
-func (r *BusinessRepository) AttachPaymentReference(ctx context.Context, reference, buyerID string, orderIDs []string) (float64, string, error) {
+func (r *BusinessRepository) AttachPaymentReference(ctx context.Context, reference, buyerID string, orderIDs []string) (float64, string, string, error) {
 	rows, err := r.db.Query(ctx,
 		`UPDATE business.orders
 		 SET payment_reference = $1, status = 'pending', payment_status = 'pending', updated_at = NOW()
 		 WHERE id = ANY($2) AND buyer_id = $3
-		 RETURNING grand_total`, reference, orderIDs, buyerID)
+		 RETURNING grand_total, business_id`, reference, orderIDs, buyerID)
 	if err != nil {
-		return 0, "", fmt.Errorf("attach payment reference: %w", err)
+		return 0, "", "", fmt.Errorf("attach payment reference: %w", err)
 	}
 	defer rows.Close()
 
 	var total float64
 	var n int
+	sellers := map[string]struct{}{}
 	for rows.Next() {
 		var g float64
-		if err := rows.Scan(&g); err != nil {
-			return 0, "", err
+		var bizID string
+		if err := rows.Scan(&g, &bizID); err != nil {
+			return 0, "", "", err
 		}
 		total += g
+		if bizID != "" {
+			sellers[bizID] = struct{}{}
+		}
 		n++
 	}
 	if n == 0 {
-		return 0, "", fmt.Errorf("no matching orders for buyer")
+		return 0, "", "", fmt.Errorf("no matching orders for buyer")
 	}
-	return total, "NGN", nil
+
+	// Split settlement only when all orders belong to one seller that has a
+	// payout subaccount; otherwise the platform collects and settles manually.
+	subaccount := ""
+	if len(sellers) == 1 {
+		var sellerID string
+		for s := range sellers {
+			sellerID = s
+		}
+		_ = r.db.QueryRow(ctx,
+			`SELECT subaccount_code FROM business.seller_subaccounts WHERE user_id = $1`, sellerID).Scan(&subaccount)
+	}
+	return total, "NGN", subaccount, nil
+}
+
+func (r *BusinessRepository) SaveSellerSubaccount(ctx context.Context, userID, subaccountCode, bankCode, accountNumber, accountName, bankName string) error {
+	_, err := r.db.Exec(ctx,
+		`INSERT INTO business.seller_subaccounts (user_id, subaccount_code, bank_code, account_number, account_name, bank_name, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+		 ON CONFLICT (user_id) DO UPDATE SET
+		   subaccount_code = EXCLUDED.subaccount_code,
+		   bank_code       = EXCLUDED.bank_code,
+		   account_number  = EXCLUDED.account_number,
+		   account_name    = EXCLUDED.account_name,
+		   bank_name       = EXCLUDED.bank_name,
+		   updated_at      = NOW()`,
+		userID, subaccountCode, bankCode, accountNumber, accountName, bankName)
+	if err != nil {
+		return fmt.Errorf("save seller subaccount: %w", err)
+	}
+	return nil
+}
+
+type SellerSubaccount struct {
+	SubaccountCode string
+	BankCode       string
+	AccountNumber  string
+	AccountName    string
+	BankName       string
+}
+
+func (r *BusinessRepository) GetSellerSubaccount(ctx context.Context, userID string) (*SellerSubaccount, error) {
+	s := &SellerSubaccount{}
+	err := r.db.QueryRow(ctx,
+		`SELECT subaccount_code, bank_code, account_number, account_name, bank_name
+		 FROM business.seller_subaccounts WHERE user_id = $1`, userID).
+		Scan(&s.SubaccountCode, &s.BankCode, &s.AccountNumber, &s.AccountName, &s.BankName)
+	if err != nil {
+		return nil, err // pgx.ErrNoRows → caller treats as "no subaccount"
+	}
+	return s, nil
 }
 
 // ConfirmPaymentByReference flips every pending order carrying this reference to

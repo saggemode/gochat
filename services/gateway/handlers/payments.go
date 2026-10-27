@@ -11,6 +11,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	pb "gochat/gen/business"
@@ -104,13 +105,19 @@ func (h *BusinessHandler) InitPaystackPayment(c *gin.Context) {
 	if callbackURL == "" {
 		callbackURL = "https://gochat.app/paystack/callback"
 	}
-	payload, _ := json.Marshal(map[string]any{
+	paystackBody := map[string]any{
 		"email":        email,
 		"amount":       amountSubunit,
 		"currency":     currency,
 		"reference":    reference,
 		"callback_url": callbackURL,
-	})
+	}
+	// Split settlement: when the seller has a payout subaccount, Paystack settles
+	// their share directly and keeps the platform's percentage_charge as commission.
+	if attach.SubaccountCode != "" {
+		paystackBody["subaccount"] = attach.SubaccountCode
+	}
+	payload, _ := json.Marshal(paystackBody)
 	httpReq, _ := http.NewRequestWithContext(c.Request.Context(), http.MethodPost,
 		paystackBaseURL+"/transaction/initialize", bytes.NewReader(payload))
 	httpReq.Header.Set("Authorization", "Bearer "+paystackSecret())
@@ -252,4 +259,192 @@ func (h *BusinessHandler) VerifyPaystackPayment(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"paid": paid, "status": ps.Data.Status})
+}
+
+// paystackGet proxies a signed GET to Paystack and returns the raw body + status.
+func (h *BusinessHandler) paystackGet(c *gin.Context, path string) ([]byte, int, error) {
+	req, _ := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, paystackBaseURL+path, nil)
+	req.Header.Set("Authorization", "Bearer "+paystackSecret())
+	resp, err := paystackHTTP.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	return body, resp.StatusCode, nil
+}
+
+// ListPaystackBanks returns the banks a seller can choose for their payout account.
+func (h *BusinessHandler) ListPaystackBanks(c *gin.Context) {
+	if getUserID(c) == "" {
+		return
+	}
+	if paystackSecret() == "" {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "payments are not configured"})
+		return
+	}
+	currency := c.DefaultQuery("currency", "NGN")
+	body, _, err := h.paystackGet(c, "/bank?currency="+currency)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "payment provider unreachable"})
+		return
+	}
+	c.Data(http.StatusOK, "application/json", body)
+}
+
+// ResolvePaystackAccount verifies a bank account number and returns its owner name.
+func (h *BusinessHandler) ResolvePaystackAccount(c *gin.Context) {
+	if getUserID(c) == "" {
+		return
+	}
+	if paystackSecret() == "" {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "payments are not configured"})
+		return
+	}
+	acct := c.Query("account_number")
+	bank := c.Query("bank_code")
+	if acct == "" || bank == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "account_number and bank_code are required"})
+		return
+	}
+	body, _, err := h.paystackGet(c, "/bank/resolve?account_number="+acct+"&bank_code="+bank)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "payment provider unreachable"})
+		return
+	}
+
+	var ps struct {
+		Status bool `json:"status"`
+		Data   struct {
+			AccountNumber string `json:"account_number"`
+			AccountName   string `json:"account_name"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &ps); err != nil || !ps.Status || ps.Data.AccountName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "could not verify account"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"account_number": ps.Data.AccountNumber, "account_name": ps.Data.AccountName})
+}
+
+// CreateSellerSubaccount registers the seller's bank account with Paystack as a
+// subaccount (so future split payments settle to it) and stores the code.
+func (h *BusinessHandler) CreateSellerSubaccount(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	if paystackSecret() == "" {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "payments are not configured"})
+		return
+	}
+
+	var req struct {
+		BankCode      string `json:"bank_code" binding:"required"`
+		AccountNumber string `json:"account_number" binding:"required"`
+		BusinessName  string `json:"business_name"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bank_code and account_number are required"})
+		return
+	}
+	businessName := req.BusinessName
+	if businessName == "" {
+		shortID := userID
+		if len(shortID) > 8 {
+			shortID = shortID[:8]
+		}
+		businessName = "GoChat Seller " + shortID
+	}
+
+	commission := 5.0
+	if v := os.Getenv("PLATFORM_COMMISSION_PERCENT"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 && f < 100 {
+			commission = f
+		}
+	}
+
+	payload, _ := json.Marshal(map[string]any{
+		"business_name":    businessName,
+		"settlement_bank":  req.BankCode,
+		"account_number":   req.AccountNumber,
+		"percentage_charge": commission, // platform commission kept from each split
+	})
+	httpReq, _ := http.NewRequestWithContext(c.Request.Context(), http.MethodPost,
+		paystackBaseURL+"/subaccount", bytes.NewReader(payload))
+	httpReq.Header.Set("Authorization", "Bearer "+paystackSecret())
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := paystackHTTP.Do(httpReq)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "payment provider unreachable"})
+		return
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+
+	var ps struct {
+		Status bool   `json:"status"`
+		Message string `json:"message"`
+		Data   struct {
+			SubaccountCode string `json:"subaccount_code"`
+			AccountNumber  string `json:"account_number"`
+			SettlementBank string `json:"settlement_bank"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &ps); err != nil || !ps.Status || ps.Data.SubaccountCode == "" {
+		h.log.Warn("paystack create subaccount rejected", zap.String("body", string(body)))
+		c.JSON(http.StatusBadGateway, gin.H{"error": "could not register payout account"})
+		return
+	}
+
+	// Resolve the account name for display (best-effort).
+	accountName := ""
+	if rb, _, err := h.paystackGet(c, "/bank/resolve?account_number="+req.AccountNumber+"&bank_code="+req.BankCode); err == nil {
+		var rr struct {
+			Data struct {
+				AccountName string `json:"account_name"`
+			} `json:"data"`
+		}
+		_ = json.Unmarshal(rb, &rr)
+		accountName = rr.Data.AccountName
+	}
+
+	if _, err := h.client.SaveSellerSubaccount(c.Request.Context(), &pb.SaveSellerSubaccountRequest{
+		UserId:         userID,
+		SubaccountCode: ps.Data.SubaccountCode,
+		BankCode:       req.BankCode,
+		AccountNumber:  req.AccountNumber,
+		AccountName:    accountName,
+	}, jsonOpt); err != nil {
+		h.log.Error("persist seller subaccount failed", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not save payout account"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"subaccount_code": ps.Data.SubaccountCode,
+		"account_number":  req.AccountNumber,
+		"account_name":    accountName,
+	})
+}
+
+// GetMyPayoutAccount returns the seller's saved payout account, if any.
+func (h *BusinessHandler) GetMyPayoutAccount(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	resp, err := h.client.GetSellerSubaccount(c.Request.Context(), &pb.GetSellerSubaccountRequest{UserId: userID}, jsonOpt)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"exists": false})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"exists":         resp.Exists,
+		"account_number": resp.AccountNumber,
+		"account_name":   resp.AccountName,
+		"bank_code":      resp.BankCode,
+		"bank_name":      resp.BankName,
+	})
 }

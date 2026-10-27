@@ -50,6 +50,23 @@ class SellerInsightsActivity : AppCompatActivity() {
         binding.toolbar.setNavigationOnClickListener { finish() }
     }
 
+    override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
+        menu.add(0, MENU_PAYOUT_ACCOUNT, 0, "Payout account")
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
+        if (item.itemId == MENU_PAYOUT_ACCOUNT) {
+            startActivity(android.content.Intent(this, PayoutAccountActivity::class.java))
+            return true
+        }
+        return super.onOptionsItemSelected(item)
+    }
+
+    companion object {
+        private const val MENU_PAYOUT_ACCOUNT = 1001
+    }
+
     private fun loadInsights() {
         lifecycleScope.launch {
             repository.getSellerInsights().onSuccess { insights ->

@@ -63,6 +63,8 @@ const (
 	BusinessService_UpdateOrderTracking_FullMethodName             = "/business.BusinessService/UpdateOrderTracking"
 	BusinessService_AttachPaymentReference_FullMethodName          = "/business.BusinessService/AttachPaymentReference"
 	BusinessService_ConfirmPaymentByReference_FullMethodName       = "/business.BusinessService/ConfirmPaymentByReference"
+	BusinessService_SaveSellerSubaccount_FullMethodName            = "/business.BusinessService/SaveSellerSubaccount"
+	BusinessService_GetSellerSubaccount_FullMethodName             = "/business.BusinessService/GetSellerSubaccount"
 	BusinessService_CreateCoupon_FullMethodName                    = "/business.BusinessService/CreateCoupon"
 	BusinessService_ListBusinessCoupons_FullMethodName             = "/business.BusinessService/ListBusinessCoupons"
 	BusinessService_ValidateCoupon_FullMethodName                  = "/business.BusinessService/ValidateCoupon"
@@ -149,6 +151,9 @@ type BusinessServiceClient interface {
 	// Payments (Paystack): link a payment reference to orders, then confirm on webhook/verify
 	AttachPaymentReference(ctx context.Context, in *AttachPaymentReferenceRequest, opts ...grpc.CallOption) (*AttachPaymentReferenceResponse, error)
 	ConfirmPaymentByReference(ctx context.Context, in *ConfirmPaymentByReferenceRequest, opts ...grpc.CallOption) (*ConfirmPaymentByReferenceResponse, error)
+	// Seller payout accounts (Paystack subaccounts for split settlement)
+	SaveSellerSubaccount(ctx context.Context, in *SaveSellerSubaccountRequest, opts ...grpc.CallOption) (*SaveSellerSubaccountResponse, error)
+	GetSellerSubaccount(ctx context.Context, in *GetSellerSubaccountRequest, opts ...grpc.CallOption) (*GetSellerSubaccountResponse, error)
 	// Coupons
 	CreateCoupon(ctx context.Context, in *CreateCouponRequest, opts ...grpc.CallOption) (*CreateCouponResponse, error)
 	ListBusinessCoupons(ctx context.Context, in *ListBusinessCouponsRequest, opts ...grpc.CallOption) (*ListBusinessCouponsResponse, error)
@@ -630,6 +635,26 @@ func (c *businessServiceClient) ConfirmPaymentByReference(ctx context.Context, i
 	return out, nil
 }
 
+func (c *businessServiceClient) SaveSellerSubaccount(ctx context.Context, in *SaveSellerSubaccountRequest, opts ...grpc.CallOption) (*SaveSellerSubaccountResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SaveSellerSubaccountResponse)
+	err := c.cc.Invoke(ctx, BusinessService_SaveSellerSubaccount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *businessServiceClient) GetSellerSubaccount(ctx context.Context, in *GetSellerSubaccountRequest, opts ...grpc.CallOption) (*GetSellerSubaccountResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSellerSubaccountResponse)
+	err := c.cc.Invoke(ctx, BusinessService_GetSellerSubaccount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *businessServiceClient) CreateCoupon(ctx context.Context, in *CreateCouponRequest, opts ...grpc.CallOption) (*CreateCouponResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateCouponResponse)
@@ -921,6 +946,9 @@ type BusinessServiceServer interface {
 	// Payments (Paystack): link a payment reference to orders, then confirm on webhook/verify
 	AttachPaymentReference(context.Context, *AttachPaymentReferenceRequest) (*AttachPaymentReferenceResponse, error)
 	ConfirmPaymentByReference(context.Context, *ConfirmPaymentByReferenceRequest) (*ConfirmPaymentByReferenceResponse, error)
+	// Seller payout accounts (Paystack subaccounts for split settlement)
+	SaveSellerSubaccount(context.Context, *SaveSellerSubaccountRequest) (*SaveSellerSubaccountResponse, error)
+	GetSellerSubaccount(context.Context, *GetSellerSubaccountRequest) (*GetSellerSubaccountResponse, error)
 	// Coupons
 	CreateCoupon(context.Context, *CreateCouponRequest) (*CreateCouponResponse, error)
 	ListBusinessCoupons(context.Context, *ListBusinessCouponsRequest) (*ListBusinessCouponsResponse, error)
@@ -1093,6 +1121,12 @@ func (UnimplementedBusinessServiceServer) AttachPaymentReference(context.Context
 }
 func (UnimplementedBusinessServiceServer) ConfirmPaymentByReference(context.Context, *ConfirmPaymentByReferenceRequest) (*ConfirmPaymentByReferenceResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ConfirmPaymentByReference not implemented")
+}
+func (UnimplementedBusinessServiceServer) SaveSellerSubaccount(context.Context, *SaveSellerSubaccountRequest) (*SaveSellerSubaccountResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SaveSellerSubaccount not implemented")
+}
+func (UnimplementedBusinessServiceServer) GetSellerSubaccount(context.Context, *GetSellerSubaccountRequest) (*GetSellerSubaccountResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetSellerSubaccount not implemented")
 }
 func (UnimplementedBusinessServiceServer) CreateCoupon(context.Context, *CreateCouponRequest) (*CreateCouponResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateCoupon not implemented")
@@ -1976,6 +2010,42 @@ func _BusinessService_ConfirmPaymentByReference_Handler(srv interface{}, ctx con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BusinessService_SaveSellerSubaccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SaveSellerSubaccountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BusinessServiceServer).SaveSellerSubaccount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BusinessService_SaveSellerSubaccount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BusinessServiceServer).SaveSellerSubaccount(ctx, req.(*SaveSellerSubaccountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BusinessService_GetSellerSubaccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSellerSubaccountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BusinessServiceServer).GetSellerSubaccount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BusinessService_GetSellerSubaccount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BusinessServiceServer).GetSellerSubaccount(ctx, req.(*GetSellerSubaccountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _BusinessService_CreateCoupon_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateCouponRequest)
 	if err := dec(in); err != nil {
@@ -2572,6 +2642,14 @@ var BusinessService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ConfirmPaymentByReference",
 			Handler:    _BusinessService_ConfirmPaymentByReference_Handler,
+		},
+		{
+			MethodName: "SaveSellerSubaccount",
+			Handler:    _BusinessService_SaveSellerSubaccount_Handler,
+		},
+		{
+			MethodName: "GetSellerSubaccount",
+			Handler:    _BusinessService_GetSellerSubaccount_Handler,
 		},
 		{
 			MethodName: "CreateCoupon",

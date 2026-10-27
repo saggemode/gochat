@@ -439,6 +439,23 @@ interface GoChatApiService {
         @Path("reference") reference: String
     ): Response<JsonObject>
 
+    @GET("api/v1/payments/paystack/banks")
+    suspend fun getPaystackBanks(): Response<JsonObject>
+
+    @GET("api/v1/payments/paystack/resolve-account")
+    suspend fun resolvePaystackAccount(
+        @Query("account_number") accountNumber: String,
+        @Query("bank_code") bankCode: String
+    ): Response<JsonObject>
+
+    @POST("api/v1/payments/paystack/subaccount")
+    suspend fun createSellerSubaccount(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @GET("api/v1/payments/paystack/payout-account")
+    suspend fun getPayoutAccount(): Response<JsonObject>
+
     @GET(ApiConstants.BUSINESS_PROFILE)
     suspend fun getBusinessProfile(): Response<JsonObject>
 

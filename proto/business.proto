@@ -78,6 +78,10 @@ service BusinessService {
   rpc AttachPaymentReference(AttachPaymentReferenceRequest) returns (AttachPaymentReferenceResponse);
   rpc ConfirmPaymentByReference(ConfirmPaymentByReferenceRequest) returns (ConfirmPaymentByReferenceResponse);
 
+  // Seller payout accounts (Paystack subaccounts for split settlement)
+  rpc SaveSellerSubaccount(SaveSellerSubaccountRequest) returns (SaveSellerSubaccountResponse);
+  rpc GetSellerSubaccount(GetSellerSubaccountRequest) returns (GetSellerSubaccountResponse);
+
   // Coupons
   rpc CreateCoupon(CreateCouponRequest) returns (CreateCouponResponse);
   rpc ListBusinessCoupons(ListBusinessCouponsRequest) returns (ListBusinessCouponsResponse);
@@ -700,14 +704,35 @@ message AttachPaymentReferenceRequest {
   repeated string order_ids = 3;
 }
 message AttachPaymentReferenceResponse {
-  double amount   = 1; // sum of grand_total across the orders
-  string currency = 2;
+  double amount          = 1; // sum of grand_total across the orders
+  string currency        = 2;
+  string subaccount_code = 3; // seller's Paystack subaccount for split settlement (empty if none/mixed)
 }
 message ConfirmPaymentByReferenceRequest { string reference = 1; }
 message ConfirmPaymentByReferenceResponse {
   bool   success     = 1;
   int32  order_count = 2;
   string buyer_id    = 3;
+}
+
+message SaveSellerSubaccountRequest {
+  string user_id         = 1;
+  string subaccount_code = 2;
+  string bank_code       = 3;
+  string account_number  = 4;
+  string account_name    = 5;
+  string bank_name       = 6;
+}
+message SaveSellerSubaccountResponse { bool success = 1; }
+
+message GetSellerSubaccountRequest { string user_id = 1; }
+message GetSellerSubaccountResponse {
+  bool   exists          = 1;
+  string subaccount_code = 2;
+  string bank_code       = 3;
+  string account_number  = 4;
+  string account_name    = 5;
+  string bank_name       = 6;
 }
 
 message GetOrderRequest {

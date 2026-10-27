@@ -339,11 +339,40 @@ func (s *BusinessServer) AttachPaymentReference(ctx context.Context, req *pb.Att
 	if req.Reference == "" || req.BuyerId == "" || len(req.OrderIds) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "reference, buyer_id and order_ids are required")
 	}
-	amount, currency, err := s.repo.AttachPaymentReference(ctx, req.Reference, req.BuyerId, req.OrderIds)
+	amount, currency, subaccount, err := s.repo.AttachPaymentReference(ctx, req.Reference, req.BuyerId, req.OrderIds)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "attach payment reference: %v", err)
 	}
-	return &pb.AttachPaymentReferenceResponse{Amount: amount, Currency: currency}, nil
+	return &pb.AttachPaymentReferenceResponse{Amount: amount, Currency: currency, SubaccountCode: subaccount}, nil
+}
+
+func (s *BusinessServer) SaveSellerSubaccount(ctx context.Context, req *pb.SaveSellerSubaccountRequest) (*pb.SaveSellerSubaccountResponse, error) {
+	if req.UserId == "" || req.SubaccountCode == "" {
+		return nil, status.Error(codes.InvalidArgument, "user_id and subaccount_code are required")
+	}
+	if err := s.repo.SaveSellerSubaccount(ctx, req.UserId, req.SubaccountCode, req.BankCode, req.AccountNumber, req.AccountName, req.BankName); err != nil {
+		return nil, status.Errorf(codes.Internal, "save seller subaccount: %v", err)
+	}
+	return &pb.SaveSellerSubaccountResponse{Success: true}, nil
+}
+
+func (s *BusinessServer) GetSellerSubaccount(ctx context.Context, req *pb.GetSellerSubaccountRequest) (*pb.GetSellerSubaccountResponse, error) {
+	if req.UserId == "" {
+		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+	}
+	sub, err := s.repo.GetSellerSubaccount(ctx, req.UserId)
+	if err != nil {
+		// No payout account on file is a normal state, not an error.
+		return &pb.GetSellerSubaccountResponse{Exists: false}, nil
+	}
+	return &pb.GetSellerSubaccountResponse{
+		Exists:         true,
+		SubaccountCode: sub.SubaccountCode,
+		BankCode:       sub.BankCode,
+		AccountNumber:  sub.AccountNumber,
+		AccountName:    sub.AccountName,
+		BankName:       sub.BankName,
+	}, nil
 }
 
 func (s *BusinessServer) ConfirmPaymentByReference(ctx context.Context, req *pb.ConfirmPaymentByReferenceRequest) (*pb.ConfirmPaymentByReferenceResponse, error) {
