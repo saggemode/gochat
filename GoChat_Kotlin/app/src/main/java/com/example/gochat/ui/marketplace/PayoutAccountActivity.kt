@@ -30,11 +30,20 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class PayoutAccountActivity : AppCompatActivity() {
 
+    companion object {
+        /** When true, the screen is shown as a required step (e.g. right after
+         *  creating a store) and nudges the seller to finish before leaving. */
+        const val EXTRA_REQUIRED = "required"
+    }
+
     @Inject
     lateinit var repository: MarketplaceRepository
 
+    private val required: Boolean by lazy { intent.getBooleanExtra(EXTRA_REQUIRED, false) }
     private var banks: List<MarketplaceRepository.Bank> = emptyList()
     private var resolvedName: String? = null
+    private var hasPayoutAccount: Boolean = false
+    private var paymentsConfigured: Boolean = true
 
     private lateinit var currentView: TextView
     private lateinit var bankSpinner: Spinner
@@ -56,6 +65,14 @@ class PayoutAccountActivity : AppCompatActivity() {
 
         currentView = TextView(this).apply { textSize = 14f }
         root.addView(currentView)
+
+        if (required) {
+            root.addView(spacer(pad / 2))
+            root.addView(TextView(this).apply {
+                text = "Add the bank account where your sales will be paid. This is required before you can receive payments for orders."
+                textSize = 13f
+            })
+        }
 
         root.addView(spacer(pad))
         root.addView(TextView(this).apply { text = "Select your bank"; textSize = 13f })
@@ -108,8 +125,27 @@ class PayoutAccountActivity : AppCompatActivity() {
     }
 
     override fun onSupportNavigateUp(): Boolean {
-        finish()
+        attemptExit()
         return true
+    }
+
+    override fun onBackPressed() {
+        attemptExit()
+    }
+
+    /** In required mode, nudge the seller to finish before leaving (unless the
+     *  backend has no payment provider, in which case they genuinely can't yet). */
+    private fun attemptExit() {
+        if (required && !hasPayoutAccount && paymentsConfigured) {
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Add a payout account")
+                .setMessage("You won't be able to receive payments for orders until you add the bank account to be paid into. Set it up now?")
+                .setPositiveButton("Set up now", null)
+                .setNegativeButton("Later") { _, _ -> finish() }
+                .show()
+        } else {
+            finish()
+        }
     }
 
     private fun spacer(h: Int) = View(this).apply {
@@ -120,8 +156,9 @@ class PayoutAccountActivity : AppCompatActivity() {
         progress.visibility = View.VISIBLE
         lifecycleScope.launch {
             val current = repository.getPayoutAccount().getOrNull()
-            currentView.text = if (current?.exists == true) {
-                "Current: ${current.accountName} • ${current.accountNumber}"
+            hasPayoutAccount = current?.exists == true
+            currentView.text = if (hasPayoutAccount) {
+                "Current: ${current?.accountName} • ${current?.accountNumber}"
             } else {
                 "No payout account yet. Add one so your sales are paid to you."
             }
@@ -130,9 +167,10 @@ class PayoutAccountActivity : AppCompatActivity() {
             progress.visibility = View.GONE
             if (banksRes.isFailure) {
                 val notConfigured = banksRes.exceptionOrNull() is MarketplaceRepository.PaymentsNotConfigured
+                paymentsConfigured = !notConfigured
                 Toast.makeText(
                     this@PayoutAccountActivity,
-                    if (notConfigured) "Payments are not enabled yet" else "Could not load banks",
+                    if (notConfigured) "Payments are not enabled yet — you can add this later" else "Could not load banks",
                     Toast.LENGTH_LONG
                 ).show()
                 return@launch
@@ -183,7 +221,13 @@ class PayoutAccountActivity : AppCompatActivity() {
             progress.visibility = View.GONE
             if (res.isSuccess) {
                 Toast.makeText(this@PayoutAccountActivity, "Payout account saved", Toast.LENGTH_LONG).show()
-                loadData()
+                hasPayoutAccount = true
+                if (required) {
+                    setResult(RESULT_OK)
+                    finish()
+                } else {
+                    loadData()
+                }
             } else {
                 saveBtn.isEnabled = true
                 Toast.makeText(this@PayoutAccountActivity, "Could not save payout account", Toast.LENGTH_LONG).show()

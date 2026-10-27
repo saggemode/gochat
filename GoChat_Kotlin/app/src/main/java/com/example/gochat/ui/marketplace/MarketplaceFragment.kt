@@ -442,6 +442,11 @@ class MarketplaceFragment : Fragment() {
                     b.btnCreateStore.text = "Create Business Store"
                     resetStoreLogoPreview()
                     Toast.makeText(requireContext(), "🎉 Store \"$name\" is now live on GoChat!", Toast.LENGTH_LONG).show()
+                    // Required step: set up the payout account so the seller can be paid.
+                    startActivity(
+                        Intent(requireContext(), PayoutAccountActivity::class.java)
+                            .putExtra(PayoutAccountActivity.EXTRA_REQUIRED, true)
+                    )
                 },
                 onError = { err ->
                     val b = _binding ?: return@createStore
