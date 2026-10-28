@@ -112,14 +112,32 @@ class PayoutAccountActivity : AppCompatActivity() {
         root.addView(progress)
 
         val scroll = ScrollView(this).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
             )
             addView(root)
         }
-        setContentView(scroll)
 
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        // Explicit toolbar with a visible back arrow (the app theme has no ActionBar).
+        val toolbar = androidx.appcompat.widget.Toolbar(this).apply {
+            setBackgroundColor(android.graphics.Color.parseColor("#0B141A"))
+            title = "Payout account"
+            setTitleTextColor(android.graphics.Color.WHITE)
+            navigationIcon = androidx.core.content.ContextCompat.getDrawable(
+                this@PayoutAccountActivity, com.example.gochat.R.drawable.ic_back
+            )
+            setNavigationOnClickListener { attemptExit() }
+        }
+
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            addView(toolbar)
+            addView(scroll)
+        }
+        setContentView(container)
 
         loadData()
     }

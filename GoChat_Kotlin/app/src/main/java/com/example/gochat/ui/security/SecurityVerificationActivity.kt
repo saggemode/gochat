@@ -87,6 +87,7 @@ class SecurityVerificationActivity : AppCompatActivity() {
     private fun setupToolbar() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.setHomeAsUpIndicator(com.example.gochat.R.drawable.ic_back)
         binding.toolbar.setNavigationOnClickListener { finish() }
     }
 

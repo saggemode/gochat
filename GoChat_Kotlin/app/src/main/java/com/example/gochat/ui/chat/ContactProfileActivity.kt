@@ -106,6 +106,7 @@ class ContactProfileActivity : AppCompatActivity() {
     private fun setupToolbar(name: String) {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.setHomeAsUpIndicator(com.example.gochat.R.drawable.ic_back)
         supportActionBar?.setDisplayShowTitleEnabled(false)
         binding.collapsingToolbar.title = name
         binding.toolbar.setNavigationOnClickListener { finish() }

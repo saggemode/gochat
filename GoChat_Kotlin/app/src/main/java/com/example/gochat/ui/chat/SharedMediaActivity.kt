@@ -68,6 +68,7 @@ class SharedMediaActivity : AppCompatActivity() {
     private fun setupToolbar() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.setHomeAsUpIndicator(com.example.gochat.R.drawable.ic_back)
         binding.toolbar.title = conversationTitle
         binding.toolbar.subtitle = getString(R.string.media_links_and_docs)
         binding.toolbar.setNavigationOnClickListener { finish() }

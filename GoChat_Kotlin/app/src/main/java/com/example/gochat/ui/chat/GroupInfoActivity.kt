@@ -82,6 +82,7 @@ class GroupInfoActivity : AppCompatActivity() {
     private fun setupToolbar(name: String) {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.setHomeAsUpIndicator(com.example.gochat.R.drawable.ic_back)
         binding.collapsingToolbar.title = name
         binding.tvGroupName.text = name
         binding.toolbar.setNavigationOnClickListener { finish() }
