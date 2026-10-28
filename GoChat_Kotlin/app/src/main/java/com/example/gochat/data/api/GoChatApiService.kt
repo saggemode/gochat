@@ -424,10 +424,11 @@ interface GoChatApiService {
         @Body body: JsonObject
     ): Response<JsonObject>
 
+    // Returns a JSON array of created orders (one per seller), so parse as JsonElement.
     @POST(ApiConstants.ORDERS)
     suspend fun placeOrder(
         @Body body: JsonObject
-    ): Response<JsonObject>
+    ): Response<JsonElement>
 
     @POST("api/v1/payments/paystack/init")
     suspend fun initPaystackPayment(

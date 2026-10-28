@@ -1660,9 +1660,15 @@ class MarketplaceRepository @Inject constructor(
                 createdAt = System.currentTimeMillis()
             )
             val finalOrder = if (confirmed) {
+                // The orders endpoint returns a JSON array (one order per seller).
+                // Also tolerate {"order":...}, {"orders":[...]} and a bare object.
                 val bodyEl = response.body()
-                val order = bodyEl?.let { obj ->
-                    obj["order"]?.let { parseSingleOrderJson(it) } ?: parseSingleOrderJson(obj)
+                val order = when (bodyEl) {
+                    is JsonArray -> bodyEl.firstOrNull()?.let { parseSingleOrderJson(it) }
+                    is JsonObject -> bodyEl["order"]?.let { parseSingleOrderJson(it) }
+                        ?: (bodyEl["orders"] as? JsonArray)?.firstOrNull()?.let { parseSingleOrderJson(it) }
+                        ?: parseSingleOrderJson(bodyEl)
+                    else -> null
                 }
                 (order ?: fallbackOrder).let {
                     // Ensure the buyer id is set so it shows up under "My orders".
