@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	pb "gochat/gen/business"
@@ -71,6 +72,14 @@ func (h *BusinessHandler) InitPaystackPayment(c *gin.Context) {
 	if email == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "email is required for payment"})
 		return
+	}
+	// Phone-signup users have a synthetic, non-routable address (…@phone.local)
+	// which Paystack rejects. Give it a syntactically valid, routable domain.
+	if at := strings.LastIndex(email, "@"); at >= 0 {
+		domain := email[at+1:]
+		if strings.HasSuffix(domain, ".local") || !strings.Contains(domain, ".") {
+			email = email[:at] + "@gochat.app"
+		}
 	}
 
 	reference := newPaymentReference()
@@ -142,8 +151,12 @@ func (h *BusinessHandler) InitPaystackPayment(c *gin.Context) {
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(body, &ps); err != nil || !ps.Status || ps.Data.AuthorizationURL == "" {
-		h.log.Warn("paystack initialize rejected", zap.String("body", string(body)))
-		c.JSON(http.StatusBadGateway, gin.H{"error": "could not start payment"})
+		h.log.Warn("paystack initialize rejected", zap.Int("status", resp.StatusCode), zap.String("body", string(body)))
+		msg := strings.TrimSpace(ps.Message)
+		if msg == "" {
+			msg = "could not start payment"
+		}
+		c.JSON(http.StatusBadGateway, gin.H{"error": msg})
 		return
 	}
 
