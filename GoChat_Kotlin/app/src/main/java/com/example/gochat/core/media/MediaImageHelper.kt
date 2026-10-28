@@ -82,6 +82,27 @@ object MediaImageHelper {
 
         val appCtx = imageView.context.applicationContext
         imageView.setTag(R.id.tag_video_thumb_url, clean)
+
+        // Prefer the server-generated poster for gateway-served media: it's a tiny
+        // JPEG, so we avoid downloading the whole video just to show a preview.
+        val resolved = resolveUrl(clean)
+        if (resolved.contains("/media/download/")) {
+            val poster = resolved.replace("/media/download/", "/media/thumbnail/") +
+                if (resolved.contains("?")) "&w=480" else "?w=480"
+            imageView.load(poster) {
+                crossfade(true)
+                placeholder(placeholderRes)
+                error(placeholderRes)
+                // If the server has no ffmpeg/poster yet, fall back to local decode.
+                listener(onError = { _, _ -> decodeFrameAsync(appCtx, imageView, clean, placeholderRes) })
+            }
+            return
+        }
+
+        decodeFrameAsync(appCtx, imageView, clean, placeholderRes)
+    }
+
+    private fun decodeFrameAsync(appCtx: Context, imageView: ImageView, clean: String, placeholderRes: Int) {
         thumbScope.launch {
             val frame = extractVideoFrame(appCtx, clean)
             if (frame != null) videoThumbCache.put(clean, frame)

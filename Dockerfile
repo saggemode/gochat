@@ -24,7 +24,9 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/service ./services/${SERVICE}
 
 FROM public.ecr.aws/docker/library/alpine:3.21
-RUN apk add --no-cache ca-certificates tzdata
+# ffmpeg enables server-side video transcoding (optimizer) and poster-frame
+# thumbnails so clients don't download whole videos for previews.
+RUN apk add --no-cache ca-certificates tzdata ffmpeg
 COPY --from=builder /out/service /service
 COPY --from=builder /src/migrations /migrations
 USER 65534:65534

@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -317,6 +320,17 @@ func (h *MediaHandler) DownloadResized(c *gin.Context) {
 		contentType = "application/octet-stream"
 	}
 
+	// Video → return a poster JPEG (first frame) so clients don't fetch the
+	// whole video just to show a preview.
+	if strings.HasPrefix(contentType, "video/") {
+		if poster, err := extractVideoPoster(c.Request.Context(), rawData); err == nil && len(poster) > 0 {
+			c.Header("Cache-Control", "public, max-age=31536000, immutable")
+			c.Data(http.StatusOK, "image/jpeg", poster)
+			return
+		}
+		// ffmpeg unavailable/failed: fall through and serve the original.
+	}
+
 	// Resize if it's an image
 	if strings.HasPrefix(contentType, "image/") && !strings.Contains(contentType, "gif") {
 		optReader, optMime, _, err := optimizer.CompressImageWithLimit(bytes.NewReader(rawData), contentType, width, h.log)
@@ -329,5 +343,41 @@ func (h *MediaHandler) DownloadResized(c *gin.Context) {
 
 	c.Header("Cache-Control", "public, max-age=31536000, immutable")
 	c.Data(http.StatusOK, contentType, rawData)
+}
+
+// extractVideoPoster uses ffmpeg to pull the first frame of a video as a JPEG.
+// Returns an error if ffmpeg isn't installed or extraction fails.
+func extractVideoPoster(ctx context.Context, video []byte) ([]byte, error) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		return nil, err
+	}
+	tmpIn, err := os.CreateTemp("", "poster-*.mp4")
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(tmpIn.Name())
+	if _, err := tmpIn.Write(video); err != nil {
+		tmpIn.Close()
+		return nil, err
+	}
+	tmpIn.Close()
+
+	outPath := tmpIn.Name() + ".jpg"
+	defer os.Remove(outPath)
+
+	cctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	// Scale the poster down to 480px wide (keeps aspect) — small and quick to send.
+	cmd := exec.CommandContext(cctx, "ffmpeg", "-y",
+		"-i", tmpIn.Name(),
+		"-frames:v", "1",
+		"-vf", "scale=480:-2",
+		"-q:v", "4",
+		outPath,
+	)
+	if err := cmd.Run(); err != nil {
+		return nil, err
+	}
+	return os.ReadFile(outPath)
 }
 
