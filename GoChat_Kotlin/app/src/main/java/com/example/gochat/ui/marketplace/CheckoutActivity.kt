@@ -40,6 +40,12 @@ class CheckoutActivity : AppCompatActivity() {
 
     @Inject
     lateinit var authRepository: com.example.gochat.data.repository.AuthRepository
+
+    @Inject
+    lateinit var addressDao: com.example.gochat.data.db.AddressDao
+
+    @Inject
+    lateinit var tokenManager: com.example.gochat.data.api.TokenManager
     
     private var cartItems: List<CartItem> = emptyList()
     private lateinit var itemsAdapter: CartAdapter
@@ -84,6 +90,49 @@ class CheckoutActivity : AppCompatActivity() {
 
         setupListeners()
         loadSummary()
+        loadSavedAddresses()
+    }
+
+    /** Loads the buyer's saved addresses as tap-to-fill chips above the field. */
+    private fun loadSavedAddresses() {
+        lifecycleScope.launch {
+            val addresses = try { addressDao.getAddresses() } catch (_: Exception) { emptyList() }
+            val group = binding.chipGroupAddresses
+            group.removeAllViews()
+            if (addresses.isEmpty()) {
+                group.visibility = View.GONE
+                return@launch
+            }
+            group.visibility = View.VISIBLE
+            addresses.forEach { addr ->
+                val chip = com.google.android.material.chip.Chip(this@CheckoutActivity).apply {
+                    text = addr.label.ifBlank { addr.fullAddress.take(24) }
+                    isCheckable = false
+                    setOnClickListener { binding.etAddress.setText(addr.fullAddress) }
+                }
+                group.addView(chip)
+            }
+            // Prefill with the default/most-recent address if the field is empty.
+            if (binding.etAddress.text.isNullOrBlank()) {
+                binding.etAddress.setText(addresses.first().fullAddress)
+            }
+        }
+    }
+
+    /** Saves the address used for an order so it can be reused next time. */
+    private suspend fun rememberAddress(address: String) {
+        if (address.isBlank()) return
+        try {
+            if (addressDao.findByAddress(address) == null) {
+                addressDao.insert(
+                    com.example.gochat.data.model.SavedAddress(
+                        id = java.util.UUID.randomUUID().toString(),
+                        fullAddress = address,
+                        phone = tokenManager.userPhone.orEmpty()
+                    )
+                )
+            }
+        } catch (_: Exception) {}
     }
 
     /** Lets the buyer change quantity or remove a line right on the checkout page. */
@@ -176,6 +225,7 @@ class CheckoutActivity : AppCompatActivity() {
                     return@launch
                 }
                 repository.clearCart()
+                rememberAddress(address)
 
                 if (order != null) {
                     val store = repository.getStore(order.storeId).getOrNull()

@@ -30,4 +30,9 @@ object DatabaseModule {
     fun provideMarketplaceDao(database: AppDatabase): MarketplaceDao {
         return database.marketplaceDao()
     }
+
+    @Provides
+    fun provideAddressDao(database: AppDatabase): com.example.gochat.data.db.AddressDao {
+        return database.addressDao()
+    }
 }

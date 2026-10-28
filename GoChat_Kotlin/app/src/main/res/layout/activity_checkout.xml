@@ -75,6 +75,14 @@
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
+            <!-- Saved delivery addresses — tap one to fill the field below -->
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroupAddresses"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:visibility="gone" />
+
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

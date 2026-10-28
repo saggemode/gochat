@@ -36,15 +36,18 @@ import com.example.gochat.data.model.*
         CartItem::class,
         Order::class,
         ProductRemoteKeys::class,
-        BlockedUser::class
+        BlockedUser::class,
+        com.example.gochat.data.model.SavedAddress::class
     ],
-    version = 19,
+    version = 20,
+    autoMigrations = [androidx.room.AutoMigration(from = 19, to = 20)],
     exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun chatDao(): ChatDao
     abstract fun marketplaceDao(): MarketplaceDao
+    abstract fun addressDao(): AddressDao
 
     companion object {
         @Volatile
