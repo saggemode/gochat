@@ -449,7 +449,11 @@ func (r *BusinessRepository) CreateOrders(ctx context.Context, input *CreateOrde
 				return nil, fmt.Errorf("product %s not found: %w", pID, err)
 			}
 
-			if oInput.BusinessID == "" || oInput.BusinessID == "00000000-0000-0000-0000-000000000000" {
+			// Fall back to the product's real seller id whenever the client sent a
+			// blank, zero, or non-UUID business_id (e.g. the "store_istore"
+			// placeholder). A non-UUID value in the UUID column below aborts the
+			// whole transaction (SQLSTATE 25P02).
+			if _, err := uuid.Parse(oInput.BusinessID); err != nil || oInput.BusinessID == "00000000-0000-0000-0000-000000000000" {
 				oInput.BusinessID = actualBizID
 			}
 
