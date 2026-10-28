@@ -49,6 +49,9 @@ class CheckoutActivity : AppCompatActivity() {
     
     private var cartItems: List<CartItem> = emptyList()
     private var deliveryFee: Double = 0.0
+    private var discount: Double = 0.0
+    private var appliedCoupon: String = ""
+    private var resolvedSellerId: String = ""
     private lateinit var itemsAdapter: CartAdapter
 
     // Bridges the Paystack checkout Activity result back to the awaiting coroutine.
@@ -162,6 +165,7 @@ class CheckoutActivity : AppCompatActivity() {
         binding.btnPlaceOrder.setOnClickListener {
             placeOrder()
         }
+        binding.btnApplyCoupon.setOnClickListener { applyCoupon() }
     }
 
     private fun loadSummary() {
@@ -190,9 +194,35 @@ class CheckoutActivity : AppCompatActivity() {
                 sellerId = repository.getProductById(productId).getOrNull()?.sellerId.orEmpty()
             }
             if (sellerId.isNotBlank()) {
+                resolvedSellerId = sellerId
                 deliveryFee = repository.getStore(sellerId).getOrNull()?.deliveryFee ?: 0.0
                 displaySummary(cartItems)
             }
+        }
+    }
+
+    private fun applyCoupon() {
+        val code = binding.etCoupon.text.toString().trim()
+        if (code.isBlank()) return
+        if (resolvedSellerId.isBlank()) {
+            Toast.makeText(this, "Cannot apply coupon right now", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val subtotal = cartItems.sumOf { (it.productPrice ?: 0.0) * it.quantity }
+        lifecycleScope.launch {
+            val res = repository.validateCoupon(
+                resolvedSellerId, code, subtotal, cartItems.map { it.productId }
+            ).getOrNull()
+            if (res?.valid == true && res.discount > 0) {
+                discount = res.discount
+                appliedCoupon = code
+                Toast.makeText(this@CheckoutActivity, "Coupon applied", Toast.LENGTH_SHORT).show()
+            } else {
+                discount = 0.0
+                appliedCoupon = ""
+                Toast.makeText(this@CheckoutActivity, res?.message?.ifBlank { "Invalid coupon" } ?: "Invalid coupon", Toast.LENGTH_LONG).show()
+            }
+            displaySummary(cartItems)
         }
     }
 
@@ -203,7 +233,14 @@ class CheckoutActivity : AppCompatActivity() {
         val subtotal = items.sumOf { (it.productPrice ?: 0.0) * it.quantity }
         binding.tvSubtotalAmount.text = CurrencyManager.formatPrice(subtotal)
         binding.tvDeliveryAmount.text = if (deliveryFee > 0) CurrencyManager.formatPrice(deliveryFee) else "Free"
-        binding.tvTotalAmount.text = CurrencyManager.formatPrice(subtotal + deliveryFee)
+        if (discount > 0) {
+            binding.rowDiscount.visibility = View.VISIBLE
+            binding.tvDiscountAmount.text = "-${CurrencyManager.formatPrice(discount)}"
+        } else {
+            binding.rowDiscount.visibility = View.GONE
+        }
+        val total = (subtotal + deliveryFee - discount).coerceAtLeast(0.0)
+        binding.tvTotalAmount.text = CurrencyManager.formatPrice(total)
 
         val empty = items.isEmpty()
         binding.tvEmptyCheckout.visibility = if (empty) View.VISIBLE else View.GONE
@@ -225,7 +262,7 @@ class CheckoutActivity : AppCompatActivity() {
             val storeId = cartItems.firstOrNull()?.storeId?.ifBlank { "store_istore" } ?: "store_istore"
             
             // Keep the cart until payment is confirmed (online payment flow).
-            val result = repository.placeOrder(storeId, cartItems, total, address, clearCartOnSuccess = false)
+            val result = repository.placeOrder(storeId, cartItems, total, address, clearCartOnSuccess = false, couponCode = appliedCoupon)
             binding.progressBar.visibility = View.GONE
 
             if (result.isSuccess) {

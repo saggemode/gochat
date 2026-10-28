@@ -1236,6 +1236,31 @@ class MarketplaceRepository @Inject constructor(
     }
 
     /** Result of starting a Paystack checkout. */
+    data class CouponResult(val valid: Boolean, val discount: Double, val message: String)
+
+    /** Validates a coupon for a seller/subtotal and returns the discount. */
+    suspend fun validateCoupon(businessId: String, code: String, subtotal: Double, productIds: List<String>): Result<CouponResult> {
+        return try {
+            val body = buildJsonObject {
+                put("business_id", businessId)
+                put("code", code)
+                put("subtotal", subtotal)
+                put("product_ids", buildJsonArray { productIds.forEach { add(it) } })
+            }
+            val resp = api.validateCoupon(body)
+            val o = resp.body()
+            Result.success(
+                CouponResult(
+                    valid = o?.get("valid")?.jsonPrimitive?.booleanOrNull ?: false,
+                    discount = o?.get("discount_amount")?.jsonPrimitive?.doubleOrNull ?: 0.0,
+                    message = o?.get("message")?.jsonPrimitive?.contentOrNull.orEmpty()
+                )
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     data class PaymentInit(val authorizationUrl: String, val reference: String)
 
     /**
@@ -1630,7 +1655,8 @@ class MarketplaceRepository @Inject constructor(
         totalAmount: Double,
         address: String,
         paymentMethod: String = "card",
-        clearCartOnSuccess: Boolean = true
+        clearCartOnSuccess: Boolean = true,
+        couponCode: String = ""
     ): Result<Order> {
         return try {
             val customerName = tokenManager.userDisplayName ?: "Customer"
@@ -1646,6 +1672,7 @@ class MarketplaceRepository @Inject constructor(
                 put("orders", buildJsonArray {
                     add(buildJsonObject {
                         put("business_id", storeId)
+                        if (couponCode.isNotBlank()) put("coupon_code", couponCode)
                         put("items", buildJsonArray {
                             items.forEach { item ->
                                 add(buildJsonObject {

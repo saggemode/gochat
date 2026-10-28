@@ -184,6 +184,58 @@
                     android:textSize="14sp" />
             </LinearLayout>
 
+            <!-- Discount row (shown once a coupon is applied) -->
+            <LinearLayout
+                android:id="@+id/rowDiscount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Discount"
+                    android:textColor="@color/gochat_text_muted"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tvDiscountAmount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/gochat_accent"
+                    android:textSize="14sp"
+                    tools:text="-₦500" />
+            </LinearLayout>
+
+            <!-- Coupon entry -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <EditText
+                    android:id="@+id/etCoupon"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="Coupon code"
+                    android:inputType="textCapCharacters"
+                    android:textColor="@color/gochat_text_primary"
+                    android:textColorHint="@color/gochat_text_muted" />
+
+                <Button
+                    android:id="@+id/btnApplyCoupon"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Apply"
+                    android:textAllCaps="false" />
+            </LinearLayout>
+
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"

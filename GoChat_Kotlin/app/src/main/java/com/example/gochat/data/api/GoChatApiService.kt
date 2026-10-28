@@ -430,6 +430,11 @@ interface GoChatApiService {
     ): Response<JsonObject>
 
     // Returns a JSON array of created orders (one per seller), so parse as JsonElement.
+    @POST("api/v1/marketplace/coupons/validate")
+    suspend fun validateCoupon(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
     @POST(ApiConstants.ORDERS)
     suspend fun placeOrder(
         @Body body: JsonObject
