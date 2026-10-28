@@ -266,11 +266,12 @@ class CheckoutActivity : AppCompatActivity() {
             binding.progressBar.visibility = View.GONE
 
             if (result.isSuccess) {
-                val order = result.getOrNull()
+                val orders = result.getOrNull().orEmpty()
+                val order = orders.firstOrNull() // primary order for the success UI below
 
-                // Collect payment before finalising. If payments aren't configured
-                // on the backend, runPaystack returns true (legacy immediate order).
-                val paid = if (order != null) runPaystack(order.id) else false
+                // Collect payment for ALL created orders (one per seller) before
+                // finalising. If payments aren't configured, runPaystack returns true.
+                val paid = if (orders.isNotEmpty()) runPaystack(orders.map { it.id }) else false
                 if (!paid) {
                     Toast.makeText(
                         this@CheckoutActivity,
@@ -409,8 +410,9 @@ class CheckoutActivity : AppCompatActivity() {
      * result server-side via verify. If the backend has no Paystack key, returns
      * true so checkout falls back to the legacy immediate-order behaviour.
      */
-    private suspend fun runPaystack(orderId: String): Boolean {
-        val initRes = repository.initPaystackPayment(listOf(orderId), null)
+    private suspend fun runPaystack(orderIds: List<String>): Boolean {
+        if (orderIds.isEmpty()) return false
+        val initRes = repository.initPaystackPayment(orderIds, null)
         if (initRes.isFailure) {
             return initRes.exceptionOrNull() is MarketplaceRepository.PaymentsNotConfigured
         }

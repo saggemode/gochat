@@ -1657,10 +1657,27 @@ class MarketplaceRepository @Inject constructor(
         paymentMethod: String = "card",
         clearCartOnSuccess: Boolean = true,
         couponCode: String = ""
-    ): Result<Order> {
+    ): Result<List<Order>> {
         return try {
             val customerName = tokenManager.userDisplayName ?: "Customer"
             val customerPhone = tokenManager.userPhone ?: ""
+
+            // Group the cart by seller so each seller gets their own order. Items
+            // with a blank store id are resolved to the product's real seller.
+            val sellerCache = HashMap<String, String>()
+            val grouped = LinkedHashMap<String, MutableList<CartItem>>()
+            for (item in items) {
+                var seller = item.storeId
+                if (seller.isBlank()) {
+                    seller = sellerCache.getOrPut(item.productId) {
+                        getProductById(item.productId).getOrNull()?.sellerId.orEmpty()
+                    }
+                }
+                if (seller.isBlank()) seller = storeId // last-resort fallback
+                grouped.getOrPut(seller) { mutableListOf() }.add(item)
+            }
+            if (grouped.isEmpty()) grouped[storeId] = items.toMutableList()
+
             val body = buildJsonObject {
                 put("shipping_name", customerName)
                 put("shipping_phone", customerPhone.ifBlank { "N/A" })
@@ -1670,63 +1687,62 @@ class MarketplaceRepository @Inject constructor(
                 put("business_id", storeId)
                 put("total_amount", totalAmount)
                 put("orders", buildJsonArray {
-                    add(buildJsonObject {
-                        put("business_id", storeId)
-                        if (couponCode.isNotBlank()) put("coupon_code", couponCode)
-                        put("items", buildJsonArray {
-                            items.forEach { item ->
-                                add(buildJsonObject {
-                                    put("product_id", item.productId)
-                                    put("quantity", item.quantity)
-                                })
-                            }
+                    grouped.forEach { (seller, sellerItems) ->
+                        add(buildJsonObject {
+                            put("business_id", seller)
+                            // Coupon applies per seller; the backend only discounts the matching one.
+                            if (couponCode.isNotBlank()) put("coupon_code", couponCode)
+                            put("items", buildJsonArray {
+                                sellerItems.forEach { item ->
+                                    add(buildJsonObject {
+                                        put("product_id", item.productId)
+                                        put("quantity", item.quantity)
+                                    })
+                                }
+                            })
                         })
-                    })
+                    }
                 })
                 put("items", JsonArray(items.map { json.encodeToJsonElement(it) }))
             }
             val response = api.placeOrder(body)
             val confirmed = response.isSuccessful
-            // On success the order is PAID; if the server rejected/failed it, keep a PENDING
-            // record (not PAID) so the buyer can still SEE the attempt and that it didn't go through.
-            val fallbackOrder = Order(
-                id = UUID.randomUUID().toString(),
-                orderNumber = "ORD-${System.currentTimeMillis().toString().takeLast(6)}",
-                storeId = storeId,
-                storeName = items.firstOrNull()?.storeName ?: "Official Store",
-                buyerId = tokenManager.userId.orEmpty(),
-                buyerName = customerName,
-                buyerPin = tokenManager.userPin.orEmpty(),
-                items = items.toList(),
-                totalAmount = totalAmount,
-                status = if (confirmed) OrderStatus.PAID else OrderStatus.PENDING,
-                shippingAddress = address,
-                createdAt = System.currentTimeMillis()
-            )
-            val finalOrder = if (confirmed) {
-                // The orders endpoint returns a JSON array (one order per seller).
-                // Also tolerate {"order":...}, {"orders":[...]} and a bare object.
+
+            val orders: List<Order> = if (confirmed) {
                 val bodyEl = response.body()
-                val order = when (bodyEl) {
-                    is JsonArray -> bodyEl.firstOrNull()?.let { parseSingleOrderJson(it) }
-                    is JsonObject -> bodyEl["order"]?.let { parseSingleOrderJson(it) }
-                        ?: (bodyEl["orders"] as? JsonArray)?.firstOrNull()?.let { parseSingleOrderJson(it) }
-                        ?: parseSingleOrderJson(bodyEl)
-                    else -> null
+                val list = when (bodyEl) {
+                    is JsonArray -> bodyEl.mapNotNull { parseSingleOrderJson(it) }
+                    is JsonObject -> (bodyEl["orders"] as? JsonArray)?.mapNotNull { parseSingleOrderJson(it) }
+                        ?: bodyEl["order"]?.let { listOfNotNull(parseSingleOrderJson(it)) }
+                        ?: listOfNotNull(parseSingleOrderJson(bodyEl))
+                    else -> emptyList()
                 }
-                (order ?: fallbackOrder).let {
-                    // Ensure the buyer id is set so it shows up under "My orders".
-                    if (it.buyerId.isBlank()) it.copy(buyerId = tokenManager.userId.orEmpty()) else it
-                }
+                list.map { if (it.buyerId.isBlank()) it.copy(buyerId = tokenManager.userId.orEmpty()) else it }
             } else {
-                fallbackOrder
+                emptyList()
             }
-            marketplaceDao.insertOrder(finalOrder)
-            // Only empty the cart when the order actually went through, so a failed order
-            // doesn't silently wipe the buyer's cart. For online payment the cart is kept
-            // until payment is confirmed (clearCartOnSuccess = false).
+
+            val finalOrders = orders.ifEmpty {
+                listOf(
+                    Order(
+                        id = UUID.randomUUID().toString(),
+                        orderNumber = "ORD-${System.currentTimeMillis().toString().takeLast(6)}",
+                        storeId = storeId,
+                        storeName = items.firstOrNull()?.storeName ?: "Official Store",
+                        buyerId = tokenManager.userId.orEmpty(),
+                        buyerName = customerName,
+                        buyerPin = tokenManager.userPin.orEmpty(),
+                        items = items.toList(),
+                        totalAmount = totalAmount,
+                        status = if (confirmed) OrderStatus.PAID else OrderStatus.PENDING,
+                        shippingAddress = address,
+                        createdAt = System.currentTimeMillis()
+                    )
+                )
+            }
+            finalOrders.forEach { marketplaceDao.insertOrder(it) }
             if (confirmed && clearCartOnSuccess) marketplaceDao.clearCart()
-            Result.success(finalOrder)
+            Result.success(finalOrders)
         } catch (e: Exception) {
             // Network/exception: record a PENDING order locally so it's visible and retryable.
             val fallbackOrder = Order(
@@ -1744,7 +1760,7 @@ class MarketplaceRepository @Inject constructor(
                 createdAt = System.currentTimeMillis()
             )
             marketplaceDao.insertOrder(fallbackOrder)
-            Result.success(fallbackOrder)
+            Result.success(listOf(fallbackOrder))
         }
     }
 
