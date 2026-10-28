@@ -253,6 +253,17 @@ func (r *SFURoom) HandleSubscriberOffer(userID string, sdpOffer string) (string,
 	return answer.SDP, nil
 }
 
+// ParticipantIDs returns the ids of everyone currently in the room.
+func (r *SFURoom) ParticipantIDs() []string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	ids := make([]string, 0, len(r.participants))
+	for id := range r.participants {
+		ids = append(ids, id)
+	}
+	return ids
+}
+
 func (r *SFURoom) RemoveParticipant(userID string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

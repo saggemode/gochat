@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -274,6 +275,36 @@ func (s *CallServer) EndCall(ctx context.Context, req *callpb.EndCallRequest) (*
 	}, nil
 }
 
+// broadcastSfuParticipants tells every participant who is currently in the SFU
+// room, so clients can re-subscribe (picking up new publishers' tracks) and
+// render the participant list. This is how late joins/leaves propagate.
+func (s *CallServer) broadcastSfuParticipants(ctx context.Context, room *sfu.SFURoom) {
+	if s.redis == nil {
+		return
+	}
+	ids := room.ParticipantIDs()
+	list := strings.Join(ids, ",")
+	for _, uid := range ids {
+		cpPayload := map[string]string{
+			"call_id":      room.ID,
+			"caller_id":    "sfu",
+			"receiver_id":  uid,
+			"status":       "signaling",
+			"type":         "sfu-participants",
+			"participants": list,
+		}
+		cpJSON, _ := json.Marshal(cpPayload)
+		eventPayload := map[string]string{
+			"event":          "call_signaling",
+			"actor_id":       "sfu",
+			"target_user_id": uid,
+			"call_payload":   string(cpJSON),
+		}
+		eventJSON, _ := json.Marshal(eventPayload)
+		_ = s.redis.Publish(ctx, "chat:calls", string(eventJSON)).Err()
+	}
+}
+
 func (s *CallServer) SendSignalingMessage(ctx context.Context, req *callpb.SendSignalingMessageRequest) (*callpb.SendSignalingMessageResponse, error) {
 	if req.ReceiverId == "sfu" || req.ReceiverId == "sfu-server" {
 		room := s.sfuManager.GetOrCreateRoom(req.CallId, "SFU Voice/Video Room", true)
@@ -306,6 +337,14 @@ func (s *CallServer) SendSignalingMessage(ctx context.Context, req *callpb.SendS
 			if s.redis != nil {
 				_ = s.redis.Publish(ctx, "chat:calls", string(eventJSON)).Err()
 			}
+			// A new publisher joined; tell everyone so they re-subscribe and see them.
+			s.broadcastSfuParticipants(ctx, room)
+			return &callpb.SendSignalingMessageResponse{Success: true}, nil
+		}
+
+		if req.Type == "sfu-leave" {
+			room.RemoveParticipant(req.SenderId)
+			s.broadcastSfuParticipants(ctx, room)
 			return &callpb.SendSignalingMessageResponse{Success: true}, nil
 		}
 
