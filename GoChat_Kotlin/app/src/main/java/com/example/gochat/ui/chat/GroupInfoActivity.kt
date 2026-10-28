@@ -36,6 +36,7 @@ import javax.inject.Inject
 class GroupInfoActivity : AppCompatActivity() {
 
     companion object {
+        private const val MENU_GROUP_CALL = 2001
         const val EXTRA_CONVERSATION_ID = "extra_conversation_id"
         const val EXTRA_GROUP_NAME = "extra_group_name"
         const val EXTRA_GROUP_AVATAR = "extra_group_avatar"
@@ -86,6 +87,26 @@ class GroupInfoActivity : AppCompatActivity() {
         binding.collapsingToolbar.title = name
         binding.tvGroupName.text = name
         binding.toolbar.setNavigationOnClickListener { finish() }
+    }
+
+    override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
+        menu.add(0, MENU_GROUP_CALL, 0, "Group call")
+            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_NEVER)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
+        if (item.itemId == MENU_GROUP_CALL) {
+            if (convId.isNotBlank()) {
+                startActivity(
+                    android.content.Intent(this, com.example.gochat.ui.calls.GroupCallActivity::class.java)
+                        .putExtra(com.example.gochat.ui.calls.GroupCallActivity.EXTRA_CALL_ID, convId)
+                        .putExtra(com.example.gochat.ui.calls.GroupCallActivity.EXTRA_TITLE, currentName)
+                )
+            }
+            return true
+        }
+        return super.onOptionsItemSelected(item)
     }
 
     private fun setupUI() {
