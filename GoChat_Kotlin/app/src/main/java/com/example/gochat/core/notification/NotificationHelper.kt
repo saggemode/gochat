@@ -530,6 +530,44 @@ object NotificationHelper {
         }
     }
 
+    /** High-priority incoming group-call notification; tapping joins the SFU room. */
+    fun showGroupCallNotification(context: Context, callId: String, groupTitle: String) {
+        val notificationId = ("call_$callId").hashCode()
+        val joinIntent = Intent(context, com.example.gochat.ui.calls.GroupCallActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(com.example.gochat.ui.calls.GroupCallActivity.EXTRA_CALL_ID, callId)
+            putExtra(com.example.gochat.ui.calls.GroupCallActivity.EXTRA_TITLE, groupTitle)
+        }
+        val joinPending = PendingIntent.getActivity(
+            context, notificationId + 1, joinIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_CALLS)
+            .setSmallIcon(R.drawable.ic_call)
+            .setColor(ContextCompat.getColor(context, R.color.gochat_accent))
+            .setContentTitle(groupTitle.ifBlank { "Group call" })
+            .setContentText("Incoming group call")
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setAutoCancel(true)
+            .setContentIntent(joinPending)
+            .setFullScreenIntent(joinPending, true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .addAction(R.drawable.ic_call, "Join", joinPending)
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) {
+                return
+            }
+            NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+        } catch (e: Exception) {
+            Log.e("NotificationHelper", "Failed to show group call notification", e)
+        }
+    }
+
     fun cancelCallNotification(context: Context, callId: String) {
         val notificationId = ("call_$callId").hashCode()
         try {

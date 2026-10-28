@@ -311,6 +311,11 @@ interface GoChatApiService {
     @GET("api/v1/calls/ice-servers")
     suspend fun getIceServers(): Response<JsonObject>
 
+    @POST("api/v1/calls/group/ring")
+    suspend fun ringGroup(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
     @GET(ApiConstants.CALL_HISTORY)
     suspend fun getCallHistory(): Response<JsonElement>
 

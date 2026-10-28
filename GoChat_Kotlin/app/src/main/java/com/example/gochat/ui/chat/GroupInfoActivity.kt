@@ -102,6 +102,10 @@ class GroupInfoActivity : AppCompatActivity() {
                     android.content.Intent(this, com.example.gochat.ui.calls.GroupCallActivity::class.java)
                         .putExtra(com.example.gochat.ui.calls.GroupCallActivity.EXTRA_CALL_ID, convId)
                         .putExtra(com.example.gochat.ui.calls.GroupCallActivity.EXTRA_TITLE, currentName)
+                        .putStringArrayListExtra(
+                            com.example.gochat.ui.calls.GroupCallActivity.EXTRA_MEMBER_IDS,
+                            ArrayList(intent.getStringArrayListExtra(EXTRA_MEMBER_IDS) ?: arrayListOf())
+                        )
                 )
             }
             return true

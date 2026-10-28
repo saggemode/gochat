@@ -120,6 +120,14 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
 
         val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
 
+        // Handle Incoming Group Call notifications
+        if (eventType == "group_call_incoming") {
+            val callId = data["call_id"] ?: data["id"] ?: return
+            val groupTitle = title.ifBlank { data["title"] ?: "Group call" }
+            NotificationHelper.showGroupCallNotification(applicationContext, callId, groupTitle)
+            return
+        }
+
         // Handle Incoming Call notifications
         if (eventType == "incoming_call" || eventType == "call" || eventType == "call_incoming") {
             val callId = data["call_id"] ?: data["id"] ?: "call_${System.currentTimeMillis()}"

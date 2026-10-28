@@ -34,6 +34,8 @@ class GroupCallActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_CALL_ID = "extra_group_call_id"
         const val EXTRA_TITLE = "extra_group_call_title"
+        // Present only when the initiator starts the call, to ring these members.
+        const val EXTRA_MEMBER_IDS = "extra_group_call_member_ids"
     }
 
     @Inject lateinit var callRepo: CallRepository
@@ -145,6 +147,12 @@ class GroupCallActivity : AppCompatActivity() {
             }
             joined = true
             tvStatus.text = "In call"
+
+            // If we started the call, ring the other members so they can join.
+            val memberIds = intent.getStringArrayListExtra(EXTRA_MEMBER_IDS)
+            if (!memberIds.isNullOrEmpty()) {
+                callRepo.ringGroup(callId, title, memberIds)
+            }
         }
     }
 

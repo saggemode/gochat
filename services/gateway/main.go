@@ -542,6 +542,7 @@ func main() {
 
 		// Voice & Video calling with WebRTC signaling
 		authRequired.POST("/calls", callHandler.StartCall)
+		authRequired.POST("/calls/group/ring", callHandler.RingGroup)
 		authRequired.POST("/calls/:id/accept", callHandler.AcceptCall)
 		authRequired.POST("/calls/:id/reject", callHandler.RejectCall)
 		authRequired.POST("/calls/:id/end", callHandler.EndCall)

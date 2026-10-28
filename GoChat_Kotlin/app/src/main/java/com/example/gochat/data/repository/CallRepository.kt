@@ -118,6 +118,20 @@ class CallRepository @Inject constructor(
 
     // ── Signaling ────────────────────────────────────────────────
 
+    /** Rings every other group member with an incoming group-call push. */
+    suspend fun ringGroup(callId: String, title: String, memberIds: List<String>): Boolean {
+        return try {
+            val body = buildJsonObject {
+                put("call_id", callId)
+                put("title", title)
+                put("member_ids", buildJsonArray { memberIds.forEach { add(it) } })
+            }
+            api.ringGroup(body).isSuccessful
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     suspend fun sendSignaling(
         callId: String,
         receiverId: String,

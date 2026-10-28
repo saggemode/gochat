@@ -88,6 +88,49 @@ func (h *CallHandler) StartCall(c *gin.Context) {
 	c.JSON(http.StatusCreated, resp.Call)
 }
 
+// RingGroup sends an incoming-group-call push to every other group member so
+// they can join the SFU room (call_id = the group conversation id).
+func (h *CallHandler) RingGroup(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	var req struct {
+		CallID    string   `json:"call_id"`
+		Title     string   `json:"title"`
+		MemberIDs []string `json:"member_ids"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.CallID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "call_id is required"})
+		return
+	}
+
+	title := req.Title
+	if title == "" {
+		title = "Group call"
+	}
+	go func() {
+		pushCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		for _, m := range req.MemberIDs {
+			if m == "" || m == userID {
+				continue
+			}
+			pushData := map[string]string{
+				"type":      "group_call_incoming",
+				"call_id":   req.CallID,
+				"caller_id": userID,
+				"call_type": "voice",
+				"title":     title,
+				"body":      "Group call on GoChat",
+			}
+			_ = fcm.SendToUser(pushCtx, m, title, "Group call on GoChat", pushData)
+		}
+	}()
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
 func (h *CallHandler) AcceptCall(c *gin.Context) {
 	callID := c.Param("id")
 	userID := getUserID(c)
