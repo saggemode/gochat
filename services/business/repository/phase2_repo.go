@@ -406,6 +406,21 @@ func generateOrderNumber() string {
 	return "ORD-" + string(b)
 }
 
+// execBestEffort runs a non-critical statement inside a savepoint so that, if it
+// fails, only the savepoint is rolled back — the surrounding transaction stays
+// usable. Without this, any ignored error leaves the tx in an aborted state and
+// the next statement fails with a misleading SQLSTATE 25P02.
+func execBestEffort(ctx context.Context, tx pgx.Tx, savepoint, sql string, args ...interface{}) {
+	if _, err := tx.Exec(ctx, "SAVEPOINT "+savepoint); err != nil {
+		return
+	}
+	if _, err := tx.Exec(ctx, sql, args...); err != nil {
+		_, _ = tx.Exec(ctx, "ROLLBACK TO SAVEPOINT "+savepoint)
+		return
+	}
+	_, _ = tx.Exec(ctx, "RELEASE SAVEPOINT "+savepoint)
+}
+
 func (r *BusinessRepository) CreateOrders(ctx context.Context, input *CreateOrdersInput) ([]*Order, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -413,8 +428,11 @@ func (r *BusinessRepository) CreateOrders(ctx context.Context, input *CreateOrde
 	}
 	defer tx.Rollback(ctx)
 
-	// Ensure stub buyer exists in core.users so FK constraints never fail across databases
-	_, _ = tx.Exec(ctx, `
+	// Ensure stub buyer exists in core.users so FK constraints never fail across databases.
+	// Wrapped in a savepoint: if this best-effort insert fails for any reason (e.g. a
+	// NOT NULL column without default), it must NOT poison the outer transaction and
+	// cause a misleading SQLSTATE 25P02 on later statements.
+	execBestEffort(ctx, tx, "sp_user", `
 		INSERT INTO core.users (id, email, password_hash, display_name)
 		VALUES ($1, $2, '', $3)
 		ON CONFLICT (id) DO NOTHING
@@ -457,8 +475,9 @@ func (r *BusinessRepository) CreateOrders(ctx context.Context, input *CreateOrde
 				oInput.BusinessID = actualBizID
 			}
 
-			// Ensure stub business profile exists for business_id so FK constraints pass
-			_, _ = tx.Exec(ctx, `
+			// Ensure stub business profile exists for business_id so the orders FK passes.
+			// Savepoint-wrapped so a failure (e.g. slug UNIQUE clash) can't abort the tx.
+			execBestEffort(ctx, tx, "sp_biz", `
 				INSERT INTO business.business_profiles (user_id, business_name, slug, category, created_at, updated_at)
 				VALUES ($1, 'Official Store', $2, 'Retail', NOW(), NOW())
 				ON CONFLICT (user_id) DO NOTHING
