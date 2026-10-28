@@ -64,7 +64,7 @@ class ReviewImageAdapter : ListAdapter<String, ReviewImageAdapter.ImageViewHolde
     }
 
     override fun onBindViewHolder(holder: ImageViewHolder, position: Int) {
-        MediaImageHelper.loadSafeImage(holder.binding.ivReviewImage, getItem(position), cornerRadiusDp = 8f)
+        MediaImageHelper.loadSafeImage(holder.binding.ivReviewImage, getItem(position), cornerRadiusDp = 8f, thumbnailWidth = 400)
     }
 
     inner class ImageViewHolder(val binding: ItemReviewImageBinding) : RecyclerView.ViewHolder(binding.root)

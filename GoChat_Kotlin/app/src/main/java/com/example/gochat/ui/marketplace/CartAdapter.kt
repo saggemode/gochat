@@ -33,7 +33,7 @@ class CartAdapter(
             binding.tvProductPrice.text = com.example.gochat.core.currency.CurrencyManager.formatPrice(item.productPrice ?: 0.0)
             binding.tvQuantity.text = item.quantity.toString()
             
-            MediaImageHelper.loadSafeImage(binding.ivProductImage, item.productImage)
+            MediaImageHelper.loadSafeImage(binding.ivProductImage, item.productImage, thumbnailWidth = 240)
 
             // Stepper minus: decrement down to a minimum of 1 (use the trash button to remove).
             binding.btnRemove.setOnClickListener {

@@ -251,7 +251,8 @@ class MessageAdapter(
                     url = targetMediaUrl,
                     cornerRadiusDp = 4f,
                     placeholderRes = R.drawable.ic_gallery,
-                    errorRes = R.drawable.ic_gallery
+                    errorRes = R.drawable.ic_gallery,
+                    thumbnailWidth = 160
                 )
             }
         } else if (parentType == MessageType.VOICE || parentType == MessageType.AUDIO ||
@@ -1628,6 +1629,7 @@ class MessageAdapter(
                             cornerRadiusDp = 12f,
                             placeholderRes = R.drawable.ic_gallery,
                             errorRes = R.drawable.ic_gallery,
+                            thumbnailWidth = 720, // bubble preview; full-screen viewer loads full res
                             blurHash = message.blurHash
                         )
                     }
@@ -2151,6 +2153,7 @@ class MessageAdapter(
                             cornerRadiusDp = 12f,
                             placeholderRes = R.drawable.ic_gallery,
                             errorRes = R.drawable.ic_gallery,
+                            thumbnailWidth = 720, // bubble preview; full-screen viewer loads full res
                             blurHash = message.blurHash
                         )
                     }
