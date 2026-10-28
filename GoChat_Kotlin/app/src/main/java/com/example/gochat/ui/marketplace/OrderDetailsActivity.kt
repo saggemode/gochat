@@ -131,6 +131,68 @@ class OrderDetailsActivity : AppCompatActivity() {
         // Setup Live Courier Tracking Card & Stepper
         setupLiveTrackingCard(order)
         setupHorizontalTimeline(order)
+        setupSellerActions(order)
+    }
+
+    /**
+     * Seller-only fulfilment controls: advance the order (ship → out for delivery
+     * → delivered) and cancel it before shipping. Hidden for the buyer.
+     */
+    private fun setupSellerActions(order: Order) {
+        val currentUserId = tokenManager.userId.orEmpty()
+        // storeId is populated from the server's business_id, i.e. the seller's id.
+        val isSeller = currentUserId.isNotBlank() && currentUserId != order.buyerId &&
+                (currentUserId == order.userId || currentUserId == order.storeId)
+
+        if (!isSeller) {
+            binding.btnOrderAction.visibility = View.GONE
+            binding.btnCancelOrder.visibility = View.GONE
+            return
+        }
+
+        // Next fulfilment step for the current status.
+        val next: Pair<OrderStatus, String>? = when (order.status) {
+            OrderStatus.PAID, OrderStatus.PROCESSING -> OrderStatus.SHIPPED to "Mark as Shipped"
+            OrderStatus.SHIPPED -> OrderStatus.OUT_FOR_DELIVERY to "Mark Out for Delivery"
+            OrderStatus.OUT_FOR_DELIVERY -> OrderStatus.DELIVERED to "Mark as Delivered"
+            else -> null
+        }
+
+        if (next != null) {
+            binding.btnOrderAction.visibility = View.VISIBLE
+            binding.btnOrderAction.text = next.second
+            binding.btnOrderAction.setOnClickListener {
+                confirmAndUpdate(order, next.first, next.second + "?")
+            }
+        } else {
+            binding.btnOrderAction.visibility = View.GONE
+        }
+
+        // Cancel is only allowed before shipping.
+        val canCancel = order.status == OrderStatus.PAID || order.status == OrderStatus.PROCESSING
+        binding.btnCancelOrder.visibility = if (canCancel) View.VISIBLE else View.GONE
+        binding.btnCancelOrder.setOnClickListener {
+            confirmAndUpdate(order, OrderStatus.CANCELLED, "Cancel this order?")
+        }
+    }
+
+    private fun confirmAndUpdate(order: Order, newStatus: OrderStatus, message: String) {
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Update order")
+            .setMessage(message)
+            .setNegativeButton("No", null)
+            .setPositiveButton("Yes") { _, _ ->
+                lifecycleScope.launch {
+                    val res = marketplaceRepository.updateOrderStatus(order.id, newStatus)
+                    if (res.isSuccess) {
+                        Toast.makeText(this@OrderDetailsActivity, "Order updated", Toast.LENGTH_SHORT).show()
+                        renderOrder(order.copy(status = newStatus))
+                    } else {
+                        Toast.makeText(this@OrderDetailsActivity, "Could not update order", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+            .show()
     }
 
     private fun setupLiveTrackingCard(order: Order) {

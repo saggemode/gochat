@@ -1707,22 +1707,19 @@ class MarketplaceRepository @Inject constructor(
     suspend fun updateOrderStatus(orderId: String, status: OrderStatus): Result<Boolean> {
         return try {
             val body = buildJsonObject {
-                put("status", status.name)
+                // Backend expects the lowercase status (e.g. "out_for_delivery").
+                put("status", status.name.lowercase())
             }
             val response = api.updateOrderStatus(orderId, body)
-            val orders = marketplaceDao.getAllOrders()
-            val order = orders.find { it.id == orderId }
-            if (order != null) {
-                marketplaceDao.insertOrder(order.copy(status = status))
+            if (response.isSuccessful) {
+                val order = marketplaceDao.getAllOrders().find { it.id == orderId }
+                if (order != null) marketplaceDao.insertOrder(order.copy(status = status))
+                Result.success(true)
+            } else {
+                Result.failure(Exception("Could not update order status"))
             }
-            Result.success(response.isSuccessful || true)
         } catch (e: Exception) {
-            val orders = marketplaceDao.getAllOrders()
-            val order = orders.find { it.id == orderId }
-            if (order != null) {
-                marketplaceDao.insertOrder(order.copy(status = status))
-            }
-            Result.success(true)
+            Result.failure(e)
         }
     }
 

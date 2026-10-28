@@ -128,6 +128,35 @@
                         android:textSize="13sp"
                         android:textStyle="bold"
                         app:cornerRadius="10dp" />
+
+                    <!-- Seller-only: advance the order through fulfilment -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnOrderAction"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:layout_marginTop="10dp"
+                        android:backgroundTint="@color/gochat_accent"
+                        android:text="Mark as Shipped"
+                        android:textAllCaps="false"
+                        android:textColor="@color/black"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:visibility="gone"
+                        app:cornerRadius="10dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnCancelOrder"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="42dp"
+                        android:layout_marginTop="8dp"
+                        android:text="Cancel order"
+                        android:textAllCaps="false"
+                        android:textColor="#EF4444"
+                        android:textSize="13sp"
+                        android:visibility="gone"
+                        app:cornerRadius="10dp"
+                        app:strokeColor="#EF4444" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
