@@ -37,6 +37,7 @@ class GroupInfoActivity : AppCompatActivity() {
 
     companion object {
         private const val MENU_GROUP_CALL = 2001
+        private const val MENU_GROUP_VIDEO_CALL = 2002
         const val EXTRA_CONVERSATION_ID = "extra_conversation_id"
         const val EXTRA_GROUP_NAME = "extra_group_name"
         const val EXTRA_GROUP_AVATAR = "extra_group_avatar"
@@ -90,18 +91,21 @@ class GroupInfoActivity : AppCompatActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
-        menu.add(0, MENU_GROUP_CALL, 0, "Group call")
+        menu.add(0, MENU_GROUP_CALL, 0, "Group voice call")
+            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_NEVER)
+        menu.add(0, MENU_GROUP_VIDEO_CALL, 1, "Group video call")
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_NEVER)
         return true
     }
 
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
-        if (item.itemId == MENU_GROUP_CALL) {
+        if (item.itemId == MENU_GROUP_CALL || item.itemId == MENU_GROUP_VIDEO_CALL) {
             if (convId.isNotBlank()) {
                 startActivity(
                     android.content.Intent(this, com.example.gochat.ui.calls.GroupCallActivity::class.java)
                         .putExtra(com.example.gochat.ui.calls.GroupCallActivity.EXTRA_CALL_ID, convId)
                         .putExtra(com.example.gochat.ui.calls.GroupCallActivity.EXTRA_TITLE, currentName)
+                        .putExtra(com.example.gochat.ui.calls.GroupCallActivity.EXTRA_VIDEO, item.itemId == MENU_GROUP_VIDEO_CALL)
                         .putStringArrayListExtra(
                             com.example.gochat.ui.calls.GroupCallActivity.EXTRA_MEMBER_IDS,
                             ArrayList(intent.getStringArrayListExtra(EXTRA_MEMBER_IDS) ?: arrayListOf())

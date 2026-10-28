@@ -37,6 +37,17 @@ class GroupCallClient(
     private var audioSource: AudioSource? = null
     private var localAudioTrack: AudioTrack? = null
 
+    private var videoCapturer: VideoCapturer? = null
+    private var videoSource: VideoSource? = null
+    private var localVideoTrack: VideoTrack? = null
+    private var surfaceHelper: SurfaceTextureHelper? = null
+
+    /** Called on the signaling thread when a remote participant's video arrives. */
+    var onRemoteVideoTrack: ((VideoTrack) -> Unit)? = null
+
+    /** Shared EGL context so the UI's SurfaceViewRenderers can render our tracks. */
+    fun eglContext(): EglBase.Context = eglBase.eglBaseContext
+
     init {
         PeerConnectionFactory.initialize(
             PeerConnectionFactory.InitializationOptions.builder(context).createInitializationOptions()
@@ -69,8 +80,17 @@ class GroupCallClient(
         override fun onAddTrack(p0: RtpReceiver?, p1: Array<out MediaStream>?) {}
     }
 
-    /** Starts publishing local microphone audio and returns the publisher SDP offer. */
-    fun createPublisherOffer(onOffer: (String) -> Unit) {
+    /**
+     * Starts publishing local mic (and camera, when [video]) and returns the
+     * publisher SDP offer. [onLocalVideo] provides the local camera track for a
+     * self-preview tile.
+     */
+    fun createPublisherOffer(
+        context: Context,
+        video: Boolean,
+        onLocalVideo: (VideoTrack) -> Unit,
+        onOffer: (String) -> Unit
+    ) {
         val pc = factory.createPeerConnection(rtcConfig, emptyObserver()) ?: return
         publisherPc = pc
 
@@ -87,6 +107,13 @@ class GroupCallClient(
             pc.addTrack(it, listOf("group_stream"))
         }
 
+        if (video) {
+            startCamera(context)?.let { track ->
+                pc.addTrack(track, listOf("group_stream"))
+                onLocalVideo(track)
+            }
+        }
+
         pc.createOffer(object : SimpleSdpObserver() {
             override fun onCreateSuccess(sdp: SessionDescription?) {
                 sdp ?: return
@@ -94,6 +121,24 @@ class GroupCallClient(
                 onOffer(sdp.description)
             }
         }, MediaConstraints())
+    }
+
+    private fun startCamera(context: Context): VideoTrack? {
+        return try {
+            val enumerator = if (Camera2Enumerator.isSupported(context)) Camera2Enumerator(context) else Camera1Enumerator(true)
+            val device = enumerator.deviceNames.firstOrNull { enumerator.isFrontFacing(it) }
+                ?: enumerator.deviceNames.firstOrNull() ?: return null
+            val capturer = enumerator.createCapturer(device, null) ?: return null
+            videoCapturer = capturer
+            surfaceHelper = SurfaceTextureHelper.create("GroupCaptureThread", eglBase.eglBaseContext)
+            val source = factory.createVideoSource(capturer.isScreencast)
+            videoSource = source
+            capturer.initialize(surfaceHelper, context, source.capturerObserver)
+            capturer.startCapture(1280, 720, 30)
+            factory.createVideoTrack("group_video", source).also { localVideoTrack = it }
+        } catch (e: Exception) {
+            null
+        }
     }
 
     fun setPublisherAnswer(sdp: String) {
@@ -104,16 +149,29 @@ class GroupCallClient(
      * (Re)builds the subscriber connection with [remoteAudioCount] receive-only
      * audio transceivers — one per other participant — and returns its offer.
      */
-    fun createSubscriberOffer(remoteAudioCount: Int, onOffer: (String) -> Unit) {
+    fun createSubscriberOffer(remoteCount: Int, video: Boolean, onOffer: (String) -> Unit) {
         subscriberPc?.close()
-        val pc = factory.createPeerConnection(rtcConfig, emptyObserver()) ?: return
+        // Observer forwards each remote video track to the UI for a tile.
+        val observer = object : PeerConnection.Observer by emptyObserver() {
+            override fun onAddTrack(receiver: RtpReceiver?, streams: Array<out MediaStream>?) {
+                (receiver?.track() as? VideoTrack)?.let { onRemoteVideoTrack?.invoke(it) }
+            }
+        }
+        val pc = factory.createPeerConnection(rtcConfig, observer) ?: return
         subscriberPc = pc
 
-        repeat(remoteAudioCount.coerceAtLeast(1)) {
+        val n = remoteCount.coerceAtLeast(1)
+        repeat(n) {
             pc.addTransceiver(
                 MediaStreamTrack.MediaType.MEDIA_TYPE_AUDIO,
                 RtpTransceiver.RtpTransceiverInit(RtpTransceiver.RtpTransceiverDirection.RECV_ONLY)
             )
+            if (video) {
+                pc.addTransceiver(
+                    MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO,
+                    RtpTransceiver.RtpTransceiverInit(RtpTransceiver.RtpTransceiverDirection.RECV_ONLY)
+                )
+            }
         }
 
         pc.createOffer(object : SimpleSdpObserver() {
@@ -133,11 +191,20 @@ class GroupCallClient(
         localAudioTrack?.setEnabled(enabled)
     }
 
+    fun setVideoEnabled(enabled: Boolean) {
+        localVideoTrack?.setEnabled(enabled)
+    }
+
     fun close() {
         try { publisherPc?.close() } catch (_: Exception) {}
         try { subscriberPc?.close() } catch (_: Exception) {}
         try { localAudioTrack?.dispose() } catch (_: Exception) {}
         try { audioSource?.dispose() } catch (_: Exception) {}
+        try { videoCapturer?.stopCapture() } catch (_: Exception) {}
+        try { videoCapturer?.dispose() } catch (_: Exception) {}
+        try { localVideoTrack?.dispose() } catch (_: Exception) {}
+        try { videoSource?.dispose() } catch (_: Exception) {}
+        try { surfaceHelper?.dispose() } catch (_: Exception) {}
         publisherPc = null
         subscriberPc = null
         try { factory.dispose() } catch (_: Exception) {}
