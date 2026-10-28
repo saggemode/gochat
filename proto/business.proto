@@ -146,6 +146,7 @@ message BusinessProfile {
   string country_code  = 14;
   string slug          = 15;
   int64  followers_count = 16;
+  double delivery_fee  = 17;
 }
 
 message MarketplaceProduct {
@@ -293,6 +294,7 @@ message CreateBusinessProfileRequest {
   string banner_url    = 11;
   string state         = 12;
   string country_code  = 13;
+  double delivery_fee  = 14;
 }
 message CreateBusinessProfileResponse { BusinessProfile profile = 1; }
 
@@ -310,6 +312,7 @@ message UpdateBusinessProfileRequest {
   string banner_url    = 11;
   string state         = 12;
   string country_code  = 13;
+  double delivery_fee  = 14;
 }
 message UpdateBusinessProfileResponse { BusinessProfile profile = 1; }
 

@@ -50,8 +50,9 @@ func (h *BusinessHandler) CreateBusinessProfile(c *gin.Context) {
 		HoursJSON    string `json:"hours_json"`
 		LogoURL      string `json:"logo_url"`
 		BannerURL    string `json:"banner_url"`
-		State        string `json:"state"`
-		CountryCode  string `json:"country_code"`
+		State        string  `json:"state"`
+		CountryCode  string  `json:"country_code"`
+		DeliveryFee  float64 `json:"delivery_fee"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -62,6 +63,7 @@ func (h *BusinessHandler) CreateBusinessProfile(c *gin.Context) {
 		Description: req.Description, Address: req.Address, Website: req.Website,
 		Email: req.Email, Phone: req.Phone, HoursJson: req.HoursJSON,
 		LogoUrl: req.LogoURL, BannerUrl: req.BannerURL, State: req.State, CountryCode: req.CountryCode,
+		DeliveryFee: req.DeliveryFee,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -86,8 +88,9 @@ func (h *BusinessHandler) UpdateBusinessProfile(c *gin.Context) {
 		HoursJSON    string `json:"hours_json"`
 		LogoURL      string `json:"logo_url"`
 		BannerURL    string `json:"banner_url"`
-		State        string `json:"state"`
-		CountryCode  string `json:"country_code"`
+		State        string  `json:"state"`
+		CountryCode  string  `json:"country_code"`
+		DeliveryFee  float64 `json:"delivery_fee"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -98,6 +101,7 @@ func (h *BusinessHandler) UpdateBusinessProfile(c *gin.Context) {
 		Description: req.Description, Address: req.Address, Website: req.Website,
 		Email: req.Email, Phone: req.Phone, HoursJson: req.HoursJSON,
 		LogoUrl: req.LogoURL, BannerUrl: req.BannerURL, State: req.State, CountryCode: req.CountryCode,
+		DeliveryFee: req.DeliveryFee,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

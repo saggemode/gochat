@@ -39,8 +39,11 @@ import com.example.gochat.data.model.*
         BlockedUser::class,
         com.example.gochat.data.model.SavedAddress::class
     ],
-    version = 20,
-    autoMigrations = [androidx.room.AutoMigration(from = 19, to = 20)],
+    version = 21,
+    autoMigrations = [
+        androidx.room.AutoMigration(from = 19, to = 20),
+        androidx.room.AutoMigration(from = 20, to = 21)
+    ],
     exportSchema = true
 )
 @TypeConverters(Converters::class)

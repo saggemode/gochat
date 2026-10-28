@@ -33,6 +33,7 @@ func (s *BusinessServer) CreateBusinessProfile(ctx context.Context, req *pb.Crea
 		Description: req.Description, Address: req.Address, Website: req.Website,
 		Email: req.Email, Phone: req.Phone, HoursJSON: req.HoursJson,
 		LogoURL: req.LogoUrl, BannerURL: req.BannerUrl, State: req.State, CountryCode: req.CountryCode,
+		DeliveryFee: req.DeliveryFee,
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "create profile: %v", err)
@@ -46,6 +47,7 @@ func (s *BusinessServer) UpdateBusinessProfile(ctx context.Context, req *pb.Upda
 		Description: req.Description, Address: req.Address, Website: req.Website,
 		Email: req.Email, Phone: req.Phone, HoursJSON: req.HoursJson,
 		LogoURL: req.LogoUrl, BannerURL: req.BannerUrl, State: req.State, CountryCode: req.CountryCode,
+		DeliveryFee: req.DeliveryFee,
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "update profile: %v", err)
@@ -189,7 +191,7 @@ func profileToPB(p *repository.BusinessProfile) *pb.BusinessProfile {
 		Description: p.Description, Address: p.Address, Website: p.Website,
 		Email: p.Email, Phone: p.Phone, HoursJson: p.HoursJSON, IsVerified: p.IsVerified,
 		LogoUrl: p.LogoURL, BannerUrl: p.BannerURL, State: p.State, CountryCode: p.CountryCode, Slug: p.Slug,
-		FollowersCount: p.FollowersCount,
+		FollowersCount: p.FollowersCount, DeliveryFee: p.DeliveryFee,
 	}
 }
 

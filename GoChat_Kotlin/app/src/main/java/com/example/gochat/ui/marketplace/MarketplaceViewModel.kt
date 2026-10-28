@@ -538,6 +538,7 @@ class MarketplaceViewModel @Inject constructor(
         phone: String,
         description: String,
         logoUrl: String?,
+        deliveryFee: Double? = null,
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
@@ -555,6 +556,7 @@ class MarketplaceViewModel @Inject constructor(
                 phone = phone,
                 description = description,
                 logoUrl = logoUrl?.ifBlank { existing?.logoUrl },
+                deliveryFee = deliveryFee ?: existing?.deliveryFee ?: 0.0,
                 isVerified = true
             )
             val result = repository.updateBusinessProfile(updatedStore)

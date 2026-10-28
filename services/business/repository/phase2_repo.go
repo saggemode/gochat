@@ -603,7 +603,12 @@ func (r *BusinessRepository) CreateOrders(ctx context.Context, input *CreateOrde
 			}
 		}
 
-		grandTotal := totalAmount + oInput.ShippingFee - discountAmount
+		// Server-trusted delivery fee: use the seller's configured flat fee.
+		deliveryFee := oInput.ShippingFee
+		_ = tx.QueryRow(ctx, `SELECT COALESCE(delivery_fee, 0) FROM business.business_profiles WHERE user_id = $1`, oInput.BusinessID).Scan(&deliveryFee)
+		oInput.ShippingFee = deliveryFee
+
+		grandTotal := totalAmount + deliveryFee - discountAmount
 		if grandTotal < 0 {
 			grandTotal = 0
 		}

@@ -688,6 +688,9 @@ class MarketplaceFragment : Fragment() {
         dialogBinding.etEditStorePhone.setText(store.phone)
         dialogBinding.etEditStoreLocation.setText(store.address)
         dialogBinding.etEditStoreDescription.setText(store.description)
+        if (store.deliveryFee > 0) {
+            dialogBinding.etEditStoreDeliveryFee.setText(store.deliveryFee.toString())
+        }
 
         var newLogoUri: Uri? = null
         var currentLogoUrl = store.logoUrl
@@ -750,6 +753,7 @@ class MarketplaceFragment : Fragment() {
                     }
                 }
 
+                val deliveryFee = dialogBinding.etEditStoreDeliveryFee.text.toString().trim().toDoubleOrNull() ?: 0.0
                 viewModel.updateStore(
                     name = name,
                     category = category,
@@ -757,6 +761,7 @@ class MarketplaceFragment : Fragment() {
                     phone = phone,
                     description = desc,
                     logoUrl = finalLogoUrl,
+                    deliveryFee = deliveryFee,
                     onSuccess = {
                         dialog.dismiss()
                         Toast.makeText(requireContext(), "Store profile updated!", Toast.LENGTH_SHORT).show()

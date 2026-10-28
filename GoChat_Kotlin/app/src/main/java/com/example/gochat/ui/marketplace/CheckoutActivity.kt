@@ -48,6 +48,7 @@ class CheckoutActivity : AppCompatActivity() {
     lateinit var tokenManager: com.example.gochat.data.api.TokenManager
     
     private var cartItems: List<CartItem> = emptyList()
+    private var deliveryFee: Double = 0.0
     private lateinit var itemsAdapter: CartAdapter
 
     // Bridges the Paystack checkout Activity result back to the awaiting coroutine.
@@ -172,9 +173,25 @@ class CheckoutActivity : AppCompatActivity() {
             if (result.isSuccess) {
                 cartItems = result.getOrDefault(emptyList())
                 displaySummary(cartItems)
+                resolveDeliveryFee(cartItems)
             } else {
                 Toast.makeText(this@CheckoutActivity, getString(R.string.error_load_cart_summary), Toast.LENGTH_SHORT).show()
                 finish()
+            }
+        }
+    }
+
+    /** Looks up the seller's flat delivery fee (via the first product's store). */
+    private fun resolveDeliveryFee(items: List<CartItem>) {
+        val productId = items.firstOrNull()?.productId ?: return
+        lifecycleScope.launch {
+            var sellerId = items.firstOrNull()?.storeId.orEmpty()
+            if (sellerId.isBlank()) {
+                sellerId = repository.getProductById(productId).getOrNull()?.sellerId.orEmpty()
+            }
+            if (sellerId.isNotBlank()) {
+                deliveryFee = repository.getStore(sellerId).getOrNull()?.deliveryFee ?: 0.0
+                displaySummary(cartItems)
             }
         }
     }
@@ -185,7 +202,8 @@ class CheckoutActivity : AppCompatActivity() {
 
         val subtotal = items.sumOf { (it.productPrice ?: 0.0) * it.quantity }
         binding.tvSubtotalAmount.text = CurrencyManager.formatPrice(subtotal)
-        binding.tvTotalAmount.text = CurrencyManager.formatPrice(subtotal)
+        binding.tvDeliveryAmount.text = if (deliveryFee > 0) CurrencyManager.formatPrice(deliveryFee) else "Free"
+        binding.tvTotalAmount.text = CurrencyManager.formatPrice(subtotal + deliveryFee)
 
         val empty = items.isEmpty()
         binding.tvEmptyCheckout.visibility = if (empty) View.VISIBLE else View.GONE

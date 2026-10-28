@@ -160,6 +160,7 @@ data class Store(
     @SerialName("total_sales") val totalSales: Int = 0,
     @SerialName("total_revenue") val totalRevenue: Double = 0.0,
     @SerialName("followers_count") val followersCount: Int = 0,
+    @SerialName("delivery_fee") @androidx.room.ColumnInfo(defaultValue = "0") val deliveryFee: Double = 0.0,
     @SerialName("created_at") val createdAt: Long = System.currentTimeMillis()
 )
 

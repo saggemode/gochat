@@ -39,6 +39,7 @@ type BusinessProfile struct {
 	CountryCode    string                 `protobuf:"bytes,14,opt,name=country_code,json=countryCode,proto3" json:"country_code,omitempty"`
 	Slug           string                 `protobuf:"bytes,15,opt,name=slug,proto3" json:"slug,omitempty"`
 	FollowersCount int64                  `protobuf:"varint,16,opt,name=followers_count,json=followersCount,proto3" json:"followers_count,omitempty"`
+	DeliveryFee    float64                `protobuf:"fixed64,17,opt,name=delivery_fee,json=deliveryFee,proto3" json:"delivery_fee,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -181,6 +182,13 @@ func (x *BusinessProfile) GetSlug() string {
 func (x *BusinessProfile) GetFollowersCount() int64 {
 	if x != nil {
 		return x.FollowersCount
+	}
+	return 0
+}
+
+func (x *BusinessProfile) GetDeliveryFee() float64 {
+	if x != nil {
+		return x.DeliveryFee
 	}
 	return 0
 }
@@ -1340,6 +1348,7 @@ type CreateBusinessProfileRequest struct {
 	BannerUrl     string                 `protobuf:"bytes,11,opt,name=banner_url,json=bannerUrl,proto3" json:"banner_url,omitempty"`
 	State         string                 `protobuf:"bytes,12,opt,name=state,proto3" json:"state,omitempty"`
 	CountryCode   string                 `protobuf:"bytes,13,opt,name=country_code,json=countryCode,proto3" json:"country_code,omitempty"`
+	DeliveryFee   float64                `protobuf:"fixed64,14,opt,name=delivery_fee,json=deliveryFee,proto3" json:"delivery_fee,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1465,6 +1474,13 @@ func (x *CreateBusinessProfileRequest) GetCountryCode() string {
 	return ""
 }
 
+func (x *CreateBusinessProfileRequest) GetDeliveryFee() float64 {
+	if x != nil {
+		return x.DeliveryFee
+	}
+	return 0
+}
+
 type CreateBusinessProfileResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Profile       *BusinessProfile       `protobuf:"bytes,1,opt,name=profile,proto3" json:"profile,omitempty"`
@@ -1524,6 +1540,7 @@ type UpdateBusinessProfileRequest struct {
 	BannerUrl     string                 `protobuf:"bytes,11,opt,name=banner_url,json=bannerUrl,proto3" json:"banner_url,omitempty"`
 	State         string                 `protobuf:"bytes,12,opt,name=state,proto3" json:"state,omitempty"`
 	CountryCode   string                 `protobuf:"bytes,13,opt,name=country_code,json=countryCode,proto3" json:"country_code,omitempty"`
+	DeliveryFee   float64                `protobuf:"fixed64,14,opt,name=delivery_fee,json=deliveryFee,proto3" json:"delivery_fee,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1647,6 +1664,13 @@ func (x *UpdateBusinessProfileRequest) GetCountryCode() string {
 		return x.CountryCode
 	}
 	return ""
+}
+
+func (x *UpdateBusinessProfileRequest) GetDeliveryFee() float64 {
+	if x != nil {
+		return x.DeliveryFee
+	}
+	return 0
 }
 
 type UpdateBusinessProfileResponse struct {
@@ -10994,7 +11018,7 @@ var File_proto_business_proto protoreflect.FileDescriptor
 
 const file_proto_business_proto_rawDesc = "" +
 	"\n" +
-	"\x14proto/business.proto\x12\bbusiness\"\xdd\x03\n" +
+	"\x14proto/business.proto\x12\bbusiness\"\x80\x04\n" +
 	"\x0fBusinessProfile\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12#\n" +
 	"\rbusiness_name\x18\x02 \x01(\tR\fbusinessName\x12\x1a\n" +
@@ -11015,7 +11039,8 @@ const file_proto_business_proto_rawDesc = "" +
 	"\x05state\x18\r \x01(\tR\x05state\x12!\n" +
 	"\fcountry_code\x18\x0e \x01(\tR\vcountryCode\x12\x12\n" +
 	"\x04slug\x18\x0f \x01(\tR\x04slug\x12'\n" +
-	"\x0ffollowers_count\x18\x10 \x01(\x03R\x0efollowersCount\"\xf8\x06\n" +
+	"\x0ffollowers_count\x18\x10 \x01(\x03R\x0efollowersCount\x12!\n" +
+	"\fdelivery_fee\x18\x11 \x01(\x01R\vdeliveryFee\"\xf8\x06\n" +
 	"\x12MarketplaceProduct\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vbusiness_id\x18\x02 \x01(\tR\n" +
@@ -11146,7 +11171,7 @@ const file_proto_business_proto_rawDesc = "" +
 	"customerId\x12\x1a\n" +
 	"\bposition\x18\x02 \x01(\x05R\bposition\x12\x16\n" +
 	"\x06status\x18\x03 \x01(\tR\x06status\x12\x1b\n" +
-	"\tjoined_at\x18\x04 \x01(\x03R\bjoinedAt\"\x8c\x03\n" +
+	"\tjoined_at\x18\x04 \x01(\x03R\bjoinedAt\"\xaf\x03\n" +
 	"\x1cCreateBusinessProfileRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12#\n" +
 	"\rbusiness_name\x18\x02 \x01(\tR\fbusinessName\x12\x1a\n" +
@@ -11163,9 +11188,10 @@ const file_proto_business_proto_rawDesc = "" +
 	"\n" +
 	"banner_url\x18\v \x01(\tR\tbannerUrl\x12\x14\n" +
 	"\x05state\x18\f \x01(\tR\x05state\x12!\n" +
-	"\fcountry_code\x18\r \x01(\tR\vcountryCode\"T\n" +
+	"\fcountry_code\x18\r \x01(\tR\vcountryCode\x12!\n" +
+	"\fdelivery_fee\x18\x0e \x01(\x01R\vdeliveryFee\"T\n" +
 	"\x1dCreateBusinessProfileResponse\x123\n" +
-	"\aprofile\x18\x01 \x01(\v2\x19.business.BusinessProfileR\aprofile\"\x8c\x03\n" +
+	"\aprofile\x18\x01 \x01(\v2\x19.business.BusinessProfileR\aprofile\"\xaf\x03\n" +
 	"\x1cUpdateBusinessProfileRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12#\n" +
 	"\rbusiness_name\x18\x02 \x01(\tR\fbusinessName\x12\x1a\n" +
@@ -11182,7 +11208,8 @@ const file_proto_business_proto_rawDesc = "" +
 	"\n" +
 	"banner_url\x18\v \x01(\tR\tbannerUrl\x12\x14\n" +
 	"\x05state\x18\f \x01(\tR\x05state\x12!\n" +
-	"\fcountry_code\x18\r \x01(\tR\vcountryCode\"T\n" +
+	"\fcountry_code\x18\r \x01(\tR\vcountryCode\x12!\n" +
+	"\fdelivery_fee\x18\x0e \x01(\x01R\vdeliveryFee\"T\n" +
 	"\x1dUpdateBusinessProfileResponse\x123\n" +
 	"\aprofile\x18\x01 \x01(\v2\x19.business.BusinessProfileR\aprofile\"4\n" +
 	"\x19GetBusinessProfileRequest\x12\x17\n" +

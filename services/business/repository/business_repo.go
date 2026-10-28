@@ -67,6 +67,7 @@ type BusinessProfile struct {
 	CountryCode    string
 	Slug           string
 	FollowersCount int64
+	DeliveryFee    float64
 }
 
 func (r *BusinessRepository) CreateBusinessProfile(ctx context.Context, p *BusinessProfile) (*BusinessProfile, error) {
@@ -84,11 +85,11 @@ func (r *BusinessRepository) CreateBusinessProfile(ctx context.Context, p *Busin
 		p.HoursJSON = "{}"
 	}
 	_, err := r.db.Exec(ctx,
-		`INSERT INTO business.business_profiles (user_id, business_name, category, description, address, website, email, phone, hours_json, logo_url, banner_url, state, country_code, slug)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		`INSERT INTO business.business_profiles (user_id, business_name, category, description, address, website, email, phone, hours_json, logo_url, banner_url, state, country_code, slug, delivery_fee)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		 ON CONFLICT (user_id) DO UPDATE SET
-			business_name=$2, category=$3, description=$4, address=$5, website=$6, email=$7, phone=$8, hours_json=$9, logo_url=$10, banner_url=$11, state=$12, country_code=$13, updated_at=NOW()`,
-		p.UserID, p.BusinessName, p.Category, p.Description, p.Address, p.Website, p.Email, p.Phone, p.HoursJSON, p.LogoURL, p.BannerURL, p.State, p.CountryCode, p.Slug)
+			business_name=$2, category=$3, description=$4, address=$5, website=$6, email=$7, phone=$8, hours_json=$9, logo_url=$10, banner_url=$11, state=$12, country_code=$13, delivery_fee=$15, updated_at=NOW()`,
+		p.UserID, p.BusinessName, p.Category, p.Description, p.Address, p.Website, p.Email, p.Phone, p.HoursJSON, p.LogoURL, p.BannerURL, p.State, p.CountryCode, p.Slug, p.DeliveryFee)
 	if err != nil {
 		return nil, fmt.Errorf("create business profile: %w", err)
 	}
@@ -113,9 +114,10 @@ func (r *BusinessRepository) UpdateBusinessProfile(ctx context.Context, p *Busin
 			banner_url   = $11,
 			state        = $12,
 			country_code = $13,
+			delivery_fee = $14,
 			updated_at   = NOW()
 		 WHERE user_id = $1`,
-		p.UserID, p.BusinessName, p.Category, p.Description, p.Address, p.Website, p.Email, p.Phone, p.HoursJSON, p.LogoURL, p.BannerURL, p.State, p.CountryCode)
+		p.UserID, p.BusinessName, p.Category, p.Description, p.Address, p.Website, p.Email, p.Phone, p.HoursJSON, p.LogoURL, p.BannerURL, p.State, p.CountryCode, p.DeliveryFee)
 	if err != nil {
 		return nil, fmt.Errorf("update business profile: %w", err)
 	}
@@ -132,13 +134,14 @@ func (r *BusinessRepository) GetBusinessProfile(ctx context.Context, userID stri
 		 COALESCE(bp.address,''), COALESCE(bp.website,''), COALESCE(bp.email, u.email, ''), COALESCE(bp.phone, u.phone, ''),
 		 COALESCE(bp.hours_json::text,'{}'), bp.is_verified, COALESCE(bp.logo_url,''), COALESCE(bp.banner_url,''),
 		 COALESCE(bp.state,''), COALESCE(NULLIF(bp.country_code,''), u.country_code, ''), COALESCE(bp.slug,''),
-		 COALESCE((SELECT COUNT(*) FROM business.store_followers sf WHERE sf.store_id = bp.user_id), 0)
+		 COALESCE((SELECT COUNT(*) FROM business.store_followers sf WHERE sf.store_id = bp.user_id), 0),
+		 COALESCE(bp.delivery_fee, 0)
 		 FROM business.business_profiles bp
 		 LEFT JOIN core.users u ON u.id = bp.user_id
 		 WHERE bp.user_id = $1`, userID).
 		Scan(&p.UserID, &p.BusinessName, &p.Category, &p.Description,
 			&p.Address, &p.Website, &p.Email, &p.Phone, &p.HoursJSON, &p.IsVerified,
-			&p.LogoURL, &p.BannerURL, &p.State, &p.CountryCode, &p.Slug, &p.FollowersCount)
+			&p.LogoURL, &p.BannerURL, &p.State, &p.CountryCode, &p.Slug, &p.FollowersCount, &p.DeliveryFee)
 	if err != nil {
 		return nil, err
 	}
@@ -152,11 +155,12 @@ func (r *BusinessRepository) GetBusinessProfileBySlug(ctx context.Context, slug 
 		 COALESCE(address,''), COALESCE(website,''), COALESCE(email,''), COALESCE(phone,''),
 		 COALESCE(hours_json::text,'{}'), is_verified, COALESCE(logo_url,''), COALESCE(banner_url,''),
 		 COALESCE(state,''), COALESCE(country_code,''), COALESCE(slug,''),
-		 COALESCE((SELECT COUNT(*) FROM business.store_followers sf WHERE sf.store_id = business.business_profiles.user_id), 0)
+		 COALESCE((SELECT COUNT(*) FROM business.store_followers sf WHERE sf.store_id = business.business_profiles.user_id), 0),
+		 COALESCE(delivery_fee, 0)
 		 FROM business.business_profiles WHERE slug = $1`, slug).
 		Scan(&p.UserID, &p.BusinessName, &p.Category, &p.Description,
 			&p.Address, &p.Website, &p.Email, &p.Phone, &p.HoursJSON, &p.IsVerified,
-			&p.LogoURL, &p.BannerURL, &p.State, &p.CountryCode, &p.Slug, &p.FollowersCount)
+			&p.LogoURL, &p.BannerURL, &p.State, &p.CountryCode, &p.Slug, &p.FollowersCount, &p.DeliveryFee)
 	if err != nil {
 		return nil, err
 	}

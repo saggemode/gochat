@@ -199,6 +199,24 @@
                 android:textColor="@color/gochat_text_primary" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <!-- Delivery fee -->
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="18dp"
+            android:hint="Delivery fee (0 for free)"
+            android:textColorHint="@color/gochat_text_muted"
+            app:boxStrokeColor="@color/whatsapp_teal_light">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etEditStoreDeliveryFee"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="numberDecimal"
+                android:textColor="@color/gochat_text_primary" />
+        </com.google.android.material.textfield.TextInputLayout>
+
         <!-- Save Button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSaveStoreChanges"

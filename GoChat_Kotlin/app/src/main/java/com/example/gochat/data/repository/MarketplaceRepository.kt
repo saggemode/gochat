@@ -571,6 +571,7 @@ class MarketplaceRepository @Inject constructor(
         val verified = (target["is_verified"] ?: target["isVerified"])?.jsonPrimitive?.booleanOrNull ?: existing?.isVerified ?: true
         val rating = (target["avg_rating"] ?: target["rating"])?.jsonPrimitive?.doubleOrNull ?: existing?.rating ?: 4.9
         val followers = (target["followers_count"] ?: data["followers_count"] ?: target["followersCount"])?.jsonPrimitive?.intOrNull ?: existing?.followersCount ?: 0
+        val deliveryFee = (target["delivery_fee"] ?: target["deliveryFee"])?.jsonPrimitive?.doubleOrNull ?: existing?.deliveryFee ?: 0.0
 
         return Store(
             id = id,
@@ -586,7 +587,8 @@ class MarketplaceRepository @Inject constructor(
             bannerUrl = bannerUrl,
             rating = rating,
             isVerified = verified,
-            followersCount = followers
+            followersCount = followers,
+            deliveryFee = deliveryFee
         )
     }
 
@@ -710,6 +712,7 @@ class MarketplaceRepository @Inject constructor(
                 put("email", store.email)
                 put("logo_url", store.logoUrl ?: "")
                 put("banner_url", store.bannerUrl ?: "")
+                put("delivery_fee", store.deliveryFee)
             }
             val response = api.createBusinessProfile(body)
             val toSave = if (response.isSuccessful) {
@@ -738,6 +741,7 @@ class MarketplaceRepository @Inject constructor(
                 put("email", store.email)
                 put("logo_url", store.logoUrl ?: "")
                 put("banner_url", store.bannerUrl ?: "")
+                put("delivery_fee", store.deliveryFee)
             }
             val response = api.updateBusinessProfile(body)
             val updated = if (response.isSuccessful) {
