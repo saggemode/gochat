@@ -41,9 +41,12 @@ class GroupCallClient(
         PeerConnectionFactory.initialize(
             PeerConnectionFactory.InitializationOptions.builder(context).createInitializationOptions()
         )
+        // Mirror the proven 1:1 config: use the device's hardware AEC when it has
+        // one, and leave hardware NS off so WebRTC's software suppression applies.
+        // Forcing hardware AEC on unsupported devices disables it entirely → echo.
         val adm = JavaAudioDeviceModule.builder(context)
-            .setUseHardwareAcousticEchoCanceler(true)
-            .setUseHardwareNoiseSuppressor(true)
+            .setUseHardwareAcousticEchoCanceler(JavaAudioDeviceModule.isBuiltInAcousticEchoCancelerSupported())
+            .setUseHardwareNoiseSuppressor(false)
             .createAudioDeviceModule()
         factory = PeerConnectionFactory.builder()
             .setAudioDeviceModule(adm)
@@ -71,8 +74,13 @@ class GroupCallClient(
         val pc = factory.createPeerConnection(rtcConfig, emptyObserver()) ?: return
         publisherPc = pc
 
+        // Echo cancellation / AGC / noise suppression — without these the caller
+        // hears their own voice looped back from the other side.
         val constraints = MediaConstraints().apply {
-            optional.add(MediaConstraints.KeyValuePair("DtlsSrtpKeyAgreement", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("googEchoCancellation", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("googAutoGainControl", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("googHighpassFilter", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("googNoiseSuppression", "true"))
         }
         audioSource = factory.createAudioSource(constraints)
         localAudioTrack = factory.createAudioTrack("group_audio", audioSource).also {
