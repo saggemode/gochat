@@ -61,6 +61,8 @@ class CheckoutActivity : AppCompatActivity() {
 
         binding.toolbar.applyStatusBarInset()
         binding.btnPlaceOrder.applySystemBarMargins(bottom = true)
+        // Step 5/6: the action confirms the order and starts payment.
+        binding.btnPlaceOrder.text = "Confirm & Pay"
 
         // Live cart badge — shared source of truth with every other cart icon.
         lifecycleScope.launch {
@@ -102,7 +104,7 @@ class CheckoutActivity : AppCompatActivity() {
 
     private fun displaySummary(items: List<CartItem>) {
         binding.layoutSummary.removeAllViews()
-        var total = 0.0
+        var subtotal = 0.0
         for (item in items) {
             val itemTotal = (item.productPrice ?: 0.0) * item.quantity
             val formattedItemTotal = CurrencyManager.formatPrice(itemTotal)
@@ -112,9 +114,32 @@ class CheckoutActivity : AppCompatActivity() {
                 setTextColor(Color.BLACK)
             }
             binding.layoutSummary.addView(tv)
-            total += itemTotal
+            subtotal += itemTotal
         }
-        binding.tvTotalAmount.text = CurrencyManager.formatPrice(total)
+
+        // Breakdown (step 3): subtotal + delivery. No separate delivery fee/tax is
+        // charged in the current flow, so delivery shows as Free and total = subtotal.
+        addSummaryRow("Subtotal", CurrencyManager.formatPrice(subtotal))
+        addSummaryRow("Delivery", "Free")
+
+        binding.tvTotalAmount.text = CurrencyManager.formatPrice(subtotal)
+    }
+
+    private fun addSummaryRow(label: String, value: String) {
+        val row = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            setPadding(0, 8, 0, 0)
+        }
+        row.addView(TextView(this).apply {
+            text = label
+            setTextColor(Color.parseColor("#6B7280"))
+            layoutParams = android.widget.LinearLayout.LayoutParams(0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        row.addView(TextView(this).apply {
+            text = value
+            setTextColor(Color.BLACK)
+        })
+        binding.layoutSummary.addView(row)
     }
 
     private fun placeOrder() {
