@@ -457,6 +457,11 @@ interface GoChatApiService {
     @GET("api/v1/payments/paystack/payout-account")
     suspend fun getPayoutAccount(): Response<JsonObject>
 
+    @POST("api/v1/payments/paystack/refund/{id}")
+    suspend fun refundOrder(
+        @Path("id") orderId: String
+    ): Response<JsonObject>
+
     @GET(ApiConstants.BUSINESS_PROFILE)
     suspend fun getBusinessProfile(): Response<JsonObject>
 

@@ -950,6 +950,34 @@ func (r *BusinessRepository) AttachPaymentReference(ctx context.Context, referen
 	return total, "NGN", subaccount, nil
 }
 
+// OrderPaymentRef returns an order's Paystack reference and whether the requester
+// is its seller, for authorising and performing a refund.
+type OrderPaymentRef struct {
+	Reference string
+	IsSeller  bool
+	Status    string
+	Amount    float64
+	BuyerID   string
+}
+
+func (r *BusinessRepository) GetOrderPaymentRef(ctx context.Context, orderID, requesterID string) (*OrderPaymentRef, error) {
+	o := &OrderPaymentRef{}
+	var ref *string
+	var businessID string
+	err := r.db.QueryRow(ctx,
+		`SELECT COALESCE(payment_reference, ''), business_id, status, grand_total, buyer_id
+		 FROM business.orders WHERE id = $1`, orderID).
+		Scan(&ref, &businessID, &o.Status, &o.Amount, &o.BuyerID)
+	if err != nil {
+		return nil, fmt.Errorf("get order payment ref: %w", err)
+	}
+	if ref != nil {
+		o.Reference = *ref
+	}
+	o.IsSeller = businessID == requesterID
+	return o, nil
+}
+
 func (r *BusinessRepository) SaveSellerSubaccount(ctx context.Context, userID, subaccountCode, bankCode, accountNumber, accountName, bankName string) error {
 	_, err := r.db.Exec(ctx,
 		`INSERT INTO business.seller_subaccounts (user_id, subaccount_code, bank_code, account_number, account_name, bank_name, created_at, updated_at)

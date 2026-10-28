@@ -168,12 +168,42 @@ class OrderDetailsActivity : AppCompatActivity() {
             binding.btnOrderAction.visibility = View.GONE
         }
 
-        // Cancel is only allowed before shipping.
-        val canCancel = order.status == OrderStatus.PAID || order.status == OrderStatus.PROCESSING
-        binding.btnCancelOrder.visibility = if (canCancel) View.VISIBLE else View.GONE
-        binding.btnCancelOrder.setOnClickListener {
-            confirmAndUpdate(order, OrderStatus.CANCELLED, "Cancel this order?")
+        // Refund/cancel: available for any paid, not-yet-settled order. Pre-ship it
+        // reads as "Cancel & refund"; after shipping, "Refund buyer".
+        val refundable = order.status in setOf(
+            OrderStatus.PAID, OrderStatus.PROCESSING, OrderStatus.SHIPPED,
+            OrderStatus.OUT_FOR_DELIVERY, OrderStatus.DELIVERED
+        )
+        binding.btnCancelOrder.visibility = if (refundable) View.VISIBLE else View.GONE
+        binding.btnCancelOrder.text = if (order.status == OrderStatus.PAID || order.status == OrderStatus.PROCESSING) {
+            "Cancel & refund"
+        } else {
+            "Refund buyer"
         }
+        binding.btnCancelOrder.setOnClickListener { confirmAndRefund(order) }
+    }
+
+    private fun confirmAndRefund(order: Order) {
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Refund order")
+            .setMessage("Refund the buyer for this order? This returns their payment and cannot be undone.")
+            .setNegativeButton("No", null)
+            .setPositiveButton("Refund") { _, _ ->
+                lifecycleScope.launch {
+                    val res = marketplaceRepository.refundOrder(order.id)
+                    if (res.isSuccess) {
+                        Toast.makeText(this@OrderDetailsActivity, "Refund processed", Toast.LENGTH_LONG).show()
+                        renderOrder(order.copy(status = OrderStatus.REFUNDED))
+                    } else {
+                        Toast.makeText(
+                            this@OrderDetailsActivity,
+                            res.exceptionOrNull()?.message ?: "Could not process refund",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+            .show()
     }
 
     private fun confirmAndUpdate(order: Order, newStatus: OrderStatus, message: String) {

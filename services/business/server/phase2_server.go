@@ -386,6 +386,23 @@ func (s *BusinessServer) ConfirmPaymentByReference(ctx context.Context, req *pb.
 	return &pb.ConfirmPaymentByReferenceResponse{Success: true, OrderCount: int32(count), BuyerId: buyerID}, nil
 }
 
+func (s *BusinessServer) GetOrderPaymentRef(ctx context.Context, req *pb.GetOrderPaymentRefRequest) (*pb.GetOrderPaymentRefResponse, error) {
+	if req.OrderId == "" {
+		return nil, status.Error(codes.InvalidArgument, "order_id is required")
+	}
+	info, err := s.repo.GetOrderPaymentRef(ctx, req.OrderId, req.RequesterId)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "order not found: %v", err)
+	}
+	return &pb.GetOrderPaymentRefResponse{
+		Reference: info.Reference,
+		IsSeller:  info.IsSeller,
+		Status:    info.Status,
+		Amount:    info.Amount,
+		BuyerId:   info.BuyerID,
+	}, nil
+}
+
 func (s *BusinessServer) UpdateOrderTracking(ctx context.Context, req *pb.UpdateOrderTrackingRequest) (*pb.UpdateOrderTrackingResponse, error) {
 	if req.Id == "" || req.BusinessId == "" {
 		return nil, status.Error(codes.InvalidArgument, "id and business_id are required")

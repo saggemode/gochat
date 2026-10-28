@@ -1329,6 +1329,19 @@ class MarketplaceRepository @Inject constructor(
         }
     }
 
+    /** Refunds a paid order via Paystack (or cancels it if not paid). Seller-only. */
+    suspend fun refundOrder(orderId: String): Result<Unit> {
+        return try {
+            val response = api.refundOrder(orderId)
+            if (response.isSuccessful) Result.success(Unit)
+            else Result.failure(Exception(
+                response.errorBody()?.string()?.takeIf { it.isNotBlank() } ?: "Could not process refund"
+            ))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     /** The seller's saved payout account, if any. */
     suspend fun getPayoutAccount(): Result<PayoutAccount> {
         return try {

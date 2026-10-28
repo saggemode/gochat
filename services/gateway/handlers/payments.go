@@ -274,6 +274,83 @@ func (h *BusinessHandler) VerifyPaystackPayment(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"paid": paid, "status": ps.Data.Status})
 }
 
+// RefundOrder refunds a paid order via Paystack and marks it refunded. Seller-only.
+// For an order not paid through Paystack it just cancels (no money to return).
+func (h *BusinessHandler) RefundOrder(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	orderID := c.Param("id")
+	if orderID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "order id is required"})
+		return
+	}
+
+	info, err := h.client.GetOrderPaymentRef(c.Request.Context(), &pb.GetOrderPaymentRefRequest{
+		OrderId:     orderID,
+		RequesterId: userID,
+	}, jsonOpt)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "order not found"})
+		return
+	}
+	if !info.IsSeller {
+		c.JSON(http.StatusForbidden, gin.H{"error": "only the seller can refund this order"})
+		return
+	}
+
+	// No Paystack payment on record → just cancel the order.
+	if info.Reference == "" || paystackSecret() == "" {
+		if _, err := h.client.UpdateOrderStatus(c.Request.Context(), &pb.UpdateOrderStatusRequest{
+			Id: orderID, BusinessId: userID, Status: "cancelled",
+		}, jsonOpt); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"refunded": false, "status": "cancelled"})
+		return
+	}
+
+	// Issue the Paystack refund against the original transaction.
+	payload, _ := json.Marshal(map[string]any{"transaction": info.Reference})
+	req, _ := http.NewRequestWithContext(c.Request.Context(), http.MethodPost,
+		paystackBaseURL+"/refund", bytes.NewReader(payload))
+	req.Header.Set("Authorization", "Bearer "+paystackSecret())
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := paystackHTTP.Do(req)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "payment provider unreachable"})
+		return
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+
+	var ps struct {
+		Status  bool   `json:"status"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(body, &ps); err != nil || !ps.Status {
+		h.log.Warn("paystack refund rejected", zap.String("body", string(body)))
+		msg := strings.TrimSpace(ps.Message)
+		if msg == "" {
+			msg = "could not process refund"
+		}
+		c.JSON(http.StatusBadGateway, gin.H{"error": msg})
+		return
+	}
+
+	// Mark the order refunded (Paystack settles the actual money back asynchronously).
+	if _, err := h.client.UpdateOrderStatus(c.Request.Context(), &pb.UpdateOrderStatusRequest{
+		Id: orderID, BusinessId: userID, Status: "refunded",
+	}, jsonOpt); err != nil {
+		h.log.Error("mark order refunded failed", zap.Error(err))
+	}
+
+	c.JSON(http.StatusOK, gin.H{"refunded": true, "status": "refunded"})
+}
+
 // paystackGet proxies a signed GET to Paystack and returns the raw body + status.
 func (h *BusinessHandler) paystackGet(c *gin.Context, path string) ([]byte, int, error) {
 	req, _ := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, paystackBaseURL+path, nil)

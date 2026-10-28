@@ -648,6 +648,7 @@ func main() {
 		authRequired.GET("/payments/paystack/resolve-account", businessHandler.ResolvePaystackAccount)
 		authRequired.POST("/payments/paystack/subaccount", businessHandler.CreateSellerSubaccount)
 		authRequired.GET("/payments/paystack/payout-account", businessHandler.GetMyPayoutAccount)
+		authRequired.POST("/payments/paystack/refund/:id", businessHandler.RefundOrder)
 		authRequired.GET("/business/orders", businessHandler.ListSellerOrders)
 		authRequired.PUT("/business/orders/:id/status", businessHandler.UpdateOrderStatus)
 		authRequired.PUT("/business/orders/:id/tracking", businessHandler.UpdateOrderTracking)

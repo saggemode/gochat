@@ -82,6 +82,9 @@ service BusinessService {
   rpc SaveSellerSubaccount(SaveSellerSubaccountRequest) returns (SaveSellerSubaccountResponse);
   rpc GetSellerSubaccount(GetSellerSubaccountRequest) returns (GetSellerSubaccountResponse);
 
+  // Refund support: look up an order's payment reference (for Paystack refund)
+  rpc GetOrderPaymentRef(GetOrderPaymentRefRequest) returns (GetOrderPaymentRefResponse);
+
   // Coupons
   rpc CreateCoupon(CreateCouponRequest) returns (CreateCouponResponse);
   rpc ListBusinessCoupons(ListBusinessCouponsRequest) returns (ListBusinessCouponsResponse);
@@ -733,6 +736,15 @@ message GetSellerSubaccountResponse {
   string account_number  = 4;
   string account_name    = 5;
   string bank_name       = 6;
+}
+
+message GetOrderPaymentRefRequest { string order_id = 1; string requester_id = 2; }
+message GetOrderPaymentRefResponse {
+  string reference = 1; // Paystack transaction reference (empty if not paid via Paystack)
+  bool   is_seller = 2; // whether requester owns (sells) this order
+  string status    = 3;
+  double amount    = 4;
+  string buyer_id  = 5;
 }
 
 message GetOrderRequest {
