@@ -42,6 +42,7 @@ class CheckoutActivity : AppCompatActivity() {
     lateinit var authRepository: com.example.gochat.data.repository.AuthRepository
     
     private var cartItems: List<CartItem> = emptyList()
+    private lateinit var itemsAdapter: CartAdapter
 
     // Bridges the Paystack checkout Activity result back to the awaiting coroutine.
     private var paymentContinuation: ((String?) -> Unit)? = null
@@ -72,8 +73,35 @@ class CheckoutActivity : AppCompatActivity() {
             }
         }
 
+        itemsAdapter = CartAdapter(
+            onRemove = { item -> changeQuantity(item, 0) },
+            onQuantityChange = { item, q -> changeQuantity(item, q) }
+        )
+        binding.rvCheckoutItems.apply {
+            adapter = itemsAdapter
+            layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this@CheckoutActivity)
+        }
+
         setupListeners()
         loadSummary()
+    }
+
+    /** Lets the buyer change quantity or remove a line right on the checkout page. */
+    private fun changeQuantity(item: CartItem, quantity: Int) {
+        lifecycleScope.launch {
+            binding.progressBar.visibility = View.VISIBLE
+            val result = if (quantity <= 0) {
+                repository.removeCartItemById(item.id)
+            } else {
+                repository.updateCartItem(item.id, quantity)
+            }
+            binding.progressBar.visibility = View.GONE
+            if (result.isSuccess) {
+                displaySummary(result.getOrDefault(emptyList()))
+            } else {
+                Toast.makeText(this@CheckoutActivity, "Could not update cart", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun setupListeners() {
@@ -103,43 +131,16 @@ class CheckoutActivity : AppCompatActivity() {
     }
 
     private fun displaySummary(items: List<CartItem>) {
-        binding.layoutSummary.removeAllViews()
-        var subtotal = 0.0
-        for (item in items) {
-            val itemTotal = (item.productPrice ?: 0.0) * item.quantity
-            val formattedItemTotal = CurrencyManager.formatPrice(itemTotal)
-            val tv = TextView(this).apply {
-                text = "${item.productName ?: "Product"} x ${item.quantity} = $formattedItemTotal"
-                setPadding(0, 8, 0, 8)
-                setTextColor(Color.BLACK)
-            }
-            binding.layoutSummary.addView(tv)
-            subtotal += itemTotal
-        }
+        cartItems = items
+        itemsAdapter.submitList(items)
 
-        // Breakdown (step 3): subtotal + delivery. No separate delivery fee/tax is
-        // charged in the current flow, so delivery shows as Free and total = subtotal.
-        addSummaryRow("Subtotal", CurrencyManager.formatPrice(subtotal))
-        addSummaryRow("Delivery", "Free")
-
+        val subtotal = items.sumOf { (it.productPrice ?: 0.0) * it.quantity }
+        binding.tvSubtotalAmount.text = CurrencyManager.formatPrice(subtotal)
         binding.tvTotalAmount.text = CurrencyManager.formatPrice(subtotal)
-    }
 
-    private fun addSummaryRow(label: String, value: String) {
-        val row = android.widget.LinearLayout(this).apply {
-            orientation = android.widget.LinearLayout.HORIZONTAL
-            setPadding(0, 8, 0, 0)
-        }
-        row.addView(TextView(this).apply {
-            text = label
-            setTextColor(Color.parseColor("#6B7280"))
-            layoutParams = android.widget.LinearLayout.LayoutParams(0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        })
-        row.addView(TextView(this).apply {
-            text = value
-            setTextColor(Color.BLACK)
-        })
-        binding.layoutSummary.addView(row)
+        val empty = items.isEmpty()
+        binding.tvEmptyCheckout.visibility = if (empty) View.VISIBLE else View.GONE
+        binding.btnPlaceOrder.isEnabled = !empty
     }
 
     private fun placeOrder() {
