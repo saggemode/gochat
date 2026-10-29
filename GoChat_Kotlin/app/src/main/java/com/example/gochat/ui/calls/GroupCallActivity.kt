@@ -1,5 +1,7 @@
 package com.example.gochat.ui.calls
 
+import com.example.gochat.R
+
 import android.graphics.Color
 import android.os.Bundle
 import android.view.Gravity
@@ -49,7 +51,7 @@ class GroupCallActivity : AppCompatActivity() {
     private var client: GroupCallClient? = null
 
     private val callId: String by lazy { intent.getStringExtra(EXTRA_CALL_ID).orEmpty() }
-    private val title: String by lazy { intent.getStringExtra(EXTRA_TITLE) ?: "Group call" }
+    private val title: String by lazy { intent.getStringExtra(EXTRA_TITLE) ?: getString(R.string.gcall_default_title) }
     private val isVideo: Boolean by lazy { intent.getBooleanExtra(EXTRA_VIDEO, false) }
 
     private var isMuted = false
@@ -66,7 +68,7 @@ class GroupCallActivity : AppCompatActivity() {
         androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
         if (result[android.Manifest.permission.RECORD_AUDIO] == false) {
-            android.widget.Toast.makeText(this, "Microphone permission is required", android.widget.Toast.LENGTH_LONG).show()
+            android.widget.Toast.makeText(this, getString(R.string.gcall_mic_required), android.widget.Toast.LENGTH_LONG).show()
             finish()
             return@registerForActivityResult
         }
@@ -105,7 +107,7 @@ class GroupCallActivity : AppCompatActivity() {
             addView(tvTitle)
 
             tvParticipants = TextView(this@GroupCallActivity).apply {
-                text = "Connecting…"
+                text = getString(R.string.gcall_connecting)
                 setTextColor(Color.parseColor("#9CA3AF"))
                 textSize = 13f
                 gravity = Gravity.CENTER
@@ -126,30 +128,30 @@ class GroupCallActivity : AppCompatActivity() {
                 setPadding(0, pad, 0, pad)
             }
             controls.addView(Button(this@GroupCallActivity).apply {
-                text = "Mute"
+                text = getString(R.string.gcall_mute)
                 setOnClickListener {
                     isMuted = !isMuted
                     client?.setMicrophoneEnabled(!isMuted)
-                    text = if (isMuted) "Unmute" else "Mute"
+                    text = if (isMuted) getString(R.string.gcall_unmute) else getString(R.string.gcall_mute)
                 }
             })
             if (isVideo) {
                 controls.addView(Button(this@GroupCallActivity).apply {
-                    text = "Camera"
+                    text = getString(R.string.gcall_camera)
                     setOnClickListener {
                         isVideoOff = !isVideoOff
                         client?.setVideoEnabled(!isVideoOff)
                         localRenderer?.visibility = if (isVideoOff) android.view.View.GONE else android.view.View.VISIBLE
-                        text = if (isVideoOff) "Camera on" else "Camera"
+                        text = if (isVideoOff) getString(R.string.gcall_camera_on) else getString(R.string.gcall_camera)
                     }
                 })
             }
             controls.addView(Button(this@GroupCallActivity).apply {
-                text = "Speaker"
+                text = getString(R.string.gcall_speaker)
                 setOnClickListener { audioController.setSpeaker(!audioController.isSpeakerOn) }
             })
             controls.addView(Button(this@GroupCallActivity).apply {
-                text = "End"
+                text = getString(R.string.gcall_end)
                 setOnClickListener { endCall() }
             })
             addView(controls)
@@ -191,7 +193,7 @@ class GroupCallActivity : AppCompatActivity() {
             ) { sdp ->
                 lifecycleScope.launch { callRepo.sendSignaling(callId, "sfu", "sfu-pub-offer", sdp = sdp) }
             }
-            tvParticipants.text = "In call"
+            tvParticipants.text = getString(R.string.gcall_in_call)
 
             val memberIds = intent.getStringArrayListExtra(EXTRA_MEMBER_IDS)
             if (!memberIds.isNullOrEmpty()) {
@@ -248,7 +250,7 @@ class GroupCallActivity : AppCompatActivity() {
                     "sfu-participants" -> {
                         val ids = event["participants"]?.jsonPrimitive?.contentOrNull.orEmpty()
                             .split(",").filter { it.isNotBlank() }
-                        runOnUiThread { tvParticipants.text = "${ids.size} in call" }
+                        runOnUiThread { tvParticipants.text = getString(R.string.gcall_participants, ids.size) }
                         resubscribe((ids.size - 1).coerceAtLeast(1))
                     }
                 }

@@ -636,6 +636,56 @@
     <string name="checkout_coupon_invalid">Invalid coupon</string>
     <string name="checkout_coupon_unavailable">Cannot apply coupon right now</string>
     <string name="checkout_cart_update_failed">Could not update cart</string>
+
+    <!-- Order details / fulfilment -->
+    <string name="order_mark_shipped">Mark as Shipped</string>
+    <string name="order_mark_out_for_delivery">Mark Out for Delivery</string>
+    <string name="order_mark_delivered">Mark as Delivered</string>
+    <string name="order_cancel_refund">Cancel &amp; refund</string>
+    <string name="order_refund_buyer">Refund buyer</string>
+    <string name="order_update_title">Update order</string>
+    <string name="order_updated">Order updated</string>
+    <string name="order_update_failed">Could not update order</string>
+    <string name="order_refund_title">Refund order</string>
+    <string name="order_refund_confirm">Refund the buyer for this order? This returns their payment and cannot be undone.</string>
+    <string name="order_refund_action">Refund</string>
+    <string name="order_refund_done">Refund processed</string>
+    <string name="order_refund_failed">Could not process refund</string>
+    <string name="common_yes">Yes</string>
+    <string name="common_no">No</string>
+
+    <!-- Payout account -->
+    <string name="payout_title">Payout account</string>
+    <string name="payout_required_msg">Add the bank account where your sales will be paid. This is required before you can receive payments for orders.</string>
+    <string name="payout_select_bank">Select your bank</string>
+    <string name="payout_account_number">Account number</string>
+    <string name="payout_verify">Verify account</string>
+    <string name="payout_save">Save payout account</string>
+    <string name="payout_current">Current: %1$s</string>
+    <string name="payout_none">No payout account yet. Add one so your sales are paid to you.</string>
+    <string name="payout_not_enabled">Payments are not enabled yet — you can add this later</string>
+    <string name="payout_banks_failed">Could not load banks</string>
+    <string name="payout_invalid_input">Enter a valid account number and bank</string>
+    <string name="payout_verify_failed">Could not verify this account</string>
+    <string name="payout_saved">Payout account saved</string>
+    <string name="payout_save_failed">Could not save payout account</string>
+    <string name="payout_required_title">Add a payout account</string>
+    <string name="payout_required_exit">You won\'t be able to receive payments for orders until you add the bank account to be paid into. Set it up now?</string>
+    <string name="payout_setup_now">Set up now</string>
+    <string name="payout_later">Later</string>
+
+    <!-- Group call -->
+    <string name="gcall_connecting">Connecting…</string>
+    <string name="gcall_in_call">In call</string>
+    <string name="gcall_mute">Mute</string>
+    <string name="gcall_unmute">Unmute</string>
+    <string name="gcall_camera">Camera</string>
+    <string name="gcall_camera_on">Camera on</string>
+    <string name="gcall_speaker">Speaker</string>
+    <string name="gcall_end">End</string>
+    <string name="gcall_participants">%1$d in call</string>
+    <string name="gcall_mic_required">Microphone permission is required</string>
+    <string name="gcall_default_title">Group call</string>
     <string name="action_report_contact">Report %1$s</string>
     <string name="action_report_and_block">Report and block</string>
     <string name="report_contact_title">Report %1$s?</string>

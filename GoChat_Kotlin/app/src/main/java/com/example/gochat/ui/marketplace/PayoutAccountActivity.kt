@@ -1,5 +1,7 @@
 package com.example.gochat.ui.marketplace
 
+import com.example.gochat.R
+
 import android.os.Bundle
 import android.text.InputType
 import android.view.View
@@ -55,7 +57,7 @@ class PayoutAccountActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        title = "Payout account"
+        title = getString(R.string.payout_title)
 
         val pad = (16 * resources.displayMetrics.density).toInt()
         val root = LinearLayout(this).apply {
@@ -69,18 +71,18 @@ class PayoutAccountActivity : AppCompatActivity() {
         if (required) {
             root.addView(spacer(pad / 2))
             root.addView(TextView(this).apply {
-                text = "Add the bank account where your sales will be paid. This is required before you can receive payments for orders."
+                text = getString(R.string.payout_required_msg)
                 textSize = 13f
             })
         }
 
         root.addView(spacer(pad))
-        root.addView(TextView(this).apply { text = "Select your bank"; textSize = 13f })
+        root.addView(TextView(this).apply { text = getString(R.string.payout_select_bank); textSize = 13f })
         bankSpinner = Spinner(this)
         root.addView(bankSpinner)
 
         root.addView(spacer(pad))
-        root.addView(TextView(this).apply { text = "Account number"; textSize = 13f })
+        root.addView(TextView(this).apply { text = getString(R.string.payout_account_number); textSize = 13f })
         accountInput = EditText(this).apply {
             inputType = InputType.TYPE_CLASS_NUMBER
             hint = "0123456789"
@@ -96,13 +98,13 @@ class PayoutAccountActivity : AppCompatActivity() {
 
         root.addView(spacer(pad))
         verifyBtn = Button(this).apply {
-            text = "Verify account"
+            text = getString(R.string.payout_verify)
             setOnClickListener { verify() }
         }
         root.addView(verifyBtn)
 
         saveBtn = Button(this).apply {
-            text = "Save payout account"
+            text = getString(R.string.payout_save)
             isEnabled = false
             setOnClickListener { save() }
         }
@@ -121,7 +123,7 @@ class PayoutAccountActivity : AppCompatActivity() {
         // Explicit toolbar with a visible back arrow (the app theme has no ActionBar).
         val toolbar = androidx.appcompat.widget.Toolbar(this).apply {
             setBackgroundColor(android.graphics.Color.parseColor("#0B141A"))
-            title = "Payout account"
+            title = getString(R.string.payout_title)
             setTitleTextColor(android.graphics.Color.WHITE)
             navigationIcon = androidx.core.content.ContextCompat.getDrawable(
                 this@PayoutAccountActivity, com.example.gochat.R.drawable.ic_back
@@ -156,10 +158,10 @@ class PayoutAccountActivity : AppCompatActivity() {
     private fun attemptExit() {
         if (required && !hasPayoutAccount && paymentsConfigured) {
             androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Add a payout account")
-                .setMessage("You won't be able to receive payments for orders until you add the bank account to be paid into. Set it up now?")
-                .setPositiveButton("Set up now", null)
-                .setNegativeButton("Later") { _, _ -> finish() }
+                .setTitle(getString(R.string.payout_required_title))
+                .setMessage(getString(R.string.payout_required_exit))
+                .setPositiveButton(getString(R.string.payout_setup_now), null)
+                .setNegativeButton(getString(R.string.payout_later)) { _, _ -> finish() }
                 .show()
         } else {
             finish()
@@ -177,9 +179,9 @@ class PayoutAccountActivity : AppCompatActivity() {
             hasPayoutAccount = current?.exists == true
             currentView.text = if (hasPayoutAccount) {
                 val bank = current?.bankName?.takeIf { it.isNotBlank() }?.let { " • $it" } ?: ""
-                "Current: ${current?.accountName} • ${current?.accountNumber}$bank"
+                getString(R.string.payout_current, "${current?.accountName} • ${current?.accountNumber}$bank")
             } else {
-                "No payout account yet. Add one so your sales are paid to you."
+                getString(R.string.payout_none)
             }
 
             val banksRes = repository.getPaystackBanks()
@@ -189,7 +191,7 @@ class PayoutAccountActivity : AppCompatActivity() {
                 paymentsConfigured = !notConfigured
                 Toast.makeText(
                     this@PayoutAccountActivity,
-                    if (notConfigured) "Payments are not enabled yet — you can add this later" else "Could not load banks",
+                    if (notConfigured) getString(R.string.payout_not_enabled) else getString(R.string.payout_banks_failed),
                     Toast.LENGTH_LONG
                 ).show()
                 return@launch
@@ -210,7 +212,7 @@ class PayoutAccountActivity : AppCompatActivity() {
         val acct = accountInput.text.toString().trim()
         val bankCode = selectedBankCode()
         if (acct.length < 6 || bankCode == null) {
-            Toast.makeText(this, "Enter a valid account number and bank", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.payout_invalid_input), Toast.LENGTH_SHORT).show()
             return
         }
         progress.visibility = View.VISIBLE
@@ -226,7 +228,7 @@ class PayoutAccountActivity : AppCompatActivity() {
             } else {
                 resolvedView.visibility = View.GONE
                 saveBtn.isEnabled = false
-                Toast.makeText(this@PayoutAccountActivity, "Could not verify this account", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@PayoutAccountActivity, getString(R.string.payout_verify_failed), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -240,7 +242,7 @@ class PayoutAccountActivity : AppCompatActivity() {
             val res = repository.createSellerSubaccount(bankCode, acct, resolvedName, selectedBankName())
             progress.visibility = View.GONE
             if (res.isSuccess) {
-                Toast.makeText(this@PayoutAccountActivity, "Payout account saved", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@PayoutAccountActivity, getString(R.string.payout_saved), Toast.LENGTH_LONG).show()
                 hasPayoutAccount = true
                 if (required) {
                     setResult(RESULT_OK)
@@ -250,7 +252,7 @@ class PayoutAccountActivity : AppCompatActivity() {
                 }
             } else {
                 saveBtn.isEnabled = true
-                Toast.makeText(this@PayoutAccountActivity, "Could not save payout account", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@PayoutAccountActivity, getString(R.string.payout_save_failed), Toast.LENGTH_LONG).show()
             }
         }
     }
