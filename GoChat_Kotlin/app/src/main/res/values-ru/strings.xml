@@ -125,4 +125,46 @@
     <string name="status_busy">Занят</string>
     <string name="status_at_work">На работе</string>
     <string name="status_in_meeting">На встрече</string>
+
+    <!-- Batch 4: backup / group / bot / location / phone onboarding -->
+    <string name="address_hint">Введите полный адрес</string>
+    <string name="chat_backup_restore_title">Резервное копирование и восстановление чатов</string>
+    <string name="last_encrypted_backup">Последняя зашифрованная резервная копия</string>
+    <string name="backup_size">Размер</string>
+    <string name="backup_chats">Чаты</string>
+    <string name="backup_messages">Сообщения</string>
+    <string name="backup_media">Медиа</string>
+    <string name="backup_to_google_drive">Создать резервную копию в Google Drive</string>
+    <string name="restore_from_google_drive">Восстановить из Google Drive</string>
+    <string name="restore_from_local_storage">Восстановить из локального хранилища</string>
+    <string name="google_drive_settings_header">НАСТРОЙКИ GOOGLE DRIVE</string>
+    <string name="google_account">Аккаунт Google</string>
+    <string name="auto_backup_label">Создавать резервную копию в Google Drive</string>
+    <string name="backup_frequency_daily">Ежедневно</string>
+    <string name="include_media_label">Включить фото и голосовые сообщения</string>
+    <string name="include_media_desc">Включить голосовые сообщения и сохранённые изображения в резервную копию</string>
+    <string name="backup_security_disclaimer">Сквозное шифрование резервных копий: ваша резервная копия шифруется вашим личным паролем с использованием AES-256 и HMAC-SHA256. Никто (включая Google или GoChat) не может прочитать вашу резервную копию без пароля.</string>
+    <string name="edit_message_label">Изменить сообщение</string>
+    <string name="recording_voice_note">Запись голосового сообщения…</string>
+    <string name="invite_via_link">Пригласить по ссылке</string>
+    <string name="manage_bot">Управление ботом модерации</string>
+    <string name="exit_group">Выйти из группы</string>
+    <string name="bot_management_title">Управление ботом</string>
+    <string name="bot_status">Статус бота</string>
+    <string name="activate_bot">Активировать бота модерации</string>
+    <string name="permissions">Разрешения</string>
+    <string name="moderation_rules">Правила модерации</string>
+    <string name="rules_placeholder">Введите правила группы для бота…</string>
+    <string name="save_config">Сохранить конфигурацию</string>
+    <string name="toast_bot_config_saved">Конфигурация бота сохранена!</string>
+    <string name="bot_moderation_active">🛡️ Бот модерации активен</string>
+    <string name="send_location_title">Отправить местоположение</string>
+    <string name="send_current_location">Отправить текущее местоположение</string>
+    <string name="login_title_get_started">Начните с GoChat</string>
+    <string name="login_subtitle_get_started">Мгновенная регистрация по телефону без пароля с подтверждением по SMS-коду</string>
+    <string name="phone_number_header">НОМЕР ТЕЛЕФОНА</string>
+    <string name="phone_number_hint">Номер телефона</string>
+    <string name="search_country_hint">Поиск страны или кода…</string>
+    <string name="phone_signup_disclaimer">Быстрая и безопасная регистрация по телефону. Имя пользователя и e-mail можно добавить в любое время в настройках.</string>
+    <string name="btn_continue_phone">Продолжить с телефоном</string>
 </resources>

@@ -125,4 +125,46 @@
     <string name="status_busy">Ana shughuli</string>
     <string name="status_at_work">Kazini</string>
     <string name="status_in_meeting">Kwenye mkutano</string>
+
+    <!-- Batch 4: backup / group / bot / location / phone onboarding -->
+    <string name="address_hint">Weka anwani yako kamili</string>
+    <string name="chat_backup_restore_title">Hifadhi na urejeshe gumzo</string>
+    <string name="last_encrypted_backup">Nakala rejeshi ya mwisho iliyosimbwa</string>
+    <string name="backup_size">Ukubwa</string>
+    <string name="backup_chats">Gumzo</string>
+    <string name="backup_messages">Ujumbe</string>
+    <string name="backup_media">Media</string>
+    <string name="backup_to_google_drive">Hifadhi kwenye Google Drive</string>
+    <string name="restore_from_google_drive">Rejesha kutoka Google Drive</string>
+    <string name="restore_from_local_storage">Rejesha kutoka hifadhi ya ndani</string>
+    <string name="google_drive_settings_header">MIPANGILIO YA GOOGLE DRIVE</string>
+    <string name="google_account">Akaunti ya Google</string>
+    <string name="auto_backup_label">Hifadhi kwenye Google Drive</string>
+    <string name="backup_frequency_daily">Kila siku</string>
+    <string name="include_media_label">Jumuisha picha na noti za sauti</string>
+    <string name="include_media_desc">Jumuisha noti za sauti na picha zilizohifadhiwa kwenye nakala rejeshi</string>
+    <string name="backup_security_disclaimer">Nakala rejeshi zilizosimbwa mwanzo hadi mwisho: Nakala yako rejeshi imesimbwa kwa nenosiri lako binafsi kwa kutumia AES-256 na HMAC-SHA256. Hakuna mtu (ikiwa ni pamoja na Google au GoChat) anayeweza kusoma nakala yako rejeshi bila nenosiri.</string>
+    <string name="edit_message_label">Hariri ujumbe</string>
+    <string name="recording_voice_note">Inarekodi noti ya sauti…</string>
+    <string name="invite_via_link">Alika kupitia kiungo</string>
+    <string name="manage_bot">Dhibiti roboti ya usimamizi</string>
+    <string name="exit_group">Ondoka kwenye kikundi</string>
+    <string name="bot_management_title">Usimamizi wa roboti</string>
+    <string name="bot_status">Hali ya roboti</string>
+    <string name="activate_bot">Washa roboti ya usimamizi</string>
+    <string name="permissions">Ruhusa</string>
+    <string name="moderation_rules">Kanuni za usimamizi</string>
+    <string name="rules_placeholder">Weka kanuni za kikundi kwa roboti…</string>
+    <string name="save_config">Hifadhi usanidi</string>
+    <string name="toast_bot_config_saved">Usanidi wa roboti umehifadhiwa!</string>
+    <string name="bot_moderation_active">🛡️ Roboti ya usimamizi inatumika</string>
+    <string name="send_location_title">Tuma eneo</string>
+    <string name="send_current_location">Tuma eneo la sasa</string>
+    <string name="login_title_get_started">Anza na GoChat</string>
+    <string name="login_subtitle_get_started">Usajili wa papo hapo wa simu bila nenosiri kwa uthibitishaji wa OTP kwa SMS</string>
+    <string name="phone_number_header">NAMBA YA SIMU</string>
+    <string name="phone_number_hint">Namba ya simu</string>
+    <string name="search_country_hint">Tafuta nchi au msimbo…</string>
+    <string name="phone_signup_disclaimer">Usajili wa simu wa haraka na salama. Jina la mtumiaji na barua pepe vinaweza kuongezwa wakati wowote kwenye Mipangilio.</string>
+    <string name="btn_continue_phone">Endelea na simu</string>
 </resources>

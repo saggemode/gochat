@@ -129,4 +129,46 @@
     <string name="status_busy">Occupé</string>
     <string name="status_at_work">Au travail</string>
     <string name="status_in_meeting">En réunion</string>
+
+    <!-- Batch 4: backup / group / bot / location / phone onboarding -->
+    <string name="address_hint">Saisissez votre adresse complète</string>
+    <string name="chat_backup_restore_title">Sauvegarde et restauration des discussions</string>
+    <string name="last_encrypted_backup">Dernière sauvegarde chiffrée</string>
+    <string name="backup_size">Taille</string>
+    <string name="backup_chats">Discussions</string>
+    <string name="backup_messages">Messages</string>
+    <string name="backup_media">Médias</string>
+    <string name="backup_to_google_drive">Sauvegarder sur Google Drive</string>
+    <string name="restore_from_google_drive">Restaurer depuis Google Drive</string>
+    <string name="restore_from_local_storage">Restaurer depuis le stockage local</string>
+    <string name="google_drive_settings_header">PARAMÈTRES GOOGLE DRIVE</string>
+    <string name="google_account">Compte Google</string>
+    <string name="auto_backup_label">Sauvegarder sur Google Drive</string>
+    <string name="backup_frequency_daily">Quotidienne</string>
+    <string name="include_media_label">Inclure les photos et les notes vocales</string>
+    <string name="include_media_desc">Inclure les notes vocales et les images enregistrées dans la sauvegarde</string>
+    <string name="backup_security_disclaimer">Sauvegardes chiffrées de bout en bout : votre sauvegarde est chiffrée avec votre mot de passe personnel à l\'aide d\'AES-256 et HMAC-SHA256. Personne (y compris Google ou GoChat) ne peut lire votre sauvegarde sans le mot de passe.</string>
+    <string name="edit_message_label">Modifier le message</string>
+    <string name="recording_voice_note">Enregistrement d\'une note vocale…</string>
+    <string name="invite_via_link">Inviter via un lien</string>
+    <string name="manage_bot">Gérer le bot de modération</string>
+    <string name="exit_group">Quitter le groupe</string>
+    <string name="bot_management_title">Gestion du bot</string>
+    <string name="bot_status">État du bot</string>
+    <string name="activate_bot">Activer le bot de modération</string>
+    <string name="permissions">Autorisations</string>
+    <string name="moderation_rules">Règles de modération</string>
+    <string name="rules_placeholder">Saisissez les règles du groupe pour le bot…</string>
+    <string name="save_config">Enregistrer la configuration</string>
+    <string name="toast_bot_config_saved">Configuration du bot enregistrée !</string>
+    <string name="bot_moderation_active">🛡️ Bot de modération actif</string>
+    <string name="send_location_title">Envoyer la position</string>
+    <string name="send_current_location">Envoyer la position actuelle</string>
+    <string name="login_title_get_started">Démarrez avec GoChat</string>
+    <string name="login_subtitle_get_started">Inscription instantanée par téléphone sans mot de passe avec vérification OTP par SMS</string>
+    <string name="phone_number_header">NUMÉRO DE TÉLÉPHONE</string>
+    <string name="phone_number_hint">Numéro de téléphone</string>
+    <string name="search_country_hint">Rechercher un pays ou un indicatif…</string>
+    <string name="phone_signup_disclaimer">Inscription par téléphone rapide et sécurisée. Le nom d\'utilisateur et l\'e-mail peuvent être ajoutés à tout moment dans les Paramètres.</string>
+    <string name="btn_continue_phone">Continuer avec le téléphone</string>
 </resources>

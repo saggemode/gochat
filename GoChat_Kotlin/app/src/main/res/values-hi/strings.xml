@@ -125,4 +125,46 @@
     <string name="status_busy">व्यस्त</string>
     <string name="status_at_work">काम पर</string>
     <string name="status_in_meeting">मीटिंग में</string>
+
+    <!-- Batch 4: backup / group / bot / location / phone onboarding -->
+    <string name="address_hint">अपना पूरा पता दर्ज करें</string>
+    <string name="chat_backup_restore_title">चैट बैकअप और पुनर्स्थापना</string>
+    <string name="last_encrypted_backup">अंतिम एन्क्रिप्टेड बैकअप</string>
+    <string name="backup_size">आकार</string>
+    <string name="backup_chats">चैट</string>
+    <string name="backup_messages">संदेश</string>
+    <string name="backup_media">मीडिया</string>
+    <string name="backup_to_google_drive">Google Drive पर बैकअप लें</string>
+    <string name="restore_from_google_drive">Google Drive से पुनर्स्थापित करें</string>
+    <string name="restore_from_local_storage">स्थानीय स्टोरेज से पुनर्स्थापित करें</string>
+    <string name="google_drive_settings_header">GOOGLE DRIVE सेटिंग्स</string>
+    <string name="google_account">Google खाता</string>
+    <string name="auto_backup_label">Google Drive पर बैकअप लें</string>
+    <string name="backup_frequency_daily">दैनिक</string>
+    <string name="include_media_label">फ़ोटो और वॉइस नोट्स शामिल करें</string>
+    <string name="include_media_desc">बैकअप में वॉइस नोट्स और सहेजी गई छवियाँ शामिल करें</string>
+    <string name="backup_security_disclaimer">एंड-टू-एंड एन्क्रिप्टेड बैकअप: आपका बैकअप आपके व्यक्तिगत पासवर्ड से AES-256 और HMAC-SHA256 का उपयोग करके एन्क्रिप्ट किया जाता है। पासवर्ड के बिना कोई भी (Google या GoChat सहित) आपका बैकअप नहीं पढ़ सकता।</string>
+    <string name="edit_message_label">संदेश संपादित करें</string>
+    <string name="recording_voice_note">वॉइस नोट रिकॉर्ड हो रहा है…</string>
+    <string name="invite_via_link">लिंक के माध्यम से आमंत्रित करें</string>
+    <string name="manage_bot">मॉडरेशन बॉट प्रबंधित करें</string>
+    <string name="exit_group">समूह छोड़ें</string>
+    <string name="bot_management_title">बॉट प्रबंधन</string>
+    <string name="bot_status">बॉट स्थिति</string>
+    <string name="activate_bot">मॉडरेशन बॉट सक्रिय करें</string>
+    <string name="permissions">अनुमतियाँ</string>
+    <string name="moderation_rules">मॉडरेशन नियम</string>
+    <string name="rules_placeholder">बॉट के लिए समूह नियम दर्ज करें…</string>
+    <string name="save_config">कॉन्फ़िगरेशन सहेजें</string>
+    <string name="toast_bot_config_saved">बॉट कॉन्फ़िगरेशन सहेजा गया!</string>
+    <string name="bot_moderation_active">🛡️ मॉडरेशन बॉट सक्रिय</string>
+    <string name="send_location_title">स्थान भेजें</string>
+    <string name="send_current_location">वर्तमान स्थान भेजें</string>
+    <string name="login_title_get_started">GoChat के साथ शुरू करें</string>
+    <string name="login_subtitle_get_started">SMS OTP सत्यापन के साथ त्वरित पासवर्ड-रहित फ़ोन साइन-अप</string>
+    <string name="phone_number_header">फ़ोन नंबर</string>
+    <string name="phone_number_hint">फ़ोन नंबर</string>
+    <string name="search_country_hint">देश या कोड खोजें…</string>
+    <string name="phone_signup_disclaimer">तेज़ और सुरक्षित फ़ोन साइन-अप। उपयोगकर्ता नाम और ईमेल कभी भी सेटिंग्स में जोड़े जा सकते हैं।</string>
+    <string name="btn_continue_phone">फ़ोन से जारी रखें</string>
 </resources>

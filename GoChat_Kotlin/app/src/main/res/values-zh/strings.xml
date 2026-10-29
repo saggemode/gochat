@@ -125,4 +125,46 @@
     <string name="status_busy">忙碌</string>
     <string name="status_at_work">工作中</string>
     <string name="status_in_meeting">开会中</string>
+
+    <!-- Batch 4: backup / group / bot / location / phone onboarding -->
+    <string name="address_hint">输入您的完整地址</string>
+    <string name="chat_backup_restore_title">聊天备份与恢复</string>
+    <string name="last_encrypted_backup">上次加密备份</string>
+    <string name="backup_size">大小</string>
+    <string name="backup_chats">聊天</string>
+    <string name="backup_messages">消息</string>
+    <string name="backup_media">媒体</string>
+    <string name="backup_to_google_drive">备份到 Google Drive</string>
+    <string name="restore_from_google_drive">从 Google Drive 恢复</string>
+    <string name="restore_from_local_storage">从本地存储恢复</string>
+    <string name="google_drive_settings_header">GOOGLE DRIVE 设置</string>
+    <string name="google_account">Google 账号</string>
+    <string name="auto_backup_label">备份到 Google Drive</string>
+    <string name="backup_frequency_daily">每日</string>
+    <string name="include_media_label">包含照片和语音消息</string>
+    <string name="include_media_desc">将语音消息和已保存的图片纳入备份</string>
+    <string name="backup_security_disclaimer">端到端加密备份：您的备份使用您的个人密码通过 AES-256 和 HMAC-SHA256 加密。没有密码，任何人（包括 Google 或 GoChat）都无法读取您的备份。</string>
+    <string name="edit_message_label">编辑消息</string>
+    <string name="recording_voice_note">正在录制语音消息…</string>
+    <string name="invite_via_link">通过链接邀请</string>
+    <string name="manage_bot">管理审核机器人</string>
+    <string name="exit_group">退出群组</string>
+    <string name="bot_management_title">机器人管理</string>
+    <string name="bot_status">机器人状态</string>
+    <string name="activate_bot">启用审核机器人</string>
+    <string name="permissions">权限</string>
+    <string name="moderation_rules">审核规则</string>
+    <string name="rules_placeholder">为机器人输入群组规则…</string>
+    <string name="save_config">保存配置</string>
+    <string name="toast_bot_config_saved">机器人配置已保存！</string>
+    <string name="bot_moderation_active">🛡️ 审核机器人已启用</string>
+    <string name="send_location_title">发送位置</string>
+    <string name="send_current_location">发送当前位置</string>
+    <string name="login_title_get_started">开始使用 GoChat</string>
+    <string name="login_subtitle_get_started">即时免密码手机注册，通过短信 OTP 验证</string>
+    <string name="phone_number_header">电话号码</string>
+    <string name="phone_number_hint">电话号码</string>
+    <string name="search_country_hint">搜索国家或区号…</string>
+    <string name="phone_signup_disclaimer">快速安全的手机注册。用户名和邮箱可随时在设置中添加。</string>
+    <string name="btn_continue_phone">使用手机号继续</string>
 </resources>

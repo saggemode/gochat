@@ -125,4 +125,46 @@
     <string name="status_busy">مشغول</string>
     <string name="status_at_work">في العمل</string>
     <string name="status_in_meeting">في اجتماع</string>
+
+    <!-- Batch 4: backup / group / bot / location / phone onboarding -->
+    <string name="address_hint">أدخل عنوانك الكامل</string>
+    <string name="chat_backup_restore_title">نسخ احتياطي واستعادة الدردشات</string>
+    <string name="last_encrypted_backup">آخر نسخة احتياطية مشفّرة</string>
+    <string name="backup_size">الحجم</string>
+    <string name="backup_chats">الدردشات</string>
+    <string name="backup_messages">الرسائل</string>
+    <string name="backup_media">الوسائط</string>
+    <string name="backup_to_google_drive">النسخ الاحتياطي إلى Google Drive</string>
+    <string name="restore_from_google_drive">الاستعادة من Google Drive</string>
+    <string name="restore_from_local_storage">الاستعادة من التخزين المحلي</string>
+    <string name="google_drive_settings_header">إعدادات GOOGLE DRIVE</string>
+    <string name="google_account">حساب Google</string>
+    <string name="auto_backup_label">النسخ الاحتياطي إلى Google Drive</string>
+    <string name="backup_frequency_daily">يوميًا</string>
+    <string name="include_media_label">تضمين الصور والملاحظات الصوتية</string>
+    <string name="include_media_desc">تضمين الملاحظات الصوتية والصور المحفوظة في النسخة الاحتياطية</string>
+    <string name="backup_security_disclaimer">نسخ احتياطية مشفّرة طرفًا إلى طرف: يتم تشفير نسختك الاحتياطية بكلمة مرورك الشخصية باستخدام AES-256 وHMAC-SHA256. لا أحد (بما في ذلك Google أو GoChat) يمكنه قراءة نسختك الاحتياطية بدون كلمة المرور.</string>
+    <string name="edit_message_label">تعديل الرسالة</string>
+    <string name="recording_voice_note">جارٍ تسجيل ملاحظة صوتية…</string>
+    <string name="invite_via_link">الدعوة عبر رابط</string>
+    <string name="manage_bot">إدارة روبوت الإشراف</string>
+    <string name="exit_group">مغادرة المجموعة</string>
+    <string name="bot_management_title">إدارة الروبوت</string>
+    <string name="bot_status">حالة الروبوت</string>
+    <string name="activate_bot">تفعيل روبوت الإشراف</string>
+    <string name="permissions">الأذونات</string>
+    <string name="moderation_rules">قواعد الإشراف</string>
+    <string name="rules_placeholder">أدخل قواعد المجموعة للروبوت…</string>
+    <string name="save_config">حفظ الإعدادات</string>
+    <string name="toast_bot_config_saved">تم حفظ إعدادات الروبوت!</string>
+    <string name="bot_moderation_active">🛡️ روبوت الإشراف نشط</string>
+    <string name="send_location_title">إرسال الموقع</string>
+    <string name="send_current_location">إرسال الموقع الحالي</string>
+    <string name="login_title_get_started">ابدأ مع GoChat</string>
+    <string name="login_subtitle_get_started">تسجيل فوري عبر الهاتف بدون كلمة مرور مع التحقق عبر رمز OTP بالرسائل القصيرة</string>
+    <string name="phone_number_header">رقم الهاتف</string>
+    <string name="phone_number_hint">رقم الهاتف</string>
+    <string name="search_country_hint">ابحث عن دولة أو رمز…</string>
+    <string name="phone_signup_disclaimer">تسجيل سريع وآمن عبر الهاتف. يمكن إضافة اسم المستخدم والبريد الإلكتروني في أي وقت من الإعدادات.</string>
+    <string name="btn_continue_phone">المتابعة بالهاتف</string>
 </resources>

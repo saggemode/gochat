@@ -125,4 +125,46 @@
     <string name="status_busy">Meşgul</string>
     <string name="status_at_work">İş yerinde</string>
     <string name="status_in_meeting">Toplantıda</string>
+
+    <!-- Batch 4: backup / group / bot / location / phone onboarding -->
+    <string name="address_hint">Tam adresinizi girin</string>
+    <string name="chat_backup_restore_title">Sohbet yedekleme ve geri yükleme</string>
+    <string name="last_encrypted_backup">Son şifrelenmiş yedek</string>
+    <string name="backup_size">Boyut</string>
+    <string name="backup_chats">Sohbetler</string>
+    <string name="backup_messages">Mesajlar</string>
+    <string name="backup_media">Medya</string>
+    <string name="backup_to_google_drive">Google Drive\'a yedekle</string>
+    <string name="restore_from_google_drive">Google Drive\'dan geri yükle</string>
+    <string name="restore_from_local_storage">Yerel depolamadan geri yükle</string>
+    <string name="google_drive_settings_header">GOOGLE DRIVE AYARLARI</string>
+    <string name="google_account">Google Hesabı</string>
+    <string name="auto_backup_label">Google Drive\'a yedekle</string>
+    <string name="backup_frequency_daily">Günlük</string>
+    <string name="include_media_label">Fotoğrafları ve sesli notları dahil et</string>
+    <string name="include_media_desc">Sesli notları ve kaydedilen görselleri yedeğe dahil et</string>
+    <string name="backup_security_disclaimer">Uçtan uca şifreli yedekler: Yedeğiniz, kişisel parolanızla AES-256 ve HMAC-SHA256 kullanılarak şifrelenir. Parola olmadan hiç kimse (Google veya GoChat dahil) yedeğinizi okuyamaz.</string>
+    <string name="edit_message_label">Mesajı düzenle</string>
+    <string name="recording_voice_note">Sesli not kaydediliyor…</string>
+    <string name="invite_via_link">Bağlantıyla davet et</string>
+    <string name="manage_bot">Moderasyon botunu yönet</string>
+    <string name="exit_group">Gruptan çık</string>
+    <string name="bot_management_title">Bot yönetimi</string>
+    <string name="bot_status">Bot durumu</string>
+    <string name="activate_bot">Moderasyon botunu etkinleştir</string>
+    <string name="permissions">İzinler</string>
+    <string name="moderation_rules">Moderasyon kuralları</string>
+    <string name="rules_placeholder">Bot için grup kurallarını girin…</string>
+    <string name="save_config">Yapılandırmayı kaydet</string>
+    <string name="toast_bot_config_saved">Bot yapılandırması kaydedildi!</string>
+    <string name="bot_moderation_active">🛡️ Moderasyon botu etkin</string>
+    <string name="send_location_title">Konum gönder</string>
+    <string name="send_current_location">Mevcut konumu gönder</string>
+    <string name="login_title_get_started">GoChat\'e başlayın</string>
+    <string name="login_subtitle_get_started">SMS OTP doğrulamasıyla anında parolasız telefon kaydı</string>
+    <string name="phone_number_header">TELEFON NUMARASI</string>
+    <string name="phone_number_hint">Telefon numarası</string>
+    <string name="search_country_hint">Ülke veya kod ara…</string>
+    <string name="phone_signup_disclaimer">Hızlı ve güvenli telefon kaydı. Kullanıcı adı ve e-posta istediğiniz zaman Ayarlar\'dan eklenebilir.</string>
+    <string name="btn_continue_phone">Telefonla devam et</string>
 </resources>

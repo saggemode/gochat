@@ -125,4 +125,46 @@
     <string name="status_busy">Ocupado</string>
     <string name="status_at_work">No trabalho</string>
     <string name="status_in_meeting">Em reunião</string>
+
+    <!-- Batch 4: backup / group / bot / location / phone onboarding -->
+    <string name="address_hint">Digite seu endereço completo</string>
+    <string name="chat_backup_restore_title">Backup e restauração de conversas</string>
+    <string name="last_encrypted_backup">Último backup criptografado</string>
+    <string name="backup_size">Tamanho</string>
+    <string name="backup_chats">Conversas</string>
+    <string name="backup_messages">Mensagens</string>
+    <string name="backup_media">Mídia</string>
+    <string name="backup_to_google_drive">Fazer backup no Google Drive</string>
+    <string name="restore_from_google_drive">Restaurar do Google Drive</string>
+    <string name="restore_from_local_storage">Restaurar do armazenamento local</string>
+    <string name="google_drive_settings_header">CONFIGURAÇÕES DO GOOGLE DRIVE</string>
+    <string name="google_account">Conta do Google</string>
+    <string name="auto_backup_label">Fazer backup no Google Drive</string>
+    <string name="backup_frequency_daily">Diário</string>
+    <string name="include_media_label">Incluir fotos e notas de voz</string>
+    <string name="include_media_desc">Incluir notas de voz e imagens salvas no backup</string>
+    <string name="backup_security_disclaimer">Backups criptografados de ponta a ponta: seu backup é criptografado com sua senha pessoal usando AES-256 e HMAC-SHA256. Ninguém (incluindo Google ou GoChat) pode ler seu backup sem a senha.</string>
+    <string name="edit_message_label">Editar mensagem</string>
+    <string name="recording_voice_note">Gravando nota de voz…</string>
+    <string name="invite_via_link">Convidar por link</string>
+    <string name="manage_bot">Gerenciar bot de moderação</string>
+    <string name="exit_group">Sair do grupo</string>
+    <string name="bot_management_title">Gerenciamento do bot</string>
+    <string name="bot_status">Status do bot</string>
+    <string name="activate_bot">Ativar bot de moderação</string>
+    <string name="permissions">Permissões</string>
+    <string name="moderation_rules">Regras de moderação</string>
+    <string name="rules_placeholder">Digite as regras do grupo para o bot…</string>
+    <string name="save_config">Salvar configuração</string>
+    <string name="toast_bot_config_saved">Configuração do bot salva!</string>
+    <string name="bot_moderation_active">🛡️ Bot de moderação ativo</string>
+    <string name="send_location_title">Enviar localização</string>
+    <string name="send_current_location">Enviar localização atual</string>
+    <string name="login_title_get_started">Comece com o GoChat</string>
+    <string name="login_subtitle_get_started">Cadastro instantâneo por telefone sem senha com verificação OTP por SMS</string>
+    <string name="phone_number_header">NÚMERO DE TELEFONE</string>
+    <string name="phone_number_hint">Número de telefone</string>
+    <string name="search_country_hint">Buscar país ou código…</string>
+    <string name="phone_signup_disclaimer">Cadastro por telefone rápido e seguro. Nome de usuário e e-mail podem ser adicionados a qualquer momento nas Configurações.</string>
+    <string name="btn_continue_phone">Continuar com o telefone</string>
 </resources>
