@@ -543,4 +543,42 @@
     <string name="security_verification_title">Uthibitishaji wa usalama</string>
     <string name="security_verification_desc">Ili kuthibitisha kuwa ujumbe na %1$s umesimbwa mwanzo hadi mwisho, changanua msimbo huu kwenye simu yake au mwombe achanganue wako. Unaweza pia kulinganisha nambari zilizo hapo juu.</string>
     <string name="security_verification_learn_more">Pata maelezo zaidi</string>
+
+    <!-- Batch 13: security code / shared-media tabs / block-unblock-report -->
+    <string name="security_verification_scan_code">Changanua msimbo</string>
+    <string name="security_verification_matching">Msimbo wa usalama unalingana</string>
+    <string name="security_verification_not_matching">Msimbo wa usalama haulingani</string>
+    <string name="waiting_for_network">Inasubiri mtandao…</string>
+    <string name="connecting">Inaunganisha…</string>
+    <string name="media_links_and_docs">Media, viungo na hati</string>
+    <string name="no_media_items">Hakuna</string>
+    <string name="tab_media">Media</string>
+    <string name="tab_docs">Hati</string>
+    <string name="tab_links">Viungo</string>
+    <string name="no_media_title">Hakuna media bado</string>
+    <string name="no_media_desc">Picha na video zilizoshirikiwa kwenye gumzo hili zitaonekana hapa.</string>
+    <string name="no_docs_title">Hakuna hati bado</string>
+    <string name="no_docs_desc">Hati zilizoshirikiwa kwenye gumzo hili zitaonekana hapa.</string>
+    <string name="no_links_title">Hakuna viungo bado</string>
+    <string name="no_links_desc">Viungo vilivyoshirikiwa kwenye gumzo hili vitaonekana hapa.</string>
+    <string name="export_selection_count">%d zimechaguliwa</string>
+    <string name="block_user_title">Zuia %1$s?</string>
+    <string name="block_user_message">Anwani zilizozuiwa hazitaweza tena kukupigia au kukutumia ujumbe. Anwani hii haitaarifiwa.</string>
+    <string name="unblock_user_title">Ondoa kizuizi cha %1$s?</string>
+    <string name="unblock_user_message">Ondoa kizuizi ili kutuma na kupokea ujumbe na simu kutoka kwa anwani hii.</string>
+    <string name="action_block">Zuia</string>
+    <string name="action_unblock">Ondoa kizuizi</string>
+    <string name="action_block_contact">Zuia %1$s</string>
+    <string name="action_unblock_contact">Ondoa kizuizi cha %1$s</string>
+    <string name="action_report_contact">Ripoti %1$s</string>
+    <string name="action_report_and_block">Ripoti na uzuie</string>
+    <string name="report_contact_title">Ripoti %1$s?</string>
+    <string name="report_contact_subtitle">Ujumbe 5 wa mwisho kutoka kwa gumzo hili utatumwa kwa GoChat. Anwani hii haitaarifiwa.</string>
+    <string name="report_block_contact_checkbox">Zuia anwani</string>
+    <string name="report_reason_prompt">Chagua sababu ya kuripoti</string>
+    <string name="report_details_hint">Ongeza maelezo ya ziada (si lazima)</string>
+    <string name="user_blocked_toast">%1$s amezuiwa</string>
+    <string name="user_unblocked_toast">Kizuizi cha %1$s kimeondolewa</string>
+    <string name="report_submitted_toast">Ripoti imewasilishwa. Asante kwa kuweka GoChat salama.</string>
+    <string name="blocked_banner_text">Umezuia anwani hii. Gusa ili kuondoa kizuizi.</string>
 </resources>

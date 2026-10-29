@@ -543,4 +543,42 @@
     <string name="security_verification_title">Проверка безопасности</string>
     <string name="security_verification_desc">Чтобы убедиться, что сообщения с %1$s защищены сквозным шифрованием, отсканируйте этот код на их телефоне или попросите отсканировать ваш. Также можно сравнить числа выше.</string>
     <string name="security_verification_learn_more">Подробнее</string>
+
+    <!-- Batch 13: security code / shared-media tabs / block-unblock-report -->
+    <string name="security_verification_scan_code">Сканировать код</string>
+    <string name="security_verification_matching">Код безопасности совпадает</string>
+    <string name="security_verification_not_matching">Код безопасности не совпадает</string>
+    <string name="waiting_for_network">Ожидание сети…</string>
+    <string name="connecting">Подключение…</string>
+    <string name="media_links_and_docs">Медиа, ссылки и документы</string>
+    <string name="no_media_items">Нет</string>
+    <string name="tab_media">Медиа</string>
+    <string name="tab_docs">Документы</string>
+    <string name="tab_links">Ссылки</string>
+    <string name="no_media_title">Пока нет медиа</string>
+    <string name="no_media_desc">Фото и видео из этого чата появятся здесь.</string>
+    <string name="no_docs_title">Пока нет документов</string>
+    <string name="no_docs_desc">Документы из этого чата появятся здесь.</string>
+    <string name="no_links_title">Пока нет ссылок</string>
+    <string name="no_links_desc">Ссылки из этого чата появятся здесь.</string>
+    <string name="export_selection_count">Выбрано: %d</string>
+    <string name="block_user_title">Заблокировать %1$s?</string>
+    <string name="block_user_message">Заблокированные контакты больше не смогут звонить вам или отправлять сообщения. Этот контакт не будет уведомлён.</string>
+    <string name="unblock_user_title">Разблокировать %1$s?</string>
+    <string name="unblock_user_message">Разблокируйте, чтобы отправлять и получать сообщения и звонки от этого контакта.</string>
+    <string name="action_block">Заблокировать</string>
+    <string name="action_unblock">Разблокировать</string>
+    <string name="action_block_contact">Заблокировать %1$s</string>
+    <string name="action_unblock_contact">Разблокировать %1$s</string>
+    <string name="action_report_contact">Пожаловаться на %1$s</string>
+    <string name="action_report_and_block">Пожаловаться и заблокировать</string>
+    <string name="report_contact_title">Пожаловаться на %1$s?</string>
+    <string name="report_contact_subtitle">Последние 5 сообщений из этого чата будут отправлены в GoChat. Этот контакт не будет уведомлён.</string>
+    <string name="report_block_contact_checkbox">Заблокировать контакт</string>
+    <string name="report_reason_prompt">Выберите причину жалобы</string>
+    <string name="report_details_hint">Добавьте дополнительные сведения (необязательно)</string>
+    <string name="user_blocked_toast">%1$s заблокирован</string>
+    <string name="user_unblocked_toast">%1$s разблокирован</string>
+    <string name="report_submitted_toast">Жалоба отправлена. Спасибо, что помогаете сохранять GoChat безопасным.</string>
+    <string name="blocked_banner_text">Вы заблокировали этот контакт. Нажмите, чтобы разблокировать.</string>
 </resources>

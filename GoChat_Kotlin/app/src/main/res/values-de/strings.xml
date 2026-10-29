@@ -543,4 +543,42 @@
     <string name="security_verification_title">Sicherheitsüberprüfung</string>
     <string name="security_verification_desc">Um zu überprüfen, ob Nachrichten mit %1$s Ende-zu-Ende-verschlüsselt sind, scanne diesen Code auf dem Telefon der Person oder bitte sie, deinen zu scannen. Du kannst auch die Nummern oben vergleichen.</string>
     <string name="security_verification_learn_more">Mehr erfahren</string>
+
+    <!-- Batch 13: security code / shared-media tabs / block-unblock-report -->
+    <string name="security_verification_scan_code">Code scannen</string>
+    <string name="security_verification_matching">Sicherheitscode stimmt überein</string>
+    <string name="security_verification_not_matching">Sicherheitscode stimmt nicht überein</string>
+    <string name="waiting_for_network">Warten auf Netzwerk…</string>
+    <string name="connecting">Verbinden…</string>
+    <string name="media_links_and_docs">Medien, Links und Dokumente</string>
+    <string name="no_media_items">Keine</string>
+    <string name="tab_media">Medien</string>
+    <string name="tab_docs">Dokumente</string>
+    <string name="tab_links">Links</string>
+    <string name="no_media_title">Noch keine Medien</string>
+    <string name="no_media_desc">In diesem Chat geteilte Fotos und Videos erscheinen hier.</string>
+    <string name="no_docs_title">Noch keine Dokumente</string>
+    <string name="no_docs_desc">In diesem Chat geteilte Dokumente erscheinen hier.</string>
+    <string name="no_links_title">Noch keine Links</string>
+    <string name="no_links_desc">In diesem Chat geteilte Links erscheinen hier.</string>
+    <string name="export_selection_count">%d ausgewählt</string>
+    <string name="block_user_title">%1$s blockieren?</string>
+    <string name="block_user_message">Blockierte Kontakte können dich nicht mehr anrufen oder dir Nachrichten senden. Dieser Kontakt wird nicht benachrichtigt.</string>
+    <string name="unblock_user_title">Blockierung von %1$s aufheben?</string>
+    <string name="unblock_user_message">Hebe die Blockierung auf, um Nachrichten und Anrufe von diesem Kontakt zu senden und zu empfangen.</string>
+    <string name="action_block">Blockieren</string>
+    <string name="action_unblock">Blockierung aufheben</string>
+    <string name="action_block_contact">%1$s blockieren</string>
+    <string name="action_unblock_contact">Blockierung von %1$s aufheben</string>
+    <string name="action_report_contact">%1$s melden</string>
+    <string name="action_report_and_block">Melden und blockieren</string>
+    <string name="report_contact_title">%1$s melden?</string>
+    <string name="report_contact_subtitle">Die letzten 5 Nachrichten aus diesem Chat werden an GoChat weitergeleitet. Dieser Kontakt wird nicht benachrichtigt.</string>
+    <string name="report_block_contact_checkbox">Kontakt blockieren</string>
+    <string name="report_reason_prompt">Wähle einen Grund für die Meldung</string>
+    <string name="report_details_hint">Weitere Details hinzufügen (optional)</string>
+    <string name="user_blocked_toast">%1$s wurde blockiert</string>
+    <string name="user_unblocked_toast">Blockierung von %1$s wurde aufgehoben</string>
+    <string name="report_submitted_toast">Meldung gesendet. Danke, dass du GoChat sicher hältst.</string>
+    <string name="blocked_banner_text">Du hast diesen Kontakt blockiert. Tippe, um die Blockierung aufzuheben.</string>
 </resources>

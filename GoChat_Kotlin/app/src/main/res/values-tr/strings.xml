@@ -543,4 +543,42 @@
     <string name="security_verification_title">Güvenlik doğrulaması</string>
     <string name="security_verification_desc">%1$s ile mesajların uçtan uca şifreli olduğunu doğrulamak için bu kodu onların telefonunda tarayın veya sizinkini taramasını isteyin. Yukarıdaki numaraları da karşılaştırabilirsiniz.</string>
     <string name="security_verification_learn_more">Daha fazla bilgi</string>
+
+    <!-- Batch 13: security code / shared-media tabs / block-unblock-report -->
+    <string name="security_verification_scan_code">Kodu tara</string>
+    <string name="security_verification_matching">Güvenlik kodu eşleşti</string>
+    <string name="security_verification_not_matching">Güvenlik kodu eşleşmiyor</string>
+    <string name="waiting_for_network">Ağ bekleniyor…</string>
+    <string name="connecting">Bağlanıyor…</string>
+    <string name="media_links_and_docs">Medya, bağlantılar ve belgeler</string>
+    <string name="no_media_items">Yok</string>
+    <string name="tab_media">Medya</string>
+    <string name="tab_docs">Belgeler</string>
+    <string name="tab_links">Bağlantılar</string>
+    <string name="no_media_title">Henüz medya yok</string>
+    <string name="no_media_desc">Bu sohbette paylaşılan fotoğraf ve videolar burada görünecek.</string>
+    <string name="no_docs_title">Henüz belge yok</string>
+    <string name="no_docs_desc">Bu sohbette paylaşılan belgeler burada görünecek.</string>
+    <string name="no_links_title">Henüz bağlantı yok</string>
+    <string name="no_links_desc">Bu sohbette paylaşılan bağlantılar burada görünecek.</string>
+    <string name="export_selection_count">%d seçildi</string>
+    <string name="block_user_title">%1$s engellensin mi?</string>
+    <string name="block_user_message">Engellenen kişiler artık sizi arayamaz veya size mesaj gönderemez. Bu kişi bilgilendirilmeyecek.</string>
+    <string name="unblock_user_title">%1$s engeli kaldırılsın mı?</string>
+    <string name="unblock_user_message">Bu kişiden mesaj ve arama gönderip almak için engeli kaldırın.</string>
+    <string name="action_block">Engelle</string>
+    <string name="action_unblock">Engeli kaldır</string>
+    <string name="action_block_contact">%1$s kişisini engelle</string>
+    <string name="action_unblock_contact">%1$s kişisinin engelini kaldır</string>
+    <string name="action_report_contact">%1$s kişisini bildir</string>
+    <string name="action_report_and_block">Bildir ve engelle</string>
+    <string name="report_contact_title">%1$s bildirilsin mi?</string>
+    <string name="report_contact_subtitle">Bu sohbetteki son 5 mesaj GoChat\'e iletilecek. Bu kişi bilgilendirilmeyecek.</string>
+    <string name="report_block_contact_checkbox">Kişiyi engelle</string>
+    <string name="report_reason_prompt">Bildirim için bir neden seçin</string>
+    <string name="report_details_hint">Ek ayrıntı ekleyin (isteğe bağlı)</string>
+    <string name="user_blocked_toast">%1$s engellendi</string>
+    <string name="user_unblocked_toast">%1$s kişisinin engeli kaldırıldı</string>
+    <string name="report_submitted_toast">Bildirim gönderildi. GoChat\'i güvenli tuttuğunuz için teşekkürler.</string>
+    <string name="blocked_banner_text">Bu kişiyi engellediniz. Engeli kaldırmak için dokunun.</string>
 </resources>

@@ -547,4 +547,42 @@
     <string name="security_verification_title">Vérification de sécurité</string>
     <string name="security_verification_desc">Pour vérifier que les messages avec %1$s sont chiffrés de bout en bout, scannez ce code sur son téléphone ou demandez-lui de scanner le vôtre. Vous pouvez aussi comparer les numéros ci-dessus.</string>
     <string name="security_verification_learn_more">En savoir plus</string>
+
+    <!-- Batch 13: security code / shared-media tabs / block-unblock-report -->
+    <string name="security_verification_scan_code">Scanner le code</string>
+    <string name="security_verification_matching">Code de sécurité concordant</string>
+    <string name="security_verification_not_matching">Le code de sécurité ne concorde pas</string>
+    <string name="waiting_for_network">En attente du réseau…</string>
+    <string name="connecting">Connexion…</string>
+    <string name="media_links_and_docs">Médias, liens et documents</string>
+    <string name="no_media_items">Aucun</string>
+    <string name="tab_media">Médias</string>
+    <string name="tab_docs">Documents</string>
+    <string name="tab_links">Liens</string>
+    <string name="no_media_title">Aucun média pour le moment</string>
+    <string name="no_media_desc">Les photos et vidéos partagées dans cette discussion apparaîtront ici.</string>
+    <string name="no_docs_title">Aucun document pour le moment</string>
+    <string name="no_docs_desc">Les documents partagés dans cette discussion apparaîtront ici.</string>
+    <string name="no_links_title">Aucun lien pour le moment</string>
+    <string name="no_links_desc">Les liens partagés dans cette discussion apparaîtront ici.</string>
+    <string name="export_selection_count">%d sélectionné(s)</string>
+    <string name="block_user_title">Bloquer %1$s ?</string>
+    <string name="block_user_message">Les contacts bloqués ne pourront plus vous appeler ni vous envoyer de messages. Ce contact n\'en sera pas informé.</string>
+    <string name="unblock_user_title">Débloquer %1$s ?</string>
+    <string name="unblock_user_message">Débloquez pour envoyer et recevoir des messages et des appels de ce contact.</string>
+    <string name="action_block">Bloquer</string>
+    <string name="action_unblock">Débloquer</string>
+    <string name="action_block_contact">Bloquer %1$s</string>
+    <string name="action_unblock_contact">Débloquer %1$s</string>
+    <string name="action_report_contact">Signaler %1$s</string>
+    <string name="action_report_and_block">Signaler et bloquer</string>
+    <string name="report_contact_title">Signaler %1$s ?</string>
+    <string name="report_contact_subtitle">Les 5 derniers messages de cette discussion seront transmis à GoChat. Ce contact n\'en sera pas informé.</string>
+    <string name="report_block_contact_checkbox">Bloquer le contact</string>
+    <string name="report_reason_prompt">Sélectionnez un motif de signalement</string>
+    <string name="report_details_hint">Ajouter des détails supplémentaires (facultatif)</string>
+    <string name="user_blocked_toast">%1$s a été bloqué</string>
+    <string name="user_unblocked_toast">%1$s a été débloqué</string>
+    <string name="report_submitted_toast">Signalement envoyé. Merci de contribuer à la sécurité de GoChat.</string>
+    <string name="blocked_banner_text">Vous avez bloqué ce contact. Appuyez pour débloquer.</string>
 </resources>

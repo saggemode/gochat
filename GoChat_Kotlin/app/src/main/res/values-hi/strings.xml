@@ -543,4 +543,42 @@
     <string name="security_verification_title">सुरक्षा सत्यापन</string>
     <string name="security_verification_desc">यह सत्यापित करने के लिए कि %1$s के साथ संदेश एंड-टू-एंड एन्क्रिप्टेड हैं, उनके फ़ोन पर यह कोड स्कैन करें या उन्हें अपना स्कैन करने को कहें। आप ऊपर दिए गए नंबरों की तुलना भी कर सकते हैं।</string>
     <string name="security_verification_learn_more">और जानें</string>
+
+    <!-- Batch 13: security code / shared-media tabs / block-unblock-report -->
+    <string name="security_verification_scan_code">कोड स्कैन करें</string>
+    <string name="security_verification_matching">सुरक्षा कोड मेल खाता है</string>
+    <string name="security_verification_not_matching">सुरक्षा कोड मेल नहीं खाता</string>
+    <string name="waiting_for_network">नेटवर्क की प्रतीक्षा हो रही है…</string>
+    <string name="connecting">कनेक्ट हो रहा है…</string>
+    <string name="media_links_and_docs">मीडिया, लिंक और दस्तावेज़</string>
+    <string name="no_media_items">कोई नहीं</string>
+    <string name="tab_media">मीडिया</string>
+    <string name="tab_docs">दस्तावेज़</string>
+    <string name="tab_links">लिंक</string>
+    <string name="no_media_title">अभी कोई मीडिया नहीं</string>
+    <string name="no_media_desc">इस चैट में साझा की गई फ़ोटो और वीडियो यहाँ दिखाई देंगे।</string>
+    <string name="no_docs_title">अभी कोई दस्तावेज़ नहीं</string>
+    <string name="no_docs_desc">इस चैट में साझा किए गए दस्तावेज़ यहाँ दिखाई देंगे।</string>
+    <string name="no_links_title">अभी कोई लिंक नहीं</string>
+    <string name="no_links_desc">इस चैट में साझा किए गए लिंक यहाँ दिखाई देंगे।</string>
+    <string name="export_selection_count">%d चयनित</string>
+    <string name="block_user_title">%1$s को ब्लॉक करें?</string>
+    <string name="block_user_message">ब्लॉक किए गए संपर्क अब आपको कॉल या संदेश नहीं भेज सकेंगे। इस संपर्क को सूचित नहीं किया जाएगा।</string>
+    <string name="unblock_user_title">%1$s को अनब्लॉक करें?</string>
+    <string name="unblock_user_message">इस संपर्क से संदेश और कॉल भेजने और प्राप्त करने के लिए अनब्लॉक करें।</string>
+    <string name="action_block">ब्लॉक करें</string>
+    <string name="action_unblock">अनब्लॉक करें</string>
+    <string name="action_block_contact">%1$s को ब्लॉक करें</string>
+    <string name="action_unblock_contact">%1$s को अनब्लॉक करें</string>
+    <string name="action_report_contact">%1$s की रिपोर्ट करें</string>
+    <string name="action_report_and_block">रिपोर्ट करें और ब्लॉक करें</string>
+    <string name="report_contact_title">%1$s की रिपोर्ट करें?</string>
+    <string name="report_contact_subtitle">इस चैट के अंतिम 5 संदेश GoChat को अग्रेषित किए जाएँगे। इस संपर्क को सूचित नहीं किया जाएगा।</string>
+    <string name="report_block_contact_checkbox">संपर्क ब्लॉक करें</string>
+    <string name="report_reason_prompt">रिपोर्ट करने का कारण चुनें</string>
+    <string name="report_details_hint">अतिरिक्त विवरण जोड़ें (वैकल्पिक)</string>
+    <string name="user_blocked_toast">%1$s को ब्लॉक कर दिया गया है</string>
+    <string name="user_unblocked_toast">%1$s को अनब्लॉक कर दिया गया है</string>
+    <string name="report_submitted_toast">रिपोर्ट सबमिट की गई। GoChat को सुरक्षित रखने के लिए धन्यवाद।</string>
+    <string name="blocked_banner_text">आपने इस संपर्क को ब्लॉक किया है। अनब्लॉक करने के लिए टैप करें।</string>
 </resources>

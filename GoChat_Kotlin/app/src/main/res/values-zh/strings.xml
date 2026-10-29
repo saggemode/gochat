@@ -543,4 +543,42 @@
     <string name="security_verification_title">安全验证</string>
     <string name="security_verification_desc">若要验证与 %1$s 的消息是否端到端加密，请在对方手机上扫描此代码，或请对方扫描您的代码。您也可以对比上方的数字。</string>
     <string name="security_verification_learn_more">了解更多</string>
+
+    <!-- Batch 13: security code / shared-media tabs / block-unblock-report -->
+    <string name="security_verification_scan_code">扫描代码</string>
+    <string name="security_verification_matching">安全代码匹配</string>
+    <string name="security_verification_not_matching">安全代码不匹配</string>
+    <string name="waiting_for_network">正在等待网络…</string>
+    <string name="connecting">正在连接…</string>
+    <string name="media_links_and_docs">媒体、链接和文档</string>
+    <string name="no_media_items">无</string>
+    <string name="tab_media">媒体</string>
+    <string name="tab_docs">文档</string>
+    <string name="tab_links">链接</string>
+    <string name="no_media_title">暂无媒体</string>
+    <string name="no_media_desc">此聊天中分享的照片和视频将显示在此处。</string>
+    <string name="no_docs_title">暂无文档</string>
+    <string name="no_docs_desc">此聊天中分享的文档将显示在此处。</string>
+    <string name="no_links_title">暂无链接</string>
+    <string name="no_links_desc">此聊天中分享的链接将显示在此处。</string>
+    <string name="export_selection_count">已选择 %d 项</string>
+    <string name="block_user_title">屏蔽 %1$s？</string>
+    <string name="block_user_message">被屏蔽的联系人将无法再呼叫您或向您发送消息。此联系人不会收到通知。</string>
+    <string name="unblock_user_title">取消屏蔽 %1$s？</string>
+    <string name="unblock_user_message">取消屏蔽以接收和发送此联系人的消息和通话。</string>
+    <string name="action_block">屏蔽</string>
+    <string name="action_unblock">取消屏蔽</string>
+    <string name="action_block_contact">屏蔽 %1$s</string>
+    <string name="action_unblock_contact">取消屏蔽 %1$s</string>
+    <string name="action_report_contact">举报 %1$s</string>
+    <string name="action_report_and_block">举报并屏蔽</string>
+    <string name="report_contact_title">举报 %1$s？</string>
+    <string name="report_contact_subtitle">此聊天中最近 5 条消息将转发给 GoChat。此联系人不会收到通知。</string>
+    <string name="report_block_contact_checkbox">屏蔽联系人</string>
+    <string name="report_reason_prompt">请选择举报原因</string>
+    <string name="report_details_hint">添加更多详情（可选）</string>
+    <string name="user_blocked_toast">已屏蔽 %1$s</string>
+    <string name="user_unblocked_toast">已取消屏蔽 %1$s</string>
+    <string name="report_submitted_toast">举报已提交。感谢您共同维护 GoChat 的安全。</string>
+    <string name="blocked_banner_text">您已屏蔽此联系人。点击取消屏蔽。</string>
 </resources>

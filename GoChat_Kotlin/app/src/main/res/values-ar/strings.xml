@@ -543,4 +543,42 @@
     <string name="security_verification_title">التحقق الأمني</string>
     <string name="security_verification_desc">للتحقق من أن الرسائل مع %1$s مشفّرة طرفًا إلى طرف، امسح هذا الرمز على هاتفه أو اطلب منه مسح رمزك. يمكنك أيضًا مقارنة الأرقام أعلاه.</string>
     <string name="security_verification_learn_more">معرفة المزيد</string>
+
+    <!-- Batch 13: security code / shared-media tabs / block-unblock-report -->
+    <string name="security_verification_scan_code">مسح الرمز</string>
+    <string name="security_verification_matching">رمز الأمان متطابق</string>
+    <string name="security_verification_not_matching">رمز الأمان غير متطابق</string>
+    <string name="waiting_for_network">في انتظار الشبكة…</string>
+    <string name="connecting">جارٍ الاتصال…</string>
+    <string name="media_links_and_docs">الوسائط والروابط والمستندات</string>
+    <string name="no_media_items">لا شيء</string>
+    <string name="tab_media">الوسائط</string>
+    <string name="tab_docs">المستندات</string>
+    <string name="tab_links">الروابط</string>
+    <string name="no_media_title">لا وسائط بعد</string>
+    <string name="no_media_desc">ستظهر هنا الصور والفيديوهات التي تمت مشاركتها في هذه الدردشة.</string>
+    <string name="no_docs_title">لا مستندات بعد</string>
+    <string name="no_docs_desc">ستظهر هنا المستندات التي تمت مشاركتها في هذه الدردشة.</string>
+    <string name="no_links_title">لا روابط بعد</string>
+    <string name="no_links_desc">ستظهر هنا الروابط التي تمت مشاركتها في هذه الدردشة.</string>
+    <string name="export_selection_count">تم تحديد %d</string>
+    <string name="block_user_title">حظر %1$s؟</string>
+    <string name="block_user_message">لن يتمكن جهات الاتصال المحظورة من الاتصال بك أو إرسال رسائل إليك بعد الآن. لن يتم إشعار جهة الاتصال هذه.</string>
+    <string name="unblock_user_title">إلغاء حظر %1$s؟</string>
+    <string name="unblock_user_message">ألغِ الحظر لإرسال واستقبال الرسائل والمكالمات من جهة الاتصال هذه.</string>
+    <string name="action_block">حظر</string>
+    <string name="action_unblock">إلغاء الحظر</string>
+    <string name="action_block_contact">حظر %1$s</string>
+    <string name="action_unblock_contact">إلغاء حظر %1$s</string>
+    <string name="action_report_contact">الإبلاغ عن %1$s</string>
+    <string name="action_report_and_block">الإبلاغ والحظر</string>
+    <string name="report_contact_title">الإبلاغ عن %1$s؟</string>
+    <string name="report_contact_subtitle">سيتم إرسال آخر 5 رسائل من هذه الدردشة إلى GoChat. لن يتم إشعار جهة الاتصال هذه.</string>
+    <string name="report_block_contact_checkbox">حظر جهة الاتصال</string>
+    <string name="report_reason_prompt">اختر سبب الإبلاغ</string>
+    <string name="report_details_hint">أضف تفاصيل إضافية (اختياري)</string>
+    <string name="user_blocked_toast">تم حظر %1$s</string>
+    <string name="user_unblocked_toast">تم إلغاء حظر %1$s</string>
+    <string name="report_submitted_toast">تم إرسال البلاغ. شكرًا لمساعدتك في الحفاظ على أمان GoChat.</string>
+    <string name="blocked_banner_text">لقد حظرت جهة الاتصال هذه. اضغط لإلغاء الحظر.</string>
 </resources>
