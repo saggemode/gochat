@@ -581,4 +581,46 @@
     <string name="user_unblocked_toast">%1$s foi desbloqueado</string>
     <string name="report_submitted_toast">Denúncia enviada. Obrigado por manter o GoChat seguro.</string>
     <string name="blocked_banner_text">Você bloqueou este contato. Toque para desbloquear.</string>
+
+    <!-- Batch 14: seller coupon manager -->
+    <string name="coupon_manager_title">Cupons</string>
+    <string name="coupon_create_header">Criar um cupom</string>
+    <string name="coupon_code_label">Código do cupom</string>
+    <string name="coupon_code_hint">ex. SAVE20</string>
+    <string name="coupon_generate">Gerar</string>
+    <string name="coupon_discount_type">Tipo de desconto</string>
+    <string name="coupon_type_percentage">Percentual</string>
+    <string name="coupon_type_fixed">Valor fixo</string>
+    <string name="coupon_value_label">Valor do desconto</string>
+    <string name="coupon_value_hint_pct">ex. 20 para 20% de desconto</string>
+    <string name="coupon_value_hint_fixed">Valor de desconto por pedido</string>
+    <string name="coupon_min_spend_label">Gasto mínimo (opcional)</string>
+    <string name="coupon_max_uses_label">Usos totais (0 = ilimitado)</string>
+    <string name="coupon_max_uses_per_user_label">Usos por cliente (0 = ilimitado)</string>
+    <string name="coupon_scope_label">Aplica-se a</string>
+    <string name="coupon_scope_all">Todos os produtos da loja</string>
+    <string name="coupon_expiry_label">Validade</string>
+    <string name="coupon_expiry_none">Sem validade</string>
+    <string name="coupon_expiry_prefix">Expira em %1$s</string>
+    <string name="coupon_expiry_set">Escolher data</string>
+    <string name="coupon_expiry_clear">Limpar</string>
+    <string name="coupon_save">Criar cupom</string>
+    <string name="coupon_existing_header">Seus cupons</string>
+    <string name="coupon_empty">Ainda sem cupons. Crie um acima.</string>
+    <string name="coupon_created">Cupom criado</string>
+    <string name="coupon_create_failed">Não foi possível criar o cupom</string>
+    <string name="coupon_err_code">Digite um código de cupom</string>
+    <string name="coupon_err_value">Digite um valor de desconto maior que 0</string>
+    <string name="coupon_err_pct_range">O percentual deve estar entre 1 e 100</string>
+    <string name="coupon_item_scope_all">Todos os produtos</string>
+    <string name="coupon_item_uses">%1$d/%2$s usados</string>
+    <string name="coupon_item_unlimited">∞</string>
+    <string name="coupon_item_expires">Expira em %1$s</string>
+    <string name="coupon_item_no_expiry">Sem validade</string>
+    <string name="coupon_item_inactive">Inativo</string>
+    <string name="coupon_off_pct">%1$s%% de desconto</string>
+    <string name="coupon_off_fixed">%1$s de desconto</string>
+    <string name="coupon_min_spend_prefix">Gasto mín. %1$s</string>
+    <string name="seller_hub_coupons">CUPONS</string>
+    <string name="seller_hub_coupons_sub">Crie códigos de desconto para sua loja</string>
 </resources>

@@ -1261,6 +1261,95 @@ class MarketplaceRepository @Inject constructor(
         }
     }
 
+    /** A store coupon as returned by the backend. An empty [productId] means the
+     *  coupon applies to the whole store; a set [productId] scopes it to one product.
+     *  A blank [expiresAt] means no expiry (otherwise RFC3339/ISO-8601). */
+    data class Coupon(
+        val id: String,
+        val code: String,
+        val discountType: String,   // "percentage" or "fixed"
+        val discountValue: Double,
+        val minSpend: Double,
+        val maxUses: Int,
+        val usedCount: Int,
+        val maxUsesPerUser: Int,
+        val expiresAt: String,
+        val isActive: Boolean,
+        val productId: String,
+        val productName: String
+    )
+
+    private fun parseCoupon(o: JsonObject?): Coupon? {
+        if (o == null) return null
+        val id = o["id"]?.jsonPrimitive?.contentOrNull ?: return null
+        return Coupon(
+            id = id,
+            code = o["code"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            discountType = o["discount_type"]?.jsonPrimitive?.contentOrNull ?: "percentage",
+            discountValue = o["discount_value"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
+            minSpend = o["min_spend"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
+            maxUses = o["max_uses"]?.jsonPrimitive?.intOrNull ?: 0,
+            usedCount = o["used_count"]?.jsonPrimitive?.intOrNull ?: 0,
+            maxUsesPerUser = o["max_uses_per_user"]?.jsonPrimitive?.intOrNull ?: 0,
+            expiresAt = o["expires_at"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            isActive = o["is_active"]?.jsonPrimitive?.booleanOrNull ?: true,
+            productId = o["product_id"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            productName = o["product_name"]?.jsonPrimitive?.contentOrNull.orEmpty()
+        )
+    }
+
+    /** Lists the signed-in seller's coupons (business_id is derived from the token). */
+    suspend fun getMyCoupons(): Result<List<Coupon>> {
+        return try {
+            val resp = api.getBusinessCoupons()
+            if (!resp.isSuccessful) return Result.success(emptyList())
+            val arr = resp.body() as? JsonArray ?: (resp.body() as? JsonObject)?.get("coupons") as? JsonArray
+            val list = arr?.mapNotNull { parseCoupon(it as? JsonObject) }.orEmpty()
+            Result.success(list)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Creates a store coupon. [productId] blank → applies to the whole store;
+     * set → scopes it to that product. [expiresAt] blank → never expires
+     * (otherwise an RFC3339 timestamp). Returns the created coupon.
+     */
+    suspend fun createCoupon(
+        code: String,
+        discountType: String,
+        discountValue: Double,
+        minSpend: Double,
+        maxUses: Int,
+        maxUsesPerUser: Int,
+        expiresAt: String,
+        productId: String
+    ): Result<Coupon> {
+        return try {
+            val body = buildJsonObject {
+                put("code", code.trim())
+                put("discount_type", discountType)
+                put("discount_value", discountValue)
+                put("min_spend", minSpend)
+                put("max_uses", maxUses)
+                put("max_uses_per_user", maxUsesPerUser)
+                if (expiresAt.isNotBlank()) put("expires_at", expiresAt)
+                if (productId.isNotBlank()) put("product_id", productId)
+            }
+            val resp = api.createCoupon(body)
+            if (!resp.isSuccessful) {
+                val msg = resp.errorBody()?.string()?.takeIf { it.isNotBlank() } ?: "HTTP ${resp.code()}"
+                return Result.failure(Exception(msg))
+            }
+            val coupon = parseCoupon(resp.body())
+                ?: return Result.failure(Exception("Malformed coupon response"))
+            Result.success(coupon)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     data class PaymentInit(val authorizationUrl: String, val reference: String)
 
     /**

@@ -581,4 +581,46 @@
     <string name="user_unblocked_toast">%1$s को अनब्लॉक कर दिया गया है</string>
     <string name="report_submitted_toast">रिपोर्ट सबमिट की गई। GoChat को सुरक्षित रखने के लिए धन्यवाद।</string>
     <string name="blocked_banner_text">आपने इस संपर्क को ब्लॉक किया है। अनब्लॉक करने के लिए टैप करें।</string>
+
+    <!-- Batch 14: seller coupon manager -->
+    <string name="coupon_manager_title">कूपन</string>
+    <string name="coupon_create_header">कूपन बनाएँ</string>
+    <string name="coupon_code_label">कूपन कोड</string>
+    <string name="coupon_code_hint">उदा. SAVE20</string>
+    <string name="coupon_generate">जनरेट करें</string>
+    <string name="coupon_discount_type">छूट का प्रकार</string>
+    <string name="coupon_type_percentage">प्रतिशत</string>
+    <string name="coupon_type_fixed">निश्चित राशि</string>
+    <string name="coupon_value_label">छूट मूल्य</string>
+    <string name="coupon_value_hint_pct">उदा. 20% छूट के लिए 20</string>
+    <string name="coupon_value_hint_fixed">प्रत्येक ऑर्डर पर छूट राशि</string>
+    <string name="coupon_min_spend_label">न्यूनतम खर्च (वैकल्पिक)</string>
+    <string name="coupon_max_uses_label">कुल उपयोग (0 = असीमित)</string>
+    <string name="coupon_max_uses_per_user_label">प्रति ग्राहक उपयोग (0 = असीमित)</string>
+    <string name="coupon_scope_label">इन पर लागू</string>
+    <string name="coupon_scope_all">स्टोर के सभी उत्पाद</string>
+    <string name="coupon_expiry_label">समाप्ति</string>
+    <string name="coupon_expiry_none">कोई समाप्ति नहीं</string>
+    <string name="coupon_expiry_prefix">%1$s को समाप्त</string>
+    <string name="coupon_expiry_set">तारीख चुनें</string>
+    <string name="coupon_expiry_clear">साफ़ करें</string>
+    <string name="coupon_save">कूपन बनाएँ</string>
+    <string name="coupon_existing_header">आपके कूपन</string>
+    <string name="coupon_empty">अभी कोई कूपन नहीं। ऊपर एक बनाएँ।</string>
+    <string name="coupon_created">कूपन बनाया गया</string>
+    <string name="coupon_create_failed">कूपन नहीं बनाया जा सका</string>
+    <string name="coupon_err_code">कूपन कोड दर्ज करें</string>
+    <string name="coupon_err_value">0 से अधिक छूट मूल्य दर्ज करें</string>
+    <string name="coupon_err_pct_range">प्रतिशत 1 और 100 के बीच होना चाहिए</string>
+    <string name="coupon_item_scope_all">सभी उत्पाद</string>
+    <string name="coupon_item_uses">%1$d/%2$s उपयोग किए गए</string>
+    <string name="coupon_item_unlimited">∞</string>
+    <string name="coupon_item_expires">%1$s को समाप्त</string>
+    <string name="coupon_item_no_expiry">कोई समाप्ति नहीं</string>
+    <string name="coupon_item_inactive">निष्क्रिय</string>
+    <string name="coupon_off_pct">%1$s%% छूट</string>
+    <string name="coupon_off_fixed">%1$s की छूट</string>
+    <string name="coupon_min_spend_prefix">न्यूनतम खर्च %1$s</string>
+    <string name="seller_hub_coupons">कूपन</string>
+    <string name="seller_hub_coupons_sub">अपने स्टोर के लिए छूट कोड बनाएँ</string>
 </resources>

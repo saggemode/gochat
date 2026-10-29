@@ -581,4 +581,46 @@
     <string name="user_unblocked_toast">Kizuizi cha %1$s kimeondolewa</string>
     <string name="report_submitted_toast">Ripoti imewasilishwa. Asante kwa kuweka GoChat salama.</string>
     <string name="blocked_banner_text">Umezuia anwani hii. Gusa ili kuondoa kizuizi.</string>
+
+    <!-- Batch 14: seller coupon manager -->
+    <string name="coupon_manager_title">Kuponi</string>
+    <string name="coupon_create_header">Unda kuponi</string>
+    <string name="coupon_code_label">Msimbo wa kuponi</string>
+    <string name="coupon_code_hint">k.m. SAVE20</string>
+    <string name="coupon_generate">Tengeneza</string>
+    <string name="coupon_discount_type">Aina ya punguzo</string>
+    <string name="coupon_type_percentage">Asilimia</string>
+    <string name="coupon_type_fixed">Kiasi kisichobadilika</string>
+    <string name="coupon_value_label">Thamani ya punguzo</string>
+    <string name="coupon_value_hint_pct">k.m. 20 kwa punguzo la 20%</string>
+    <string name="coupon_value_hint_fixed">Kiasi cha punguzo kwa kila agizo</string>
+    <string name="coupon_min_spend_label">Matumizi ya chini (si lazima)</string>
+    <string name="coupon_max_uses_label">Jumla ya matumizi (0 = bila kikomo)</string>
+    <string name="coupon_max_uses_per_user_label">Matumizi kwa kila mteja (0 = bila kikomo)</string>
+    <string name="coupon_scope_label">Inatumika kwa</string>
+    <string name="coupon_scope_all">Bidhaa zote za duka</string>
+    <string name="coupon_expiry_label">Kuisha muda</string>
+    <string name="coupon_expiry_none">Haina mwisho</string>
+    <string name="coupon_expiry_prefix">Inaisha %1$s</string>
+    <string name="coupon_expiry_set">Chagua tarehe</string>
+    <string name="coupon_expiry_clear">Futa</string>
+    <string name="coupon_save">Unda kuponi</string>
+    <string name="coupon_existing_header">Kuponi zako</string>
+    <string name="coupon_empty">Hakuna kuponi bado. Unda moja hapo juu.</string>
+    <string name="coupon_created">Kuponi imeundwa</string>
+    <string name="coupon_create_failed">Imeshindwa kuunda kuponi</string>
+    <string name="coupon_err_code">Weka msimbo wa kuponi</string>
+    <string name="coupon_err_value">Weka thamani ya punguzo kubwa kuliko 0</string>
+    <string name="coupon_err_pct_range">Asilimia lazima iwe kati ya 1 na 100</string>
+    <string name="coupon_item_scope_all">Bidhaa zote</string>
+    <string name="coupon_item_uses">Zimetumika %1$d/%2$s</string>
+    <string name="coupon_item_unlimited">∞</string>
+    <string name="coupon_item_expires">Inaisha %1$s</string>
+    <string name="coupon_item_no_expiry">Haina mwisho</string>
+    <string name="coupon_item_inactive">Haifanyi kazi</string>
+    <string name="coupon_off_pct">Punguzo la %1$s%%</string>
+    <string name="coupon_off_fixed">Punguzo la %1$s</string>
+    <string name="coupon_min_spend_prefix">Matumizi ya chini %1$s</string>
+    <string name="seller_hub_coupons">KUPONI</string>
+    <string name="seller_hub_coupons_sub">Unda misimbo ya punguzo kwa duka lako</string>
 </resources>

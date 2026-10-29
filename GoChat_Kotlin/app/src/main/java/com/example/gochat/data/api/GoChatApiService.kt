@@ -435,6 +435,15 @@ interface GoChatApiService {
         @Body body: JsonObject
     ): Response<JsonObject>
 
+    // Seller coupon management. The gateway derives business_id from the auth token.
+    @POST(ApiConstants.BUSINESS_COUPONS)
+    suspend fun createCoupon(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @GET(ApiConstants.BUSINESS_COUPONS)
+    suspend fun getBusinessCoupons(): Response<JsonElement>
+
     @POST(ApiConstants.ORDERS)
     suspend fun placeOrder(
         @Body body: JsonObject

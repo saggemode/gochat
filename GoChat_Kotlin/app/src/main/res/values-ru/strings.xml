@@ -581,4 +581,46 @@
     <string name="user_unblocked_toast">%1$s разблокирован</string>
     <string name="report_submitted_toast">Жалоба отправлена. Спасибо, что помогаете сохранять GoChat безопасным.</string>
     <string name="blocked_banner_text">Вы заблокировали этот контакт. Нажмите, чтобы разблокировать.</string>
+
+    <!-- Batch 14: seller coupon manager -->
+    <string name="coupon_manager_title">Купоны</string>
+    <string name="coupon_create_header">Создать купон</string>
+    <string name="coupon_code_label">Код купона</string>
+    <string name="coupon_code_hint">напр. SAVE20</string>
+    <string name="coupon_generate">Сгенерировать</string>
+    <string name="coupon_discount_type">Тип скидки</string>
+    <string name="coupon_type_percentage">Процент</string>
+    <string name="coupon_type_fixed">Фиксированная сумма</string>
+    <string name="coupon_value_label">Размер скидки</string>
+    <string name="coupon_value_hint_pct">напр. 20 для скидки 20%</string>
+    <string name="coupon_value_hint_fixed">Сумма скидки на каждый заказ</string>
+    <string name="coupon_min_spend_label">Минимальная сумма (необязательно)</string>
+    <string name="coupon_max_uses_label">Всего использований (0 = без ограничений)</string>
+    <string name="coupon_max_uses_per_user_label">Использований на клиента (0 = без ограничений)</string>
+    <string name="coupon_scope_label">Применяется к</string>
+    <string name="coupon_scope_all">Все товары магазина</string>
+    <string name="coupon_expiry_label">Срок действия</string>
+    <string name="coupon_expiry_none">Без срока</string>
+    <string name="coupon_expiry_prefix">Истекает %1$s</string>
+    <string name="coupon_expiry_set">Выбрать дату</string>
+    <string name="coupon_expiry_clear">Очистить</string>
+    <string name="coupon_save">Создать купон</string>
+    <string name="coupon_existing_header">Ваши купоны</string>
+    <string name="coupon_empty">Купонов пока нет. Создайте выше.</string>
+    <string name="coupon_created">Купон создан</string>
+    <string name="coupon_create_failed">Не удалось создать купон</string>
+    <string name="coupon_err_code">Введите код купона</string>
+    <string name="coupon_err_value">Введите размер скидки больше 0</string>
+    <string name="coupon_err_pct_range">Процент должен быть от 1 до 100</string>
+    <string name="coupon_item_scope_all">Все товары</string>
+    <string name="coupon_item_uses">Использовано %1$d/%2$s</string>
+    <string name="coupon_item_unlimited">∞</string>
+    <string name="coupon_item_expires">Истекает %1$s</string>
+    <string name="coupon_item_no_expiry">Без срока</string>
+    <string name="coupon_item_inactive">Неактивен</string>
+    <string name="coupon_off_pct">Скидка %1$s%%</string>
+    <string name="coupon_off_fixed">Скидка %1$s</string>
+    <string name="coupon_min_spend_prefix">Мин. сумма %1$s</string>
+    <string name="seller_hub_coupons">КУПОНЫ</string>
+    <string name="seller_hub_coupons_sub">Создавайте промокоды для вашего магазина</string>
 </resources>

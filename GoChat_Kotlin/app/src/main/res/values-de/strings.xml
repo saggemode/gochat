@@ -581,4 +581,46 @@
     <string name="user_unblocked_toast">Blockierung von %1$s wurde aufgehoben</string>
     <string name="report_submitted_toast">Meldung gesendet. Danke, dass du GoChat sicher hältst.</string>
     <string name="blocked_banner_text">Du hast diesen Kontakt blockiert. Tippe, um die Blockierung aufzuheben.</string>
+
+    <!-- Batch 14: seller coupon manager -->
+    <string name="coupon_manager_title">Gutscheine</string>
+    <string name="coupon_create_header">Gutschein erstellen</string>
+    <string name="coupon_code_label">Gutscheincode</string>
+    <string name="coupon_code_hint">z. B. SAVE20</string>
+    <string name="coupon_generate">Generieren</string>
+    <string name="coupon_discount_type">Rabattart</string>
+    <string name="coupon_type_percentage">Prozentsatz</string>
+    <string name="coupon_type_fixed">Fester Betrag</string>
+    <string name="coupon_value_label">Rabattwert</string>
+    <string name="coupon_value_hint_pct">z. B. 20 für 20 % Rabatt</string>
+    <string name="coupon_value_hint_fixed">Betrag, der pro Bestellung abgezogen wird</string>
+    <string name="coupon_min_spend_label">Mindestbestellwert (optional)</string>
+    <string name="coupon_max_uses_label">Gesamtnutzungen (0 = unbegrenzt)</string>
+    <string name="coupon_max_uses_per_user_label">Nutzungen pro Kunde (0 = unbegrenzt)</string>
+    <string name="coupon_scope_label">Gilt für</string>
+    <string name="coupon_scope_all">Alle Shop-Produkte</string>
+    <string name="coupon_expiry_label">Ablauf</string>
+    <string name="coupon_expiry_none">Kein Ablauf</string>
+    <string name="coupon_expiry_prefix">Läuft ab am %1$s</string>
+    <string name="coupon_expiry_set">Datum wählen</string>
+    <string name="coupon_expiry_clear">Löschen</string>
+    <string name="coupon_save">Gutschein erstellen</string>
+    <string name="coupon_existing_header">Deine Gutscheine</string>
+    <string name="coupon_empty">Noch keine Gutscheine. Erstelle oben einen.</string>
+    <string name="coupon_created">Gutschein erstellt</string>
+    <string name="coupon_create_failed">Gutschein konnte nicht erstellt werden</string>
+    <string name="coupon_err_code">Gib einen Gutscheincode ein</string>
+    <string name="coupon_err_value">Gib einen Rabattwert größer als 0 ein</string>
+    <string name="coupon_err_pct_range">Der Prozentsatz muss zwischen 1 und 100 liegen</string>
+    <string name="coupon_item_scope_all">Alle Produkte</string>
+    <string name="coupon_item_uses">%1$d/%2$s verwendet</string>
+    <string name="coupon_item_unlimited">∞</string>
+    <string name="coupon_item_expires">Läuft ab am %1$s</string>
+    <string name="coupon_item_no_expiry">Kein Ablauf</string>
+    <string name="coupon_item_inactive">Inaktiv</string>
+    <string name="coupon_off_pct">%1$s %% Rabatt</string>
+    <string name="coupon_off_fixed">%1$s Rabatt</string>
+    <string name="coupon_min_spend_prefix">Mindestbetrag %1$s</string>
+    <string name="seller_hub_coupons">GUTSCHEINE</string>
+    <string name="seller_hub_coupons_sub">Erstelle Rabattcodes für deinen Shop</string>
 </resources>

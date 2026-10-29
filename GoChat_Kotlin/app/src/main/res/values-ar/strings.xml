@@ -581,4 +581,46 @@
     <string name="user_unblocked_toast">تم إلغاء حظر %1$s</string>
     <string name="report_submitted_toast">تم إرسال البلاغ. شكرًا لمساعدتك في الحفاظ على أمان GoChat.</string>
     <string name="blocked_banner_text">لقد حظرت جهة الاتصال هذه. اضغط لإلغاء الحظر.</string>
+
+    <!-- Batch 14: seller coupon manager -->
+    <string name="coupon_manager_title">القسائم</string>
+    <string name="coupon_create_header">إنشاء قسيمة</string>
+    <string name="coupon_code_label">رمز القسيمة</string>
+    <string name="coupon_code_hint">مثال: SAVE20</string>
+    <string name="coupon_generate">إنشاء</string>
+    <string name="coupon_discount_type">نوع الخصم</string>
+    <string name="coupon_type_percentage">نسبة مئوية</string>
+    <string name="coupon_type_fixed">مبلغ ثابت</string>
+    <string name="coupon_value_label">قيمة الخصم</string>
+    <string name="coupon_value_hint_pct">مثال: 20 مقابل خصم 20%</string>
+    <string name="coupon_value_hint_fixed">مبلغ الخصم لكل طلب</string>
+    <string name="coupon_min_spend_label">الحد الأدنى للإنفاق (اختياري)</string>
+    <string name="coupon_max_uses_label">إجمالي الاستخدامات (0 = غير محدود)</string>
+    <string name="coupon_max_uses_per_user_label">الاستخدامات لكل عميل (0 = غير محدود)</string>
+    <string name="coupon_scope_label">ينطبق على</string>
+    <string name="coupon_scope_all">جميع منتجات المتجر</string>
+    <string name="coupon_expiry_label">انتهاء الصلاحية</string>
+    <string name="coupon_expiry_none">بدون انتهاء</string>
+    <string name="coupon_expiry_prefix">ينتهي في %1$s</string>
+    <string name="coupon_expiry_set">اختيار التاريخ</string>
+    <string name="coupon_expiry_clear">مسح</string>
+    <string name="coupon_save">إنشاء القسيمة</string>
+    <string name="coupon_existing_header">قسائمك</string>
+    <string name="coupon_empty">لا قسائم بعد. أنشئ واحدة أعلاه.</string>
+    <string name="coupon_created">تم إنشاء القسيمة</string>
+    <string name="coupon_create_failed">تعذّر إنشاء القسيمة</string>
+    <string name="coupon_err_code">أدخل رمز القسيمة</string>
+    <string name="coupon_err_value">أدخل قيمة خصم أكبر من 0</string>
+    <string name="coupon_err_pct_range">يجب أن تكون النسبة بين 1 و100</string>
+    <string name="coupon_item_scope_all">جميع المنتجات</string>
+    <string name="coupon_item_uses">تم استخدام %1$d/%2$s</string>
+    <string name="coupon_item_unlimited">∞</string>
+    <string name="coupon_item_expires">ينتهي في %1$s</string>
+    <string name="coupon_item_no_expiry">بدون انتهاء</string>
+    <string name="coupon_item_inactive">غير نشطة</string>
+    <string name="coupon_off_pct">خصم %1$s%%</string>
+    <string name="coupon_off_fixed">خصم %1$s</string>
+    <string name="coupon_min_spend_prefix">الحد الأدنى للإنفاق %1$s</string>
+    <string name="seller_hub_coupons">القسائم</string>
+    <string name="seller_hub_coupons_sub">أنشئ رموز خصم لمتجرك</string>
 </resources>

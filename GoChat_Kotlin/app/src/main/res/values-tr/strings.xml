@@ -581,4 +581,46 @@
     <string name="user_unblocked_toast">%1$s kişisinin engeli kaldırıldı</string>
     <string name="report_submitted_toast">Bildirim gönderildi. GoChat\'i güvenli tuttuğunuz için teşekkürler.</string>
     <string name="blocked_banner_text">Bu kişiyi engellediniz. Engeli kaldırmak için dokunun.</string>
+
+    <!-- Batch 14: seller coupon manager -->
+    <string name="coupon_manager_title">Kuponlar</string>
+    <string name="coupon_create_header">Kupon oluştur</string>
+    <string name="coupon_code_label">Kupon kodu</string>
+    <string name="coupon_code_hint">örn. SAVE20</string>
+    <string name="coupon_generate">Oluştur</string>
+    <string name="coupon_discount_type">İndirim türü</string>
+    <string name="coupon_type_percentage">Yüzde</string>
+    <string name="coupon_type_fixed">Sabit tutar</string>
+    <string name="coupon_value_label">İndirim değeri</string>
+    <string name="coupon_value_hint_pct">örn. %20 indirim için 20</string>
+    <string name="coupon_value_hint_fixed">Her siparişten düşülen tutar</string>
+    <string name="coupon_min_spend_label">Minimum harcama (isteğe bağlı)</string>
+    <string name="coupon_max_uses_label">Toplam kullanım (0 = sınırsız)</string>
+    <string name="coupon_max_uses_per_user_label">Müşteri başına kullanım (0 = sınırsız)</string>
+    <string name="coupon_scope_label">Şuna uygulanır</string>
+    <string name="coupon_scope_all">Tüm mağaza ürünleri</string>
+    <string name="coupon_expiry_label">Son kullanma</string>
+    <string name="coupon_expiry_none">Son kullanma yok</string>
+    <string name="coupon_expiry_prefix">%1$s tarihinde sona erer</string>
+    <string name="coupon_expiry_set">Tarih seç</string>
+    <string name="coupon_expiry_clear">Temizle</string>
+    <string name="coupon_save">Kupon oluştur</string>
+    <string name="coupon_existing_header">Kuponlarınız</string>
+    <string name="coupon_empty">Henüz kupon yok. Yukarıdan bir tane oluşturun.</string>
+    <string name="coupon_created">Kupon oluşturuldu</string>
+    <string name="coupon_create_failed">Kupon oluşturulamadı</string>
+    <string name="coupon_err_code">Bir kupon kodu girin</string>
+    <string name="coupon_err_value">0\'dan büyük bir indirim değeri girin</string>
+    <string name="coupon_err_pct_range">Yüzde 1 ile 100 arasında olmalı</string>
+    <string name="coupon_item_scope_all">Tüm ürünler</string>
+    <string name="coupon_item_uses">%1$d/%2$s kullanıldı</string>
+    <string name="coupon_item_unlimited">∞</string>
+    <string name="coupon_item_expires">%1$s tarihinde sona erer</string>
+    <string name="coupon_item_no_expiry">Son kullanma yok</string>
+    <string name="coupon_item_inactive">Pasif</string>
+    <string name="coupon_off_pct">%1$s%% indirim</string>
+    <string name="coupon_off_fixed">%1$s indirim</string>
+    <string name="coupon_min_spend_prefix">Min. harcama %1$s</string>
+    <string name="seller_hub_coupons">KUPONLAR</string>
+    <string name="seller_hub_coupons_sub">Mağazanız için indirim kodları oluşturun</string>
 </resources>

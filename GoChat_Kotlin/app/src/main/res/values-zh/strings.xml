@@ -581,4 +581,46 @@
     <string name="user_unblocked_toast">已取消屏蔽 %1$s</string>
     <string name="report_submitted_toast">举报已提交。感谢您共同维护 GoChat 的安全。</string>
     <string name="blocked_banner_text">您已屏蔽此联系人。点击取消屏蔽。</string>
+
+    <!-- Batch 14: seller coupon manager -->
+    <string name="coupon_manager_title">优惠券</string>
+    <string name="coupon_create_header">创建优惠券</string>
+    <string name="coupon_code_label">优惠码</string>
+    <string name="coupon_code_hint">例如 SAVE20</string>
+    <string name="coupon_generate">生成</string>
+    <string name="coupon_discount_type">折扣类型</string>
+    <string name="coupon_type_percentage">百分比</string>
+    <string name="coupon_type_fixed">固定金额</string>
+    <string name="coupon_value_label">折扣值</string>
+    <string name="coupon_value_hint_pct">例如 20 表示 20% 折扣</string>
+    <string name="coupon_value_hint_fixed">每笔订单抵扣金额</string>
+    <string name="coupon_min_spend_label">最低消费（可选）</string>
+    <string name="coupon_max_uses_label">总使用次数（0 = 不限）</string>
+    <string name="coupon_max_uses_per_user_label">每位客户使用次数（0 = 不限）</string>
+    <string name="coupon_scope_label">适用于</string>
+    <string name="coupon_scope_all">店铺全部商品</string>
+    <string name="coupon_expiry_label">有效期</string>
+    <string name="coupon_expiry_none">永不过期</string>
+    <string name="coupon_expiry_prefix">%1$s 到期</string>
+    <string name="coupon_expiry_set">选择日期</string>
+    <string name="coupon_expiry_clear">清除</string>
+    <string name="coupon_save">创建优惠券</string>
+    <string name="coupon_existing_header">您的优惠券</string>
+    <string name="coupon_empty">暂无优惠券。在上方创建一个。</string>
+    <string name="coupon_created">优惠券已创建</string>
+    <string name="coupon_create_failed">无法创建优惠券</string>
+    <string name="coupon_err_code">请输入优惠码</string>
+    <string name="coupon_err_value">请输入大于 0 的折扣值</string>
+    <string name="coupon_err_pct_range">百分比必须介于 1 到 100 之间</string>
+    <string name="coupon_item_scope_all">全部商品</string>
+    <string name="coupon_item_uses">已使用 %1$d/%2$s</string>
+    <string name="coupon_item_unlimited">∞</string>
+    <string name="coupon_item_expires">%1$s 到期</string>
+    <string name="coupon_item_no_expiry">永不过期</string>
+    <string name="coupon_item_inactive">未启用</string>
+    <string name="coupon_off_pct">%1$s%% 折扣</string>
+    <string name="coupon_off_fixed">立减 %1$s</string>
+    <string name="coupon_min_spend_prefix">最低消费 %1$s</string>
+    <string name="seller_hub_coupons">优惠券</string>
+    <string name="seller_hub_coupons_sub">为您的店铺创建折扣码</string>
 </resources>
