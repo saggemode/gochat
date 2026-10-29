@@ -99,4 +99,30 @@
     <string name="gcall_participants">%1$d na chamada</string>
     <string name="gcall_mic_required">É necessária a permissão do microfone</string>
     <string name="gcall_default_title">Chamada em grupo</string>
+
+    <!-- Core app strings -->
+    <string name="checkout">Pagar</string>
+    <string name="shipping_address">Endereço de entrega</string>
+    <string name="order_summary">Resumo do pedido</string>
+    <string name="total">Total</string>
+    <string name="place_order">Fazer pedido</string>
+    <string name="cart_title">Seu carrinho</string>
+    <string name="total_amount">Valor total</string>
+    <string name="proceed_to_checkout">Ir para o pagamento</string>
+    <string name="empty_cart_message">Seu carrinho está vazio</string>
+    <string name="next">Próximo</string>
+    <string name="previous">Anterior</string>
+    <string name="action_star">Destacar</string>
+    <string name="action_edit">Editar</string>
+    <string name="action_message">Mensagem</string>
+    <string name="no_calls_yet">Ainda sem chamadas</string>
+    <string name="no_contacts_found">Nenhum contato encontrado</string>
+    <string name="btn_chat_by_pin">+ Conversar por PIN</string>
+    <string name="no_conversations_title">Sem conversas</string>
+    <string name="no_conversations_desc">Comece a conversar com seus contatos usando o PIN do GOCHAT ou o número de telefone.</string>
+    <string name="toast_message_status">Mensagem %1$s</string>
+    <string name="status_available">Disponível</string>
+    <string name="status_busy">Ocupado</string>
+    <string name="status_at_work">No trabalho</string>
+    <string name="status_in_meeting">Em reunião</string>
 </resources>

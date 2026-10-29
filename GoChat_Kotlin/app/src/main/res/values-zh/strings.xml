@@ -99,4 +99,30 @@
     <string name="gcall_participants">%1$d 人在通话</string>
     <string name="gcall_mic_required">需要麦克风权限</string>
     <string name="gcall_default_title">群组通话</string>
+
+    <!-- Core app strings -->
+    <string name="checkout">结账</string>
+    <string name="shipping_address">收货地址</string>
+    <string name="order_summary">订单摘要</string>
+    <string name="total">合计</string>
+    <string name="place_order">下单</string>
+    <string name="cart_title">您的购物车</string>
+    <string name="total_amount">总金额</string>
+    <string name="proceed_to_checkout">去结算</string>
+    <string name="empty_cart_message">您的购物车是空的</string>
+    <string name="next">下一步</string>
+    <string name="previous">上一步</string>
+    <string name="action_star">收藏</string>
+    <string name="action_edit">编辑</string>
+    <string name="action_message">消息</string>
+    <string name="no_calls_yet">暂无通话</string>
+    <string name="no_contacts_found">未找到联系人</string>
+    <string name="btn_chat_by_pin">+ 通过 PIN 聊天</string>
+    <string name="no_conversations_title">暂无会话</string>
+    <string name="no_conversations_desc">使用联系人的 GOCHAT PIN 或电话号码开始聊天。</string>
+    <string name="toast_message_status">消息 %1$s</string>
+    <string name="status_available">有空</string>
+    <string name="status_busy">忙碌</string>
+    <string name="status_at_work">工作中</string>
+    <string name="status_in_meeting">开会中</string>
 </resources>

@@ -99,4 +99,30 @@
     <string name="gcall_participants">%1$d kwenye simu</string>
     <string name="gcall_mic_required">Ruhusa ya maikrofoni inahitajika</string>
     <string name="gcall_default_title">Simu ya kikundi</string>
+
+    <!-- Core app strings -->
+    <string name="checkout">Lipa</string>
+    <string name="shipping_address">Anwani ya usafirishaji</string>
+    <string name="order_summary">Muhtasari wa agizo</string>
+    <string name="total">Jumla</string>
+    <string name="place_order">Weka agizo</string>
+    <string name="cart_title">Kikapu chako</string>
+    <string name="total_amount">Kiasi jumla</string>
+    <string name="proceed_to_checkout">Endelea kulipa</string>
+    <string name="empty_cart_message">Kikapu chako ni tupu</string>
+    <string name="next">Ifuatayo</string>
+    <string name="previous">Iliyotangulia</string>
+    <string name="action_star">Wekea nyota</string>
+    <string name="action_edit">Hariri</string>
+    <string name="action_message">Ujumbe</string>
+    <string name="no_calls_yet">Hakuna simu bado</string>
+    <string name="no_contacts_found">Hakuna anwani zilizopatikana</string>
+    <string name="btn_chat_by_pin">+ Piga gumzo kwa PIN</string>
+    <string name="no_conversations_title">Hakuna mazungumzo</string>
+    <string name="no_conversations_desc">Anza kupiga gumzo na anwani zako kwa kutumia PIN yao ya GOCHAT au nambari ya simu.</string>
+    <string name="toast_message_status">Ujumbe %1$s</string>
+    <string name="status_available">Yupo</string>
+    <string name="status_busy">Ana shughuli</string>
+    <string name="status_at_work">Kazini</string>
+    <string name="status_in_meeting">Kwenye mkutano</string>
 </resources>

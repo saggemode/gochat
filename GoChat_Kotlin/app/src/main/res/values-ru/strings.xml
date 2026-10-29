@@ -99,4 +99,30 @@
     <string name="gcall_participants">%1$d в звонке</string>
     <string name="gcall_mic_required">Требуется разрешение на микрофон</string>
     <string name="gcall_default_title">Групповой звонок</string>
+
+    <!-- Core app strings -->
+    <string name="checkout">Оформить заказ</string>
+    <string name="shipping_address">Адрес доставки</string>
+    <string name="order_summary">Сводка заказа</string>
+    <string name="total">Итого</string>
+    <string name="place_order">Оформить заказ</string>
+    <string name="cart_title">Ваша корзина</string>
+    <string name="total_amount">Общая сумма</string>
+    <string name="proceed_to_checkout">Перейти к оформлению</string>
+    <string name="empty_cart_message">Ваша корзина пуста</string>
+    <string name="next">Далее</string>
+    <string name="previous">Назад</string>
+    <string name="action_star">В избранное</string>
+    <string name="action_edit">Изменить</string>
+    <string name="action_message">Сообщение</string>
+    <string name="no_calls_yet">Пока нет звонков</string>
+    <string name="no_contacts_found">Контакты не найдены</string>
+    <string name="btn_chat_by_pin">+ Чат по PIN</string>
+    <string name="no_conversations_title">Нет разговоров</string>
+    <string name="no_conversations_desc">Начните общаться с контактами по их GOCHAT PIN или номеру телефона.</string>
+    <string name="toast_message_status">Сообщение %1$s</string>
+    <string name="status_available">Доступен</string>
+    <string name="status_busy">Занят</string>
+    <string name="status_at_work">На работе</string>
+    <string name="status_in_meeting">На встрече</string>
 </resources>
