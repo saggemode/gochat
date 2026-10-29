@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_settings">设置</string>
+    <string name="action_reply">回复</string>
+    <string name="action_forward">转发</string>
+    <string name="action_delete">删除</string>
+    <string name="action_report">举报</string>
+
+    <string name="btn_cancel">取消</string>
+    <string name="btn_continue">继续</string>
+    <string name="btn_save">保存</string>
+    <string name="btn_select">选择</string>
+    <string name="btn_remove">移除</string>
+    <string name="btn_add_to_cart">加入购物车</string>
+    <string name="btn_review">评价</string>
+    <string name="btn_select_contact">选择联系人</string>
+
+    <string name="calls_title">通话</string>
+    <string name="call_voice">语音</string>
+    <string name="call_video">视频</string>
+
+    <string name="settings_title">设置</string>
+    <string name="settings_theme_title">主题与深色模式</string>
+    <string name="settings_privacy_title">隐私与安全</string>
+    <string name="settings_notifications_title">通知</string>
+    <string name="settings_help_title">帮助与支持</string>
+
+    <string name="settings_language_title">语言</string>
+    <string name="settings_language_subtitle">选择应用语言</string>
+    <string name="settings_language_dialog_title">应用语言</string>
+
+    <string name="tab_marketplace">商城</string>
+
+    <string name="message_hint">消息</string>
+    <string name="search_contacts_hint">搜索联系人</string>
+    <string name="search_chats_hint">搜索聊天</string>
+    <string name="search_calls_hint">搜索通话</string>
+</resources>

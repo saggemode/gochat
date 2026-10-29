@@ -426,7 +426,17 @@ class SettingsFragment : Fragment() {
         val options = listOf(
             "" to "System default",
             "en" to "English",
-            "fr" to "Français"
+            "fr" to "Français",
+            "es" to "Español",
+            "pt" to "Português",
+            "ar" to "العربية",
+            "de" to "Deutsch",
+            "zh" to "中文",
+            "hi" to "हिन्दी",
+            "ru" to "Русский",
+            "sw" to "Kiswahili",
+            "it" to "Italiano",
+            "tr" to "Türkçe"
         )
         val labels = options.map { it.second }.toTypedArray()
         val currentTag = androidx.appcompat.app.AppCompatDelegate.getApplicationLocales()

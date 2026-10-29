@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_settings">Mipangilio</string>
+    <string name="action_reply">Jibu</string>
+    <string name="action_forward">Sambaza</string>
+    <string name="action_delete">Futa</string>
+    <string name="action_report">Ripoti</string>
+
+    <string name="btn_cancel">Ghairi</string>
+    <string name="btn_continue">Endelea</string>
+    <string name="btn_save">Hifadhi</string>
+    <string name="btn_select">Chagua</string>
+    <string name="btn_remove">Ondoa</string>
+    <string name="btn_add_to_cart">Ongeza kwenye kikapu</string>
+    <string name="btn_review">Kagua</string>
+    <string name="btn_select_contact">Chagua anwani</string>
+
+    <string name="calls_title">Simu</string>
+    <string name="call_voice">Sauti</string>
+    <string name="call_video">Video</string>
+
+    <string name="settings_title">Mipangilio</string>
+    <string name="settings_theme_title">Mandhari na Hali ya Giza</string>
+    <string name="settings_privacy_title">Faragha na Usalama</string>
+    <string name="settings_notifications_title">Arifa</string>
+    <string name="settings_help_title">Msaada</string>
+
+    <string name="settings_language_title">Lugha</string>
+    <string name="settings_language_subtitle">Chagua lugha ya programu</string>
+    <string name="settings_language_dialog_title">Lugha ya programu</string>
+
+    <string name="tab_marketplace">Soko</string>
+
+    <string name="message_hint">Ujumbe</string>
+    <string name="search_contacts_hint">Tafuta anwani</string>
+    <string name="search_chats_hint">Tafuta gumzo</string>
+    <string name="search_calls_hint">Tafuta simu</string>
+</resources>

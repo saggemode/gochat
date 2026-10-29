@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_settings">الإعدادات</string>
+    <string name="action_reply">رد</string>
+    <string name="action_forward">إعادة توجيه</string>
+    <string name="action_delete">حذف</string>
+    <string name="action_report">إبلاغ</string>
+
+    <string name="btn_cancel">إلغاء</string>
+    <string name="btn_continue">متابعة</string>
+    <string name="btn_save">حفظ</string>
+    <string name="btn_select">تحديد</string>
+    <string name="btn_remove">إزالة</string>
+    <string name="btn_add_to_cart">أضف إلى السلة</string>
+    <string name="btn_review">تقييم</string>
+    <string name="btn_select_contact">اختر جهة اتصال</string>
+
+    <string name="calls_title">المكالمات</string>
+    <string name="call_voice">صوت</string>
+    <string name="call_video">فيديو</string>
+
+    <string name="settings_title">الإعدادات</string>
+    <string name="settings_theme_title">المظهر والوضع الداكن</string>
+    <string name="settings_privacy_title">الخصوصية والأمان</string>
+    <string name="settings_notifications_title">الإشعارات</string>
+    <string name="settings_help_title">المساعدة والدعم</string>
+
+    <string name="settings_language_title">اللغة</string>
+    <string name="settings_language_subtitle">اختر لغة التطبيق</string>
+    <string name="settings_language_dialog_title">لغة التطبيق</string>
+
+    <string name="tab_marketplace">السوق</string>
+
+    <string name="message_hint">رسالة</string>
+    <string name="search_contacts_hint">البحث في جهات الاتصال</string>
+    <string name="search_chats_hint">البحث في المحادثات</string>
+    <string name="search_calls_hint">البحث في المكالمات</string>
+</resources>

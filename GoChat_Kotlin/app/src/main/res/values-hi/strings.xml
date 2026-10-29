@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_settings">सेटिंग्स</string>
+    <string name="action_reply">जवाब दें</string>
+    <string name="action_forward">आगे भेजें</string>
+    <string name="action_delete">हटाएं</string>
+    <string name="action_report">रिपोर्ट करें</string>
+
+    <string name="btn_cancel">रद्द करें</string>
+    <string name="btn_continue">जारी रखें</string>
+    <string name="btn_save">सहेजें</string>
+    <string name="btn_select">चुनें</string>
+    <string name="btn_remove">हटाएं</string>
+    <string name="btn_add_to_cart">कार्ट में जोड़ें</string>
+    <string name="btn_review">समीक्षा करें</string>
+    <string name="btn_select_contact">संपर्क चुनें</string>
+
+    <string name="calls_title">कॉल</string>
+    <string name="call_voice">वॉइस</string>
+    <string name="call_video">वीडियो</string>
+
+    <string name="settings_title">सेटिंग्स</string>
+    <string name="settings_theme_title">थीम और डार्क मोड</string>
+    <string name="settings_privacy_title">गोपनीयता और सुरक्षा</string>
+    <string name="settings_notifications_title">सूचनाएं</string>
+    <string name="settings_help_title">सहायता और समर्थन</string>
+
+    <string name="settings_language_title">भाषा</string>
+    <string name="settings_language_subtitle">अपनी ऐप भाषा चुनें</string>
+    <string name="settings_language_dialog_title">ऐप भाषा</string>
+
+    <string name="tab_marketplace">मार्केटप्लेस</string>
+
+    <string name="message_hint">संदेश</string>
+    <string name="search_contacts_hint">संपर्क खोजें</string>
+    <string name="search_chats_hint">चैट खोजें</string>
+    <string name="search_calls_hint">कॉल खोजें</string>
+</resources>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_settings">Impostazioni</string>
+    <string name="action_reply">Rispondi</string>
+    <string name="action_forward">Inoltra</string>
+    <string name="action_delete">Elimina</string>
+    <string name="action_report">Segnala</string>
+
+    <string name="btn_cancel">Annulla</string>
+    <string name="btn_continue">Continua</string>
+    <string name="btn_save">Salva</string>
+    <string name="btn_select">Seleziona</string>
+    <string name="btn_remove">Rimuovi</string>
+    <string name="btn_add_to_cart">Aggiungi al carrello</string>
+    <string name="btn_review">Recensisci</string>
+    <string name="btn_select_contact">Seleziona un contatto</string>
+
+    <string name="calls_title">Chiamate</string>
+    <string name="call_voice">Voce</string>
+    <string name="call_video">Video</string>
+
+    <string name="settings_title">Impostazioni</string>
+    <string name="settings_theme_title">Tema e modalità scura</string>
+    <string name="settings_privacy_title">Privacy e sicurezza</string>
+    <string name="settings_notifications_title">Notifiche</string>
+    <string name="settings_help_title">Aiuto e supporto</string>
+
+    <string name="settings_language_title">Lingua</string>
+    <string name="settings_language_subtitle">Scegli la lingua dell\'app</string>
+    <string name="settings_language_dialog_title">Lingua dell\'app</string>
+
+    <string name="tab_marketplace">Mercato</string>
+
+    <string name="message_hint">Messaggio</string>
+    <string name="search_contacts_hint">Cerca contatti</string>
+    <string name="search_chats_hint">Cerca chat</string>
+    <string name="search_calls_hint">Cerca chiamate</string>
+</resources>

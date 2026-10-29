@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="action_settings">Настройки</string>
+    <string name="action_reply">Ответить</string>
+    <string name="action_forward">Переслать</string>
+    <string name="action_delete">Удалить</string>
+    <string name="action_report">Пожаловаться</string>
+
+    <string name="btn_cancel">Отмена</string>
+    <string name="btn_continue">Продолжить</string>
+    <string name="btn_save">Сохранить</string>
+    <string name="btn_select">Выбрать</string>
+    <string name="btn_remove">Удалить</string>
+    <string name="btn_add_to_cart">В корзину</string>
+    <string name="btn_review">Оценить</string>
+    <string name="btn_select_contact">Выбрать контакт</string>
+
+    <string name="calls_title">Звонки</string>
+    <string name="call_voice">Голос</string>
+    <string name="call_video">Видео</string>
+
+    <string name="settings_title">Настройки</string>
+    <string name="settings_theme_title">Тема и тёмный режим</string>
+    <string name="settings_privacy_title">Конфиденциальность и безопасность</string>
+    <string name="settings_notifications_title">Уведомления</string>
+    <string name="settings_help_title">Помощь и поддержка</string>
+
+    <string name="settings_language_title">Язык</string>
+    <string name="settings_language_subtitle">Выберите язык приложения</string>
+    <string name="settings_language_dialog_title">Язык приложения</string>
+
+    <string name="tab_marketplace">Маркетплейс</string>
+
+    <string name="message_hint">Сообщение</string>
+    <string name="search_contacts_hint">Поиск контактов</string>
+    <string name="search_chats_hint">Поиск чатов</string>
+    <string name="search_calls_hint">Поиск звонков</string>
+</resources>
