@@ -35,4 +35,22 @@
     <string name="search_contacts_hint">Tafuta anwani</string>
     <string name="search_chats_hint">Tafuta gumzo</string>
     <string name="search_calls_hint">Tafuta simu</string>
+
+    <!-- Checkout -->
+    <string name="checkout_payment_method">Njia ya malipo</string>
+    <string name="checkout_card_paystack">Kadi (Paystack)</string>
+    <string name="checkout_selected">✓ Imechaguliwa</string>
+    <string name="checkout_subtotal">Jumla ndogo</string>
+    <string name="checkout_delivery">Uwasilishaji</string>
+    <string name="checkout_free">Bure</string>
+    <string name="checkout_discount">Punguzo</string>
+    <string name="checkout_coupon_hint">Msimbo wa kuponi</string>
+    <string name="checkout_apply">Tumia</string>
+    <string name="checkout_confirm_pay">Thibitisha na ulipe</string>
+    <string name="checkout_cart_empty">Kikapu chako ni tupu.</string>
+    <string name="checkout_payment_incomplete">Malipo hayajakamilika. Unaweza kuyakamilisha katika Maagizo Yangu.</string>
+    <string name="checkout_coupon_applied">Kuponi imetumika</string>
+    <string name="checkout_coupon_invalid">Kuponi batili</string>
+    <string name="checkout_coupon_unavailable">Haiwezekani kutumia kuponi sasa</string>
+    <string name="checkout_cart_update_failed">Imeshindwa kusasisha kikapu</string>
 </resources>

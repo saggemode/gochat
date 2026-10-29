@@ -35,4 +35,22 @@
     <string name="search_contacts_hint">संपर्क खोजें</string>
     <string name="search_chats_hint">चैट खोजें</string>
     <string name="search_calls_hint">कॉल खोजें</string>
+
+    <!-- Checkout -->
+    <string name="checkout_payment_method">भुगतान का तरीका</string>
+    <string name="checkout_card_paystack">कार्ड (Paystack)</string>
+    <string name="checkout_selected">✓ चयनित</string>
+    <string name="checkout_subtotal">उप-योग</string>
+    <string name="checkout_delivery">डिलीवरी</string>
+    <string name="checkout_free">मुफ़्त</string>
+    <string name="checkout_discount">छूट</string>
+    <string name="checkout_coupon_hint">कूपन कोड</string>
+    <string name="checkout_apply">लागू करें</string>
+    <string name="checkout_confirm_pay">पुष्टि करें और भुगतान करें</string>
+    <string name="checkout_cart_empty">आपकी कार्ट खाली है।</string>
+    <string name="checkout_payment_incomplete">भुगतान पूरा नहीं हुआ। आप इसे मेरे ऑर्डर में पूरा कर सकते हैं।</string>
+    <string name="checkout_coupon_applied">कूपन लागू हुआ</string>
+    <string name="checkout_coupon_invalid">अमान्य कूपन</string>
+    <string name="checkout_coupon_unavailable">अभी कूपन लागू नहीं कर सकते</string>
+    <string name="checkout_cart_update_failed">कार्ट अपडेट नहीं हो सका</string>
 </resources>

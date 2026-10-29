@@ -35,4 +35,22 @@
     <string name="search_contacts_hint">Поиск контактов</string>
     <string name="search_chats_hint">Поиск чатов</string>
     <string name="search_calls_hint">Поиск звонков</string>
+
+    <!-- Checkout -->
+    <string name="checkout_payment_method">Способ оплаты</string>
+    <string name="checkout_card_paystack">Карта (Paystack)</string>
+    <string name="checkout_selected">✓ Выбрано</string>
+    <string name="checkout_subtotal">Промежуточный итог</string>
+    <string name="checkout_delivery">Доставка</string>
+    <string name="checkout_free">Бесплатно</string>
+    <string name="checkout_discount">Скидка</string>
+    <string name="checkout_coupon_hint">Промокод</string>
+    <string name="checkout_apply">Применить</string>
+    <string name="checkout_confirm_pay">Подтвердить и оплатить</string>
+    <string name="checkout_cart_empty">Ваша корзина пуста.</string>
+    <string name="checkout_payment_incomplete">Оплата не завершена. Вы можете завершить её в разделе «Мои заказы».</string>
+    <string name="checkout_coupon_applied">Промокод применён</string>
+    <string name="checkout_coupon_invalid">Недействительный промокод</string>
+    <string name="checkout_coupon_unavailable">Сейчас нельзя применить промокод</string>
+    <string name="checkout_cart_update_failed">Не удалось обновить корзину</string>
 </resources>

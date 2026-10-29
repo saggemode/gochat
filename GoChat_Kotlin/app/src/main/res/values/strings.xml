@@ -618,6 +618,24 @@
     <string name="settings_language_title">Language</string>
     <string name="settings_language_subtitle">Choose your app language</string>
     <string name="settings_language_dialog_title">App language</string>
+
+    <!-- Checkout -->
+    <string name="checkout_payment_method">Payment method</string>
+    <string name="checkout_card_paystack">Card (Paystack)</string>
+    <string name="checkout_selected">✓ Selected</string>
+    <string name="checkout_subtotal">Subtotal</string>
+    <string name="checkout_delivery">Delivery</string>
+    <string name="checkout_free">Free</string>
+    <string name="checkout_discount">Discount</string>
+    <string name="checkout_coupon_hint">Coupon code</string>
+    <string name="checkout_apply">Apply</string>
+    <string name="checkout_confirm_pay">Confirm &amp; Pay</string>
+    <string name="checkout_cart_empty">Your cart is empty.</string>
+    <string name="checkout_payment_incomplete">Payment not completed. You can finish it from My Orders.</string>
+    <string name="checkout_coupon_applied">Coupon applied</string>
+    <string name="checkout_coupon_invalid">Invalid coupon</string>
+    <string name="checkout_coupon_unavailable">Cannot apply coupon right now</string>
+    <string name="checkout_cart_update_failed">Could not update cart</string>
     <string name="action_report_contact">Report %1$s</string>
     <string name="action_report_and_block">Report and block</string>
     <string name="report_contact_title">Report %1$s?</string>

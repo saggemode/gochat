@@ -73,7 +73,7 @@ class CheckoutActivity : AppCompatActivity() {
         binding.toolbar.applyStatusBarInset()
         binding.btnPlaceOrder.applySystemBarMargins(bottom = true)
         // Step 5/6: the action confirms the order and starts payment.
-        binding.btnPlaceOrder.text = "Confirm & Pay"
+        binding.btnPlaceOrder.text = getString(R.string.checkout_confirm_pay)
 
         // Live cart badge — shared source of truth with every other cart icon.
         lifecycleScope.launch {
@@ -152,7 +152,7 @@ class CheckoutActivity : AppCompatActivity() {
             if (result.isSuccess) {
                 displaySummary(result.getOrDefault(emptyList()))
             } else {
-                Toast.makeText(this@CheckoutActivity, "Could not update cart", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@CheckoutActivity, getString(R.string.checkout_cart_update_failed), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -205,7 +205,7 @@ class CheckoutActivity : AppCompatActivity() {
         val code = binding.etCoupon.text.toString().trim()
         if (code.isBlank()) return
         if (resolvedSellerId.isBlank()) {
-            Toast.makeText(this, "Cannot apply coupon right now", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.checkout_coupon_unavailable), Toast.LENGTH_SHORT).show()
             return
         }
         val subtotal = cartItems.sumOf { (it.productPrice ?: 0.0) * it.quantity }
@@ -216,11 +216,11 @@ class CheckoutActivity : AppCompatActivity() {
             if (res?.valid == true && res.discount > 0) {
                 discount = res.discount
                 appliedCoupon = code
-                Toast.makeText(this@CheckoutActivity, "Coupon applied", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@CheckoutActivity, getString(R.string.checkout_coupon_applied), Toast.LENGTH_SHORT).show()
             } else {
                 discount = 0.0
                 appliedCoupon = ""
-                Toast.makeText(this@CheckoutActivity, res?.message?.ifBlank { "Invalid coupon" } ?: "Invalid coupon", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@CheckoutActivity, res?.message?.ifBlank { getString(R.string.checkout_coupon_invalid) } ?: getString(R.string.checkout_coupon_invalid), Toast.LENGTH_LONG).show()
             }
             displaySummary(cartItems)
         }
@@ -232,7 +232,7 @@ class CheckoutActivity : AppCompatActivity() {
 
         val subtotal = items.sumOf { (it.productPrice ?: 0.0) * it.quantity }
         binding.tvSubtotalAmount.text = CurrencyManager.formatPrice(subtotal)
-        binding.tvDeliveryAmount.text = if (deliveryFee > 0) CurrencyManager.formatPrice(deliveryFee) else "Free"
+        binding.tvDeliveryAmount.text = if (deliveryFee > 0) CurrencyManager.formatPrice(deliveryFee) else getString(R.string.checkout_free)
         if (discount > 0) {
             binding.rowDiscount.visibility = View.VISIBLE
             binding.tvDiscountAmount.text = "-${CurrencyManager.formatPrice(discount)}"
@@ -275,7 +275,7 @@ class CheckoutActivity : AppCompatActivity() {
                 if (!paid) {
                     Toast.makeText(
                         this@CheckoutActivity,
-                        "Payment not completed. You can finish it from My Orders.",
+                        getString(R.string.checkout_payment_incomplete),
                         Toast.LENGTH_LONG
                     ).show()
                     return@launch

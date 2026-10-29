@@ -35,4 +35,22 @@
     <string name="search_contacts_hint">Kişilerde ara</string>
     <string name="search_chats_hint">Sohbetlerde ara</string>
     <string name="search_calls_hint">Aramalarda ara</string>
+
+    <!-- Checkout -->
+    <string name="checkout_payment_method">Ödeme yöntemi</string>
+    <string name="checkout_card_paystack">Kart (Paystack)</string>
+    <string name="checkout_selected">✓ Seçildi</string>
+    <string name="checkout_subtotal">Ara toplam</string>
+    <string name="checkout_delivery">Teslimat</string>
+    <string name="checkout_free">Ücretsiz</string>
+    <string name="checkout_discount">İndirim</string>
+    <string name="checkout_coupon_hint">Kupon kodu</string>
+    <string name="checkout_apply">Uygula</string>
+    <string name="checkout_confirm_pay">Onayla ve öde</string>
+    <string name="checkout_cart_empty">Sepetiniz boş.</string>
+    <string name="checkout_payment_incomplete">Ödeme tamamlanmadı. Siparişlerim bölümünden tamamlayabilirsiniz.</string>
+    <string name="checkout_coupon_applied">Kupon uygulandı</string>
+    <string name="checkout_coupon_invalid">Geçersiz kupon</string>
+    <string name="checkout_coupon_unavailable">Kupon şu anda uygulanamıyor</string>
+    <string name="checkout_cart_update_failed">Sepet güncellenemedi</string>
 </resources>

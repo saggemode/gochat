@@ -35,4 +35,22 @@
     <string name="search_contacts_hint">搜索联系人</string>
     <string name="search_chats_hint">搜索聊天</string>
     <string name="search_calls_hint">搜索通话</string>
+
+    <!-- Checkout -->
+    <string name="checkout_payment_method">支付方式</string>
+    <string name="checkout_card_paystack">银行卡 (Paystack)</string>
+    <string name="checkout_selected">✓ 已选择</string>
+    <string name="checkout_subtotal">小计</string>
+    <string name="checkout_delivery">配送</string>
+    <string name="checkout_free">免费</string>
+    <string name="checkout_discount">折扣</string>
+    <string name="checkout_coupon_hint">优惠码</string>
+    <string name="checkout_apply">应用</string>
+    <string name="checkout_confirm_pay">确认并支付</string>
+    <string name="checkout_cart_empty">您的购物车是空的。</string>
+    <string name="checkout_payment_incomplete">支付未完成。您可以在“我的订单”中完成。</string>
+    <string name="checkout_coupon_applied">优惠码已应用</string>
+    <string name="checkout_coupon_invalid">优惠码无效</string>
+    <string name="checkout_coupon_unavailable">目前无法应用优惠码</string>
+    <string name="checkout_cart_update_failed">无法更新购物车</string>
 </resources>

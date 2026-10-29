@@ -35,4 +35,22 @@
     <string name="search_contacts_hint">البحث في جهات الاتصال</string>
     <string name="search_chats_hint">البحث في المحادثات</string>
     <string name="search_calls_hint">البحث في المكالمات</string>
+
+    <!-- Checkout -->
+    <string name="checkout_payment_method">طريقة الدفع</string>
+    <string name="checkout_card_paystack">بطاقة (Paystack)</string>
+    <string name="checkout_selected">✓ محدد</string>
+    <string name="checkout_subtotal">المجموع الفرعي</string>
+    <string name="checkout_delivery">التوصيل</string>
+    <string name="checkout_free">مجاني</string>
+    <string name="checkout_discount">خصم</string>
+    <string name="checkout_coupon_hint">رمز القسيمة</string>
+    <string name="checkout_apply">تطبيق</string>
+    <string name="checkout_confirm_pay">تأكيد والدفع</string>
+    <string name="checkout_cart_empty">سلتك فارغة.</string>
+    <string name="checkout_payment_incomplete">لم يكتمل الدفع. يمكنك إكماله من طلباتي.</string>
+    <string name="checkout_coupon_applied">تم تطبيق القسيمة</string>
+    <string name="checkout_coupon_invalid">قسيمة غير صالحة</string>
+    <string name="checkout_coupon_unavailable">لا يمكن تطبيق القسيمة الآن</string>
+    <string name="checkout_cart_update_failed">تعذر تحديث السلة</string>
 </resources>

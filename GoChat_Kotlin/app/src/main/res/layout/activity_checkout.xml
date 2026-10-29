@@ -128,7 +128,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Your cart is empty."
+                android:text="@string/checkout_cart_empty"
                 android:textColor="@color/gochat_text_muted"
                 android:textSize="14sp"
                 android:visibility="gone" />
@@ -148,7 +148,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Subtotal"
+                    android:text="@string/checkout_subtotal"
                     android:textColor="@color/gochat_text_muted"
                     android:textSize="14sp" />
 
@@ -171,7 +171,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Delivery"
+                    android:text="@string/checkout_delivery"
                     android:textColor="@color/gochat_text_muted"
                     android:textSize="14sp" />
 
@@ -179,7 +179,7 @@
                     android:id="@+id/tvDeliveryAmount"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Free"
+                    android:text="@string/checkout_free"
                     android:textColor="@color/gochat_text_primary"
                     android:textSize="14sp" />
             </LinearLayout>
@@ -197,7 +197,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Discount"
+                    android:text="@string/checkout_discount"
                     android:textColor="@color/gochat_text_muted"
                     android:textSize="14sp" />
 
@@ -223,7 +223,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:hint="Coupon code"
+                    android:hint="@string/checkout_coupon_hint"
                     android:inputType="textCapCharacters"
                     android:textColor="@color/gochat_text_primary"
                     android:textColorHint="@color/gochat_text_muted" />
@@ -232,7 +232,7 @@
                     android:id="@+id/btnApplyCoupon"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Apply"
+                    android:text="@string/checkout_apply"
                     android:textAllCaps="false" />
             </LinearLayout>
 
@@ -276,7 +276,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Payment method"
+                android:text="@string/checkout_payment_method"
                 android:textColor="@color/gochat_text_primary"
                 android:textSize="16sp"
                 android:textStyle="bold" />
@@ -293,14 +293,14 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Card (Paystack)"
+                    android:text="@string/checkout_card_paystack"
                     android:textColor="@color/gochat_text_primary"
                     android:textSize="15sp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="✓ Selected"
+                    android:text="@string/checkout_selected"
                     android:textColor="@color/gochat_accent"
                     android:textSize="13sp"
                     android:textStyle="bold" />

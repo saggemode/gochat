@@ -35,4 +35,22 @@
     <string name="search_contacts_hint">Buscar contactos</string>
     <string name="search_chats_hint">Buscar chats</string>
     <string name="search_calls_hint">Buscar llamadas</string>
+
+    <!-- Checkout -->
+    <string name="checkout_payment_method">Método de pago</string>
+    <string name="checkout_card_paystack">Tarjeta (Paystack)</string>
+    <string name="checkout_selected">✓ Seleccionado</string>
+    <string name="checkout_subtotal">Subtotal</string>
+    <string name="checkout_delivery">Envío</string>
+    <string name="checkout_free">Gratis</string>
+    <string name="checkout_discount">Descuento</string>
+    <string name="checkout_coupon_hint">Código de cupón</string>
+    <string name="checkout_apply">Aplicar</string>
+    <string name="checkout_confirm_pay">Confirmar y pagar</string>
+    <string name="checkout_cart_empty">Tu carrito está vacío.</string>
+    <string name="checkout_payment_incomplete">Pago no completado. Puedes finalizarlo en Mis pedidos.</string>
+    <string name="checkout_coupon_applied">Cupón aplicado</string>
+    <string name="checkout_coupon_invalid">Cupón no válido</string>
+    <string name="checkout_coupon_unavailable">No se puede aplicar el cupón ahora</string>
+    <string name="checkout_cart_update_failed">No se pudo actualizar el carrito</string>
 </resources>

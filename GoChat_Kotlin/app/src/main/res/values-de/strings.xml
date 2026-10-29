@@ -35,4 +35,22 @@
     <string name="search_contacts_hint">Kontakte suchen</string>
     <string name="search_chats_hint">Chats suchen</string>
     <string name="search_calls_hint">Anrufe suchen</string>
+
+    <!-- Checkout -->
+    <string name="checkout_payment_method">Zahlungsmethode</string>
+    <string name="checkout_card_paystack">Karte (Paystack)</string>
+    <string name="checkout_selected">✓ Ausgewählt</string>
+    <string name="checkout_subtotal">Zwischensumme</string>
+    <string name="checkout_delivery">Lieferung</string>
+    <string name="checkout_free">Kostenlos</string>
+    <string name="checkout_discount">Rabatt</string>
+    <string name="checkout_coupon_hint">Gutscheincode</string>
+    <string name="checkout_apply">Anwenden</string>
+    <string name="checkout_confirm_pay">Bestätigen und bezahlen</string>
+    <string name="checkout_cart_empty">Dein Warenkorb ist leer.</string>
+    <string name="checkout_payment_incomplete">Zahlung nicht abgeschlossen. Du kannst sie unter Meine Bestellungen abschließen.</string>
+    <string name="checkout_coupon_applied">Gutschein angewendet</string>
+    <string name="checkout_coupon_invalid">Ungültiger Gutschein</string>
+    <string name="checkout_coupon_unavailable">Gutschein kann derzeit nicht angewendet werden</string>
+    <string name="checkout_cart_update_failed">Warenkorb konnte nicht aktualisiert werden</string>
 </resources>
