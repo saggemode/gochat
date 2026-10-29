@@ -449,4 +449,51 @@
     <string name="dialog_add_member_hint">Kullanıcı kimliği veya telefon girin</string>
     <string name="toast_member_added">Üye başarıyla eklendi</string>
     <string name="toast_member_add_failed">Üye eklenemedi</string>
+
+    <!-- Batch 11: deleted-msg/edit-history / cart-order errors / privacy visibility / in-chat sounds / theme labels -->
+    <string name="message_deleted_notice">🚫 Bu mesaj silindi</string>
+    <string name="original_message_label">Orijinal mesaj</string>
+    <string name="original_message_not_found">Orijinal mesaj bulunamadı</string>
+    <string name="action_edit_history">Düzenleme geçmişi</string>
+    <string name="title_edit_history">Düzenleme geçmişi</string>
+    <string name="edit_history_empty">Önceki düzenleme kaydı yok</string>
+    <string name="label_original">Orijinal</string>
+    <string name="label_edit_version">Düzenleme #%1$d</string>
+    <string name="error_load_cart">Sepet yüklenemedi</string>
+    <string name="error_update_quantity">Miktar güncellenemedi</string>
+    <string name="price_format_usd">%1$s</string>
+    <string name="placeholder_product_name">Ürün</string>
+    <string name="error_load_cart_summary">Sepet özeti yüklenemedi</string>
+    <string name="error_empty_address">Lütfen bir adres girin</string>
+    <string name="toast_order_placed_success">Sipariş başarıyla verildi!</string>
+    <string name="error_place_order">Sipariş verilemedi</string>
+    <string name="order_summary_item_format">%1$s x %2$d = %3$s</string>
+    <string name="order_id_format">Sipariş #%1$s</string>
+    <string name="store_id_format">Mağaza kimliği: %1$s</string>
+    <string name="error_product_not_found">Ürün bulunamadı</string>
+    <string name="toast_added_to_cart">Sepete eklendi</string>
+    <string name="error_add_to_cart">Sepete eklenemedi</string>
+    <string name="status_verified">Doğrulandı</string>
+    <string name="status_standard">Standart</string>
+    <string name="store_rating_format">%1$s ★ | %2$s</string>
+    <string name="visibility_contacts">Kişilerim</string>
+    <string name="visibility_nobody">Hiç kimse</string>
+    <string name="error_privacy_update">Güncellenemedi</string>
+    <string name="toast_outgoing_sound_updated">Giden ses güncellendi</string>
+    <string name="toast_incoming_sound_updated">Gelen ses güncellendi</string>
+    <string name="toast_pin_copied">PIN %1$s panoya kopyalandı!</string>
+    <string name="label_gochat_pin">GoChat PIN</string>
+    <string name="placeholder_user_name">GoChat kullanıcısı</string>
+    <string name="placeholder_phone_connected">Telefon numarası bağlandı</string>
+    <string name="error_empty_display_name">Görünen ad boş olamaz</string>
+    <string name="theme_system_default">Sistem varsayılanı (otomatik)</string>
+    <string name="theme_dark_mode">Koyu mod (zümrüt)</string>
+    <string name="theme_light_mode">Açık mod (sade)</string>
+    <string name="settings_in_chat_sounds_format">Sohbet içi sesler: %1$s</string>
+    <string name="settings_outgoing_tone">Giden ton (gönderildi)</string>
+    <string name="settings_incoming_tone">Gelen ton (alındı)</string>
+    <string name="status_on">AÇIK</string>
+    <string name="status_off">KAPALI</string>
+    <string name="toast_in_chat_sounds_status">Sohbet içi sesler %1$s</string>
+    <string name="status_enabled">etkin</string>
 </resources>

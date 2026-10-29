@@ -449,4 +449,51 @@
     <string name="dialog_add_member_hint">Weka Kitambulisho cha Mtumiaji au Simu</string>
     <string name="toast_member_added">Mwanachama ameongezwa kwa mafanikio</string>
     <string name="toast_member_add_failed">Imeshindwa kuongeza mwanachama</string>
+
+    <!-- Batch 11: deleted-msg/edit-history / cart-order errors / privacy visibility / in-chat sounds / theme labels -->
+    <string name="message_deleted_notice">🚫 Ujumbe huu ulifutwa</string>
+    <string name="original_message_label">Ujumbe asili</string>
+    <string name="original_message_not_found">Ujumbe asili haukupatikana</string>
+    <string name="action_edit_history">Historia ya uhariri</string>
+    <string name="title_edit_history">Historia ya uhariri</string>
+    <string name="edit_history_empty">Hakuna uhariri wa awali uliorekodiwa</string>
+    <string name="label_original">Asili</string>
+    <string name="label_edit_version">Uhariri #%1$d</string>
+    <string name="error_load_cart">Imeshindwa kupakia kikapu</string>
+    <string name="error_update_quantity">Imeshindwa kusasisha kiasi</string>
+    <string name="price_format_usd">%1$s</string>
+    <string name="placeholder_product_name">Bidhaa</string>
+    <string name="error_load_cart_summary">Imeshindwa kupakia muhtasari wa kikapu</string>
+    <string name="error_empty_address">Tafadhali weka anwani</string>
+    <string name="toast_order_placed_success">Agizo limewekwa kwa mafanikio!</string>
+    <string name="error_place_order">Imeshindwa kuweka agizo</string>
+    <string name="order_summary_item_format">%1$s x %2$d = %3$s</string>
+    <string name="order_id_format">Agizo #%1$s</string>
+    <string name="store_id_format">Kitambulisho cha duka: %1$s</string>
+    <string name="error_product_not_found">Bidhaa haikupatikana</string>
+    <string name="toast_added_to_cart">Imeongezwa kwenye kikapu</string>
+    <string name="error_add_to_cart">Imeshindwa kuongeza kwenye kikapu</string>
+    <string name="status_verified">Imethibitishwa</string>
+    <string name="status_standard">Kawaida</string>
+    <string name="store_rating_format">%1$s ★ | %2$s</string>
+    <string name="visibility_contacts">Anwani zangu</string>
+    <string name="visibility_nobody">Hakuna mtu</string>
+    <string name="error_privacy_update">Imeshindwa kusasisha</string>
+    <string name="toast_outgoing_sound_updated">Sauti ya kutoka imesasishwa</string>
+    <string name="toast_incoming_sound_updated">Sauti ya kuingia imesasishwa</string>
+    <string name="toast_pin_copied">PIN %1$s imenakiliwa kwenye ubao wa kunakili!</string>
+    <string name="label_gochat_pin">GoChat PIN</string>
+    <string name="placeholder_user_name">Mtumiaji wa GoChat</string>
+    <string name="placeholder_phone_connected">Nambari ya simu imeunganishwa</string>
+    <string name="error_empty_display_name">Jina la kuonyesha haliwezi kuwa tupu</string>
+    <string name="theme_system_default">Chaguo-msingi la mfumo (otomatiki)</string>
+    <string name="theme_dark_mode">Hali ya giza (zumaridi)</string>
+    <string name="theme_light_mode">Hali ya mwangaza (safi)</string>
+    <string name="settings_in_chat_sounds_format">Sauti ndani ya gumzo: %1$s</string>
+    <string name="settings_outgoing_tone">Toni ya kutoka (imetumwa)</string>
+    <string name="settings_incoming_tone">Toni ya kuingia (imepokelewa)</string>
+    <string name="status_on">IMEWASHWA</string>
+    <string name="status_off">IMEZIMWA</string>
+    <string name="toast_in_chat_sounds_status">Sauti ndani ya gumzo %1$s</string>
+    <string name="status_enabled">zimewashwa</string>
 </resources>

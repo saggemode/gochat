@@ -449,4 +449,51 @@
     <string name="dialog_add_member_hint">Введите ID пользователя или телефон</string>
     <string name="toast_member_added">Участник успешно добавлен</string>
     <string name="toast_member_add_failed">Не удалось добавить участника</string>
+
+    <!-- Batch 11: deleted-msg/edit-history / cart-order errors / privacy visibility / in-chat sounds / theme labels -->
+    <string name="message_deleted_notice">🚫 Это сообщение было удалено</string>
+    <string name="original_message_label">Исходное сообщение</string>
+    <string name="original_message_not_found">Исходное сообщение не найдено</string>
+    <string name="action_edit_history">История изменений</string>
+    <string name="title_edit_history">История изменений</string>
+    <string name="edit_history_empty">Предыдущие изменения не записаны</string>
+    <string name="label_original">Оригинал</string>
+    <string name="label_edit_version">Изменение №%1$d</string>
+    <string name="error_load_cart">Не удалось загрузить корзину</string>
+    <string name="error_update_quantity">Не удалось обновить количество</string>
+    <string name="price_format_usd">%1$s</string>
+    <string name="placeholder_product_name">Товар</string>
+    <string name="error_load_cart_summary">Не удалось загрузить сводку корзины</string>
+    <string name="error_empty_address">Введите адрес</string>
+    <string name="toast_order_placed_success">Заказ успешно оформлен!</string>
+    <string name="error_place_order">Не удалось оформить заказ</string>
+    <string name="order_summary_item_format">%1$s x %2$d = %3$s</string>
+    <string name="order_id_format">Заказ №%1$s</string>
+    <string name="store_id_format">ID магазина: %1$s</string>
+    <string name="error_product_not_found">Товар не найден</string>
+    <string name="toast_added_to_cart">Добавлено в корзину</string>
+    <string name="error_add_to_cart">Не удалось добавить в корзину</string>
+    <string name="status_verified">Проверено</string>
+    <string name="status_standard">Стандартный</string>
+    <string name="store_rating_format">%1$s ★ | %2$s</string>
+    <string name="visibility_contacts">Мои контакты</string>
+    <string name="visibility_nobody">Никто</string>
+    <string name="error_privacy_update">Не удалось обновить</string>
+    <string name="toast_outgoing_sound_updated">Звук исходящих обновлён</string>
+    <string name="toast_incoming_sound_updated">Звук входящих обновлён</string>
+    <string name="toast_pin_copied">PIN %1$s скопирован в буфер обмена!</string>
+    <string name="label_gochat_pin">GoChat PIN</string>
+    <string name="placeholder_user_name">Пользователь GoChat</string>
+    <string name="placeholder_phone_connected">Номер телефона подключён</string>
+    <string name="error_empty_display_name">Отображаемое имя не может быть пустым</string>
+    <string name="theme_system_default">Системная по умолчанию (авто)</string>
+    <string name="theme_dark_mode">Тёмный режим (изумруд)</string>
+    <string name="theme_light_mode">Светлый режим (чистый)</string>
+    <string name="settings_in_chat_sounds_format">Звуки в чате: %1$s</string>
+    <string name="settings_outgoing_tone">Исходящий тон (отправлено)</string>
+    <string name="settings_incoming_tone">Входящий тон (получено)</string>
+    <string name="status_on">ВКЛ</string>
+    <string name="status_off">ВЫКЛ</string>
+    <string name="toast_in_chat_sounds_status">Звуки в чате %1$s</string>
+    <string name="status_enabled">включены</string>
 </resources>

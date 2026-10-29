@@ -449,4 +449,51 @@
     <string name="dialog_add_member_hint">أدخل معرّف المستخدم أو الهاتف</string>
     <string name="toast_member_added">تمت إضافة العضو بنجاح</string>
     <string name="toast_member_add_failed">فشل إضافة العضو</string>
+
+    <!-- Batch 11: deleted-msg/edit-history / cart-order errors / privacy visibility / in-chat sounds / theme labels -->
+    <string name="message_deleted_notice">🚫 تم حذف هذه الرسالة</string>
+    <string name="original_message_label">الرسالة الأصلية</string>
+    <string name="original_message_not_found">لم يُعثر على الرسالة الأصلية</string>
+    <string name="action_edit_history">سجل التعديلات</string>
+    <string name="title_edit_history">سجل التعديلات</string>
+    <string name="edit_history_empty">لم تُسجَّل أي تعديلات سابقة</string>
+    <string name="label_original">الأصلية</string>
+    <string name="label_edit_version">التعديل رقم %1$d</string>
+    <string name="error_load_cart">فشل تحميل السلة</string>
+    <string name="error_update_quantity">فشل تحديث الكمية</string>
+    <string name="price_format_usd">%1$s</string>
+    <string name="placeholder_product_name">منتج</string>
+    <string name="error_load_cart_summary">فشل تحميل ملخص السلة</string>
+    <string name="error_empty_address">يرجى إدخال عنوان</string>
+    <string name="toast_order_placed_success">تم تقديم الطلب بنجاح!</string>
+    <string name="error_place_order">فشل تقديم الطلب</string>
+    <string name="order_summary_item_format">%1$s × %2$d = %3$s</string>
+    <string name="order_id_format">الطلب رقم %1$s</string>
+    <string name="store_id_format">معرّف المتجر: %1$s</string>
+    <string name="error_product_not_found">لم يُعثر على المنتج</string>
+    <string name="toast_added_to_cart">تمت الإضافة إلى السلة</string>
+    <string name="error_add_to_cart">فشلت الإضافة إلى السلة</string>
+    <string name="status_verified">موثّق</string>
+    <string name="status_standard">قياسي</string>
+    <string name="store_rating_format">%1$s ★ | %2$s</string>
+    <string name="visibility_contacts">جهات اتصالي</string>
+    <string name="visibility_nobody">لا أحد</string>
+    <string name="error_privacy_update">فشل التحديث</string>
+    <string name="toast_outgoing_sound_updated">تم تحديث صوت الصادر</string>
+    <string name="toast_incoming_sound_updated">تم تحديث صوت الوارد</string>
+    <string name="toast_pin_copied">تم نسخ رمز PIN %1$s إلى الحافظة!</string>
+    <string name="label_gochat_pin">GoChat PIN</string>
+    <string name="placeholder_user_name">مستخدم GoChat</string>
+    <string name="placeholder_phone_connected">تم ربط رقم الهاتف</string>
+    <string name="error_empty_display_name">لا يمكن أن يكون الاسم المعروض فارغًا</string>
+    <string name="theme_system_default">إعداد النظام الافتراضي (تلقائي)</string>
+    <string name="theme_dark_mode">الوضع الداكن (زمردي)</string>
+    <string name="theme_light_mode">الوضع الفاتح (نظيف)</string>
+    <string name="settings_in_chat_sounds_format">أصوات داخل الدردشة: %1$s</string>
+    <string name="settings_outgoing_tone">نغمة الصادر (مُرسَل)</string>
+    <string name="settings_incoming_tone">نغمة الوارد (مُستلَم)</string>
+    <string name="status_on">تشغيل</string>
+    <string name="status_off">إيقاف</string>
+    <string name="toast_in_chat_sounds_status">أصوات داخل الدردشة %1$s</string>
+    <string name="status_enabled">مُفعَّلة</string>
 </resources>

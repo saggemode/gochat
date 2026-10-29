@@ -449,4 +449,51 @@
     <string name="dialog_add_member_hint">Benutzer-ID oder Telefon eingeben</string>
     <string name="toast_member_added">Mitglied erfolgreich hinzugefügt</string>
     <string name="toast_member_add_failed">Mitglied konnte nicht hinzugefügt werden</string>
+
+    <!-- Batch 11: deleted-msg/edit-history / cart-order errors / privacy visibility / in-chat sounds / theme labels -->
+    <string name="message_deleted_notice">🚫 Diese Nachricht wurde gelöscht</string>
+    <string name="original_message_label">Originalnachricht</string>
+    <string name="original_message_not_found">Originalnachricht nicht gefunden</string>
+    <string name="action_edit_history">Bearbeitungsverlauf</string>
+    <string name="title_edit_history">Bearbeitungsverlauf</string>
+    <string name="edit_history_empty">Keine früheren Bearbeitungen aufgezeichnet</string>
+    <string name="label_original">Original</string>
+    <string name="label_edit_version">Bearbeitung Nr. %1$d</string>
+    <string name="error_load_cart">Warenkorb konnte nicht geladen werden</string>
+    <string name="error_update_quantity">Menge konnte nicht aktualisiert werden</string>
+    <string name="price_format_usd">%1$s</string>
+    <string name="placeholder_product_name">Produkt</string>
+    <string name="error_load_cart_summary">Warenkorbübersicht konnte nicht geladen werden</string>
+    <string name="error_empty_address">Bitte gib eine Adresse ein</string>
+    <string name="toast_order_placed_success">Bestellung erfolgreich aufgegeben!</string>
+    <string name="error_place_order">Bestellung konnte nicht aufgegeben werden</string>
+    <string name="order_summary_item_format">%1$s x %2$d = %3$s</string>
+    <string name="order_id_format">Bestellung Nr. %1$s</string>
+    <string name="store_id_format">Shop-ID: %1$s</string>
+    <string name="error_product_not_found">Produkt nicht gefunden</string>
+    <string name="toast_added_to_cart">Zum Warenkorb hinzugefügt</string>
+    <string name="error_add_to_cart">Konnte nicht zum Warenkorb hinzugefügt werden</string>
+    <string name="status_verified">Verifiziert</string>
+    <string name="status_standard">Standard</string>
+    <string name="store_rating_format">%1$s ★ | %2$s</string>
+    <string name="visibility_contacts">Meine Kontakte</string>
+    <string name="visibility_nobody">Niemand</string>
+    <string name="error_privacy_update">Aktualisierung fehlgeschlagen</string>
+    <string name="toast_outgoing_sound_updated">Ausgehender Ton aktualisiert</string>
+    <string name="toast_incoming_sound_updated">Eingehender Ton aktualisiert</string>
+    <string name="toast_pin_copied">PIN %1$s in die Zwischenablage kopiert!</string>
+    <string name="label_gochat_pin">GoChat-PIN</string>
+    <string name="placeholder_user_name">GoChat-Benutzer</string>
+    <string name="placeholder_phone_connected">Telefonnummer verbunden</string>
+    <string name="error_empty_display_name">Der Anzeigename darf nicht leer sein</string>
+    <string name="theme_system_default">Systemstandard (automatisch)</string>
+    <string name="theme_dark_mode">Dunkelmodus (Smaragd)</string>
+    <string name="theme_light_mode">Hellmodus (Klar)</string>
+    <string name="settings_in_chat_sounds_format">In-Chat-Sounds: %1$s</string>
+    <string name="settings_outgoing_tone">Ausgehender Ton (gesendet)</string>
+    <string name="settings_incoming_tone">Eingehender Ton (empfangen)</string>
+    <string name="status_on">EIN</string>
+    <string name="status_off">AUS</string>
+    <string name="toast_in_chat_sounds_status">In-Chat-Sounds %1$s</string>
+    <string name="status_enabled">aktiviert</string>
 </resources>

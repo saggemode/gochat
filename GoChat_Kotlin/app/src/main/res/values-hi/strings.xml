@@ -449,4 +449,51 @@
     <string name="dialog_add_member_hint">उपयोगकर्ता ID या फ़ोन दर्ज करें</string>
     <string name="toast_member_added">सदस्य सफलतापूर्वक जोड़ा गया</string>
     <string name="toast_member_add_failed">सदस्य जोड़ने में विफल</string>
+
+    <!-- Batch 11: deleted-msg/edit-history / cart-order errors / privacy visibility / in-chat sounds / theme labels -->
+    <string name="message_deleted_notice">🚫 यह संदेश हटा दिया गया था</string>
+    <string name="original_message_label">मूल संदेश</string>
+    <string name="original_message_not_found">मूल संदेश नहीं मिला</string>
+    <string name="action_edit_history">संपादन इतिहास</string>
+    <string name="title_edit_history">संपादन इतिहास</string>
+    <string name="edit_history_empty">कोई पूर्व संपादन दर्ज नहीं</string>
+    <string name="label_original">मूल</string>
+    <string name="label_edit_version">संपादन #%1$d</string>
+    <string name="error_load_cart">कार्ट लोड करने में विफल</string>
+    <string name="error_update_quantity">मात्रा अपडेट करने में विफल</string>
+    <string name="price_format_usd">%1$s</string>
+    <string name="placeholder_product_name">उत्पाद</string>
+    <string name="error_load_cart_summary">कार्ट सारांश लोड करने में विफल</string>
+    <string name="error_empty_address">कृपया एक पता दर्ज करें</string>
+    <string name="toast_order_placed_success">ऑर्डर सफलतापूर्वक दिया गया!</string>
+    <string name="error_place_order">ऑर्डर देने में विफल</string>
+    <string name="order_summary_item_format">%1$s x %2$d = %3$s</string>
+    <string name="order_id_format">ऑर्डर #%1$s</string>
+    <string name="store_id_format">स्टोर ID: %1$s</string>
+    <string name="error_product_not_found">उत्पाद नहीं मिला</string>
+    <string name="toast_added_to_cart">कार्ट में जोड़ा गया</string>
+    <string name="error_add_to_cart">कार्ट में जोड़ने में विफल</string>
+    <string name="status_verified">सत्यापित</string>
+    <string name="status_standard">मानक</string>
+    <string name="store_rating_format">%1$s ★ | %2$s</string>
+    <string name="visibility_contacts">मेरे संपर्क</string>
+    <string name="visibility_nobody">कोई नहीं</string>
+    <string name="error_privacy_update">अपडेट करने में विफल</string>
+    <string name="toast_outgoing_sound_updated">आउटगोइंग ध्वनि अपडेट की गई</string>
+    <string name="toast_incoming_sound_updated">इनकमिंग ध्वनि अपडेट की गई</string>
+    <string name="toast_pin_copied">PIN %1$s क्लिपबोर्ड में कॉपी किया गया!</string>
+    <string name="label_gochat_pin">GoChat PIN</string>
+    <string name="placeholder_user_name">GoChat उपयोगकर्ता</string>
+    <string name="placeholder_phone_connected">फ़ोन नंबर कनेक्ट किया गया</string>
+    <string name="error_empty_display_name">प्रदर्शित नाम खाली नहीं हो सकता</string>
+    <string name="theme_system_default">सिस्टम डिफ़ॉल्ट (स्वतः)</string>
+    <string name="theme_dark_mode">डार्क मोड (एमराल्ड)</string>
+    <string name="theme_light_mode">लाइट मोड (क्लीन)</string>
+    <string name="settings_in_chat_sounds_format">इन-चैट ध्वनियाँ: %1$s</string>
+    <string name="settings_outgoing_tone">आउटगोइंग टोन (भेजा गया)</string>
+    <string name="settings_incoming_tone">इनकमिंग टोन (प्राप्त)</string>
+    <string name="status_on">चालू</string>
+    <string name="status_off">बंद</string>
+    <string name="toast_in_chat_sounds_status">इन-चैट ध्वनियाँ %1$s</string>
+    <string name="status_enabled">सक्षम</string>
 </resources>

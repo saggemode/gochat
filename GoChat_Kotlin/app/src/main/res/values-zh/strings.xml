@@ -449,4 +449,51 @@
     <string name="dialog_add_member_hint">输入用户 ID 或电话</string>
     <string name="toast_member_added">成员添加成功</string>
     <string name="toast_member_add_failed">添加成员失败</string>
+
+    <!-- Batch 11: deleted-msg/edit-history / cart-order errors / privacy visibility / in-chat sounds / theme labels -->
+    <string name="message_deleted_notice">🚫 此消息已删除</string>
+    <string name="original_message_label">原始消息</string>
+    <string name="original_message_not_found">未找到原始消息</string>
+    <string name="action_edit_history">编辑记录</string>
+    <string name="title_edit_history">编辑记录</string>
+    <string name="edit_history_empty">未记录任何先前编辑</string>
+    <string name="label_original">原始</string>
+    <string name="label_edit_version">第 %1$d 次编辑</string>
+    <string name="error_load_cart">加载购物车失败</string>
+    <string name="error_update_quantity">更新数量失败</string>
+    <string name="price_format_usd">%1$s</string>
+    <string name="placeholder_product_name">商品</string>
+    <string name="error_load_cart_summary">加载购物车摘要失败</string>
+    <string name="error_empty_address">请输入地址</string>
+    <string name="toast_order_placed_success">下单成功！</string>
+    <string name="error_place_order">下单失败</string>
+    <string name="order_summary_item_format">%1$s x %2$d = %3$s</string>
+    <string name="order_id_format">订单 #%1$s</string>
+    <string name="store_id_format">店铺 ID：%1$s</string>
+    <string name="error_product_not_found">未找到商品</string>
+    <string name="toast_added_to_cart">已加入购物车</string>
+    <string name="error_add_to_cart">加入购物车失败</string>
+    <string name="status_verified">已验证</string>
+    <string name="status_standard">标准</string>
+    <string name="store_rating_format">%1$s ★ | %2$s</string>
+    <string name="visibility_contacts">我的联系人</string>
+    <string name="visibility_nobody">任何人都不可</string>
+    <string name="error_privacy_update">更新失败</string>
+    <string name="toast_outgoing_sound_updated">外拨提示音已更新</string>
+    <string name="toast_incoming_sound_updated">来电提示音已更新</string>
+    <string name="toast_pin_copied">已将 PIN %1$s 复制到剪贴板！</string>
+    <string name="label_gochat_pin">GoChat PIN</string>
+    <string name="placeholder_user_name">GoChat 用户</string>
+    <string name="placeholder_phone_connected">电话号码已连接</string>
+    <string name="error_empty_display_name">显示名称不能为空</string>
+    <string name="theme_system_default">系统默认（自动）</string>
+    <string name="theme_dark_mode">深色模式（翡翠）</string>
+    <string name="theme_light_mode">浅色模式（简洁）</string>
+    <string name="settings_in_chat_sounds_format">聊天内声音：%1$s</string>
+    <string name="settings_outgoing_tone">外发提示音（已发送）</string>
+    <string name="settings_incoming_tone">接收提示音（已接收）</string>
+    <string name="status_on">开</string>
+    <string name="status_off">关</string>
+    <string name="toast_in_chat_sounds_status">聊天内声音%1$s</string>
+    <string name="status_enabled">已启用</string>
 </resources>

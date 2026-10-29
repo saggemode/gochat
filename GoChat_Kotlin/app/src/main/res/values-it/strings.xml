@@ -449,4 +449,51 @@
     <string name="dialog_add_member_hint">Inserisci ID utente o telefono</string>
     <string name="toast_member_added">Membro aggiunto correttamente</string>
     <string name="toast_member_add_failed">Impossibile aggiungere il membro</string>
+
+    <!-- Batch 11: deleted-msg/edit-history / cart-order errors / privacy visibility / in-chat sounds / theme labels -->
+    <string name="message_deleted_notice">🚫 Questo messaggio è stato eliminato</string>
+    <string name="original_message_label">Messaggio originale</string>
+    <string name="original_message_not_found">Messaggio originale non trovato</string>
+    <string name="action_edit_history">Cronologia modifiche</string>
+    <string name="title_edit_history">Cronologia modifiche</string>
+    <string name="edit_history_empty">Nessuna modifica precedente registrata</string>
+    <string name="label_original">Originale</string>
+    <string name="label_edit_version">Modifica n. %1$d</string>
+    <string name="error_load_cart">Impossibile caricare il carrello</string>
+    <string name="error_update_quantity">Impossibile aggiornare la quantità</string>
+    <string name="price_format_usd">%1$s</string>
+    <string name="placeholder_product_name">Prodotto</string>
+    <string name="error_load_cart_summary">Impossibile caricare il riepilogo del carrello</string>
+    <string name="error_empty_address">Inserisci un indirizzo</string>
+    <string name="toast_order_placed_success">Ordine effettuato con successo!</string>
+    <string name="error_place_order">Impossibile effettuare l\'ordine</string>
+    <string name="order_summary_item_format">%1$s x %2$d = %3$s</string>
+    <string name="order_id_format">Ordine n. %1$s</string>
+    <string name="store_id_format">ID negozio: %1$s</string>
+    <string name="error_product_not_found">Prodotto non trovato</string>
+    <string name="toast_added_to_cart">Aggiunto al carrello</string>
+    <string name="error_add_to_cart">Impossibile aggiungere al carrello</string>
+    <string name="status_verified">Verificato</string>
+    <string name="status_standard">Standard</string>
+    <string name="store_rating_format">%1$s ★ | %2$s</string>
+    <string name="visibility_contacts">I miei contatti</string>
+    <string name="visibility_nobody">Nessuno</string>
+    <string name="error_privacy_update">Impossibile aggiornare</string>
+    <string name="toast_outgoing_sound_updated">Suono in uscita aggiornato</string>
+    <string name="toast_incoming_sound_updated">Suono in entrata aggiornato</string>
+    <string name="toast_pin_copied">PIN %1$s copiato negli appunti!</string>
+    <string name="label_gochat_pin">GoChat PIN</string>
+    <string name="placeholder_user_name">Utente GoChat</string>
+    <string name="placeholder_phone_connected">Numero di telefono collegato</string>
+    <string name="error_empty_display_name">Il nome visualizzato non può essere vuoto</string>
+    <string name="theme_system_default">Predefinito di sistema (automatico)</string>
+    <string name="theme_dark_mode">Modalità scura (smeraldo)</string>
+    <string name="theme_light_mode">Modalità chiara (pulita)</string>
+    <string name="settings_in_chat_sounds_format">Suoni in chat: %1$s</string>
+    <string name="settings_outgoing_tone">Tono in uscita (inviato)</string>
+    <string name="settings_incoming_tone">Tono in entrata (ricevuto)</string>
+    <string name="status_on">ATTIVO</string>
+    <string name="status_off">DISATTIVO</string>
+    <string name="toast_in_chat_sounds_status">Suoni in chat %1$s</string>
+    <string name="status_enabled">attivati</string>
 </resources>
