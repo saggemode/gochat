@@ -190,6 +190,10 @@ class SettingsFragment : Fragment() {
                 showThemeDialog()
             }
 
+            tileLanguage.setOnClickListener {
+                showLanguageDialog()
+            }
+
             // Privacy Settings
             tilePrivacy.setOnClickListener {
                 startActivity(Intent(requireContext(), PrivacySettingsActivity::class.java))
@@ -415,6 +419,32 @@ class SettingsFragment : Fragment() {
         }
 
         dialog.show()
+    }
+
+    private fun showLanguageDialog() {
+        // (language tag, display label). Empty tag = follow the system language.
+        val options = listOf(
+            "" to "System default",
+            "en" to "English",
+            "fr" to "Français"
+        )
+        val labels = options.map { it.second }.toTypedArray()
+        val currentTag = androidx.appcompat.app.AppCompatDelegate.getApplicationLocales()
+            .toLanguageTags().substringBefore(",").substringBefore("-")
+        val checked = options.indexOfFirst { it.first == currentTag }.let { if (it < 0) 0 else it }
+
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setTitle(getString(R.string.settings_language_dialog_title))
+            .setSingleChoiceItems(labels, checked) { dialog, which ->
+                val tag = options[which].first
+                androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
+                    if (tag.isBlank()) androidx.core.os.LocaleListCompat.getEmptyLocaleList()
+                    else androidx.core.os.LocaleListCompat.forLanguageTags(tag)
+                )
+                dialog.dismiss()
+            }
+            .setNegativeButton(getString(R.string.btn_cancel), null)
+            .show()
     }
 
     private fun showThemeDialog() {

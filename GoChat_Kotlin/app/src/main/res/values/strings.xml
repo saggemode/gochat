@@ -615,6 +615,9 @@
     <string name="action_block_contact">Block %1$s</string>
     <string name="action_unblock_contact">Unblock %1$s</string>
     <string name="action_report">Report</string>
+    <string name="settings_language_title">Language</string>
+    <string name="settings_language_subtitle">Choose your app language</string>
+    <string name="settings_language_dialog_title">App language</string>
     <string name="action_report_contact">Report %1$s</string>
     <string name="action_report_and_block">Report and block</string>
     <string name="report_contact_title">Report %1$s?</string>

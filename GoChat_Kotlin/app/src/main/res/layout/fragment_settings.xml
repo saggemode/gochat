@@ -393,6 +393,60 @@
                     app:tint="@color/gochat_text_muted" />
             </LinearLayout>
 
+            <!-- Language Row -->
+            <LinearLayout
+                android:id="@+id/tileLanguage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="20dp"
+                android:paddingVertical="16dp">
+
+                <ImageView
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:contentDescription="Language"
+                    android:src="@drawable/ic_theme_mode"
+                    app:tint="@color/gochat_accent" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_language_title"
+                        android:textColor="@color/gochat_text_primary"
+                        android:textSize="15.5sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvLanguageSubtitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/settings_language_subtitle"
+                        android:textColor="@color/gochat_text_muted"
+                        android:textSize="12.5sp" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:contentDescription="Open"
+                    android:src="@drawable/ic_back"
+                    android:rotation="180"
+                    app:tint="@color/gochat_text_muted" />
+            </LinearLayout>
+
             <!-- Privacy Row -->
             <LinearLayout
                 android:id="@+id/tilePrivacy"
