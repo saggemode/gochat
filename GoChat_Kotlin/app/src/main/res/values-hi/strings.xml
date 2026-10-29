@@ -623,4 +623,19 @@
     <string name="coupon_min_spend_prefix">न्यूनतम खर्च %1$s</string>
     <string name="seller_hub_coupons">कूपन</string>
     <string name="seller_hub_coupons_sub">अपने स्टोर के लिए छूट कोड बनाएँ</string>
+
+    <!-- Batch 15: coupon edit/disable/delete controls -->
+    <string name="coupon_cancel_edit">संपादन रद्द करें</string>
+    <string name="coupon_update">कूपन अपडेट करें</string>
+    <string name="coupon_updated">कूपन अपडेट किया गया</string>
+    <string name="coupon_update_failed">कूपन अपडेट नहीं किया जा सका</string>
+    <string name="coupon_action_edit">संपादित करें</string>
+    <string name="coupon_action_disable">निष्क्रिय करें</string>
+    <string name="coupon_action_enable">सक्रिय करें</string>
+    <string name="coupon_action_delete">हटाएँ</string>
+    <string name="coupon_delete_title">कूपन हटाएँ?</string>
+    <string name="coupon_delete_confirm">कूपन \"%1$s\" हटाएँ? इसे पूर्ववत नहीं किया जा सकता।</string>
+    <string name="coupon_cancel">रद्द करें</string>
+    <string name="coupon_deleted">कूपन हटाया गया</string>
+    <string name="coupon_delete_failed">कूपन नहीं हटाया जा सका</string>
 </resources>

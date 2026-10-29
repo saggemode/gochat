@@ -623,4 +623,19 @@
     <string name="coupon_min_spend_prefix">Gasto mín. %1$s</string>
     <string name="seller_hub_coupons">CUPONS</string>
     <string name="seller_hub_coupons_sub">Crie códigos de desconto para sua loja</string>
+
+    <!-- Batch 15: coupon edit/disable/delete controls -->
+    <string name="coupon_cancel_edit">Cancelar edição</string>
+    <string name="coupon_update">Atualizar cupom</string>
+    <string name="coupon_updated">Cupom atualizado</string>
+    <string name="coupon_update_failed">Não foi possível atualizar o cupom</string>
+    <string name="coupon_action_edit">Editar</string>
+    <string name="coupon_action_disable">Desativar</string>
+    <string name="coupon_action_enable">Ativar</string>
+    <string name="coupon_action_delete">Excluir</string>
+    <string name="coupon_delete_title">Excluir cupom?</string>
+    <string name="coupon_delete_confirm">Excluir o cupom \"%1$s\"? Isto não pode ser desfeito.</string>
+    <string name="coupon_cancel">Cancelar</string>
+    <string name="coupon_deleted">Cupom excluído</string>
+    <string name="coupon_delete_failed">Não foi possível excluir o cupom</string>
 </resources>

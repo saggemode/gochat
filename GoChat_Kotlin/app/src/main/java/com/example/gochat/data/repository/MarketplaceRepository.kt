@@ -1350,6 +1350,59 @@ class MarketplaceRepository @Inject constructor(
         }
     }
 
+    /**
+     * Edits an existing coupon (code is immutable). Sends the full field set, so
+     * callers pass the coupon's current values with whatever they're changing.
+     */
+    suspend fun updateCoupon(
+        couponId: String,
+        discountType: String,
+        discountValue: Double,
+        minSpend: Double,
+        maxUses: Int,
+        maxUsesPerUser: Int,
+        expiresAt: String,
+        productId: String,
+        isActive: Boolean
+    ): Result<Coupon> {
+        return try {
+            val body = buildJsonObject {
+                put("discount_type", discountType)
+                put("discount_value", discountValue)
+                put("min_spend", minSpend)
+                put("max_uses", maxUses)
+                put("max_uses_per_user", maxUsesPerUser)
+                put("expires_at", expiresAt) // empty string clears the expiry
+                put("product_id", productId) // empty string = store-wide
+                put("is_active", isActive)
+            }
+            val resp = api.updateCoupon(couponId, body)
+            if (!resp.isSuccessful) {
+                val msg = resp.errorBody()?.string()?.takeIf { it.isNotBlank() } ?: "HTTP ${resp.code()}"
+                return Result.failure(Exception(msg))
+            }
+            val coupon = parseCoupon(resp.body())
+                ?: return Result.failure(Exception("Malformed coupon response"))
+            Result.success(coupon)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** Permanently deletes one of the seller's coupons. */
+    suspend fun deleteCoupon(couponId: String): Result<Unit> {
+        return try {
+            val resp = api.deleteCoupon(couponId)
+            if (!resp.isSuccessful) {
+                val msg = resp.errorBody()?.string()?.takeIf { it.isNotBlank() } ?: "HTTP ${resp.code()}"
+                return Result.failure(Exception(msg))
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     data class PaymentInit(val authorizationUrl: String, val reference: String)
 
     /**

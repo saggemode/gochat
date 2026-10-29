@@ -623,4 +623,19 @@
     <string name="coupon_min_spend_prefix">Min. harcama %1$s</string>
     <string name="seller_hub_coupons">KUPONLAR</string>
     <string name="seller_hub_coupons_sub">Mağazanız için indirim kodları oluşturun</string>
+
+    <!-- Batch 15: coupon edit/disable/delete controls -->
+    <string name="coupon_cancel_edit">Düzenlemeyi iptal et</string>
+    <string name="coupon_update">Kuponu güncelle</string>
+    <string name="coupon_updated">Kupon güncellendi</string>
+    <string name="coupon_update_failed">Kupon güncellenemedi</string>
+    <string name="coupon_action_edit">Düzenle</string>
+    <string name="coupon_action_disable">Devre dışı bırak</string>
+    <string name="coupon_action_enable">Etkinleştir</string>
+    <string name="coupon_action_delete">Sil</string>
+    <string name="coupon_delete_title">Kupon silinsin mi?</string>
+    <string name="coupon_delete_confirm">\"%1$s\" kuponu silinsin mi? Bu işlem geri alınamaz.</string>
+    <string name="coupon_cancel">İptal</string>
+    <string name="coupon_deleted">Kupon silindi</string>
+    <string name="coupon_delete_failed">Kupon silinemedi</string>
 </resources>

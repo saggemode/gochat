@@ -739,4 +739,17 @@
     <string name="coupon_min_spend_prefix">Min spend %1$s</string>
     <string name="seller_hub_coupons">COUPONS</string>
     <string name="seller_hub_coupons_sub">Create discount codes for your store</string>
+    <string name="coupon_cancel_edit">Cancel edit</string>
+    <string name="coupon_update">Update coupon</string>
+    <string name="coupon_updated">Coupon updated</string>
+    <string name="coupon_update_failed">Could not update coupon</string>
+    <string name="coupon_action_edit">Edit</string>
+    <string name="coupon_action_disable">Disable</string>
+    <string name="coupon_action_enable">Enable</string>
+    <string name="coupon_action_delete">Delete</string>
+    <string name="coupon_delete_title">Delete coupon?</string>
+    <string name="coupon_delete_confirm">Delete coupon \"%1$s\"? This cannot be undone.</string>
+    <string name="coupon_cancel">Cancel</string>
+    <string name="coupon_deleted">Coupon deleted</string>
+    <string name="coupon_delete_failed">Could not delete coupon</string>
 </resources>

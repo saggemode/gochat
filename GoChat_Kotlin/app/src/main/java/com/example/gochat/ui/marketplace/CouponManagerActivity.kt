@@ -46,6 +46,10 @@ class CouponManagerActivity : AppCompatActivity() {
     private var expiryMillis: Long? = null
     private var storeCurrency: String? = null
 
+    // Non-null while the form is editing an existing coupon rather than creating one.
+    private var editingId: String? = null
+    private var editingActive: Boolean = true
+
     private lateinit var codeInput: EditText
     private lateinit var typeSpinner: Spinner
     private lateinit var valueInput: EditText
@@ -56,6 +60,7 @@ class CouponManagerActivity : AppCompatActivity() {
     private lateinit var scopeSpinner: Spinner
     private lateinit var expiryView: TextView
     private lateinit var saveBtn: Button
+    private lateinit var cancelEditBtn: Button
     private lateinit var progress: ProgressBar
     private lateinit var listContainer: LinearLayout
     private lateinit var emptyView: TextView
@@ -174,6 +179,16 @@ class CouponManagerActivity : AppCompatActivity() {
             ).apply { topMargin = dp(16) }
         }
         root.addView(saveBtn)
+
+        cancelEditBtn = Button(this).apply {
+            text = getString(R.string.coupon_cancel_edit)
+            visibility = View.GONE
+            setOnClickListener { cancelEdit() }
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
+        root.addView(cancelEditBtn)
 
         progress = ProgressBar(this).apply {
             visibility = View.GONE
@@ -332,7 +347,125 @@ class CouponManagerActivity : AppCompatActivity() {
                 setTextColor(resources.getColor(R.color.gochat_text_muted, theme))
             })
         }
+
+        // Edit / Enable-Disable / Delete actions
+        val actions = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(4), 0, 0)
+        }
+        actions.addView(flatButton(getString(R.string.coupon_action_edit)) { beginEdit(c) })
+        val toggleLabel = if (c.isActive) R.string.coupon_action_disable else R.string.coupon_action_enable
+        actions.addView(flatButton(getString(toggleLabel)) { toggleActive(c) })
+        actions.addView(flatButton(getString(R.string.coupon_action_delete)) { confirmDelete(c) })
+        row.addView(actions)
         return row
+    }
+
+    private fun flatButton(text: String, onClick: () -> Unit) = Button(
+        this, null, android.R.attr.borderlessButtonStyle
+    ).apply {
+        this.text = text
+        textSize = 12f
+        minWidth = 0
+        minimumWidth = 0
+        setPadding(dp(10), 0, dp(10), 0)
+        setOnClickListener { onClick() }
+    }
+
+    /** Loads a coupon into the form so the next save updates it instead of creating. */
+    private fun beginEdit(c: MarketplaceRepository.Coupon) {
+        editingId = c.id
+        editingActive = c.isActive
+        codeInput.setText(c.code)
+        codeInput.isEnabled = false
+        typeSpinner.setSelection(if (c.discountType == "fixed") 1 else 0)
+        valueInput.setText(trimNum(c.discountValue))
+        minSpendInput.setText(trimNum(c.minSpend))
+        maxUsesInput.setText(c.maxUses.toString())
+        perUserInput.setText(c.maxUsesPerUser.toString())
+        val scopeIdx = if (c.productId.isBlank()) 0
+                       else products.indexOfFirst { it.id == c.productId }.let { if (it >= 0) it + 1 else 0 }
+        scopeSpinner.setSelection(scopeIdx)
+        expiryMillis = parseRfc3339(c.expiresAt)
+        expiryView.text = expiryMillis?.let {
+            val cal = Calendar.getInstance().apply { timeInMillis = it }
+            getString(R.string.coupon_expiry_prefix, dateLabel(cal))
+        } ?: getString(R.string.coupon_expiry_none)
+        saveBtn.text = getString(R.string.coupon_update)
+        cancelEditBtn.visibility = View.VISIBLE
+    }
+
+    private fun cancelEdit() {
+        editingId = null
+        editingActive = true
+        codeInput.isEnabled = true
+        codeInput.setText("")
+        valueInput.setText("")
+        minSpendInput.setText("0")
+        maxUsesInput.setText("0")
+        perUserInput.setText("0")
+        scopeSpinner.setSelection(0)
+        expiryMillis = null
+        expiryView.text = getString(R.string.coupon_expiry_none)
+        saveBtn.text = getString(R.string.coupon_save)
+        cancelEditBtn.visibility = View.GONE
+    }
+
+    /** Flips a coupon's active flag, keeping every other field as-is. */
+    private fun toggleActive(c: MarketplaceRepository.Coupon) {
+        setBusy(true)
+        lifecycleScope.launch {
+            val res = repository.updateCoupon(
+                couponId = c.id,
+                discountType = c.discountType,
+                discountValue = c.discountValue,
+                minSpend = c.minSpend,
+                maxUses = c.maxUses,
+                maxUsesPerUser = c.maxUsesPerUser,
+                expiresAt = c.expiresAt,
+                productId = c.productId,
+                isActive = !c.isActive
+            )
+            setBusy(false)
+            res.onSuccess { loadCoupons() }
+                .onFailure { toast(getString(R.string.coupon_update_failed)) }
+        }
+    }
+
+    private fun confirmDelete(c: MarketplaceRepository.Coupon) {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.coupon_delete_title))
+            .setMessage(getString(R.string.coupon_delete_confirm, c.code))
+            .setNegativeButton(getString(R.string.coupon_cancel), null)
+            .setPositiveButton(getString(R.string.coupon_action_delete)) { _, _ ->
+                setBusy(true)
+                lifecycleScope.launch {
+                    val res = repository.deleteCoupon(c.id)
+                    setBusy(false)
+                    res.onSuccess {
+                        toast(getString(R.string.coupon_deleted))
+                        if (editingId == c.id) cancelEdit()
+                        loadCoupons()
+                    }.onFailure { toast(getString(R.string.coupon_delete_failed)) }
+                }
+            }
+            .show()
+    }
+
+    /** Parses an RFC3339/ISO timestamp (or its yyyy-MM-dd prefix) to epoch millis. */
+    private fun parseRfc3339(s: String): Long? {
+        if (s.isBlank()) return null
+        return try {
+            val fmt = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
+            fmt.timeZone = java.util.TimeZone.getTimeZone("UTC")
+            fmt.parse(s.take(19))?.time
+        } catch (e: Exception) {
+            try {
+                val d = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                d.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                d.parse(s.take(10))?.time
+            } catch (e2: Exception) { null }
+        }
     }
 
     private fun trimNum(v: Double): String =
@@ -358,28 +491,41 @@ class CouponManagerActivity : AppCompatActivity() {
         val scopeIndex = scopeSpinner.selectedItemPosition
         val productId = if (scopeIndex <= 0) "" else products.getOrNull(scopeIndex - 1)?.id.orEmpty()
 
+        val type = if (isPercent) "percentage" else "fixed"
+        val editId = editingId
         setBusy(true)
         lifecycleScope.launch {
-            val res = repository.createCoupon(
-                code = code,
-                discountType = if (isPercent) "percentage" else "fixed",
-                discountValue = value,
-                minSpend = minSpend,
-                maxUses = maxUses,
-                maxUsesPerUser = perUser,
-                expiresAt = expiryRfc3339(),
-                productId = productId
-            )
+            val res = if (editId != null) {
+                repository.updateCoupon(
+                    couponId = editId,
+                    discountType = type,
+                    discountValue = value,
+                    minSpend = minSpend,
+                    maxUses = maxUses,
+                    maxUsesPerUser = perUser,
+                    expiresAt = expiryRfc3339(),
+                    productId = productId,
+                    isActive = editingActive
+                )
+            } else {
+                repository.createCoupon(
+                    code = code,
+                    discountType = type,
+                    discountValue = value,
+                    minSpend = minSpend,
+                    maxUses = maxUses,
+                    maxUsesPerUser = perUser,
+                    expiresAt = expiryRfc3339(),
+                    productId = productId
+                )
+            }
             setBusy(false)
             res.onSuccess {
-                toast(getString(R.string.coupon_created))
-                codeInput.setText("")
-                valueInput.setText("")
-                expiryMillis = null
-                expiryView.text = getString(R.string.coupon_expiry_none)
+                toast(getString(if (editId != null) R.string.coupon_updated else R.string.coupon_created))
+                cancelEdit()
                 loadCoupons()
             }.onFailure {
-                toast(getString(R.string.coupon_create_failed))
+                toast(getString(if (editId != null) R.string.coupon_update_failed else R.string.coupon_create_failed))
             }
         }
     }

@@ -656,6 +656,8 @@ func main() {
 
 		authRequired.POST("/business/coupons", businessHandler.CreateCoupon)
 		authRequired.GET("/business/coupons", businessHandler.ListBusinessCoupons)
+		authRequired.PUT("/business/coupons/:id", businessHandler.UpdateCoupon)
+		authRequired.DELETE("/business/coupons/:id", businessHandler.DeleteCoupon)
 		authRequired.POST("/marketplace/coupons/validate", businessHandler.ValidateCoupon)
 
 		// Wishlist

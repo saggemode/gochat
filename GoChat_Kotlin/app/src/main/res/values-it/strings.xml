@@ -623,4 +623,19 @@
     <string name="coupon_min_spend_prefix">Spesa min. %1$s</string>
     <string name="seller_hub_coupons">COUPON</string>
     <string name="seller_hub_coupons_sub">Crea codici sconto per il tuo negozio</string>
+
+    <!-- Batch 15: coupon edit/disable/delete controls -->
+    <string name="coupon_cancel_edit">Annulla modifica</string>
+    <string name="coupon_update">Aggiorna coupon</string>
+    <string name="coupon_updated">Coupon aggiornato</string>
+    <string name="coupon_update_failed">Impossibile aggiornare il coupon</string>
+    <string name="coupon_action_edit">Modifica</string>
+    <string name="coupon_action_disable">Disattiva</string>
+    <string name="coupon_action_enable">Attiva</string>
+    <string name="coupon_action_delete">Elimina</string>
+    <string name="coupon_delete_title">Eliminare il coupon?</string>
+    <string name="coupon_delete_confirm">Eliminare il coupon \"%1$s\"? Non può essere annullato.</string>
+    <string name="coupon_cancel">Annulla</string>
+    <string name="coupon_deleted">Coupon eliminato</string>
+    <string name="coupon_delete_failed">Impossibile eliminare il coupon</string>
 </resources>

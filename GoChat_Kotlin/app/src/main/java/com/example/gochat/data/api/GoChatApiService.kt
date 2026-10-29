@@ -444,6 +444,17 @@ interface GoChatApiService {
     @GET(ApiConstants.BUSINESS_COUPONS)
     suspend fun getBusinessCoupons(): Response<JsonElement>
 
+    @PUT("api/v1/business/coupons/{id}")
+    suspend fun updateCoupon(
+        @Path("id") couponId: String,
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @DELETE("api/v1/business/coupons/{id}")
+    suspend fun deleteCoupon(
+        @Path("id") couponId: String
+    ): Response<JsonObject>
+
     @POST(ApiConstants.ORDERS)
     suspend fun placeOrder(
         @Body body: JsonObject

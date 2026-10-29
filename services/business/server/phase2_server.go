@@ -486,6 +486,44 @@ func (s *BusinessServer) ValidateCoupon(ctx context.Context, req *pb.ValidateCou
 	}, nil
 }
 
+func (s *BusinessServer) UpdateCoupon(ctx context.Context, req *pb.UpdateCouponRequest) (*pb.CreateCouponResponse, error) {
+	if req.BusinessId == "" || req.CouponId == "" {
+		return nil, status.Error(codes.InvalidArgument, "business_id and coupon_id are required")
+	}
+	c := &repository.Coupon{
+		ID:             req.CouponId,
+		BusinessID:     req.BusinessId,
+		DiscountType:   req.DiscountType,
+		DiscountValue:  req.DiscountValue,
+		MinSpend:       req.MinSpend,
+		MaxUses:        req.MaxUses,
+		ProductID:      req.ProductId,
+		MaxUsesPerUser: req.MaxUsesPerUser,
+		IsActive:       req.IsActive,
+	}
+	if req.ExpiresAt != "" {
+		t, err := time.Parse(time.RFC3339, req.ExpiresAt)
+		if err == nil {
+			c.ExpiresAt = &t
+		}
+	}
+	updated, err := s.repo.UpdateCoupon(ctx, c)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "update coupon: %v", err)
+	}
+	return &pb.CreateCouponResponse{Coupon: couponToPB(updated)}, nil
+}
+
+func (s *BusinessServer) DeleteCoupon(ctx context.Context, req *pb.DeleteCouponRequest) (*pb.DeleteCouponResponse, error) {
+	if req.BusinessId == "" || req.CouponId == "" {
+		return nil, status.Error(codes.InvalidArgument, "business_id and coupon_id are required")
+	}
+	if err := s.repo.DeleteCoupon(ctx, req.BusinessId, req.CouponId); err != nil {
+		return nil, status.Errorf(codes.Internal, "delete coupon: %v", err)
+	}
+	return &pb.DeleteCouponResponse{Success: true}, nil
+}
+
 // ── Wishlist Handlers ───────────────────────────────────────────────────────
 
 func (s *BusinessServer) ToggleWishlist(ctx context.Context, req *pb.ToggleWishlistRequest) (*pb.ToggleWishlistResponse, error) {

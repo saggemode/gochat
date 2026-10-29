@@ -519,6 +519,67 @@ func (h *BusinessHandler) ValidateCoupon(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+func (h *BusinessHandler) UpdateCoupon(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	couponID := c.Param("id")
+
+	var req struct {
+		DiscountType   string  `json:"discount_type"`
+		DiscountValue  float64 `json:"discount_value" binding:"required"`
+		MinSpend       float64 `json:"min_spend"`
+		MaxUses        int32   `json:"max_uses"`
+		ExpiresAt      string  `json:"expires_at"`
+		ProductID      string  `json:"product_id"`
+		MaxUsesPerUser int32   `json:"max_uses_per_user"`
+		IsActive       bool    `json:"is_active"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := h.client.UpdateCoupon(c.Request.Context(), &pb.UpdateCouponRequest{
+		BusinessId:     userID,
+		CouponId:       couponID,
+		DiscountType:   req.DiscountType,
+		DiscountValue:  req.DiscountValue,
+		MinSpend:       req.MinSpend,
+		MaxUses:        req.MaxUses,
+		ExpiresAt:      req.ExpiresAt,
+		ProductId:      req.ProductID,
+		MaxUsesPerUser: req.MaxUsesPerUser,
+		IsActive:       req.IsActive,
+	}, jsonOpt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp.Coupon)
+}
+
+func (h *BusinessHandler) DeleteCoupon(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	couponID := c.Param("id")
+
+	_, err := h.client.DeleteCoupon(c.Request.Context(), &pb.DeleteCouponRequest{
+		BusinessId: userID,
+		CouponId:   couponID,
+	}, jsonOpt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
 // ── Wishlist Handlers ───────────────────────────────────────────────────────
 
 func (h *BusinessHandler) ToggleWishlist(c *gin.Context) {

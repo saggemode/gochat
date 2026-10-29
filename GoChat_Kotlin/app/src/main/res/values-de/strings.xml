@@ -623,4 +623,19 @@
     <string name="coupon_min_spend_prefix">Mindestbetrag %1$s</string>
     <string name="seller_hub_coupons">GUTSCHEINE</string>
     <string name="seller_hub_coupons_sub">Erstelle Rabattcodes für deinen Shop</string>
+
+    <!-- Batch 15: coupon edit/disable/delete controls -->
+    <string name="coupon_cancel_edit">Bearbeitung abbrechen</string>
+    <string name="coupon_update">Gutschein aktualisieren</string>
+    <string name="coupon_updated">Gutschein aktualisiert</string>
+    <string name="coupon_update_failed">Gutschein konnte nicht aktualisiert werden</string>
+    <string name="coupon_action_edit">Bearbeiten</string>
+    <string name="coupon_action_disable">Deaktivieren</string>
+    <string name="coupon_action_enable">Aktivieren</string>
+    <string name="coupon_action_delete">Löschen</string>
+    <string name="coupon_delete_title">Gutschein löschen?</string>
+    <string name="coupon_delete_confirm">Gutschein \"%1$s\" löschen? Dies kann nicht rückgängig gemacht werden.</string>
+    <string name="coupon_cancel">Abbrechen</string>
+    <string name="coupon_deleted">Gutschein gelöscht</string>
+    <string name="coupon_delete_failed">Gutschein konnte nicht gelöscht werden</string>
 </resources>

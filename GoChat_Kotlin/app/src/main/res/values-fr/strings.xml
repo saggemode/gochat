@@ -627,4 +627,19 @@
     <string name="coupon_min_spend_prefix">Dépense min. %1$s</string>
     <string name="seller_hub_coupons">COUPONS</string>
     <string name="seller_hub_coupons_sub">Créez des codes promo pour votre boutique</string>
+
+    <!-- Batch 15: coupon edit/disable/delete controls -->
+    <string name="coupon_cancel_edit">Annuler la modification</string>
+    <string name="coupon_update">Mettre à jour le coupon</string>
+    <string name="coupon_updated">Coupon mis à jour</string>
+    <string name="coupon_update_failed">Impossible de mettre à jour le coupon</string>
+    <string name="coupon_action_edit">Modifier</string>
+    <string name="coupon_action_disable">Désactiver</string>
+    <string name="coupon_action_enable">Activer</string>
+    <string name="coupon_action_delete">Supprimer</string>
+    <string name="coupon_delete_title">Supprimer le coupon ?</string>
+    <string name="coupon_delete_confirm">Supprimer le coupon \"%1$s\" ? Cette action est irréversible.</string>
+    <string name="coupon_cancel">Annuler</string>
+    <string name="coupon_deleted">Coupon supprimé</string>
+    <string name="coupon_delete_failed">Impossible de supprimer le coupon</string>
 </resources>

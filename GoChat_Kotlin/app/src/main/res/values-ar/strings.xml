@@ -623,4 +623,19 @@
     <string name="coupon_min_spend_prefix">الحد الأدنى للإنفاق %1$s</string>
     <string name="seller_hub_coupons">القسائم</string>
     <string name="seller_hub_coupons_sub">أنشئ رموز خصم لمتجرك</string>
+
+    <!-- Batch 15: coupon edit/disable/delete controls -->
+    <string name="coupon_cancel_edit">إلغاء التعديل</string>
+    <string name="coupon_update">تحديث القسيمة</string>
+    <string name="coupon_updated">تم تحديث القسيمة</string>
+    <string name="coupon_update_failed">تعذّر تحديث القسيمة</string>
+    <string name="coupon_action_edit">تعديل</string>
+    <string name="coupon_action_disable">تعطيل</string>
+    <string name="coupon_action_enable">تفعيل</string>
+    <string name="coupon_action_delete">حذف</string>
+    <string name="coupon_delete_title">حذف القسيمة؟</string>
+    <string name="coupon_delete_confirm">حذف القسيمة \"%1$s\"؟ لا يمكن التراجع عن ذلك.</string>
+    <string name="coupon_cancel">إلغاء</string>
+    <string name="coupon_deleted">تم حذف القسيمة</string>
+    <string name="coupon_delete_failed">تعذّر حذف القسيمة</string>
 </resources>

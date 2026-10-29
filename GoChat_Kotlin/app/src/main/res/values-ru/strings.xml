@@ -623,4 +623,19 @@
     <string name="coupon_min_spend_prefix">Мин. сумма %1$s</string>
     <string name="seller_hub_coupons">КУПОНЫ</string>
     <string name="seller_hub_coupons_sub">Создавайте промокоды для вашего магазина</string>
+
+    <!-- Batch 15: coupon edit/disable/delete controls -->
+    <string name="coupon_cancel_edit">Отменить редактирование</string>
+    <string name="coupon_update">Обновить купон</string>
+    <string name="coupon_updated">Купон обновлён</string>
+    <string name="coupon_update_failed">Не удалось обновить купон</string>
+    <string name="coupon_action_edit">Изменить</string>
+    <string name="coupon_action_disable">Отключить</string>
+    <string name="coupon_action_enable">Включить</string>
+    <string name="coupon_action_delete">Удалить</string>
+    <string name="coupon_delete_title">Удалить купон?</string>
+    <string name="coupon_delete_confirm">Удалить купон \"%1$s\"? Это действие необратимо.</string>
+    <string name="coupon_cancel">Отмена</string>
+    <string name="coupon_deleted">Купон удалён</string>
+    <string name="coupon_delete_failed">Не удалось удалить купон</string>
 </resources>

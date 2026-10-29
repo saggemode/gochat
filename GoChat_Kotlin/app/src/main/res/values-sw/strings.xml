@@ -623,4 +623,19 @@
     <string name="coupon_min_spend_prefix">Matumizi ya chini %1$s</string>
     <string name="seller_hub_coupons">KUPONI</string>
     <string name="seller_hub_coupons_sub">Unda misimbo ya punguzo kwa duka lako</string>
+
+    <!-- Batch 15: coupon edit/disable/delete controls -->
+    <string name="coupon_cancel_edit">Ghairi uhariri</string>
+    <string name="coupon_update">Sasisha kuponi</string>
+    <string name="coupon_updated">Kuponi imesasishwa</string>
+    <string name="coupon_update_failed">Imeshindwa kusasisha kuponi</string>
+    <string name="coupon_action_edit">Hariri</string>
+    <string name="coupon_action_disable">Zima</string>
+    <string name="coupon_action_enable">Washa</string>
+    <string name="coupon_action_delete">Futa</string>
+    <string name="coupon_delete_title">Futa kuponi?</string>
+    <string name="coupon_delete_confirm">Futa kuponi \"%1$s\"? Haiwezi kutenduliwa.</string>
+    <string name="coupon_cancel">Ghairi</string>
+    <string name="coupon_deleted">Kuponi imefutwa</string>
+    <string name="coupon_delete_failed">Imeshindwa kufuta kuponi</string>
 </resources>

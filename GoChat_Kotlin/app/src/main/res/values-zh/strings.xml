@@ -623,4 +623,19 @@
     <string name="coupon_min_spend_prefix">最低消费 %1$s</string>
     <string name="seller_hub_coupons">优惠券</string>
     <string name="seller_hub_coupons_sub">为您的店铺创建折扣码</string>
+
+    <!-- Batch 15: coupon edit/disable/delete controls -->
+    <string name="coupon_cancel_edit">取消编辑</string>
+    <string name="coupon_update">更新优惠券</string>
+    <string name="coupon_updated">优惠券已更新</string>
+    <string name="coupon_update_failed">无法更新优惠券</string>
+    <string name="coupon_action_edit">编辑</string>
+    <string name="coupon_action_disable">停用</string>
+    <string name="coupon_action_enable">启用</string>
+    <string name="coupon_action_delete">删除</string>
+    <string name="coupon_delete_title">删除优惠券？</string>
+    <string name="coupon_delete_confirm">删除优惠券 \"%1$s\"？此操作无法撤销。</string>
+    <string name="coupon_cancel">取消</string>
+    <string name="coupon_deleted">优惠券已删除</string>
+    <string name="coupon_delete_failed">无法删除优惠券</string>
 </resources>

@@ -89,6 +89,8 @@ service BusinessService {
   rpc CreateCoupon(CreateCouponRequest) returns (CreateCouponResponse);
   rpc ListBusinessCoupons(ListBusinessCouponsRequest) returns (ListBusinessCouponsResponse);
   rpc ValidateCoupon(ValidateCouponRequest) returns (ValidateCouponResponse);
+  rpc UpdateCoupon(UpdateCouponRequest) returns (CreateCouponResponse);
+  rpc DeleteCoupon(DeleteCouponRequest) returns (DeleteCouponResponse);
 
   // Wishlist
   rpc ToggleWishlist(ToggleWishlistRequest) returns (ToggleWishlistResponse);
@@ -829,6 +831,25 @@ message CreateCouponResponse { Coupon coupon = 1; }
 
 message ListBusinessCouponsRequest { string business_id = 1; }
 message ListBusinessCouponsResponse { repeated Coupon coupons = 1; }
+
+message UpdateCouponRequest {
+  string business_id       = 1;
+  string coupon_id         = 2;
+  string discount_type     = 3;
+  double discount_value    = 4;
+  double min_spend         = 5;
+  int32  max_uses          = 6;
+  string expires_at        = 7; // RFC3339; empty clears expiry
+  string product_id        = 8; // empty = store-wide
+  int32  max_uses_per_user = 9;
+  bool   is_active         = 10;
+}
+
+message DeleteCouponRequest {
+  string business_id = 1;
+  string coupon_id   = 2;
+}
+message DeleteCouponResponse { bool success = 1; }
 
 message ValidateCouponRequest {
   string          business_id = 1;

@@ -1998,6 +1998,61 @@ func (r *BusinessRepository) ListBusinessCoupons(ctx context.Context, businessID
 	return coupons, nil
 }
 
+// UpdateCoupon edits a coupon's mutable fields (code stays fixed). It is scoped
+// by both coupon id and business id so a seller can only touch their own coupons.
+// Returns the fully-joined updated coupon (including product name) or an error if
+// no matching coupon exists.
+func (r *BusinessRepository) UpdateCoupon(ctx context.Context, c *Coupon) (*Coupon, error) {
+	if c.DiscountType == "" {
+		c.DiscountType = "percentage"
+	}
+	var prodID *string
+	if c.ProductID != "" {
+		p := c.ProductID
+		prodID = &p
+	}
+	tag, err := r.db.Exec(ctx,
+		`UPDATE business.coupons
+		 SET discount_type = $3, discount_value = $4, min_spend = $5, max_uses = $6,
+		     expires_at = $7, is_active = $8, product_id = $9, max_uses_per_user = $10
+		 WHERE id = $1 AND business_id = $2`,
+		c.ID, c.BusinessID, c.DiscountType, c.DiscountValue, c.MinSpend, c.MaxUses,
+		c.ExpiresAt, c.IsActive, prodID, c.MaxUsesPerUser,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("update coupon: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return nil, fmt.Errorf("coupon not found")
+	}
+
+	out := &Coupon{}
+	err = r.db.QueryRow(ctx,
+		`SELECT c.id, c.business_id, c.code, c.discount_type, c.discount_value, c.min_spend, c.max_uses, c.used_count, c.expires_at, c.is_active, c.created_at,
+		        COALESCE(c.product_id::text, ''), COALESCE(c.max_uses_per_user, 0), COALESCE(p.name, 'All Store Products')
+		 FROM business.coupons c
+		 LEFT JOIN business.products p ON p.id = c.product_id
+		 WHERE c.id = $1 AND c.business_id = $2`, c.ID, c.BusinessID).
+		Scan(&out.ID, &out.BusinessID, &out.Code, &out.DiscountType, &out.DiscountValue, &out.MinSpend, &out.MaxUses, &out.UsedCount, &out.ExpiresAt, &out.IsActive, &out.CreatedAt, &out.ProductID, &out.MaxUsesPerUser, &out.ProductName)
+	if err != nil {
+		return nil, fmt.Errorf("reload coupon: %w", err)
+	}
+	return out, nil
+}
+
+// DeleteCoupon permanently removes a coupon, scoped to the owning business.
+func (r *BusinessRepository) DeleteCoupon(ctx context.Context, businessID, couponID string) error {
+	tag, err := r.db.Exec(ctx,
+		`DELETE FROM business.coupons WHERE id = $1 AND business_id = $2`, couponID, businessID)
+	if err != nil {
+		return fmt.Errorf("delete coupon: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("coupon not found")
+	}
+	return nil
+}
+
 func (r *BusinessRepository) ValidateCoupon(ctx context.Context, businessID, code string, subtotal float64, userID string, productIDs []string) (bool, string, float64, *Coupon, error) {
 	c := &Coupon{}
 	err := r.db.QueryRow(ctx,
