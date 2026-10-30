@@ -710,4 +710,10 @@
     <string name="safety_number_changed">Ваш код безопасности с %1$s изменился. Нажмите для проверки.</string>
     <string name="safety_number_verify">Проверить</string>
     <string name="safety_number_contact_fallback">этот контакт</string>
+
+    <!-- Batch 23: voice status -->
+    <string name="voice_status_label">Голосовой статус</string>
+    <string name="voice_status_recording_title">Запись голосового статуса</string>
+    <string name="voice_status_recording_msg">Идёт запись… нажмите «Опубликовать», когда закончите.</string>
+    <string name="voice_status_post">Опубликовать</string>
 </resources>

@@ -710,4 +710,10 @@
     <string name="safety_number_changed">您与 %1$s 的安全码已更改。点击验证。</string>
     <string name="safety_number_verify">验证</string>
     <string name="safety_number_contact_fallback">此联系人</string>
+
+    <!-- Batch 23: voice status -->
+    <string name="voice_status_label">语音状态</string>
+    <string name="voice_status_recording_title">正在录制语音状态</string>
+    <string name="voice_status_recording_msg">正在录制……完成后点击发布。</string>
+    <string name="voice_status_post">发布</string>
 </resources>

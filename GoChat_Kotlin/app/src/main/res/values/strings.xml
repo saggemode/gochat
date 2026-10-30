@@ -753,6 +753,12 @@
     <string name="coupon_deleted">Coupon deleted</string>
     <string name="coupon_delete_failed">Could not delete coupon</string>
 
+    <!-- Voice status -->
+    <string name="voice_status_label">Voice status</string>
+    <string name="voice_status_recording_title">Recording voice status</string>
+    <string name="voice_status_recording_msg">Recording… tap Post when you\'re done.</string>
+    <string name="voice_status_post">Post</string>
+
     <!-- E2EE safety-number change -->
     <string name="safety_number_changed">Your safety number with %1$s changed. Tap to verify.</string>
     <string name="safety_number_verify">Verify</string>

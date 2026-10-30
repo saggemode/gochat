@@ -27,6 +27,7 @@ import com.example.gochat.data.model.StoryItem
 import com.example.gochat.data.model.UserStories
 import com.example.gochat.data.repository.ChatRepository
 import com.example.gochat.data.repository.StoryRepository
+import com.example.gochat.core.media.AudioPlayerManager
 import com.example.gochat.databinding.ActivityStoryViewerBinding
 import com.example.gochat.core.ui.applyEdgeToEdge
 import com.example.gochat.core.ui.applyStatusBarInset
@@ -316,9 +317,25 @@ class StoryViewerActivity : AppCompatActivity() {
         val story = stories[index]
         binding.tvStoryHeaderTime.text = story.createdAt.ifBlank { "Recently" }
 
-        // Text status vs Media status
-        val isTextStory = story.mediaType == "text" || story.mediaUrl.isBlank()
-        if (isTextStory) {
+        // Stop any audio playing from a previous story before rendering this one.
+        com.example.gochat.core.media.AudioPlayerManager.stop()
+
+        // Text / Voice status vs Media status
+        val isAudioStory = story.mediaType == "audio"
+        val isTextStory = story.mediaType == "text" || (story.mediaUrl.isBlank() && !isAudioStory)
+        if (isAudioStory) {
+            // Voice status: full-screen card with a mic label; auto-play the clip.
+            binding.layoutTextStory.visibility = View.VISIBLE
+            binding.ivMediaStory.visibility = View.GONE
+            binding.tvImageStoryCaption.visibility = View.GONE
+            binding.layoutTextStory.setBackgroundColor(Color.parseColor("#075E54"))
+            binding.tvTextStoryContent.text = "🎙️  " + story.displayCaption.ifBlank { getString(R.string.voice_status_label) }
+            if (story.mediaUrl.isNotBlank()) {
+                try {
+                    AudioPlayerManager.playOrPause(this, "story_${story.id}", story.mediaUrl)
+                } catch (_: Exception) {}
+            }
+        } else if (isTextStory) {
             binding.layoutTextStory.visibility = View.VISIBLE
             binding.ivMediaStory.visibility = View.GONE
             binding.tvImageStoryCaption.visibility = View.GONE
@@ -568,6 +585,7 @@ class StoryViewerActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
+        AudioPlayerManager.stop()
         pauseStory()
     }
 
@@ -581,6 +599,7 @@ class StoryViewerActivity : AppCompatActivity() {
     override fun onDestroy() {
         currentAnimator?.cancel()
         currentAnimator = null
+        AudioPlayerManager.stop()
         if (activeUserStories === userStories) {
             activeUserStories = null
         }

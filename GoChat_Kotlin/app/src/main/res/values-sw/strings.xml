@@ -710,4 +710,10 @@
     <string name="safety_number_changed">Nambari yako ya usalama na %1$s imebadilika. Gusa ili kuthibitisha.</string>
     <string name="safety_number_verify">Thibitisha</string>
     <string name="safety_number_contact_fallback">anwani hii</string>
+
+    <!-- Batch 23: voice status -->
+    <string name="voice_status_label">Hali ya sauti</string>
+    <string name="voice_status_recording_title">Inarekodi hali ya sauti</string>
+    <string name="voice_status_recording_msg">Inarekodi… gusa Chapisha ukimaliza.</string>
+    <string name="voice_status_post">Chapisha</string>
 </resources>

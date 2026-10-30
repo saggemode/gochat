@@ -60,6 +60,15 @@ class StoriesFragment : Fragment() {
         uri?.let { handleSelectedImage(it) }
     }
 
+    private var voiceRecorder: com.example.gochat.core.media.AudioRecorderManager? = null
+
+    private val requestRecordAudioLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) startVoiceStatusRecording()
+        else Toast.makeText(requireContext(), getString(R.string.error_mic_permission), Toast.LENGTH_SHORT).show()
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -116,6 +125,14 @@ class StoriesFragment : Fragment() {
             pickImageLauncher.launch("image/*")
         }
 
+        binding.fabVoiceStatus.setOnClickListener {
+            val granted = ContextCompat.checkSelfPermission(
+                requireContext(), android.Manifest.permission.RECORD_AUDIO
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            if (granted) startVoiceStatusRecording()
+            else requestRecordAudioLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+        }
+
         binding.layoutMyStatusTile.setOnClickListener {
             val myStories = viewModel.myStories.value
             if (myStories != null && myStories.stories.isNotEmpty()) {
@@ -123,6 +140,60 @@ class StoriesFragment : Fragment() {
                 startActivity(intent)
             } else {
                 showCreateTextStatusDialog()
+            }
+        }
+    }
+
+    /** Records a short voice clip and posts it as an audio status. */
+    private fun startVoiceStatusRecording() {
+        val recorder = com.example.gochat.core.media.AudioRecorderManager(requireContext())
+        if (!recorder.startRecording()) {
+            Toast.makeText(requireContext(), getString(R.string.error_audio_recorder_start), Toast.LENGTH_SHORT).show()
+            return
+        }
+        voiceRecorder = recorder
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.voice_status_recording_title))
+            .setMessage(getString(R.string.voice_status_recording_msg))
+            .setCancelable(false)
+            .setNegativeButton(getString(R.string.btn_cancel)) { d, _ ->
+                voiceRecorder?.cancelRecording()
+                voiceRecorder = null
+                d.dismiss()
+            }
+            .setPositiveButton(getString(R.string.voice_status_post)) { d, _ ->
+                val result = voiceRecorder?.stopRecording()
+                voiceRecorder = null
+                d.dismiss()
+                if (result == null || result.durationSeconds < 1) {
+                    Toast.makeText(requireContext(), getString(R.string.error_recording_failed), Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                postVoiceStatus(result.file)
+            }
+            .show()
+    }
+
+    private fun postVoiceStatus(file: java.io.File) {
+        lifecycleScope.launch {
+            val bytes = withContext(Dispatchers.IO) { runCatching { file.readBytes() }.getOrNull() }
+            if (bytes == null || bytes.isEmpty()) {
+                Toast.makeText(requireContext(), getString(R.string.error_audio_process), Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            viewModel.postMediaStatus(
+                mediaBytes = bytes,
+                mimeType = "audio/mp4",
+                localDataUri = "file://${file.absolutePath}",
+                caption = "",
+                mediaType = "audio",
+                allowReshare = true
+            ) { success, error ->
+                Toast.makeText(
+                    requireContext(),
+                    if (success) getString(R.string.toast_status_updated) else (error ?: getString(R.string.error_audio_process)),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }

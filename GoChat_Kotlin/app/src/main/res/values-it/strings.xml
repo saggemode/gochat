@@ -710,4 +710,10 @@
     <string name="safety_number_changed">Il tuo numero di sicurezza con %1$s è cambiato. Tocca per verificare.</string>
     <string name="safety_number_verify">Verifica</string>
     <string name="safety_number_contact_fallback">questo contatto</string>
+
+    <!-- Batch 23: voice status -->
+    <string name="voice_status_label">Stato vocale</string>
+    <string name="voice_status_recording_title">Registrazione stato vocale</string>
+    <string name="voice_status_recording_msg">Registrazione… tocca Pubblica quando hai finito.</string>
+    <string name="voice_status_post">Pubblica</string>
 </resources>
