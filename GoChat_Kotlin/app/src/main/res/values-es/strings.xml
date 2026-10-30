@@ -701,4 +701,8 @@
         <item>Artículo incorrecto recibido</item>
         <item>Otro</item>
     </string-array>
+
+    <!-- Batch 21: call reliability -->
+    <string name="call_reconnecting">Reconectando…</string>
+    <string name="call_reconnect_failed">No se pudo reconectar. Llamada finalizada.</string>
 </resources>

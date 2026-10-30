@@ -701,4 +701,8 @@
         <item>Bidhaa isiyo sahihi imepokelewa</item>
         <item>Nyingine</item>
     </string-array>
+
+    <!-- Batch 21: call reliability -->
+    <string name="call_reconnecting">Inaunganisha tena…</string>
+    <string name="call_reconnect_failed">Imeshindwa kuunganisha tena. Simu imekatika.</string>
 </resources>

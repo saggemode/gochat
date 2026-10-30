@@ -701,4 +701,8 @@
         <item>收到错误商品</item>
         <item>其他</item>
     </string-array>
+
+    <!-- Batch 21: call reliability -->
+    <string name="call_reconnecting">正在重新连接…</string>
+    <string name="call_reconnect_failed">无法重新连接。通话已结束。</string>
 </resources>

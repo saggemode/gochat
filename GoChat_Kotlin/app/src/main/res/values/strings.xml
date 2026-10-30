@@ -753,6 +753,10 @@
     <string name="coupon_deleted">Coupon deleted</string>
     <string name="coupon_delete_failed">Could not delete coupon</string>
 
+    <!-- Call reliability -->
+    <string name="call_reconnecting">Reconnecting…</string>
+    <string name="call_reconnect_failed">Couldn\'t reconnect. Call ended.</string>
+
     <!-- Stock / inventory -->
     <string name="product_out_of_stock">Out of stock</string>
     <string name="checkout_out_of_stock">Some items are out of stock</string>

@@ -701,4 +701,8 @@
         <item>गलत वस्तु मिली</item>
         <item>अन्य</item>
     </string-array>
+
+    <!-- Batch 21: call reliability -->
+    <string name="call_reconnecting">पुनः कनेक्ट हो रहा है…</string>
+    <string name="call_reconnect_failed">पुनः कनेक्ट नहीं हो सका। कॉल समाप्त।</string>
 </resources>

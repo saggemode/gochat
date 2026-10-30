@@ -96,6 +96,8 @@ class CallActivity : AppCompatActivity() {
     private var isCallConnected = false
     private var isRinging = false
     private var callTimeoutJob: Job? = null
+    // Gives a dropped call a window to recover via ICE restart before we hang up.
+    private var reconnectTimeoutJob: Job? = null
     private var toneGenerator: ToneGenerator? = null
     private var pendingOfferSdp: String? = null
     private var serverCallId = ""
@@ -269,17 +271,24 @@ class CallActivity : AppCompatActivity() {
 
                 runOnUiThread {
                     when (state) {
-                        PeerConnection.IceConnectionState.CONNECTED -> {
+                        PeerConnection.IceConnectionState.CONNECTED,
+                        PeerConnection.IceConnectionState.COMPLETED -> {
                             isCallConnected = true
                             callTimeoutJob?.cancel()
+                            reconnectTimeoutJob?.cancel() // recovered
                             stopRingbackTone()
                             HapticEngine.stopIncomingCall(this@CallActivity)
                             startCallTimer()
                         }
-                        PeerConnection.IceConnectionState.DISCONNECTED -> {
-                            binding.tvCallStatus.text = "Reconnecting..."
+                        // DISCONNECTED is often transient and FAILED triggers an ICE
+                        // restart (via the reconnection handler above), so show a
+                        // reconnecting state and only hang up if it doesn't recover
+                        // within the grace window — don't end the call immediately.
+                        PeerConnection.IceConnectionState.DISCONNECTED,
+                        PeerConnection.IceConnectionState.FAILED -> {
+                            binding.tvCallStatus.text = getString(R.string.call_reconnecting)
+                            startReconnectTimeout()
                         }
-                        PeerConnection.IceConnectionState.FAILED,
                         PeerConnection.IceConnectionState.CLOSED -> {
                             endCall()
                         }
@@ -833,6 +842,22 @@ class CallActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Starts (or restarts) the grace window for a dropped call. If the connection
+     * hasn't recovered (ICE restart succeeded → CONNECTED) within the window, the
+     * call is ended. Cancelled as soon as the call reconnects.
+     */
+    private fun startReconnectTimeout() {
+        reconnectTimeoutJob?.cancel()
+        reconnectTimeoutJob = lifecycleScope.launch {
+            delay(30_000)
+            if (!isCallEnded) {
+                Toast.makeText(this@CallActivity, getString(R.string.call_reconnect_failed), Toast.LENGTH_SHORT).show()
+                endCall()
+            }
+        }
+    }
+
     private fun endCall() {
         HapticEngine.stopIncomingCall(this)
         NotificationHelper.cancelCallNotification(this, callId)
@@ -842,6 +867,8 @@ class CallActivity : AppCompatActivity() {
         stopRingbackTone()
         callTimeoutJob?.cancel()
         callTimeoutJob = null
+        reconnectTimeoutJob?.cancel()
+        reconnectTimeoutJob = null
         timerJob?.cancel()
         timerJob = null
         audioController.stop()
@@ -873,6 +900,7 @@ class CallActivity : AppCompatActivity() {
     override fun onDestroy() {
         stopRingbackTone()
         callTimeoutJob?.cancel()
+        reconnectTimeoutJob?.cancel()
         HapticEngine.stopIncomingCall(this)
         NotificationHelper.cancelCallNotification(this, callId)
         reconnectionHandler?.cancel()

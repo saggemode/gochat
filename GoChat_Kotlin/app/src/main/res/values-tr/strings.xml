@@ -701,4 +701,8 @@
         <item>Yanlış ürün alındı</item>
         <item>Diğer</item>
     </string-array>
+
+    <!-- Batch 21: call reliability -->
+    <string name="call_reconnecting">Yeniden bağlanıyor…</string>
+    <string name="call_reconnect_failed">Yeniden bağlanılamadı. Arama sona erdi.</string>
 </resources>

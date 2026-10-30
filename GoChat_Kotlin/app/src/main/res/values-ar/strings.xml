@@ -701,4 +701,8 @@
         <item>تم استلام منتج خاطئ</item>
         <item>أخرى</item>
     </string-array>
+
+    <!-- Batch 21: call reliability -->
+    <string name="call_reconnecting">جارٍ إعادة الاتصال…</string>
+    <string name="call_reconnect_failed">تعذّرت إعادة الاتصال. انتهت المكالمة.</string>
 </resources>

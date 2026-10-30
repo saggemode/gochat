@@ -701,4 +701,8 @@
         <item>Получен не тот товар</item>
         <item>Другое</item>
     </string-array>
+
+    <!-- Batch 21: call reliability -->
+    <string name="call_reconnecting">Переподключение…</string>
+    <string name="call_reconnect_failed">Не удалось переподключиться. Звонок завершён.</string>
 </resources>
