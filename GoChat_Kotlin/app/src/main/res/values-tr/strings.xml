@@ -668,4 +668,11 @@
     <string name="payout_ledger_order_fallback">Sipariş</string>
     <string name="payout_ledger_entry_meta">Brüt %1$s • ücret %2$s</string>
     <string name="payout_ledger_settled">Ödendi</string>
+
+    <!-- Batch 19: coupon category scope + auto-apply -->
+    <string name="coupon_scope_product">Ürün: %1$s</string>
+    <string name="coupon_scope_category">Kategori: %1$s</string>
+    <string name="coupon_auto_apply">Ödemede otomatik uygula (kod gerekmez)</string>
+    <string name="coupon_item_auto_apply">Otomatik uygulandı</string>
+    <string name="checkout_coupon_auto_applied">%1$s kuponu otomatik uygulandı</string>
 </resources>

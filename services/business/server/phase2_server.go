@@ -171,6 +171,9 @@ func couponToPB(c *repository.Coupon) *pb.Coupon {
 		StartsAt:       starts,
 		FirstOrderOnly: c.FirstOrderOnly,
 		TotalDiscount:  c.TotalDiscount,
+		CategoryId:     c.CategoryID,
+		CategoryName:   c.CategoryName,
+		AutoApply:      c.AutoApply,
 	}
 }
 
@@ -460,6 +463,8 @@ func (s *BusinessServer) CreateCoupon(ctx context.Context, req *pb.CreateCouponR
 		MaxUsesPerUser: req.MaxUsesPerUser,
 		StartsAt:       parseRFC3339Ptr(req.StartsAt),
 		FirstOrderOnly: req.FirstOrderOnly,
+		CategoryID:     req.CategoryId,
+		AutoApply:      req.AutoApply,
 	}
 	if req.ExpiresAt != "" {
 		t, err := time.Parse(time.RFC3339, req.ExpiresAt)
@@ -507,6 +512,22 @@ func (s *BusinessServer) ValidateCoupon(ctx context.Context, req *pb.ValidateCou
 	}, nil
 }
 
+func (s *BusinessServer) GetBestCoupon(ctx context.Context, req *pb.GetBestCouponRequest) (*pb.ValidateCouponResponse, error) {
+	if req.BusinessId == "" {
+		return nil, status.Error(codes.InvalidArgument, "business_id is required")
+	}
+	valid, msg, discount, coupon, err := s.repo.GetBestCoupon(ctx, req.BusinessId, req.Subtotal, req.UserId, req.ProductIds)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "best coupon: %v", err)
+	}
+	return &pb.ValidateCouponResponse{
+		Valid:          valid,
+		Message:        msg,
+		DiscountAmount: discount,
+		Coupon:         couponToPB(coupon),
+	}, nil
+}
+
 func (s *BusinessServer) UpdateCoupon(ctx context.Context, req *pb.UpdateCouponRequest) (*pb.CreateCouponResponse, error) {
 	if req.BusinessId == "" || req.CouponId == "" {
 		return nil, status.Error(codes.InvalidArgument, "business_id and coupon_id are required")
@@ -523,6 +544,8 @@ func (s *BusinessServer) UpdateCoupon(ctx context.Context, req *pb.UpdateCouponR
 		IsActive:       req.IsActive,
 		StartsAt:       parseRFC3339Ptr(req.StartsAt),
 		FirstOrderOnly: req.FirstOrderOnly,
+		CategoryID:     req.CategoryId,
+		AutoApply:      req.AutoApply,
 	}
 	if req.ExpiresAt != "" {
 		t, err := time.Parse(time.RFC3339, req.ExpiresAt)

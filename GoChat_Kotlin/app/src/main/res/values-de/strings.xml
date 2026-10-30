@@ -668,4 +668,11 @@
     <string name="payout_ledger_order_fallback">Bestellung</string>
     <string name="payout_ledger_entry_meta">Brutto %1$s • Gebühr %2$s</string>
     <string name="payout_ledger_settled">Ausgezahlt</string>
+
+    <!-- Batch 19: coupon category scope + auto-apply -->
+    <string name="coupon_scope_product">Produkt: %1$s</string>
+    <string name="coupon_scope_category">Kategorie: %1$s</string>
+    <string name="coupon_auto_apply">Automatisch an der Kasse anwenden (ohne Code)</string>
+    <string name="coupon_item_auto_apply">Automatisch angewendet</string>
+    <string name="checkout_coupon_auto_applied">Gutschein %1$s automatisch angewendet</string>
 </resources>

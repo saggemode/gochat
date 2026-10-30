@@ -668,4 +668,11 @@
     <string name="payout_ledger_order_fallback">Agizo</string>
     <string name="payout_ledger_entry_meta">Ghafi %1$s • ada %2$s</string>
     <string name="payout_ledger_settled">Imelipwa</string>
+
+    <!-- Batch 19: coupon category scope + auto-apply -->
+    <string name="coupon_scope_product">Bidhaa: %1$s</string>
+    <string name="coupon_scope_category">Kategoria: %1$s</string>
+    <string name="coupon_auto_apply">Tumia kiotomatiki wakati wa malipo (bila msimbo)</string>
+    <string name="coupon_item_auto_apply">Imetumika kiotomatiki</string>
+    <string name="checkout_coupon_auto_applied">Kuponi %1$s imetumika kiotomatiki</string>
 </resources>

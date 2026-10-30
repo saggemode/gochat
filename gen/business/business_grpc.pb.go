@@ -71,6 +71,7 @@ const (
 	BusinessService_ValidateCoupon_FullMethodName                  = "/business.BusinessService/ValidateCoupon"
 	BusinessService_UpdateCoupon_FullMethodName                    = "/business.BusinessService/UpdateCoupon"
 	BusinessService_DeleteCoupon_FullMethodName                    = "/business.BusinessService/DeleteCoupon"
+	BusinessService_GetBestCoupon_FullMethodName                   = "/business.BusinessService/GetBestCoupon"
 	BusinessService_ToggleWishlist_FullMethodName                  = "/business.BusinessService/ToggleWishlist"
 	BusinessService_GetWishlist_FullMethodName                     = "/business.BusinessService/GetWishlist"
 	BusinessService_AskProductQuestion_FullMethodName              = "/business.BusinessService/AskProductQuestion"
@@ -165,6 +166,7 @@ type BusinessServiceClient interface {
 	ValidateCoupon(ctx context.Context, in *ValidateCouponRequest, opts ...grpc.CallOption) (*ValidateCouponResponse, error)
 	UpdateCoupon(ctx context.Context, in *UpdateCouponRequest, opts ...grpc.CallOption) (*CreateCouponResponse, error)
 	DeleteCoupon(ctx context.Context, in *DeleteCouponRequest, opts ...grpc.CallOption) (*DeleteCouponResponse, error)
+	GetBestCoupon(ctx context.Context, in *GetBestCouponRequest, opts ...grpc.CallOption) (*ValidateCouponResponse, error)
 	// Wishlist
 	ToggleWishlist(ctx context.Context, in *ToggleWishlistRequest, opts ...grpc.CallOption) (*ToggleWishlistResponse, error)
 	GetWishlist(ctx context.Context, in *GetWishlistRequest, opts ...grpc.CallOption) (*GetWishlistResponse, error)
@@ -722,6 +724,16 @@ func (c *businessServiceClient) DeleteCoupon(ctx context.Context, in *DeleteCoup
 	return out, nil
 }
 
+func (c *businessServiceClient) GetBestCoupon(ctx context.Context, in *GetBestCouponRequest, opts ...grpc.CallOption) (*ValidateCouponResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ValidateCouponResponse)
+	err := c.cc.Invoke(ctx, BusinessService_GetBestCoupon_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *businessServiceClient) ToggleWishlist(ctx context.Context, in *ToggleWishlistRequest, opts ...grpc.CallOption) (*ToggleWishlistResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ToggleWishlistResponse)
@@ -994,6 +1006,7 @@ type BusinessServiceServer interface {
 	ValidateCoupon(context.Context, *ValidateCouponRequest) (*ValidateCouponResponse, error)
 	UpdateCoupon(context.Context, *UpdateCouponRequest) (*CreateCouponResponse, error)
 	DeleteCoupon(context.Context, *DeleteCouponRequest) (*DeleteCouponResponse, error)
+	GetBestCoupon(context.Context, *GetBestCouponRequest) (*ValidateCouponResponse, error)
 	// Wishlist
 	ToggleWishlist(context.Context, *ToggleWishlistRequest) (*ToggleWishlistResponse, error)
 	GetWishlist(context.Context, *GetWishlistRequest) (*GetWishlistResponse, error)
@@ -1186,6 +1199,9 @@ func (UnimplementedBusinessServiceServer) UpdateCoupon(context.Context, *UpdateC
 }
 func (UnimplementedBusinessServiceServer) DeleteCoupon(context.Context, *DeleteCouponRequest) (*DeleteCouponResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteCoupon not implemented")
+}
+func (UnimplementedBusinessServiceServer) GetBestCoupon(context.Context, *GetBestCouponRequest) (*ValidateCouponResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetBestCoupon not implemented")
 }
 func (UnimplementedBusinessServiceServer) ToggleWishlist(context.Context, *ToggleWishlistRequest) (*ToggleWishlistResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ToggleWishlist not implemented")
@@ -2204,6 +2220,24 @@ func _BusinessService_DeleteCoupon_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BusinessService_GetBestCoupon_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBestCouponRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BusinessServiceServer).GetBestCoupon(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BusinessService_GetBestCoupon_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BusinessServiceServer).GetBestCoupon(ctx, req.(*GetBestCouponRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _BusinessService_ToggleWishlist_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ToggleWishlistRequest)
 	if err := dec(in); err != nil {
@@ -2778,6 +2812,10 @@ var BusinessService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteCoupon",
 			Handler:    _BusinessService_DeleteCoupon_Handler,
+		},
+		{
+			MethodName: "GetBestCoupon",
+			Handler:    _BusinessService_GetBestCoupon_Handler,
 		},
 		{
 			MethodName: "ToggleWishlist",

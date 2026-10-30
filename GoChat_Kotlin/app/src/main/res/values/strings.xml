@@ -782,4 +782,11 @@
     <string name="payout_ledger_order_fallback">Order</string>
     <string name="payout_ledger_entry_meta">Gross %1$s • fee %2$s</string>
     <string name="payout_ledger_settled">Settled</string>
+
+    <!-- Coupon category scope + auto-apply -->
+    <string name="coupon_scope_product">Product: %1$s</string>
+    <string name="coupon_scope_category">Category: %1$s</string>
+    <string name="coupon_auto_apply">Apply automatically at checkout (no code)</string>
+    <string name="coupon_item_auto_apply">Auto-applied</string>
+    <string name="checkout_coupon_auto_applied">Coupon %1$s auto-applied</string>
 </resources>

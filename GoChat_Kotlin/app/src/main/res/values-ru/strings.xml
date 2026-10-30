@@ -668,4 +668,11 @@
     <string name="payout_ledger_order_fallback">Заказ</string>
     <string name="payout_ledger_entry_meta">Валовая %1$s • комиссия %2$s</string>
     <string name="payout_ledger_settled">Выплачено</string>
+
+    <!-- Batch 19: coupon category scope + auto-apply -->
+    <string name="coupon_scope_product">Товар: %1$s</string>
+    <string name="coupon_scope_category">Категория: %1$s</string>
+    <string name="coupon_auto_apply">Применять автоматически при оформлении (без кода)</string>
+    <string name="coupon_item_auto_apply">Применён автоматически</string>
+    <string name="checkout_coupon_auto_applied">Купон %1$s применён автоматически</string>
 </resources>

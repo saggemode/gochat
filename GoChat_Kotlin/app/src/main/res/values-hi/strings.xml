@@ -668,4 +668,11 @@
     <string name="payout_ledger_order_fallback">ऑर्डर</string>
     <string name="payout_ledger_entry_meta">सकल %1$s • शुल्क %2$s</string>
     <string name="payout_ledger_settled">निपटान हो गया</string>
+
+    <!-- Batch 19: coupon category scope + auto-apply -->
+    <string name="coupon_scope_product">उत्पाद: %1$s</string>
+    <string name="coupon_scope_category">श्रेणी: %1$s</string>
+    <string name="coupon_auto_apply">चेकआउट पर स्वतः लागू करें (बिना कोड)</string>
+    <string name="coupon_item_auto_apply">स्वतः लागू</string>
+    <string name="checkout_coupon_auto_applied">कूपन %1$s स्वतः लागू किया गया</string>
 </resources>

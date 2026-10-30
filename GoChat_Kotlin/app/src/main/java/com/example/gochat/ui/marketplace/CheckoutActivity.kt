@@ -197,6 +197,35 @@ class CheckoutActivity : AppCompatActivity() {
                 resolvedSellerId = sellerId
                 deliveryFee = repository.getStore(sellerId).getOrNull()?.deliveryFee ?: 0.0
                 displaySummary(cartItems)
+                maybeAutoApplyBestCoupon()
+            }
+        }
+    }
+
+    /**
+     * On load, if the buyer hasn't entered a code, ask the backend for the best
+     * auto-apply coupon for this cart and apply it automatically. The buyer can
+     * still overwrite it by typing their own code.
+     */
+    private fun maybeAutoApplyBestCoupon() {
+        if (appliedCoupon.isNotBlank() || resolvedSellerId.isBlank()) return
+        val subtotal = cartItems.sumOf { (it.productPrice ?: 0.0) * it.quantity }
+        if (subtotal <= 0.0) return
+        lifecycleScope.launch {
+            val best = repository.getBestCoupon(
+                resolvedSellerId, subtotal, cartItems.map { it.productId }
+            ).getOrNull() ?: return@launch
+            if (appliedCoupon.isNotBlank()) return@launch // buyer applied one meanwhile
+            if (best.discount > 0) {
+                discount = best.discount
+                appliedCoupon = best.code
+                binding.etCoupon.setText(best.code)
+                Toast.makeText(
+                    this@CheckoutActivity,
+                    getString(R.string.checkout_coupon_auto_applied, best.code),
+                    Toast.LENGTH_SHORT
+                ).show()
+                displaySummary(cartItems)
             }
         }
     }

@@ -1279,7 +1279,10 @@ class MarketplaceRepository @Inject constructor(
         val productName: String,
         val startsAt: String = "",       // RFC3339; blank = active immediately
         val firstOrderOnly: Boolean = false,
-        val totalDiscount: Double = 0.0  // analytics: total value discounted so far
+        val totalDiscount: Double = 0.0, // analytics: total value discounted so far
+        val categoryId: String = "",     // non-blank = category-scoped
+        val categoryName: String = "",
+        val autoApply: Boolean = false   // applied automatically at checkout (no code)
     )
 
     private fun parseCoupon(o: JsonObject?): Coupon? {
@@ -1300,7 +1303,10 @@ class MarketplaceRepository @Inject constructor(
             productName = o["product_name"]?.jsonPrimitive?.contentOrNull.orEmpty(),
             startsAt = o["starts_at"]?.jsonPrimitive?.contentOrNull.orEmpty(),
             firstOrderOnly = o["first_order_only"]?.jsonPrimitive?.booleanOrNull ?: false,
-            totalDiscount = o["total_discount"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+            totalDiscount = o["total_discount"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
+            categoryId = o["category_id"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            categoryName = o["category_name"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            autoApply = o["auto_apply"]?.jsonPrimitive?.booleanOrNull ?: false
         )
     }
 
@@ -1332,7 +1338,9 @@ class MarketplaceRepository @Inject constructor(
         expiresAt: String,
         productId: String,
         startsAt: String = "",
-        firstOrderOnly: Boolean = false
+        firstOrderOnly: Boolean = false,
+        categoryId: String = "",
+        autoApply: Boolean = false
     ): Result<Coupon> {
         return try {
             val body = buildJsonObject {
@@ -1346,6 +1354,8 @@ class MarketplaceRepository @Inject constructor(
                 if (productId.isNotBlank()) put("product_id", productId)
                 if (startsAt.isNotBlank()) put("starts_at", startsAt)
                 put("first_order_only", firstOrderOnly)
+                if (categoryId.isNotBlank()) put("category_id", categoryId)
+                put("auto_apply", autoApply)
             }
             val resp = api.createCoupon(body)
             if (!resp.isSuccessful) {
@@ -1375,7 +1385,9 @@ class MarketplaceRepository @Inject constructor(
         productId: String,
         isActive: Boolean,
         startsAt: String = "",
-        firstOrderOnly: Boolean = false
+        firstOrderOnly: Boolean = false,
+        categoryId: String = "",
+        autoApply: Boolean = false
     ): Result<Coupon> {
         return try {
             val body = buildJsonObject {
@@ -1389,6 +1401,8 @@ class MarketplaceRepository @Inject constructor(
                 put("is_active", isActive)
                 put("starts_at", startsAt)   // empty string clears the start date
                 put("first_order_only", firstOrderOnly)
+                put("category_id", categoryId) // empty string clears category scope
+                put("auto_apply", autoApply)
             }
             val resp = api.updateCoupon(couponId, body)
             if (!resp.isSuccessful) {
@@ -1469,6 +1483,30 @@ class MarketplaceRepository @Inject constructor(
             )
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    /** Best auto-apply coupon for a cart (code to apply + the discount it gives). */
+    data class BestCoupon(val code: String, val discount: Double)
+
+    /** Asks the backend for the best auto-apply coupon for this cart, if any. */
+    suspend fun getBestCoupon(businessId: String, subtotal: Double, productIds: List<String>): Result<BestCoupon?> {
+        return try {
+            val body = buildJsonObject {
+                put("business_id", businessId)
+                put("subtotal", subtotal)
+                put("product_ids", buildJsonArray { productIds.forEach { add(it) } })
+            }
+            val resp = api.getBestCoupon(body)
+            val o = resp.body()
+            val valid = o?.get("valid")?.jsonPrimitive?.booleanOrNull ?: false
+            if (!valid) return Result.success(null)
+            val code = (o?.get("coupon") as? JsonObject)?.get("code")?.jsonPrimitive?.contentOrNull.orEmpty()
+            val discount = o?.get("discount_amount")?.jsonPrimitive?.doubleOrNull ?: 0.0
+            if (code.isBlank()) return Result.success(null)
+            Result.success(BestCoupon(code, discount))
+        } catch (e: Exception) {
+            Result.success(null)
         }
     }
 

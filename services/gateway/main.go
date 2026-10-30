@@ -660,6 +660,7 @@ func main() {
 		authRequired.PUT("/business/coupons/:id", businessHandler.UpdateCoupon)
 		authRequired.DELETE("/business/coupons/:id", businessHandler.DeleteCoupon)
 		authRequired.POST("/marketplace/coupons/validate", businessHandler.ValidateCoupon)
+		authRequired.POST("/marketplace/coupons/best", businessHandler.GetBestCoupon)
 
 		// Wishlist
 		authRequired.POST("/marketplace/products/:id/wishlist", businessHandler.ToggleWishlist)

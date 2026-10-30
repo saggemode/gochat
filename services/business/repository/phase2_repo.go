@@ -130,6 +130,9 @@ type Coupon struct {
 	StartsAt       *time.Time
 	FirstOrderOnly bool
 	TotalDiscount  float64 // analytics: sum of discounts given so far (read-only)
+	CategoryID     string
+	CategoryName   string
+	AutoApply      bool
 }
 
 // Refund represents a refund request
@@ -1983,12 +1986,17 @@ func (r *BusinessRepository) CreateCoupon(ctx context.Context, c *Coupon) (*Coup
 		p := c.ProductID
 		prodID = &p
 	}
+	var catID *string
+	if c.CategoryID != "" {
+		ci := c.CategoryID
+		catID = &ci
+	}
 
 	_, err := r.db.Exec(ctx,
-		`INSERT INTO business.coupons (id, business_id, code, discount_type, discount_value, min_spend, max_uses, expires_at, is_active, product_id, max_uses_per_user, starts_at, first_order_only)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-		 ON CONFLICT (business_id, code) DO UPDATE SET discount_type = $4, discount_value = $5, min_spend = $6, max_uses = $7, expires_at = $8, is_active = $9, product_id = $10, max_uses_per_user = $11, starts_at = $12, first_order_only = $13`,
-		c.ID, c.BusinessID, c.Code, c.DiscountType, c.DiscountValue, c.MinSpend, c.MaxUses, c.ExpiresAt, c.IsActive, prodID, c.MaxUsesPerUser, c.StartsAt, c.FirstOrderOnly,
+		`INSERT INTO business.coupons (id, business_id, code, discount_type, discount_value, min_spend, max_uses, expires_at, is_active, product_id, max_uses_per_user, starts_at, first_order_only, category_id, auto_apply)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+		 ON CONFLICT (business_id, code) DO UPDATE SET discount_type = $4, discount_value = $5, min_spend = $6, max_uses = $7, expires_at = $8, is_active = $9, product_id = $10, max_uses_per_user = $11, starts_at = $12, first_order_only = $13, category_id = $14, auto_apply = $15`,
+		c.ID, c.BusinessID, c.Code, c.DiscountType, c.DiscountValue, c.MinSpend, c.MaxUses, c.ExpiresAt, c.IsActive, prodID, c.MaxUsesPerUser, c.StartsAt, c.FirstOrderOnly, catID, c.AutoApply,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create coupon: %w", err)
@@ -2003,9 +2011,11 @@ func (r *BusinessRepository) ListBusinessCoupons(ctx context.Context, businessID
 		        COALESCE(c.product_id::text, ''), COALESCE(c.max_uses_per_user, 0), COALESCE(p.name, 'All Store Products'),
 		        c.starts_at, COALESCE(c.first_order_only, FALSE),
 		        COALESCE((SELECT SUM(o.discount_amount) FROM business.orders o
-		                  WHERE o.business_id = c.business_id AND LOWER(o.coupon_code) = LOWER(c.code)), 0)
+		                  WHERE o.business_id = c.business_id AND LOWER(o.coupon_code) = LOWER(c.code)), 0),
+		        COALESCE(c.category_id::text, ''), COALESCE(cat.name, ''), COALESCE(c.auto_apply, FALSE)
 		 FROM business.coupons c
 		 LEFT JOIN business.products p ON p.id = c.product_id
+		 LEFT JOIN business.categories cat ON cat.id = c.category_id
 		 WHERE c.business_id = $1
 		 ORDER BY c.created_at DESC`, businessID)
 	if err != nil {
@@ -2016,7 +2026,7 @@ func (r *BusinessRepository) ListBusinessCoupons(ctx context.Context, businessID
 	var coupons []*Coupon
 	for rows.Next() {
 		c := &Coupon{}
-		if err := rows.Scan(&c.ID, &c.BusinessID, &c.Code, &c.DiscountType, &c.DiscountValue, &c.MinSpend, &c.MaxUses, &c.UsedCount, &c.ExpiresAt, &c.IsActive, &c.CreatedAt, &c.ProductID, &c.MaxUsesPerUser, &c.ProductName, &c.StartsAt, &c.FirstOrderOnly, &c.TotalDiscount); err == nil {
+		if err := rows.Scan(&c.ID, &c.BusinessID, &c.Code, &c.DiscountType, &c.DiscountValue, &c.MinSpend, &c.MaxUses, &c.UsedCount, &c.ExpiresAt, &c.IsActive, &c.CreatedAt, &c.ProductID, &c.MaxUsesPerUser, &c.ProductName, &c.StartsAt, &c.FirstOrderOnly, &c.TotalDiscount, &c.CategoryID, &c.CategoryName, &c.AutoApply); err == nil {
 			coupons = append(coupons, c)
 		}
 	}
@@ -2036,14 +2046,19 @@ func (r *BusinessRepository) UpdateCoupon(ctx context.Context, c *Coupon) (*Coup
 		p := c.ProductID
 		prodID = &p
 	}
+	var catID *string
+	if c.CategoryID != "" {
+		ci := c.CategoryID
+		catID = &ci
+	}
 	tag, err := r.db.Exec(ctx,
 		`UPDATE business.coupons
 		 SET discount_type = $3, discount_value = $4, min_spend = $5, max_uses = $6,
 		     expires_at = $7, is_active = $8, product_id = $9, max_uses_per_user = $10,
-		     starts_at = $11, first_order_only = $12
+		     starts_at = $11, first_order_only = $12, category_id = $13, auto_apply = $14
 		 WHERE id = $1 AND business_id = $2`,
 		c.ID, c.BusinessID, c.DiscountType, c.DiscountValue, c.MinSpend, c.MaxUses,
-		c.ExpiresAt, c.IsActive, prodID, c.MaxUsesPerUser, c.StartsAt, c.FirstOrderOnly,
+		c.ExpiresAt, c.IsActive, prodID, c.MaxUsesPerUser, c.StartsAt, c.FirstOrderOnly, catID, c.AutoApply,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("update coupon: %w", err)
@@ -2058,11 +2073,13 @@ func (r *BusinessRepository) UpdateCoupon(ctx context.Context, c *Coupon) (*Coup
 		        COALESCE(c.product_id::text, ''), COALESCE(c.max_uses_per_user, 0), COALESCE(p.name, 'All Store Products'),
 		        c.starts_at, COALESCE(c.first_order_only, FALSE),
 		        COALESCE((SELECT SUM(o.discount_amount) FROM business.orders o
-		                  WHERE o.business_id = c.business_id AND LOWER(o.coupon_code) = LOWER(c.code)), 0)
+		                  WHERE o.business_id = c.business_id AND LOWER(o.coupon_code) = LOWER(c.code)), 0),
+		        COALESCE(c.category_id::text, ''), COALESCE(cat.name, ''), COALESCE(c.auto_apply, FALSE)
 		 FROM business.coupons c
 		 LEFT JOIN business.products p ON p.id = c.product_id
+		 LEFT JOIN business.categories cat ON cat.id = c.category_id
 		 WHERE c.id = $1 AND c.business_id = $2`, c.ID, c.BusinessID).
-		Scan(&out.ID, &out.BusinessID, &out.Code, &out.DiscountType, &out.DiscountValue, &out.MinSpend, &out.MaxUses, &out.UsedCount, &out.ExpiresAt, &out.IsActive, &out.CreatedAt, &out.ProductID, &out.MaxUsesPerUser, &out.ProductName, &out.StartsAt, &out.FirstOrderOnly, &out.TotalDiscount)
+		Scan(&out.ID, &out.BusinessID, &out.Code, &out.DiscountType, &out.DiscountValue, &out.MinSpend, &out.MaxUses, &out.UsedCount, &out.ExpiresAt, &out.IsActive, &out.CreatedAt, &out.ProductID, &out.MaxUsesPerUser, &out.ProductName, &out.StartsAt, &out.FirstOrderOnly, &out.TotalDiscount, &out.CategoryID, &out.CategoryName, &out.AutoApply)
 	if err != nil {
 		return nil, fmt.Errorf("reload coupon: %w", err)
 	}
@@ -2087,11 +2104,13 @@ func (r *BusinessRepository) ValidateCoupon(ctx context.Context, businessID, cod
 	err := r.db.QueryRow(ctx,
 		`SELECT c.id, c.business_id, c.code, c.discount_type, c.discount_value, c.min_spend, c.max_uses, c.used_count, c.expires_at, c.is_active, c.created_at,
 		        COALESCE(c.product_id::text, ''), COALESCE(c.max_uses_per_user, 0), COALESCE(p.name, 'All Store Products'),
-		        c.starts_at, COALESCE(c.first_order_only, FALSE)
+		        c.starts_at, COALESCE(c.first_order_only, FALSE),
+		        COALESCE(c.category_id::text, ''), COALESCE(cat.name, ''), COALESCE(c.auto_apply, FALSE)
 		 FROM business.coupons c
 		 LEFT JOIN business.products p ON p.id = c.product_id
+		 LEFT JOIN business.categories cat ON cat.id = c.category_id
 		 WHERE c.business_id = $1 AND LOWER(c.code) = LOWER($2)`, businessID, strings.TrimSpace(code)).
-		Scan(&c.ID, &c.BusinessID, &c.Code, &c.DiscountType, &c.DiscountValue, &c.MinSpend, &c.MaxUses, &c.UsedCount, &c.ExpiresAt, &c.IsActive, &c.CreatedAt, &c.ProductID, &c.MaxUsesPerUser, &c.ProductName, &c.StartsAt, &c.FirstOrderOnly)
+		Scan(&c.ID, &c.BusinessID, &c.Code, &c.DiscountType, &c.DiscountValue, &c.MinSpend, &c.MaxUses, &c.UsedCount, &c.ExpiresAt, &c.IsActive, &c.CreatedAt, &c.ProductID, &c.MaxUsesPerUser, &c.ProductName, &c.StartsAt, &c.FirstOrderOnly, &c.CategoryID, &c.CategoryName, &c.AutoApply)
 
 	if err != nil {
 		return false, "Invalid coupon code", 0, nil, nil
@@ -2145,6 +2164,18 @@ func (r *BusinessRepository) ValidateCoupon(ctx context.Context, businessID, cod
 		}
 	}
 
+	// Category-scoped applicability: the cart must contain at least one product
+	// in the coupon's category.
+	if c.CategoryID != "" && len(productIDs) > 0 {
+		var inCategory int
+		_ = r.db.QueryRow(ctx,
+			`SELECT COUNT(*)::int FROM business.products WHERE id = ANY($1) AND category_id = $2`,
+			productIDs, c.CategoryID).Scan(&inCategory)
+		if inCategory == 0 {
+			return false, fmt.Sprintf("Coupon is valid only for %s products", c.CategoryName), 0, nil, nil
+		}
+	}
+
 	if subtotal < c.MinSpend {
 		return false, fmt.Sprintf("Minimum spend of $%.2f required for this coupon", c.MinSpend), 0, nil, nil
 	}
@@ -2161,6 +2192,42 @@ func (r *BusinessRepository) ValidateCoupon(ctx context.Context, businessID, cod
 	}
 
 	return true, "Coupon applied successfully", discount, c, nil
+}
+
+// GetBestCoupon finds the auto-apply coupon that gives the largest valid discount
+// for this cart, so checkout can apply it without the buyer typing a code. Only
+// coupons flagged auto_apply are considered (code-only coupons stay private); each
+// candidate is run through the full ValidateCoupon logic, and the biggest
+// qualifying discount wins.
+func (r *BusinessRepository) GetBestCoupon(ctx context.Context, businessID string, subtotal float64, userID string, productIDs []string) (bool, string, float64, *Coupon, error) {
+	rows, err := r.db.Query(ctx,
+		`SELECT code FROM business.coupons
+		 WHERE business_id = $1 AND auto_apply = TRUE AND is_active = TRUE`, businessID)
+	if err != nil {
+		return false, "", 0, nil, fmt.Errorf("best coupon: %w", err)
+	}
+	var codes []string
+	for rows.Next() {
+		var code string
+		if err := rows.Scan(&code); err == nil {
+			codes = append(codes, code)
+		}
+	}
+	rows.Close()
+
+	var bestDiscount float64
+	var bestCoupon *Coupon
+	for _, code := range codes {
+		valid, _, discount, coupon, _ := r.ValidateCoupon(ctx, businessID, code, subtotal, userID, productIDs)
+		if valid && discount > bestDiscount {
+			bestDiscount = discount
+			bestCoupon = coupon
+		}
+	}
+	if bestCoupon == nil {
+		return false, "No applicable coupon", 0, nil, nil
+	}
+	return true, "Coupon applied successfully", bestDiscount, bestCoupon, nil
 }
 
 // ── Wishlist Repository ─────────────────────────────────────────────────────

@@ -91,6 +91,7 @@ service BusinessService {
   rpc ValidateCoupon(ValidateCouponRequest) returns (ValidateCouponResponse);
   rpc UpdateCoupon(UpdateCouponRequest) returns (CreateCouponResponse);
   rpc DeleteCoupon(DeleteCouponRequest) returns (DeleteCouponResponse);
+  rpc GetBestCoupon(GetBestCouponRequest) returns (ValidateCouponResponse);
 
   // Wishlist
   rpc ToggleWishlist(ToggleWishlistRequest) returns (ToggleWishlistResponse);
@@ -817,6 +818,9 @@ message Coupon {
   string starts_at         = 15;
   bool   first_order_only  = 16;
   double total_discount    = 17; // analytics: total value discounted so far (read-only)
+  string category_id       = 18;
+  string category_name     = 19; // read-only
+  bool   auto_apply        = 20;
 }
 
 message CreateCouponRequest {
@@ -831,6 +835,8 @@ message CreateCouponRequest {
   int32  max_uses_per_user = 9;
   string starts_at         = 10;
   bool   first_order_only  = 11;
+  string category_id       = 12;
+  bool   auto_apply        = 13;
 }
 message CreateCouponResponse { Coupon coupon = 1; }
 
@@ -850,6 +856,15 @@ message UpdateCouponRequest {
   bool   is_active         = 10;
   string starts_at         = 11;
   bool   first_order_only  = 12;
+  string category_id       = 13;
+  bool   auto_apply        = 14;
+}
+
+message GetBestCouponRequest {
+  string          business_id = 1;
+  double          subtotal    = 2;
+  string          user_id     = 3;
+  repeated string product_ids = 4;
 }
 
 message DeleteCouponRequest {

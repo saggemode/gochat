@@ -21,6 +21,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.setPadding
 import androidx.lifecycle.lifecycleScope
 import com.example.gochat.core.currency.CurrencyManager
+import com.example.gochat.data.model.Category
 import com.example.gochat.data.model.Product
 import com.example.gochat.data.repository.MarketplaceRepository
 import dagger.hilt.android.AndroidEntryPoint
@@ -43,6 +44,10 @@ class CouponManagerActivity : AppCompatActivity() {
     lateinit var repository: MarketplaceRepository
 
     private var products: List<Product> = emptyList()
+    private var categories: List<Category> = emptyList()
+    // Parallel to scopeSpinner entries: each is (kind, id) where kind is
+    // "all" | "product" | "category". Index 0 is always ("all", "").
+    private val scopeKinds = mutableListOf<Pair<String, String>>()
     private var expiryMillis: Long? = null
     private var startMillis: Long? = null
     private var storeCurrency: String? = null
@@ -60,6 +65,7 @@ class CouponManagerActivity : AppCompatActivity() {
     private lateinit var perUserInput: EditText
     private lateinit var scopeSpinner: Spinner
     private lateinit var firstOrderCheck: android.widget.CheckBox
+    private lateinit var autoApplyCheck: android.widget.CheckBox
     private lateinit var startView: TextView
     private lateinit var expiryView: TextView
     private lateinit var saveBtn: Button
@@ -150,6 +156,12 @@ class CouponManagerActivity : AppCompatActivity() {
         root.addView(label(getString(R.string.coupon_scope_label)))
         scopeSpinner = Spinner(this)
         root.addView(scopeSpinner)
+
+        autoApplyCheck = android.widget.CheckBox(this).apply {
+            text = getString(R.string.coupon_auto_apply)
+            setPadding(0, dp(8), 0, 0)
+        }
+        root.addView(autoApplyCheck)
 
         root.addView(label(getString(R.string.coupon_start_label)))
         startView = TextView(this).apply {
@@ -328,13 +340,22 @@ class CouponManagerActivity : AppCompatActivity() {
     private fun loadProducts() {
         lifecycleScope.launch {
             products = repository.getMyProducts().getOrDefault(emptyList())
+            categories = repository.getCategories().getOrDefault(emptyList())
             storeCurrency = products.firstOrNull()?.currency
-            val names = mutableListOf(getString(R.string.coupon_scope_all))
-            names.addAll(products.map { it.name })
+
+            val labels = mutableListOf<String>()
+            scopeKinds.clear()
+            labels.add(getString(R.string.coupon_scope_all)); scopeKinds.add("all" to "")
+            for (p in products) {
+                labels.add(getString(R.string.coupon_scope_product, p.name)); scopeKinds.add("product" to p.id)
+            }
+            for (c in categories) {
+                labels.add(getString(R.string.coupon_scope_category, c.name)); scopeKinds.add("category" to c.id)
+            }
             scopeSpinner.adapter = ArrayAdapter(
                 this@CouponManagerActivity,
                 android.R.layout.simple_spinner_dropdown_item,
-                names
+                labels
             )
         }
     }
@@ -375,8 +396,11 @@ class CouponManagerActivity : AppCompatActivity() {
             setTextColor(resources.getColor(R.color.gochat_text_primary, theme))
         })
 
-        val scope = if (c.productId.isBlank()) getString(R.string.coupon_item_scope_all)
-                    else c.productName.ifBlank { getString(R.string.coupon_item_scope_all) }
+        val scope = when {
+            c.categoryId.isNotBlank() -> c.categoryName.ifBlank { getString(R.string.coupon_item_scope_all) }
+            c.productId.isNotBlank() -> c.productName.ifBlank { getString(R.string.coupon_item_scope_all) }
+            else -> getString(R.string.coupon_item_scope_all)
+        }
         val uses = getString(
             R.string.coupon_item_uses,
             c.usedCount,
@@ -407,6 +431,7 @@ class CouponManagerActivity : AppCompatActivity() {
 
         // Scheduling / targeting badges.
         val badges = mutableListOf<String>()
+        if (c.autoApply) badges.add(getString(R.string.coupon_item_auto_apply))
         if (c.startsAt.isNotBlank()) badges.add(getString(R.string.coupon_item_starts, c.startsAt.take(10)))
         if (c.firstOrderOnly) badges.add(getString(R.string.coupon_item_first_order))
         if (badges.isNotEmpty()) {
@@ -461,9 +486,13 @@ class CouponManagerActivity : AppCompatActivity() {
         minSpendInput.setText(trimNum(c.minSpend))
         maxUsesInput.setText(c.maxUses.toString())
         perUserInput.setText(c.maxUsesPerUser.toString())
-        val scopeIdx = if (c.productId.isBlank()) 0
-                       else products.indexOfFirst { it.id == c.productId }.let { if (it >= 0) it + 1 else 0 }
+        val scopeIdx = when {
+            c.categoryId.isNotBlank() -> scopeKinds.indexOfFirst { it.first == "category" && it.second == c.categoryId }
+            c.productId.isNotBlank() -> scopeKinds.indexOfFirst { it.first == "product" && it.second == c.productId }
+            else -> 0
+        }.let { if (it >= 0) it else 0 }
         scopeSpinner.setSelection(scopeIdx)
+        autoApplyCheck.isChecked = c.autoApply
         expiryMillis = parseRfc3339(c.expiresAt)
         expiryView.text = expiryMillis?.let {
             val cal = Calendar.getInstance().apply { timeInMillis = it }
@@ -489,6 +518,7 @@ class CouponManagerActivity : AppCompatActivity() {
         maxUsesInput.setText("0")
         perUserInput.setText("0")
         scopeSpinner.setSelection(0)
+        autoApplyCheck.isChecked = false
         expiryMillis = null
         expiryView.text = getString(R.string.coupon_expiry_none)
         startMillis = null
@@ -513,7 +543,9 @@ class CouponManagerActivity : AppCompatActivity() {
                 productId = c.productId,
                 isActive = !c.isActive,
                 startsAt = c.startsAt,
-                firstOrderOnly = c.firstOrderOnly
+                firstOrderOnly = c.firstOrderOnly,
+                categoryId = c.categoryId,
+                autoApply = c.autoApply
             )
             setBusy(false)
             res.onSuccess { loadCoupons() }
@@ -576,9 +608,11 @@ class CouponManagerActivity : AppCompatActivity() {
         val minSpend = minSpendInput.text.toString().toDoubleOrNull() ?: 0.0
         val maxUses = maxUsesInput.text.toString().toIntOrNull() ?: 0
         val perUser = perUserInput.text.toString().toIntOrNull() ?: 0
-        // Spinner index 0 == "all products"; otherwise it maps to products[index-1].
-        val scopeIndex = scopeSpinner.selectedItemPosition
-        val productId = if (scopeIndex <= 0) "" else products.getOrNull(scopeIndex - 1)?.id.orEmpty()
+        // Map the scope selection to a product id OR a category id (or neither).
+        val scope = scopeKinds.getOrNull(scopeSpinner.selectedItemPosition) ?: ("all" to "")
+        val productId = if (scope.first == "product") scope.second else ""
+        val categoryId = if (scope.first == "category") scope.second else ""
+        val autoApply = autoApplyCheck.isChecked
 
         val type = if (isPercent) "percentage" else "fixed"
         val editId = editingId
@@ -596,7 +630,9 @@ class CouponManagerActivity : AppCompatActivity() {
                     productId = productId,
                     isActive = editingActive,
                     startsAt = startRfc3339(),
-                    firstOrderOnly = firstOrderCheck.isChecked
+                    firstOrderOnly = firstOrderCheck.isChecked,
+                    categoryId = categoryId,
+                    autoApply = autoApply
                 )
             } else {
                 repository.createCoupon(
@@ -609,7 +645,9 @@ class CouponManagerActivity : AppCompatActivity() {
                     expiresAt = expiryRfc3339(),
                     productId = productId,
                     startsAt = startRfc3339(),
-                    firstOrderOnly = firstOrderCheck.isChecked
+                    firstOrderOnly = firstOrderCheck.isChecked,
+                    categoryId = categoryId,
+                    autoApply = autoApply
                 )
             }
             setBusy(false)

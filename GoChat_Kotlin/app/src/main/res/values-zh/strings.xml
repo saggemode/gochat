@@ -668,4 +668,11 @@
     <string name="payout_ledger_order_fallback">订单</string>
     <string name="payout_ledger_entry_meta">总额 %1$s • 手续费 %2$s</string>
     <string name="payout_ledger_settled">已结算</string>
+
+    <!-- Batch 19: coupon category scope + auto-apply -->
+    <string name="coupon_scope_product">商品：%1$s</string>
+    <string name="coupon_scope_category">类别：%1$s</string>
+    <string name="coupon_auto_apply">结账时自动应用（无需代码）</string>
+    <string name="coupon_item_auto_apply">已自动应用</string>
+    <string name="checkout_coupon_auto_applied">已自动应用优惠券 %1$s</string>
 </resources>

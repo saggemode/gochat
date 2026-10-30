@@ -668,4 +668,11 @@
     <string name="payout_ledger_order_fallback">Ordine</string>
     <string name="payout_ledger_entry_meta">Lordo %1$s • commissione %2$s</string>
     <string name="payout_ledger_settled">Liquidato</string>
+
+    <!-- Batch 19: coupon category scope + auto-apply -->
+    <string name="coupon_scope_product">Prodotto: %1$s</string>
+    <string name="coupon_scope_category">Categoria: %1$s</string>
+    <string name="coupon_auto_apply">Applica automaticamente al checkout (senza codice)</string>
+    <string name="coupon_item_auto_apply">Applicato automaticamente</string>
+    <string name="checkout_coupon_auto_applied">Coupon %1$s applicato automaticamente</string>
 </resources>

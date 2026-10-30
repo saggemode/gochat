@@ -672,4 +672,11 @@
     <string name="payout_ledger_order_fallback">Commande</string>
     <string name="payout_ledger_entry_meta">Brut %1$s • frais %2$s</string>
     <string name="payout_ledger_settled">Versé</string>
+
+    <!-- Batch 19: coupon category scope + auto-apply -->
+    <string name="coupon_scope_product">Produit : %1$s</string>
+    <string name="coupon_scope_category">Catégorie : %1$s</string>
+    <string name="coupon_auto_apply">Appliquer automatiquement au paiement (sans code)</string>
+    <string name="coupon_item_auto_apply">Appliqué automatiquement</string>
+    <string name="checkout_coupon_auto_applied">Code %1$s appliqué automatiquement</string>
 </resources>

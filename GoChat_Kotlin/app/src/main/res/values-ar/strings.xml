@@ -668,4 +668,11 @@
     <string name="payout_ledger_order_fallback">طلب</string>
     <string name="payout_ledger_entry_meta">الإجمالي %1$s • الرسوم %2$s</string>
     <string name="payout_ledger_settled">تمت التسوية</string>
+
+    <!-- Batch 19: coupon category scope + auto-apply -->
+    <string name="coupon_scope_product">المنتج: %1$s</string>
+    <string name="coupon_scope_category">الفئة: %1$s</string>
+    <string name="coupon_auto_apply">التطبيق تلقائيًا عند الدفع (بدون رمز)</string>
+    <string name="coupon_item_auto_apply">مُطبَّق تلقائيًا</string>
+    <string name="checkout_coupon_auto_applied">تم تطبيق القسيمة %1$s تلقائيًا</string>
 </resources>

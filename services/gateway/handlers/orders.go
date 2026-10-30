@@ -452,6 +452,8 @@ func (h *BusinessHandler) CreateCoupon(c *gin.Context) {
 		MaxUsesPerUser int32   `json:"max_uses_per_user"`
 		StartsAt       string  `json:"starts_at"`
 		FirstOrderOnly bool    `json:"first_order_only"`
+		CategoryID     string  `json:"category_id"`
+		AutoApply      bool    `json:"auto_apply"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -470,6 +472,8 @@ func (h *BusinessHandler) CreateCoupon(c *gin.Context) {
 		MaxUsesPerUser: req.MaxUsesPerUser,
 		StartsAt:       req.StartsAt,
 		FirstOrderOnly: req.FirstOrderOnly,
+		CategoryId:     req.CategoryID,
+		AutoApply:      req.AutoApply,
 	}, jsonOpt)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -523,6 +527,35 @@ func (h *BusinessHandler) ValidateCoupon(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// GetBestCoupon returns the best auto-apply coupon for a cart so the checkout can
+// apply it automatically (no code needed).
+func (h *BusinessHandler) GetBestCoupon(c *gin.Context) {
+	userID := getUserID(c)
+
+	var req struct {
+		BusinessID string   `json:"business_id" binding:"required"`
+		Subtotal   float64  `json:"subtotal"`
+		ProductIDs []string `json:"product_ids"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := h.client.GetBestCoupon(c.Request.Context(), &pb.GetBestCouponRequest{
+		BusinessId: req.BusinessID,
+		Subtotal:   req.Subtotal,
+		UserId:     userID,
+		ProductIds: req.ProductIDs,
+	}, jsonOpt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
 func (h *BusinessHandler) UpdateCoupon(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == "" {
@@ -541,6 +574,8 @@ func (h *BusinessHandler) UpdateCoupon(c *gin.Context) {
 		IsActive       bool    `json:"is_active"`
 		StartsAt       string  `json:"starts_at"`
 		FirstOrderOnly bool    `json:"first_order_only"`
+		CategoryID     string  `json:"category_id"`
+		AutoApply      bool    `json:"auto_apply"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -560,6 +595,8 @@ func (h *BusinessHandler) UpdateCoupon(c *gin.Context) {
 		IsActive:       req.IsActive,
 		StartsAt:       req.StartsAt,
 		FirstOrderOnly: req.FirstOrderOnly,
+		CategoryId:     req.CategoryID,
+		AutoApply:      req.AutoApply,
 	}, jsonOpt)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
