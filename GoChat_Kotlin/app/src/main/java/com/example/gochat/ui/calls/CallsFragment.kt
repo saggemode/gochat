@@ -103,6 +103,43 @@ class CallsFragment : Fragment() {
         }
     }
 
+    /**
+     * Creates a shareable call link backed by a fresh SFU room. The link is a
+     * gochat://call/<roomId> deep link that opens GroupCallActivity and joins the
+     * room (the room is created lazily when the first participant connects). The
+     * link is copied to the clipboard, and the dialog offers to share it or join
+     * the room right away.
+     */
+    private fun createCallLink() {
+        val roomId = "link_" + java.util.UUID.randomUUID().toString().replace("-", "").take(10)
+        val link = "gochat://call/$roomId"
+
+        // Copy immediately as a reliable fallback.
+        val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("GoChat Call Link", link))
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.call_link_ready_title))
+            .setMessage(getString(R.string.call_link_ready_msg, link))
+            .setPositiveButton(getString(R.string.call_link_share)) { _, _ ->
+                val send = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, getString(R.string.call_link_share_text, link))
+                }
+                startActivity(Intent.createChooser(send, getString(R.string.call_link_share)))
+            }
+            .setNeutralButton(getString(R.string.call_link_join)) { _, _ ->
+                val intent = Intent(requireContext(), GroupCallActivity::class.java).apply {
+                    putExtra(GroupCallActivity.EXTRA_CALL_ID, roomId)
+                    putExtra(GroupCallActivity.EXTRA_TITLE, getString(R.string.call_link_title))
+                    putExtra(GroupCallActivity.EXTRA_VIDEO, false)
+                }
+                startActivity(intent)
+            }
+            .setNegativeButton(getString(R.string.call_link_close), null)
+            .show()
+    }
+
     private fun setupListeners() {
         // Pull-to-refresh
         binding.swipeRefreshCalls.setOnRefreshListener {
@@ -110,16 +147,7 @@ class CallsFragment : Fragment() {
         }
 
         // Create call link
-        binding.tileCreateCallLink.setOnClickListener {
-            val linkId = System.currentTimeMillis().toString().takeLast(6)
-            val callLink = "${ApiConstants.BASE_URL}/call/room_$linkId"
-
-            val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            val clip = ClipData.newPlainText("GoChat Call Link", callLink)
-            clipboard.setPrimaryClip(clip)
-
-            Toast.makeText(requireContext(), "🔗 Call link copied to clipboard", Toast.LENGTH_SHORT).show()
-        }
+        binding.tileCreateCallLink.setOnClickListener { createCallLink() }
 
         // Filter chips: All vs Missed
         binding.chipAllCalls.setOnClickListener {

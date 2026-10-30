@@ -764,6 +764,15 @@
     <string name="safety_number_verify">Verify</string>
     <string name="safety_number_contact_fallback">this contact</string>
 
+    <!-- Create call link -->
+    <string name="call_link_title">Call link</string>
+    <string name="call_link_ready_title">Call link ready</string>
+    <string name="call_link_ready_msg">Share this link so others can join your call:\n\n%1$s</string>
+    <string name="call_link_share">Share</string>
+    <string name="call_link_join">Join now</string>
+    <string name="call_link_close">Close</string>
+    <string name="call_link_share_text">Join my GoChat call: %1$s</string>
+
     <!-- Call reliability -->
     <string name="call_reconnecting">Reconnecting…</string>
     <string name="call_reconnect_failed">Couldn\'t reconnect. Call ended.</string>

@@ -716,4 +716,13 @@
     <string name="voice_status_recording_title">Sesli durum kaydediliyor</string>
     <string name="voice_status_recording_msg">Kaydediliyor… bitince Paylaş\'a dokunun.</string>
     <string name="voice_status_post">Paylaş</string>
+
+    <!-- Batch 24: create call link -->
+    <string name="call_link_title">Arama bağlantısı</string>
+    <string name="call_link_ready_title">Arama bağlantısı hazır</string>
+    <string name="call_link_ready_msg">Başkalarının aramanıza katılabilmesi için bu bağlantıyı paylaşın:\n\n%1$s</string>
+    <string name="call_link_share">Paylaş</string>
+    <string name="call_link_join">Katıl</string>
+    <string name="call_link_close">Kapat</string>
+    <string name="call_link_share_text">GoChat aramama katıl: %1$s</string>
 </resources>

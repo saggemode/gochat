@@ -716,4 +716,13 @@
     <string name="voice_status_recording_title">वॉइस स्टेटस रिकॉर्ड हो रहा है</string>
     <string name="voice_status_recording_msg">रिकॉर्ड हो रहा है… पूरा होने पर पोस्ट पर टैप करें।</string>
     <string name="voice_status_post">पोस्ट करें</string>
+
+    <!-- Batch 24: create call link -->
+    <string name="call_link_title">कॉल लिंक</string>
+    <string name="call_link_ready_title">कॉल लिंक तैयार</string>
+    <string name="call_link_ready_msg">यह लिंक साझा करें ताकि अन्य लोग आपकी कॉल में शामिल हो सकें:\n\n%1$s</string>
+    <string name="call_link_share">साझा करें</string>
+    <string name="call_link_join">शामिल हों</string>
+    <string name="call_link_close">बंद करें</string>
+    <string name="call_link_share_text">मेरी GoChat कॉल में शामिल हों: %1$s</string>
 </resources>

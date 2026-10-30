@@ -716,4 +716,13 @@
     <string name="voice_status_recording_title">正在录制语音状态</string>
     <string name="voice_status_recording_msg">正在录制……完成后点击发布。</string>
     <string name="voice_status_post">发布</string>
+
+    <!-- Batch 24: create call link -->
+    <string name="call_link_title">通话链接</string>
+    <string name="call_link_ready_title">通话链接已就绪</string>
+    <string name="call_link_ready_msg">分享此链接，让他人加入您的通话：\n\n%1$s</string>
+    <string name="call_link_share">分享</string>
+    <string name="call_link_join">加入</string>
+    <string name="call_link_close">关闭</string>
+    <string name="call_link_share_text">加入我的 GoChat 通话：%1$s</string>
 </resources>

@@ -716,4 +716,13 @@
     <string name="voice_status_recording_title">Запись голосового статуса</string>
     <string name="voice_status_recording_msg">Идёт запись… нажмите «Опубликовать», когда закончите.</string>
     <string name="voice_status_post">Опубликовать</string>
+
+    <!-- Batch 24: create call link -->
+    <string name="call_link_title">Ссылка на звонок</string>
+    <string name="call_link_ready_title">Ссылка на звонок готова</string>
+    <string name="call_link_ready_msg">Поделитесь этой ссылкой, чтобы другие присоединились к звонку:\n\n%1$s</string>
+    <string name="call_link_share">Поделиться</string>
+    <string name="call_link_join">Присоединиться</string>
+    <string name="call_link_close">Закрыть</string>
+    <string name="call_link_share_text">Присоединяйтесь к моему звонку в GoChat: %1$s</string>
 </resources>

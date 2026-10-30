@@ -716,4 +716,13 @@
     <string name="voice_status_recording_title">جارٍ تسجيل الحالة الصوتية</string>
     <string name="voice_status_recording_msg">جارٍ التسجيل… اضغط على نشر عند الانتهاء.</string>
     <string name="voice_status_post">نشر</string>
+
+    <!-- Batch 24: create call link -->
+    <string name="call_link_title">رابط المكالمة</string>
+    <string name="call_link_ready_title">رابط المكالمة جاهز</string>
+    <string name="call_link_ready_msg">شارك هذا الرابط لينضم الآخرون إلى مكالمتك:\n\n%1$s</string>
+    <string name="call_link_share">مشاركة</string>
+    <string name="call_link_join">انضمام</string>
+    <string name="call_link_close">إغلاق</string>
+    <string name="call_link_share_text">انضم إلى مكالمتي على GoChat: %1$s</string>
 </resources>

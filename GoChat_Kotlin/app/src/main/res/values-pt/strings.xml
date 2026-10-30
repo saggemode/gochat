@@ -716,4 +716,13 @@
     <string name="voice_status_recording_title">Gravando status de voz</string>
     <string name="voice_status_recording_msg">Gravando… toque em Publicar quando terminar.</string>
     <string name="voice_status_post">Publicar</string>
+
+    <!-- Batch 24: create call link -->
+    <string name="call_link_title">Link de chamada</string>
+    <string name="call_link_ready_title">Link de chamada pronto</string>
+    <string name="call_link_ready_msg">Compartilhe este link para que outros entrem na sua chamada:\n\n%1$s</string>
+    <string name="call_link_share">Compartilhar</string>
+    <string name="call_link_join">Entrar</string>
+    <string name="call_link_close">Fechar</string>
+    <string name="call_link_share_text">Entre na minha chamada do GoChat: %1$s</string>
 </resources>

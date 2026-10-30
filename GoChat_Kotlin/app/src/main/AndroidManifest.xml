@@ -77,6 +77,14 @@
                 <data android:scheme="gochat" android:host="user" />
             </intent-filter>
 
+            <!-- Deep Link: gochat://call/{roomId} (shared call link) -->
+            <intent-filter android:label="GoChat Call">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="gochat" android:host="call" />
+            </intent-filter>
+
         </activity>
 
         <!-- Contact QR code: show my code / scan a contact's code -->

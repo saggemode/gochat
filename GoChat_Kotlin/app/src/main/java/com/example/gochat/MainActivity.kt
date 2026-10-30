@@ -163,6 +163,19 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // gochat://call/{roomId} — a shared call link → join the SFU room directly
+        if (data.scheme == "gochat" && data.host == "call") {
+            val roomId = data.lastPathSegment
+            if (!roomId.isNullOrBlank()) {
+                val callIntent = Intent(this, com.example.gochat.ui.calls.GroupCallActivity::class.java).apply {
+                    putExtra(com.example.gochat.ui.calls.GroupCallActivity.EXTRA_CALL_ID, roomId)
+                    putExtra(com.example.gochat.ui.calls.GroupCallActivity.EXTRA_TITLE, getString(R.string.call_link_title))
+                    putExtra(com.example.gochat.ui.calls.GroupCallActivity.EXTRA_VIDEO, false)
+                }
+                startActivity(callIntent)
+            }
+        }
+
         // gochat://user/{pin} — a scanned contact QR code → resolve and open the chat
         if (data.scheme == "gochat" && data.host == "user") {
             val pin = data.lastPathSegment

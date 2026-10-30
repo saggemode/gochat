@@ -716,4 +716,13 @@
     <string name="voice_status_recording_title">Inarekodi hali ya sauti</string>
     <string name="voice_status_recording_msg">Inarekodi… gusa Chapisha ukimaliza.</string>
     <string name="voice_status_post">Chapisha</string>
+
+    <!-- Batch 24: create call link -->
+    <string name="call_link_title">Kiungo cha simu</string>
+    <string name="call_link_ready_title">Kiungo cha simu kiko tayari</string>
+    <string name="call_link_ready_msg">Shiriki kiungo hiki ili wengine wajiunge na simu yako:\n\n%1$s</string>
+    <string name="call_link_share">Shiriki</string>
+    <string name="call_link_join">Jiunge</string>
+    <string name="call_link_close">Funga</string>
+    <string name="call_link_share_text">Jiunge na simu yangu ya GoChat: %1$s</string>
 </resources>

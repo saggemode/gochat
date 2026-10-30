@@ -716,4 +716,13 @@
     <string name="voice_status_recording_title">Sprachstatus wird aufgenommen</string>
     <string name="voice_status_recording_msg">Aufnahme… tippe auf Posten, wenn du fertig bist.</string>
     <string name="voice_status_post">Posten</string>
+
+    <!-- Batch 24: create call link -->
+    <string name="call_link_title">Anruf-Link</string>
+    <string name="call_link_ready_title">Anruf-Link bereit</string>
+    <string name="call_link_ready_msg">Teile diesen Link, damit andere deinem Anruf beitreten können:\n\n%1$s</string>
+    <string name="call_link_share">Teilen</string>
+    <string name="call_link_join">Beitreten</string>
+    <string name="call_link_close">Schließen</string>
+    <string name="call_link_share_text">Tritt meinem GoChat-Anruf bei: %1$s</string>
 </resources>
