@@ -44,6 +44,7 @@ func main() {
 	defer healthSrv.Stop()
 
 	srv := server.NewBusinessServer(db, log)
+	srv.StartBackgroundJobs(ctx) // periodic abandoned-cart / wishlist reminder sweep
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", cfg.GRPCPort))
 	if err != nil {
 		log.Fatal("failed to listen", zap.Error(err))

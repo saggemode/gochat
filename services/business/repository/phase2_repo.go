@@ -2230,6 +2230,81 @@ func (r *BusinessRepository) GetBestCoupon(ctx context.Context, businessID strin
 	return true, "Coupon applied successfully", bestDiscount, bestCoupon, nil
 }
 
+// ── Abandoned-cart / wishlist reminders ─────────────────────────────────────
+
+// NudgeAbandonedCarts finds buyers who left items in their cart (idle longer than
+// abandonAfter) or saved items in their wishlist, and who haven't been nudged for
+// that kind within cooldown, sends each a reminder push, and records the nudge.
+// Returns how many reminders were sent. Safe to call on a timer.
+func (r *BusinessRepository) NudgeAbandonedCarts(ctx context.Context, abandonAfter, cooldown string) (int, error) {
+	sent := 0
+
+	// Abandoned carts: items added more than abandonAfter ago, user not cart-nudged within cooldown.
+	cartRows, err := r.db.Query(ctx,
+		`SELECT c.user_id, COUNT(ci.id)::int
+		 FROM business.carts c
+		 JOIN business.cart_items ci ON ci.cart_id = c.id
+		 LEFT JOIN business.nudge_log nl ON nl.user_id = c.user_id AND nl.kind = 'cart'
+		 WHERE (nl.last_sent_at IS NULL OR nl.last_sent_at < NOW() - $2::interval)
+		 GROUP BY c.user_id, nl.last_sent_at
+		 HAVING MAX(ci.created_at) < NOW() - $1::interval`,
+		abandonAfter, cooldown)
+	if err != nil {
+		return sent, fmt.Errorf("find abandoned carts: %w", err)
+	}
+	type nudge struct {
+		userID string
+		count  int
+	}
+	var cartNudges []nudge
+	for cartRows.Next() {
+		var n nudge
+		if err := cartRows.Scan(&n.userID, &n.count); err == nil {
+			cartNudges = append(cartNudges, n)
+		}
+	}
+	cartRows.Close()
+	for _, n := range cartNudges {
+		if err := r.notificationService.SendCartReminderNotification(ctx, n.userID, n.count); err == nil {
+			_, _ = r.db.Exec(ctx,
+				`INSERT INTO business.nudge_log (user_id, kind, last_sent_at) VALUES ($1, 'cart', NOW())
+				 ON CONFLICT (user_id, kind) DO UPDATE SET last_sent_at = NOW()`, n.userID)
+			sent++
+		}
+	}
+
+	// Wishlist reminders: saved items older than abandonAfter, not wishlist-nudged within cooldown.
+	wishRows, err := r.db.Query(ctx,
+		`SELECT w.user_id, COUNT(*)::int
+		 FROM business.wishlists w
+		 LEFT JOIN business.nudge_log nl ON nl.user_id = w.user_id AND nl.kind = 'wishlist'
+		 WHERE (nl.last_sent_at IS NULL OR nl.last_sent_at < NOW() - $2::interval)
+		 GROUP BY w.user_id, nl.last_sent_at
+		 HAVING MAX(w.created_at) < NOW() - $1::interval`,
+		abandonAfter, cooldown)
+	if err != nil {
+		return sent, fmt.Errorf("find wishlists: %w", err)
+	}
+	var wishNudges []nudge
+	for wishRows.Next() {
+		var n nudge
+		if err := wishRows.Scan(&n.userID, &n.count); err == nil {
+			wishNudges = append(wishNudges, n)
+		}
+	}
+	wishRows.Close()
+	for _, n := range wishNudges {
+		if err := r.notificationService.SendWishlistReminderNotification(ctx, n.userID, n.count); err == nil {
+			_, _ = r.db.Exec(ctx,
+				`INSERT INTO business.nudge_log (user_id, kind, last_sent_at) VALUES ($1, 'wishlist', NOW())
+				 ON CONFLICT (user_id, kind) DO UPDATE SET last_sent_at = NOW()`, n.userID)
+			sent++
+		}
+	}
+
+	return sent, nil
+}
+
 // ── Order Disputes Repository ───────────────────────────────────────────────
 
 type Dispute struct {

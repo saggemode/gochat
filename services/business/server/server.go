@@ -27,6 +27,43 @@ func NewBusinessServer(db *pgxpool.Pool, log *zap.Logger) *BusinessServer {
 	return &BusinessServer{repo: repository.NewBusinessRepository(db, notificationService, log), log: log}
 }
 
+// StartBackgroundJobs launches periodic maintenance jobs (abandoned-cart /
+// wishlist reminder sweep). It returns immediately; the loop runs until ctx is
+// cancelled. Reminders are rate-limited per user via the nudge_log table, and a
+// buyer is nudged only once their cart/wishlist has sat idle past the threshold.
+func (s *BusinessServer) StartBackgroundJobs(ctx context.Context) {
+	const (
+		sweepEvery   = 1 * time.Hour // how often to scan
+		abandonAfter = "6 hours"     // idle time before a cart/wishlist qualifies
+		cooldown     = "72 hours"    // minimum gap between reminders to the same user+kind
+	)
+	go func() {
+		// Small initial delay so startup isn't competing with the sweep.
+		timer := time.NewTimer(5 * time.Minute)
+		defer timer.Stop()
+		ticker := time.NewTicker(sweepEvery)
+		defer ticker.Stop()
+		run := func() {
+			n, err := s.repo.NudgeAbandonedCarts(ctx, abandonAfter, cooldown)
+			if err != nil {
+				s.log.Warn("abandoned-cart sweep failed", zap.Error(err))
+			} else if n > 0 {
+				s.log.Info("sent abandoned-cart/wishlist reminders", zap.Int("count", n))
+			}
+		}
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-timer.C:
+				run()
+			case <-ticker.C:
+				run()
+			}
+		}
+	}()
+}
+
 func (s *BusinessServer) CreateBusinessProfile(ctx context.Context, req *pb.CreateBusinessProfileRequest) (*pb.CreateBusinessProfileResponse, error) {
 	p, err := s.repo.CreateBusinessProfile(ctx, &repository.BusinessProfile{
 		UserID: req.UserId, BusinessName: req.BusinessName, Category: req.Category,

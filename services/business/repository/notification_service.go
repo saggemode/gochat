@@ -153,6 +153,52 @@ func (ns *NotificationService) SendOrderUpdateNotification(ctx context.Context, 
 	return ns.sendNotification(ctx, notification)
 }
 
+// SendCartReminderNotification nudges a buyer who left items in their cart.
+func (ns *NotificationService) SendCartReminderNotification(ctx context.Context, userID string, itemCount int) error {
+	prefs, _ := ns.getUserPreferences(ctx, userID)
+	body := "You still have items in your cart. Complete your order before they sell out!"
+	if itemCount == 1 {
+		body = "You left an item in your cart. Complete your order before it sells out!"
+	}
+	notification := &Notification{
+		ID:       uuid.New().String(),
+		UserID:   userID,
+		Type:     NotificationType("cart_reminder"),
+		Priority: PriorityMedium,
+		Title:    "Still interested?",
+		Body:     body,
+		Data: map[string]interface{}{
+			"item_count":   itemCount,
+			"click_action": "open_cart",
+		},
+		Channels:  ns.getPreferredChannels(prefs),
+		Read:      false,
+		CreatedAt: time.Now(),
+	}
+	return ns.sendNotification(ctx, notification)
+}
+
+// SendWishlistReminderNotification nudges a buyer about items saved in their wishlist.
+func (ns *NotificationService) SendWishlistReminderNotification(ctx context.Context, userID string, itemCount int) error {
+	prefs, _ := ns.getUserPreferences(ctx, userID)
+	notification := &Notification{
+		ID:       uuid.New().String(),
+		UserID:   userID,
+		Type:     NotificationType("wishlist_reminder"),
+		Priority: PriorityLow,
+		Title:    "Your saved items are waiting",
+		Body:     "Items on your wishlist are still available. Grab them before they're gone!",
+		Data: map[string]interface{}{
+			"item_count":   itemCount,
+			"click_action": "open_wishlist",
+		},
+		Channels:  ns.getPreferredChannels(prefs),
+		Read:      false,
+		CreatedAt: time.Now(),
+	}
+	return ns.sendNotification(ctx, notification)
+}
+
 // SendLowStockNotification sends a notification to the seller when product stock is low
 func (ns *NotificationService) SendLowStockNotification(ctx context.Context, sellerID string, productID string, productName string, remainingStock int32) error {
 	prefs, _ := ns.getUserPreferences(ctx, sellerID)
