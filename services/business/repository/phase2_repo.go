@@ -1049,6 +1049,19 @@ func (r *BusinessRepository) ConfirmPaymentByReference(ctx context.Context, refe
 		}
 		count++
 	}
+	rows.Close()
+
+	// Idempotency/audit ledger: record the reference the first time it's seen and
+	// bump seen_count on every re-delivery. The paid-transition above is already
+	// idempotent, so this is observability (how often Paystack retried) plus a
+	// first-seen gate any future payment side-effect can hang off of.
+	_, _ = r.db.Exec(ctx,
+		`INSERT INTO business.payment_events (reference, orders_confirmed, seen_count, created_at, last_seen_at)
+		 VALUES ($1, $2, 1, NOW(), NOW())
+		 ON CONFLICT (reference) DO UPDATE
+		   SET seen_count = business.payment_events.seen_count + 1, last_seen_at = NOW()`,
+		reference, count)
+
 	return count, buyerID, nil
 }
 
