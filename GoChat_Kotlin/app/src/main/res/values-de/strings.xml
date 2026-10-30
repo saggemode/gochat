@@ -675,4 +675,30 @@
     <string name="coupon_auto_apply">Automatisch an der Kasse anwenden (ohne Code)</string>
     <string name="coupon_item_auto_apply">Automatisch angewendet</string>
     <string name="checkout_coupon_auto_applied">Gutschein %1$s automatisch angewendet</string>
+
+    <!-- Batch 20: order disputes -->
+    <string name="dispute_report_problem">Problem melden</string>
+    <string name="dispute_details_hint">Details hinzufügen (optional)</string>
+    <string name="dispute_submit">Senden</string>
+    <string name="dispute_submitted">Problem gemeldet. Der Verkäufer prüft es.</string>
+    <string name="dispute_submit_failed">Meldung konnte nicht gesendet werden</string>
+    <string name="disputes_title">Streitfälle</string>
+    <string name="disputes_empty">Keine Streitfälle. Von Käufern gemeldete Probleme erscheinen hier.</string>
+    <string name="disputes_order_reason">%1$s — %2$s</string>
+    <string name="disputes_resolve">Lösen</string>
+    <string name="disputes_reject">Ablehnen</string>
+    <string name="disputes_status_resolved">Gelöst</string>
+    <string name="disputes_status_rejected">Abgelehnt</string>
+    <string name="disputes_note_hint">Notiz für den Käufer hinzufügen (optional)</string>
+    <string name="disputes_updated">Streitfall aktualisiert</string>
+    <string name="disputes_update_failed">Streitfall konnte nicht aktualisiert werden</string>
+    <string name="seller_hub_disputes">STREITFÄLLE</string>
+    <string name="seller_hub_disputes_sub">Von Käufern gemeldete Probleme zum Lösen</string>
+    <string-array name="dispute_reasons">
+        <item>Artikel entspricht nicht der Beschreibung</item>
+        <item>Artikel nicht erhalten</item>
+        <item>Beschädigt oder defekt</item>
+        <item>Falscher Artikel erhalten</item>
+        <item>Sonstiges</item>
+    </string-array>
 </resources>

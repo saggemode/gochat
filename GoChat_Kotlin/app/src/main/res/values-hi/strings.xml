@@ -675,4 +675,30 @@
     <string name="coupon_auto_apply">चेकआउट पर स्वतः लागू करें (बिना कोड)</string>
     <string name="coupon_item_auto_apply">स्वतः लागू</string>
     <string name="checkout_coupon_auto_applied">कूपन %1$s स्वतः लागू किया गया</string>
+
+    <!-- Batch 20: order disputes -->
+    <string name="dispute_report_problem">समस्या की रिपोर्ट करें</string>
+    <string name="dispute_details_hint">विवरण जोड़ें (वैकल्पिक)</string>
+    <string name="dispute_submit">सबमिट करें</string>
+    <string name="dispute_submitted">समस्या की रिपोर्ट की गई। विक्रेता इसकी समीक्षा करेगा।</string>
+    <string name="dispute_submit_failed">रिपोर्ट सबमिट नहीं हो सकी</string>
+    <string name="disputes_title">विवाद</string>
+    <string name="disputes_empty">कोई विवाद नहीं। खरीदारों द्वारा रिपोर्ट की गई समस्याएँ यहाँ दिखाई देंगी।</string>
+    <string name="disputes_order_reason">%1$s — %2$s</string>
+    <string name="disputes_resolve">हल करें</string>
+    <string name="disputes_reject">अस्वीकार करें</string>
+    <string name="disputes_status_resolved">हल हो गया</string>
+    <string name="disputes_status_rejected">अस्वीकृत</string>
+    <string name="disputes_note_hint">खरीदार के लिए नोट जोड़ें (वैकल्पिक)</string>
+    <string name="disputes_updated">विवाद अपडेट किया गया</string>
+    <string name="disputes_update_failed">विवाद अपडेट नहीं हो सका</string>
+    <string name="seller_hub_disputes">विवाद</string>
+    <string name="seller_hub_disputes_sub">हल करने के लिए खरीदारों द्वारा रिपोर्ट की गई समस्याएँ</string>
+    <string-array name="dispute_reasons">
+        <item>वस्तु विवरण के अनुसार नहीं</item>
+        <item>वस्तु प्राप्त नहीं हुई</item>
+        <item>क्षतिग्रस्त या दोषपूर्ण</item>
+        <item>गलत वस्तु मिली</item>
+        <item>अन्य</item>
+    </string-array>
 </resources>

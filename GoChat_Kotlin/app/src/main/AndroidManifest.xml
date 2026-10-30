@@ -279,6 +279,10 @@
             android:name=".ui.marketplace.PayoutLedgerActivity"
             android:exported="false"
             android:theme="@style/Theme.GoChat" />
+        <activity
+            android:name=".ui.marketplace.DisputesActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"

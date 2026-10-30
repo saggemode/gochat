@@ -675,4 +675,30 @@
     <string name="coupon_auto_apply">Aplicar automáticamente al pagar (sin código)</string>
     <string name="coupon_item_auto_apply">Aplicado automáticamente</string>
     <string name="checkout_coupon_auto_applied">Cupón %1$s aplicado automáticamente</string>
+
+    <!-- Batch 20: order disputes -->
+    <string name="dispute_report_problem">Reportar un problema</string>
+    <string name="dispute_details_hint">Añadir detalles (opcional)</string>
+    <string name="dispute_submit">Enviar</string>
+    <string name="dispute_submitted">Problema reportado. El vendedor lo revisará.</string>
+    <string name="dispute_submit_failed">No se pudo enviar el reporte</string>
+    <string name="disputes_title">Disputas</string>
+    <string name="disputes_empty">Sin disputas. Los problemas reportados por compradores aparecen aquí.</string>
+    <string name="disputes_order_reason">%1$s — %2$s</string>
+    <string name="disputes_resolve">Resolver</string>
+    <string name="disputes_reject">Rechazar</string>
+    <string name="disputes_status_resolved">Resuelta</string>
+    <string name="disputes_status_rejected">Rechazada</string>
+    <string name="disputes_note_hint">Añade una nota para el comprador (opcional)</string>
+    <string name="disputes_updated">Disputa actualizada</string>
+    <string name="disputes_update_failed">No se pudo actualizar la disputa</string>
+    <string name="seller_hub_disputes">DISPUTAS</string>
+    <string name="seller_hub_disputes_sub">Problemas reportados por compradores por resolver</string>
+    <string-array name="dispute_reasons">
+        <item>Artículo no coincide con la descripción</item>
+        <item>Artículo no recibido</item>
+        <item>Dañado o defectuoso</item>
+        <item>Artículo incorrecto recibido</item>
+        <item>Otro</item>
+    </string-array>
 </resources>

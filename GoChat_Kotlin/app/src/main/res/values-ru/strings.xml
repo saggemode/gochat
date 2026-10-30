@@ -675,4 +675,30 @@
     <string name="coupon_auto_apply">Применять автоматически при оформлении (без кода)</string>
     <string name="coupon_item_auto_apply">Применён автоматически</string>
     <string name="checkout_coupon_auto_applied">Купон %1$s применён автоматически</string>
+
+    <!-- Batch 20: order disputes -->
+    <string name="dispute_report_problem">Сообщить о проблеме</string>
+    <string name="dispute_details_hint">Добавить детали (необязательно)</string>
+    <string name="dispute_submit">Отправить</string>
+    <string name="dispute_submitted">О проблеме сообщено. Продавец рассмотрит её.</string>
+    <string name="dispute_submit_failed">Не удалось отправить сообщение</string>
+    <string name="disputes_title">Споры</string>
+    <string name="disputes_empty">Споров нет. Проблемы, о которых сообщили покупатели, появятся здесь.</string>
+    <string name="disputes_order_reason">%1$s — %2$s</string>
+    <string name="disputes_resolve">Решить</string>
+    <string name="disputes_reject">Отклонить</string>
+    <string name="disputes_status_resolved">Решён</string>
+    <string name="disputes_status_rejected">Отклонён</string>
+    <string name="disputes_note_hint">Добавьте примечание для покупателя (необязательно)</string>
+    <string name="disputes_updated">Спор обновлён</string>
+    <string name="disputes_update_failed">Не удалось обновить спор</string>
+    <string name="seller_hub_disputes">СПОРЫ</string>
+    <string name="seller_hub_disputes_sub">Сообщённые покупателями проблемы для решения</string>
+    <string-array name="dispute_reasons">
+        <item>Товар не соответствует описанию</item>
+        <item>Товар не получен</item>
+        <item>Повреждён или неисправен</item>
+        <item>Получен не тот товар</item>
+        <item>Другое</item>
+    </string-array>
 </resources>

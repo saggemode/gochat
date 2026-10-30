@@ -679,4 +679,30 @@
     <string name="coupon_auto_apply">Appliquer automatiquement au paiement (sans code)</string>
     <string name="coupon_item_auto_apply">Appliqué automatiquement</string>
     <string name="checkout_coupon_auto_applied">Code %1$s appliqué automatiquement</string>
+
+    <!-- Batch 20: order disputes -->
+    <string name="dispute_report_problem">Signaler un problème</string>
+    <string name="dispute_details_hint">Ajouter des détails (facultatif)</string>
+    <string name="dispute_submit">Envoyer</string>
+    <string name="dispute_submitted">Problème signalé. Le vendeur l\'examinera.</string>
+    <string name="dispute_submit_failed">Impossible d\'envoyer le signalement</string>
+    <string name="disputes_title">Litiges</string>
+    <string name="disputes_empty">Aucun litige. Les problèmes signalés par les acheteurs apparaissent ici.</string>
+    <string name="disputes_order_reason">%1$s — %2$s</string>
+    <string name="disputes_resolve">Résoudre</string>
+    <string name="disputes_reject">Rejeter</string>
+    <string name="disputes_status_resolved">Résolu</string>
+    <string name="disputes_status_rejected">Rejeté</string>
+    <string name="disputes_note_hint">Ajouter une note pour l\'acheteur (facultatif)</string>
+    <string name="disputes_updated">Litige mis à jour</string>
+    <string name="disputes_update_failed">Impossible de mettre à jour le litige</string>
+    <string name="seller_hub_disputes">LITIGES</string>
+    <string name="seller_hub_disputes_sub">Problèmes signalés par les acheteurs à résoudre</string>
+    <string-array name="dispute_reasons">
+        <item>Article non conforme à la description</item>
+        <item>Article non reçu</item>
+        <item>Endommagé ou défectueux</item>
+        <item>Mauvais article reçu</item>
+        <item>Autre</item>
+    </string-array>
 </resources>

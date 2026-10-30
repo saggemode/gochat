@@ -675,4 +675,30 @@
     <string name="coupon_auto_apply">Tumia kiotomatiki wakati wa malipo (bila msimbo)</string>
     <string name="coupon_item_auto_apply">Imetumika kiotomatiki</string>
     <string name="checkout_coupon_auto_applied">Kuponi %1$s imetumika kiotomatiki</string>
+
+    <!-- Batch 20: order disputes -->
+    <string name="dispute_report_problem">Ripoti tatizo</string>
+    <string name="dispute_details_hint">Ongeza maelezo (si lazima)</string>
+    <string name="dispute_submit">Wasilisha</string>
+    <string name="dispute_submitted">Tatizo limeripotiwa. Muuzaji atalipitia.</string>
+    <string name="dispute_submit_failed">Imeshindwa kuwasilisha ripoti</string>
+    <string name="disputes_title">Migogoro</string>
+    <string name="disputes_empty">Hakuna migogoro. Matatizo yaliyoripotiwa na wanunuzi yataonekana hapa.</string>
+    <string name="disputes_order_reason">%1$s — %2$s</string>
+    <string name="disputes_resolve">Tatua</string>
+    <string name="disputes_reject">Kataa</string>
+    <string name="disputes_status_resolved">Imetatuliwa</string>
+    <string name="disputes_status_rejected">Imekataliwa</string>
+    <string name="disputes_note_hint">Ongeza dokezo kwa mnunuzi (si lazima)</string>
+    <string name="disputes_updated">Mgogoro umesasishwa</string>
+    <string name="disputes_update_failed">Imeshindwa kusasisha mgogoro</string>
+    <string name="seller_hub_disputes">MIGOGORO</string>
+    <string name="seller_hub_disputes_sub">Matatizo yaliyoripotiwa na wanunuzi ya kutatua</string>
+    <string-array name="dispute_reasons">
+        <item>Bidhaa haiendani na maelezo</item>
+        <item>Bidhaa haikupokelewa</item>
+        <item>Imeharibika au ina kasoro</item>
+        <item>Bidhaa isiyo sahihi imepokelewa</item>
+        <item>Nyingine</item>
+    </string-array>
 </resources>

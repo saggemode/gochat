@@ -350,6 +350,10 @@ class MarketplaceFragment : Fragment() {
             startActivity(Intent(requireContext(), PayoutLedgerActivity::class.java))
         }
 
+        binding.cardDisputes.setOnClickListener {
+            startActivity(Intent(requireContext(), DisputesActivity::class.java))
+        }
+
         binding.cardMetricRevenue.setOnClickListener {
             val intent = Intent(requireContext(), OrdersActivity::class.java).apply {
                 putExtra("IS_SELLER_VIEW", true)

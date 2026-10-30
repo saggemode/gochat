@@ -789,4 +789,30 @@
     <string name="coupon_auto_apply">Apply automatically at checkout (no code)</string>
     <string name="coupon_item_auto_apply">Auto-applied</string>
     <string name="checkout_coupon_auto_applied">Coupon %1$s auto-applied</string>
+
+    <!-- Order disputes -->
+    <string name="dispute_report_problem">Report a problem</string>
+    <string name="dispute_details_hint">Add details (optional)</string>
+    <string name="dispute_submit">Submit</string>
+    <string name="dispute_submitted">Problem reported. The seller will review it.</string>
+    <string name="dispute_submit_failed">Could not submit report</string>
+    <string name="disputes_title">Disputes</string>
+    <string name="disputes_empty">No disputes. Buyer-reported problems appear here.</string>
+    <string name="disputes_order_reason">%1$s — %2$s</string>
+    <string name="disputes_resolve">Resolve</string>
+    <string name="disputes_reject">Reject</string>
+    <string name="disputes_status_resolved">Resolved</string>
+    <string name="disputes_status_rejected">Rejected</string>
+    <string name="disputes_note_hint">Add a note for the buyer (optional)</string>
+    <string name="disputes_updated">Dispute updated</string>
+    <string name="disputes_update_failed">Could not update dispute</string>
+    <string name="seller_hub_disputes">DISPUTES</string>
+    <string name="seller_hub_disputes_sub">Buyer-reported problems to resolve</string>
+    <string-array name="dispute_reasons">
+        <item>Item not as described</item>
+        <item>Item not received</item>
+        <item>Damaged or defective</item>
+        <item>Wrong item received</item>
+        <item>Other</item>
+    </string-array>
 </resources>

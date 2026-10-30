@@ -1510,6 +1510,79 @@ class MarketplaceRepository @Inject constructor(
         }
     }
 
+    /** An order dispute as seen by buyer and seller. */
+    data class Dispute(
+        val id: String,
+        val orderId: String,
+        val orderNumber: String,
+        val buyerName: String,
+        val reason: String,
+        val details: String,
+        val status: String,        // open, resolved, rejected
+        val resolution: String,
+        val createdAt: String
+    )
+
+    private fun parseDispute(o: JsonObject?): Dispute? {
+        if (o == null) return null
+        val id = o["id"]?.jsonPrimitive?.contentOrNull ?: return null
+        return Dispute(
+            id = id,
+            orderId = o["order_id"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            orderNumber = o["order_number"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            buyerName = o["buyer_name"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            reason = o["reason"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            details = o["details"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            status = o["status"]?.jsonPrimitive?.contentOrNull ?: "open",
+            resolution = o["resolution"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            createdAt = o["created_at"]?.jsonPrimitive?.contentOrNull.orEmpty()
+        )
+    }
+
+    /** Buyer raises a dispute on one of their orders. */
+    suspend fun raiseDispute(orderId: String, reason: String, details: String): Result<Dispute> {
+        return try {
+            val body = buildJsonObject {
+                put("reason", reason)
+                put("details", details)
+            }
+            val resp = api.raiseDispute(orderId, body)
+            if (!resp.isSuccessful) return Result.failure(Exception("HTTP ${resp.code()}"))
+            parseDispute(resp.body())?.let { Result.success(it) }
+                ?: Result.failure(Exception("Malformed dispute response"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** Seller lists disputes raised against their store. */
+    suspend fun getStoreDisputes(): Result<List<Dispute>> {
+        return try {
+            val resp = api.getStoreDisputes()
+            if (!resp.isSuccessful) return Result.success(emptyList())
+            val arr = resp.body() as? JsonArray
+            Result.success(arr?.mapNotNull { parseDispute(it as? JsonObject) }.orEmpty())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** Seller resolves ("resolved") or rejects ("rejected") a dispute with a note. */
+    suspend fun resolveDispute(disputeId: String, action: String, note: String): Result<Dispute> {
+        return try {
+            val body = buildJsonObject {
+                put("action", action)
+                put("note", note)
+            }
+            val resp = api.resolveDispute(disputeId, body)
+            if (!resp.isSuccessful) return Result.failure(Exception("HTTP ${resp.code()}"))
+            parseDispute(resp.body())?.let { Result.success(it) }
+                ?: Result.failure(Exception("Malformed dispute response"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     data class PaymentInit(val authorizationUrl: String, val reference: String)
 
     /**

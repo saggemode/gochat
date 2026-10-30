@@ -675,4 +675,30 @@
     <string name="coupon_auto_apply">结账时自动应用（无需代码）</string>
     <string name="coupon_item_auto_apply">已自动应用</string>
     <string name="checkout_coupon_auto_applied">已自动应用优惠券 %1$s</string>
+
+    <!-- Batch 20: order disputes -->
+    <string name="dispute_report_problem">报告问题</string>
+    <string name="dispute_details_hint">添加详情（可选）</string>
+    <string name="dispute_submit">提交</string>
+    <string name="dispute_submitted">问题已报告。卖家将进行审核。</string>
+    <string name="dispute_submit_failed">无法提交报告</string>
+    <string name="disputes_title">纠纷</string>
+    <string name="disputes_empty">暂无纠纷。买家报告的问题将显示在此处。</string>
+    <string name="disputes_order_reason">%1$s — %2$s</string>
+    <string name="disputes_resolve">解决</string>
+    <string name="disputes_reject">驳回</string>
+    <string name="disputes_status_resolved">已解决</string>
+    <string name="disputes_status_rejected">已驳回</string>
+    <string name="disputes_note_hint">为买家添加备注（可选）</string>
+    <string name="disputes_updated">纠纷已更新</string>
+    <string name="disputes_update_failed">无法更新纠纷</string>
+    <string name="seller_hub_disputes">纠纷</string>
+    <string name="seller_hub_disputes_sub">待解决的买家报告问题</string>
+    <string-array name="dispute_reasons">
+        <item>商品与描述不符</item>
+        <item>未收到商品</item>
+        <item>已损坏或有缺陷</item>
+        <item>收到错误商品</item>
+        <item>其他</item>
+    </string-array>
 </resources>

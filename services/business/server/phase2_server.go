@@ -528,6 +528,67 @@ func (s *BusinessServer) GetBestCoupon(ctx context.Context, req *pb.GetBestCoupo
 	}, nil
 }
 
+func disputeToPB(d *repository.Dispute) *pb.Dispute {
+	if d == nil {
+		return nil
+	}
+	resolved := ""
+	if d.ResolvedAt != nil {
+		resolved = d.ResolvedAt.Format(time.RFC3339)
+	}
+	return &pb.Dispute{
+		Id:          d.ID,
+		OrderId:     d.OrderID,
+		OrderNumber: d.OrderNumber,
+		BusinessId:  d.BusinessID,
+		BuyerId:     d.BuyerID,
+		BuyerName:   d.BuyerName,
+		Reason:      d.Reason,
+		Details:     d.Details,
+		Status:      d.Status,
+		Resolution:  d.Resolution,
+		CreatedAt:   d.CreatedAt.Format(time.RFC3339),
+		ResolvedAt:  resolved,
+	}
+}
+
+func (s *BusinessServer) RaiseDispute(ctx context.Context, req *pb.RaiseDisputeRequest) (*pb.DisputeResponse, error) {
+	if req.OrderId == "" || req.BuyerId == "" || req.Reason == "" {
+		return nil, status.Error(codes.InvalidArgument, "order_id, buyer_id and reason are required")
+	}
+	d, err := s.repo.RaiseDispute(ctx, req.OrderId, req.BuyerId, req.Reason, req.Details)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "raise dispute: %v", err)
+	}
+	return &pb.DisputeResponse{Dispute: disputeToPB(d)}, nil
+}
+
+func (s *BusinessServer) ListStoreDisputes(ctx context.Context, req *pb.ListStoreDisputesRequest) (*pb.ListStoreDisputesResponse, error) {
+	if req.BusinessId == "" {
+		return nil, status.Error(codes.InvalidArgument, "business_id is required")
+	}
+	ds, err := s.repo.ListStoreDisputes(ctx, req.BusinessId, req.Status)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list disputes: %v", err)
+	}
+	out := make([]*pb.Dispute, len(ds))
+	for i, d := range ds {
+		out[i] = disputeToPB(d)
+	}
+	return &pb.ListStoreDisputesResponse{Disputes: out}, nil
+}
+
+func (s *BusinessServer) ResolveDispute(ctx context.Context, req *pb.ResolveDisputeRequest) (*pb.DisputeResponse, error) {
+	if req.DisputeId == "" || req.BusinessId == "" {
+		return nil, status.Error(codes.InvalidArgument, "dispute_id and business_id are required")
+	}
+	d, err := s.repo.ResolveDispute(ctx, req.DisputeId, req.BusinessId, req.Action, req.Note)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "resolve dispute: %v", err)
+	}
+	return &pb.DisputeResponse{Dispute: disputeToPB(d)}, nil
+}
+
 func (s *BusinessServer) UpdateCoupon(ctx context.Context, req *pb.UpdateCouponRequest) (*pb.CreateCouponResponse, error) {
 	if req.BusinessId == "" || req.CouponId == "" {
 		return nil, status.Error(codes.InvalidArgument, "business_id and coupon_id are required")

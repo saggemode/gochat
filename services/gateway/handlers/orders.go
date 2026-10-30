@@ -556,6 +556,83 @@ func (h *BusinessHandler) GetBestCoupon(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// RaiseDispute lets the signed-in buyer open a dispute on one of their orders.
+func (h *BusinessHandler) RaiseDispute(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	orderID := c.Param("id")
+
+	var req struct {
+		Reason  string `json:"reason" binding:"required"`
+		Details string `json:"details"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := h.client.RaiseDispute(c.Request.Context(), &pb.RaiseDisputeRequest{
+		OrderId: orderID,
+		BuyerId: userID,
+		Reason:  req.Reason,
+		Details: req.Details,
+	}, jsonOpt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, resp.Dispute)
+}
+
+// ListStoreDisputes returns disputes raised against the signed-in seller's store.
+func (h *BusinessHandler) ListStoreDisputes(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	resp, err := h.client.ListStoreDisputes(c.Request.Context(), &pb.ListStoreDisputesRequest{
+		BusinessId: userID,
+		Status:     c.Query("status"),
+	}, jsonOpt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, resp.Disputes)
+}
+
+// ResolveDispute lets the seller resolve or reject a dispute with a note.
+func (h *BusinessHandler) ResolveDispute(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	disputeID := c.Param("id")
+
+	var req struct {
+		Action string `json:"action" binding:"required"` // resolved | rejected
+		Note   string `json:"note"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := h.client.ResolveDispute(c.Request.Context(), &pb.ResolveDisputeRequest{
+		DisputeId:  disputeID,
+		BusinessId: userID,
+		Action:     req.Action,
+		Note:       req.Note,
+	}, jsonOpt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, resp.Dispute)
+}
+
 func (h *BusinessHandler) UpdateCoupon(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == "" {

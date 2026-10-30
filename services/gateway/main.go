@@ -662,6 +662,11 @@ func main() {
 		authRequired.POST("/marketplace/coupons/validate", businessHandler.ValidateCoupon)
 		authRequired.POST("/marketplace/coupons/best", businessHandler.GetBestCoupon)
 
+		// Order disputes
+		authRequired.POST("/marketplace/orders/:id/dispute", businessHandler.RaiseDispute)
+		authRequired.GET("/business/disputes", businessHandler.ListStoreDisputes)
+		authRequired.POST("/business/disputes/:id/resolve", businessHandler.ResolveDispute)
+
 		// Wishlist
 		authRequired.POST("/marketplace/products/:id/wishlist", businessHandler.ToggleWishlist)
 		authRequired.GET("/marketplace/wishlist", businessHandler.GetWishlist)

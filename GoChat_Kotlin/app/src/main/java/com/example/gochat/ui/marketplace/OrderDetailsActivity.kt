@@ -146,7 +146,16 @@ class OrderDetailsActivity : AppCompatActivity() {
 
         if (!isSeller) {
             binding.btnOrderAction.visibility = View.GONE
-            binding.btnCancelOrder.visibility = View.GONE
+            // Buyer side: once an order is paid, the buyer can report a problem
+            // (dispute). Reuses the cancel/refund button slot, which is unused for
+            // buyers, so no extra layout is needed.
+            val disputable = order.status in setOf(
+                OrderStatus.PAID, OrderStatus.PROCESSING, OrderStatus.SHIPPED,
+                OrderStatus.OUT_FOR_DELIVERY, OrderStatus.DELIVERED
+            )
+            binding.btnCancelOrder.visibility = if (disputable) View.VISIBLE else View.GONE
+            binding.btnCancelOrder.text = getString(R.string.dispute_report_problem)
+            binding.btnCancelOrder.setOnClickListener { showRaiseDisputeDialog(order) }
             return
         }
 
@@ -201,6 +210,51 @@ class OrderDetailsActivity : AppCompatActivity() {
                             Toast.LENGTH_LONG
                         ).show()
                     }
+                }
+            }
+            .show()
+    }
+
+    /** Buyer-facing dialog to report a problem (raise a dispute) on an order. */
+    private fun showRaiseDisputeDialog(order: Order) {
+        val reasons = resources.getStringArray(R.array.dispute_reasons)
+        val density = resources.displayMetrics.density
+        val pad = (16 * density).toInt()
+
+        val reasonSpinner = android.widget.Spinner(this).apply {
+            adapter = android.widget.ArrayAdapter(
+                this@OrderDetailsActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                reasons
+            )
+        }
+        val detailsInput = android.widget.EditText(this).apply {
+            hint = getString(R.string.dispute_details_hint)
+            minLines = 2
+        }
+        val container = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(pad, pad / 2, pad, 0)
+            addView(reasonSpinner)
+            addView(detailsInput)
+        }
+
+        android.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.dispute_report_problem))
+            .setView(container)
+            .setNegativeButton(getString(R.string.common_no), null)
+            .setPositiveButton(getString(R.string.dispute_submit)) { _, _ ->
+                val reason = reasons.getOrElse(reasonSpinner.selectedItemPosition) { reasons.first() }
+                lifecycleScope.launch {
+                    val res = marketplaceRepository.raiseDispute(
+                        order.id, reason, detailsInput.text.toString().trim()
+                    )
+                    Toast.makeText(
+                        this@OrderDetailsActivity,
+                        if (res.isSuccess) getString(R.string.dispute_submitted)
+                        else getString(R.string.dispute_submit_failed),
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
             }
             .show()

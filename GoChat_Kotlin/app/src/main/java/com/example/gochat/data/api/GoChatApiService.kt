@@ -463,6 +463,21 @@ interface GoChatApiService {
     @GET(ApiConstants.BUSINESS_PAYOUT_LEDGER)
     suspend fun getPayoutLedger(): Response<JsonObject>
 
+    @POST("api/v1/marketplace/orders/{id}/dispute")
+    suspend fun raiseDispute(
+        @Path("id") orderId: String,
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @GET("api/v1/business/disputes")
+    suspend fun getStoreDisputes(): Response<JsonElement>
+
+    @POST("api/v1/business/disputes/{id}/resolve")
+    suspend fun resolveDispute(
+        @Path("id") disputeId: String,
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
     @POST(ApiConstants.ORDERS)
     suspend fun placeOrder(
         @Body body: JsonObject

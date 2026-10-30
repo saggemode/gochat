@@ -2230,6 +2230,121 @@ func (r *BusinessRepository) GetBestCoupon(ctx context.Context, businessID strin
 	return true, "Coupon applied successfully", bestDiscount, bestCoupon, nil
 }
 
+// ── Order Disputes Repository ───────────────────────────────────────────────
+
+type Dispute struct {
+	ID          string
+	OrderID     string
+	OrderNumber string
+	BusinessID  string
+	BuyerID     string
+	BuyerName   string
+	Reason      string
+	Details     string
+	Status      string
+	Resolution  string
+	CreatedAt   time.Time
+	ResolvedAt  *time.Time
+}
+
+func (r *BusinessRepository) scanDispute(row interface {
+	Scan(dest ...any) error
+}) (*Dispute, error) {
+	d := &Dispute{}
+	err := row.Scan(&d.ID, &d.OrderID, &d.OrderNumber, &d.BusinessID, &d.BuyerID, &d.BuyerName,
+		&d.Reason, &d.Details, &d.Status, &d.Resolution, &d.CreatedAt, &d.ResolvedAt)
+	return d, err
+}
+
+// RaiseDispute lets the order's buyer open a dispute. The order must exist and
+// belong to the buyer; business id and order number are taken from the order.
+func (r *BusinessRepository) RaiseDispute(ctx context.Context, orderID, buyerID, reason, details string) (*Dispute, error) {
+	var bizID, orderNum, buyerName string
+	err := r.db.QueryRow(ctx,
+		`SELECT business_id, order_number, COALESCE(buyer_name, '') FROM business.orders WHERE id = $1 AND buyer_id = $2`,
+		orderID, buyerID).Scan(&bizID, &orderNum, &buyerName)
+	if err != nil {
+		return nil, fmt.Errorf("order not found")
+	}
+
+	id := uuid.New().String()
+	_, err = r.db.Exec(ctx,
+		`INSERT INTO business.order_disputes (id, order_id, business_id, buyer_id, reason, details, status, created_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, 'open', NOW())`,
+		id, orderID, bizID, buyerID, reason, details)
+	if err != nil {
+		return nil, fmt.Errorf("raise dispute: %w", err)
+	}
+
+	_ = r.notificationService.SendOrderUpdateNotification(ctx, bizID, orderID, orderNum, "disputed")
+
+	return &Dispute{
+		ID: id, OrderID: orderID, OrderNumber: orderNum, BusinessID: bizID, BuyerID: buyerID,
+		BuyerName: buyerName, Reason: reason, Details: details, Status: "open", CreatedAt: time.Now(),
+	}, nil
+}
+
+func (r *BusinessRepository) ListStoreDisputes(ctx context.Context, businessID, statusFilter string) ([]*Dispute, error) {
+	q := `SELECT d.id, d.order_id, COALESCE(o.order_number, ''), d.business_id, d.buyer_id,
+	             COALESCE(o.buyer_name, ''), d.reason, d.details, d.status, d.resolution, d.created_at, d.resolved_at
+	      FROM business.order_disputes d
+	      LEFT JOIN business.orders o ON o.id = d.order_id
+	      WHERE d.business_id = $1`
+	args := []any{businessID}
+	if statusFilter != "" {
+		q += ` AND d.status = $2`
+		args = append(args, statusFilter)
+	}
+	q += ` ORDER BY d.created_at DESC`
+
+	rows, err := r.db.Query(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list disputes: %w", err)
+	}
+	defer rows.Close()
+
+	var disputes []*Dispute
+	for rows.Next() {
+		if d, err := r.scanDispute(rows); err == nil {
+			disputes = append(disputes, d)
+		}
+	}
+	return disputes, nil
+}
+
+// ResolveDispute marks a dispute resolved or rejected, scoped to the owning
+// business. Money refunds remain a separate action (the Paystack refund flow).
+func (r *BusinessRepository) ResolveDispute(ctx context.Context, disputeID, businessID, action, note string) (*Dispute, error) {
+	status := "resolved"
+	if action == "rejected" {
+		status = "rejected"
+	}
+	tag, err := r.db.Exec(ctx,
+		`UPDATE business.order_disputes SET status = $3, resolution = $4, resolved_at = NOW()
+		 WHERE id = $1 AND business_id = $2 AND status = 'open'`,
+		disputeID, businessID, status, note)
+	if err != nil {
+		return nil, fmt.Errorf("resolve dispute: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return nil, fmt.Errorf("dispute not found or already resolved")
+	}
+
+	row := r.db.QueryRow(ctx,
+		`SELECT d.id, d.order_id, COALESCE(o.order_number, ''), d.business_id, d.buyer_id,
+		        COALESCE(o.buyer_name, ''), d.reason, d.details, d.status, d.resolution, d.created_at, d.resolved_at
+		 FROM business.order_disputes d
+		 LEFT JOIN business.orders o ON o.id = d.order_id
+		 WHERE d.id = $1 AND d.business_id = $2`, disputeID, businessID)
+	d, err := r.scanDispute(row)
+	if err != nil {
+		return nil, fmt.Errorf("reload dispute: %w", err)
+	}
+	// Notify the buyer their dispute was handled.
+	_ = r.notificationService.SendOrderUpdateNotification(ctx, d.BuyerID, d.OrderID, d.OrderNumber, "dispute_"+status)
+	return d, nil
+}
+
 // ── Wishlist Repository ─────────────────────────────────────────────────────
 
 func (r *BusinessRepository) ToggleWishlist(ctx context.Context, userID, productID string) (bool, error) {

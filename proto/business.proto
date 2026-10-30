@@ -93,6 +93,11 @@ service BusinessService {
   rpc DeleteCoupon(DeleteCouponRequest) returns (DeleteCouponResponse);
   rpc GetBestCoupon(GetBestCouponRequest) returns (ValidateCouponResponse);
 
+  // Order disputes
+  rpc RaiseDispute(RaiseDisputeRequest) returns (DisputeResponse);
+  rpc ListStoreDisputes(ListStoreDisputesRequest) returns (ListStoreDisputesResponse);
+  rpc ResolveDispute(ResolveDisputeRequest) returns (DisputeResponse);
+
   // Wishlist
   rpc ToggleWishlist(ToggleWishlistRequest) returns (ToggleWishlistResponse);
   rpc GetWishlist(GetWishlistRequest) returns (GetWishlistResponse);
@@ -872,6 +877,40 @@ message DeleteCouponRequest {
   string coupon_id   = 2;
 }
 message DeleteCouponResponse { bool success = 1; }
+
+// Order disputes
+message Dispute {
+  string id           = 1;
+  string order_id     = 2;
+  string order_number = 3;
+  string business_id  = 4;
+  string buyer_id     = 5;
+  string buyer_name   = 6;
+  string reason       = 7;
+  string details      = 8;
+  string status       = 9;  // open, resolved, rejected
+  string resolution   = 10;
+  string created_at   = 11;
+  string resolved_at  = 12;
+}
+message RaiseDisputeRequest {
+  string order_id = 1;
+  string buyer_id = 2;
+  string reason   = 3;
+  string details  = 4;
+}
+message ListStoreDisputesRequest {
+  string business_id = 1;
+  string status      = 2; // optional filter
+}
+message ListStoreDisputesResponse { repeated Dispute disputes = 1; }
+message ResolveDisputeRequest {
+  string dispute_id  = 1;
+  string business_id = 2;
+  string action      = 3; // resolved | rejected
+  string note        = 4;
+}
+message DisputeResponse { Dispute dispute = 1; }
 
 message ValidateCouponRequest {
   string          business_id = 1;

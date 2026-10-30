@@ -72,6 +72,9 @@ const (
 	BusinessService_UpdateCoupon_FullMethodName                    = "/business.BusinessService/UpdateCoupon"
 	BusinessService_DeleteCoupon_FullMethodName                    = "/business.BusinessService/DeleteCoupon"
 	BusinessService_GetBestCoupon_FullMethodName                   = "/business.BusinessService/GetBestCoupon"
+	BusinessService_RaiseDispute_FullMethodName                    = "/business.BusinessService/RaiseDispute"
+	BusinessService_ListStoreDisputes_FullMethodName               = "/business.BusinessService/ListStoreDisputes"
+	BusinessService_ResolveDispute_FullMethodName                  = "/business.BusinessService/ResolveDispute"
 	BusinessService_ToggleWishlist_FullMethodName                  = "/business.BusinessService/ToggleWishlist"
 	BusinessService_GetWishlist_FullMethodName                     = "/business.BusinessService/GetWishlist"
 	BusinessService_AskProductQuestion_FullMethodName              = "/business.BusinessService/AskProductQuestion"
@@ -167,6 +170,10 @@ type BusinessServiceClient interface {
 	UpdateCoupon(ctx context.Context, in *UpdateCouponRequest, opts ...grpc.CallOption) (*CreateCouponResponse, error)
 	DeleteCoupon(ctx context.Context, in *DeleteCouponRequest, opts ...grpc.CallOption) (*DeleteCouponResponse, error)
 	GetBestCoupon(ctx context.Context, in *GetBestCouponRequest, opts ...grpc.CallOption) (*ValidateCouponResponse, error)
+	// Order disputes
+	RaiseDispute(ctx context.Context, in *RaiseDisputeRequest, opts ...grpc.CallOption) (*DisputeResponse, error)
+	ListStoreDisputes(ctx context.Context, in *ListStoreDisputesRequest, opts ...grpc.CallOption) (*ListStoreDisputesResponse, error)
+	ResolveDispute(ctx context.Context, in *ResolveDisputeRequest, opts ...grpc.CallOption) (*DisputeResponse, error)
 	// Wishlist
 	ToggleWishlist(ctx context.Context, in *ToggleWishlistRequest, opts ...grpc.CallOption) (*ToggleWishlistResponse, error)
 	GetWishlist(ctx context.Context, in *GetWishlistRequest, opts ...grpc.CallOption) (*GetWishlistResponse, error)
@@ -734,6 +741,36 @@ func (c *businessServiceClient) GetBestCoupon(ctx context.Context, in *GetBestCo
 	return out, nil
 }
 
+func (c *businessServiceClient) RaiseDispute(ctx context.Context, in *RaiseDisputeRequest, opts ...grpc.CallOption) (*DisputeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DisputeResponse)
+	err := c.cc.Invoke(ctx, BusinessService_RaiseDispute_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *businessServiceClient) ListStoreDisputes(ctx context.Context, in *ListStoreDisputesRequest, opts ...grpc.CallOption) (*ListStoreDisputesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListStoreDisputesResponse)
+	err := c.cc.Invoke(ctx, BusinessService_ListStoreDisputes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *businessServiceClient) ResolveDispute(ctx context.Context, in *ResolveDisputeRequest, opts ...grpc.CallOption) (*DisputeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DisputeResponse)
+	err := c.cc.Invoke(ctx, BusinessService_ResolveDispute_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *businessServiceClient) ToggleWishlist(ctx context.Context, in *ToggleWishlistRequest, opts ...grpc.CallOption) (*ToggleWishlistResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ToggleWishlistResponse)
@@ -1007,6 +1044,10 @@ type BusinessServiceServer interface {
 	UpdateCoupon(context.Context, *UpdateCouponRequest) (*CreateCouponResponse, error)
 	DeleteCoupon(context.Context, *DeleteCouponRequest) (*DeleteCouponResponse, error)
 	GetBestCoupon(context.Context, *GetBestCouponRequest) (*ValidateCouponResponse, error)
+	// Order disputes
+	RaiseDispute(context.Context, *RaiseDisputeRequest) (*DisputeResponse, error)
+	ListStoreDisputes(context.Context, *ListStoreDisputesRequest) (*ListStoreDisputesResponse, error)
+	ResolveDispute(context.Context, *ResolveDisputeRequest) (*DisputeResponse, error)
 	// Wishlist
 	ToggleWishlist(context.Context, *ToggleWishlistRequest) (*ToggleWishlistResponse, error)
 	GetWishlist(context.Context, *GetWishlistRequest) (*GetWishlistResponse, error)
@@ -1202,6 +1243,15 @@ func (UnimplementedBusinessServiceServer) DeleteCoupon(context.Context, *DeleteC
 }
 func (UnimplementedBusinessServiceServer) GetBestCoupon(context.Context, *GetBestCouponRequest) (*ValidateCouponResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetBestCoupon not implemented")
+}
+func (UnimplementedBusinessServiceServer) RaiseDispute(context.Context, *RaiseDisputeRequest) (*DisputeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RaiseDispute not implemented")
+}
+func (UnimplementedBusinessServiceServer) ListStoreDisputes(context.Context, *ListStoreDisputesRequest) (*ListStoreDisputesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListStoreDisputes not implemented")
+}
+func (UnimplementedBusinessServiceServer) ResolveDispute(context.Context, *ResolveDisputeRequest) (*DisputeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResolveDispute not implemented")
 }
 func (UnimplementedBusinessServiceServer) ToggleWishlist(context.Context, *ToggleWishlistRequest) (*ToggleWishlistResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ToggleWishlist not implemented")
@@ -2238,6 +2288,60 @@ func _BusinessService_GetBestCoupon_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BusinessService_RaiseDispute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RaiseDisputeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BusinessServiceServer).RaiseDispute(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BusinessService_RaiseDispute_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BusinessServiceServer).RaiseDispute(ctx, req.(*RaiseDisputeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BusinessService_ListStoreDisputes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListStoreDisputesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BusinessServiceServer).ListStoreDisputes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BusinessService_ListStoreDisputes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BusinessServiceServer).ListStoreDisputes(ctx, req.(*ListStoreDisputesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BusinessService_ResolveDispute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResolveDisputeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BusinessServiceServer).ResolveDispute(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BusinessService_ResolveDispute_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BusinessServiceServer).ResolveDispute(ctx, req.(*ResolveDisputeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _BusinessService_ToggleWishlist_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ToggleWishlistRequest)
 	if err := dec(in); err != nil {
@@ -2816,6 +2920,18 @@ var BusinessService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetBestCoupon",
 			Handler:    _BusinessService_GetBestCoupon_Handler,
+		},
+		{
+			MethodName: "RaiseDispute",
+			Handler:    _BusinessService_RaiseDispute_Handler,
+		},
+		{
+			MethodName: "ListStoreDisputes",
+			Handler:    _BusinessService_ListStoreDisputes_Handler,
+		},
+		{
+			MethodName: "ResolveDispute",
+			Handler:    _BusinessService_ResolveDispute_Handler,
 		},
 		{
 			MethodName: "ToggleWishlist",
