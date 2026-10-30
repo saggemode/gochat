@@ -638,4 +638,8 @@
     <string name="coupon_cancel">Abbrechen</string>
     <string name="coupon_deleted">Gutschein gelöscht</string>
     <string name="coupon_delete_failed">Gutschein konnte nicht gelöscht werden</string>
+
+    <!-- Batch 16: stock / inventory -->
+    <string name="product_out_of_stock">Nicht auf Lager</string>
+    <string name="checkout_out_of_stock">Einige Artikel sind nicht auf Lager</string>
 </resources>

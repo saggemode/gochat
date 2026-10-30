@@ -638,4 +638,8 @@
     <string name="coupon_cancel">Cancelar</string>
     <string name="coupon_deleted">Cupom excluído</string>
     <string name="coupon_delete_failed">Não foi possível excluir o cupom</string>
+
+    <!-- Batch 16: stock / inventory -->
+    <string name="product_out_of_stock">Esgotado</string>
+    <string name="checkout_out_of_stock">Alguns itens estão esgotados</string>
 </resources>

@@ -546,10 +546,16 @@ func (r *BusinessRepository) CreateOrders(ctx context.Context, input *CreateOrde
 				})
 			}
 
-			// Deduct stock & increment order count
-			_, err = tx.Exec(ctx, `UPDATE business.products SET quantity = quantity - $1, order_count = order_count + $1 WHERE id = $2`, itemInput.Quantity, itemInput.ProductID)
+			// Deduct stock & increment order count. The `quantity >= $1` guard makes
+			// the decrement itself the authoritative oversell gate: even though the
+			// row is already locked by the SELECT ... FOR UPDATE above, this refuses
+			// to drop stock below zero (RowsAffected == 0) as a second line of defence.
+			tag, err := tx.Exec(ctx, `UPDATE business.products SET quantity = quantity - $1, order_count = order_count + $1 WHERE id = $2 AND quantity >= $1`, itemInput.Quantity, itemInput.ProductID)
 			if err != nil {
 				return nil, fmt.Errorf("update stock for product %s: %w", itemInput.ProductID, err)
+			}
+			if tag.RowsAffected() == 0 {
+				return nil, fmt.Errorf("insufficient stock for product %s (available: %d, requested: %d)", pName, stock, itemInput.Quantity)
 			}
 
 			// Trigger low stock alert if needed

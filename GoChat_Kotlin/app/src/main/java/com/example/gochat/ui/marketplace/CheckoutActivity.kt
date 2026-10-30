@@ -399,7 +399,16 @@ class CheckoutActivity : AppCompatActivity() {
                     .setCancelable(false)
                     .show()
             } else {
-                Toast.makeText(this@CheckoutActivity, getString(R.string.error_place_order), Toast.LENGTH_SHORT).show()
+                val err = result.exceptionOrNull()
+                if (err is MarketplaceRepository.OutOfStockException) {
+                    Toast.makeText(
+                        this@CheckoutActivity,
+                        err.message?.takeIf { it.isNotBlank() } ?: getString(R.string.checkout_out_of_stock),
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    Toast.makeText(this@CheckoutActivity, getString(R.string.error_place_order), Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }

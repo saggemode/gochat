@@ -642,4 +642,8 @@
     <string name="coupon_cancel">Annuler</string>
     <string name="coupon_deleted">Coupon supprimé</string>
     <string name="coupon_delete_failed">Impossible de supprimer le coupon</string>
+
+    <!-- Batch 16: stock / inventory -->
+    <string name="product_out_of_stock">Rupture de stock</string>
+    <string name="checkout_out_of_stock">Certains articles sont en rupture de stock</string>
 </resources>

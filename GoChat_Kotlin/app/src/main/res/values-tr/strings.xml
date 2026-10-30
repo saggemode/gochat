@@ -638,4 +638,8 @@
     <string name="coupon_cancel">İptal</string>
     <string name="coupon_deleted">Kupon silindi</string>
     <string name="coupon_delete_failed">Kupon silinemedi</string>
+
+    <!-- Batch 16: stock / inventory -->
+    <string name="product_out_of_stock">Stokta yok</string>
+    <string name="checkout_out_of_stock">Bazı ürünler stokta yok</string>
 </resources>

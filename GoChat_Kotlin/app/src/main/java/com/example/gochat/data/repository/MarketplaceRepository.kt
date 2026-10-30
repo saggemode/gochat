@@ -1449,6 +1449,9 @@ class MarketplaceRepository @Inject constructor(
     /** Thrown when the backend has no payment provider configured (HTTP 503). */
     class PaymentsNotConfigured : Exception("payments not configured")
 
+    /** Thrown when the server rejects an order because a product ran out of stock. */
+    class OutOfStockException(message: String) : Exception(message)
+
     data class Bank(val name: String, val code: String)
     data class PayoutAccount(val exists: Boolean, val accountNumber: String, val accountName: String, val bankName: String)
 
@@ -1848,6 +1851,19 @@ class MarketplaceRepository @Inject constructor(
                 put("items", JsonArray(items.map { json.encodeToJsonElement(it) }))
             }
             val response = api.placeOrder(body)
+
+            // A stock rejection is a real server decision, not a transient failure:
+            // surface it instead of fabricating a local PENDING order below (which
+            // would wrongly let the buyer proceed to payment for an unavailable item).
+            if (!response.isSuccessful) {
+                val errText = runCatching { response.errorBody()?.string() }.getOrNull().orEmpty()
+                if (response.code() == 409 || errText.contains("insufficient stock", ignoreCase = true) || errText.contains("out of stock", ignoreCase = true)) {
+                    val idx = errText.indexOf("insufficient stock", ignoreCase = true)
+                    val friendly = if (idx >= 0) errText.substring(idx).trimEnd('"', '}', ' ') else errText
+                    return Result.failure(OutOfStockException(friendly))
+                }
+            }
+
             val confirmed = response.isSuccessful
 
             val orders: List<Order> = if (confirmed) {

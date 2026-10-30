@@ -638,4 +638,8 @@
     <string name="coupon_cancel">取消</string>
     <string name="coupon_deleted">优惠券已删除</string>
     <string name="coupon_delete_failed">无法删除优惠券</string>
+
+    <!-- Batch 16: stock / inventory -->
+    <string name="product_out_of_stock">缺货</string>
+    <string name="checkout_out_of_stock">部分商品缺货</string>
 </resources>

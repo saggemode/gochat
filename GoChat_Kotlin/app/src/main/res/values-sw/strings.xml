@@ -638,4 +638,8 @@
     <string name="coupon_cancel">Ghairi</string>
     <string name="coupon_deleted">Kuponi imefutwa</string>
     <string name="coupon_delete_failed">Imeshindwa kufuta kuponi</string>
+
+    <!-- Batch 16: stock / inventory -->
+    <string name="product_out_of_stock">Hakuna stoki</string>
+    <string name="checkout_out_of_stock">Baadhi ya bidhaa hazipo stoki</string>
 </resources>

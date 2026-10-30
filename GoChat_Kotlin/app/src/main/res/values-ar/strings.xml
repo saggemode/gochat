@@ -638,4 +638,8 @@
     <string name="coupon_cancel">إلغاء</string>
     <string name="coupon_deleted">تم حذف القسيمة</string>
     <string name="coupon_delete_failed">تعذّر حذف القسيمة</string>
+
+    <!-- Batch 16: stock / inventory -->
+    <string name="product_out_of_stock">نفد من المخزون</string>
+    <string name="checkout_out_of_stock">بعض العناصر نفدت من المخزون</string>
 </resources>

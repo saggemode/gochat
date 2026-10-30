@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import androidx.paging.PagingDataAdapter
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
+import com.example.gochat.R
 import com.example.gochat.core.media.MediaImageHelper
 import com.example.gochat.data.model.Product
 import com.example.gochat.databinding.ItemProductBinding
@@ -50,6 +51,14 @@ class ProductAdapter(
             binding.tvRatingBadge.text = String.format(Locale.US, "%.1f ★", product.rating)
             binding.tvStoreName.text = product.storeName
             binding.ivVerifiedBadge.visibility = if (product.isVerifiedSeller) View.VISIBLE else View.GONE
+
+            // Out-of-stock marker: reuse the corner badge and dim the image.
+            val outOfStock = product.stock <= 0 || !product.isAvailable
+            if (outOfStock) {
+                binding.tvDiscountBadge.visibility = View.VISIBLE
+                binding.tvDiscountBadge.text = binding.root.context.getString(R.string.product_out_of_stock)
+            }
+            binding.ivProductImage.alpha = if (outOfStock) 0.45f else 1f
 
             binding.ivProductImage.transitionName = "product_image_${product.id}"
             MediaImageHelper.loadSafeImage(binding.ivProductImage, product.primaryImage, thumbnailWidth = 400)

@@ -638,4 +638,8 @@
     <string name="coupon_cancel">Отмена</string>
     <string name="coupon_deleted">Купон удалён</string>
     <string name="coupon_delete_failed">Не удалось удалить купон</string>
+
+    <!-- Batch 16: stock / inventory -->
+    <string name="product_out_of_stock">Нет в наличии</string>
+    <string name="checkout_out_of_stock">Некоторых товаров нет в наличии</string>
 </resources>

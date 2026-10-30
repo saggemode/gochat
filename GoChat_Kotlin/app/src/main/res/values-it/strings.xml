@@ -638,4 +638,8 @@
     <string name="coupon_cancel">Annulla</string>
     <string name="coupon_deleted">Coupon eliminato</string>
     <string name="coupon_delete_failed">Impossibile eliminare il coupon</string>
+
+    <!-- Batch 16: stock / inventory -->
+    <string name="product_out_of_stock">Esaurito</string>
+    <string name="checkout_out_of_stock">Alcuni articoli sono esauriti</string>
 </resources>

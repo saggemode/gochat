@@ -491,6 +491,24 @@ class ProductDetailsActivity : AppCompatActivity() {
         val mine = isMyProduct(product)
         binding.cardBottomActions.visibility = if (mine) View.GONE else View.VISIBLE
         binding.layoutQuantity.visibility = if (mine) View.GONE else View.VISIBLE
+        if (!mine) applyStockState(product)
+    }
+
+    /**
+     * Blocks buying when the product is out of stock: the quantity stepper is
+     * hidden and both purchase buttons are disabled, with Buy Now relabelled.
+     * Chat Seller stays active so a buyer can still ask about restocking.
+     */
+    private fun applyStockState(product: Product) {
+        val outOfStock = product.stock <= 0 || !product.isAvailable
+        binding.btnAddToCart.isEnabled = !outOfStock
+        binding.btnBuyNow.isEnabled = !outOfStock
+        binding.btnAddToCart.alpha = if (outOfStock) 0.5f else 1f
+        binding.btnBuyNow.alpha = if (outOfStock) 0.5f else 1f
+        if (outOfStock) {
+            binding.btnBuyNow.text = getString(R.string.product_out_of_stock)
+            binding.layoutQuantity.visibility = View.GONE
+        }
     }
 
     private fun isMyProduct(product: Product): Boolean {

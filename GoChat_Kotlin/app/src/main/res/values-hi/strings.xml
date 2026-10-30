@@ -638,4 +638,8 @@
     <string name="coupon_cancel">रद्द करें</string>
     <string name="coupon_deleted">कूपन हटाया गया</string>
     <string name="coupon_delete_failed">कूपन नहीं हटाया जा सका</string>
+
+    <!-- Batch 16: stock / inventory -->
+    <string name="product_out_of_stock">स्टॉक में नहीं</string>
+    <string name="checkout_out_of_stock">कुछ आइटम स्टॉक में नहीं हैं</string>
 </resources>
