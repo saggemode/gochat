@@ -222,13 +222,21 @@ func (c *Client) SendNotification(ctx context.Context, pushToken, title, body st
 	// High-priority data message ensures onMessageReceived is invoked in all Android states
 	// (foreground, background, terminated), enabling offline Room DB caching, custom circular avatars,
 	// active-chat suppression, and Direct Reply RemoteInput actions.
+	androidCfg := map[string]interface{}{
+		"priority":       "HIGH",
+		"direct_boot_ok": true,
+	}
+	// Optional per-message TTL (e.g. "45s") so time-sensitive pushes like a call
+	// ring don't get delivered long after they're relevant. Carried in the data
+	// map by the caller; stripped out so it isn't also sent as app data.
+	if ttl := dataPayload["ttl"]; ttl != "" {
+		androidCfg["ttl"] = ttl
+		delete(dataPayload, "ttl")
+	}
 	messageMap := map[string]interface{}{
-		"token": pushToken,
-		"data":  dataPayload,
-		"android": map[string]interface{}{
-			"priority":       "HIGH",
-			"direct_boot_ok": true,
-		},
+		"token":   pushToken,
+		"data":    dataPayload,
+		"android": androidCfg,
 	}
 
 	// For iOS / Web platforms, include the notification block for native system tray rendering

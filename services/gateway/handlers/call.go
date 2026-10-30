@@ -75,12 +75,15 @@ func (h *CallHandler) StartCall(c *gin.Context) {
 			callID = resp.Call.Id
 		}
 		pushData := map[string]string{
-			"type":        "incoming_call",
-			"call_id":     callID,
-			"caller_id":   userID,
-			"call_type":   req.Type,
-			"title":       callTitle,
-			"body":        "Incoming call on GoChat",
+			"type":      "incoming_call",
+			"call_id":   callID,
+			"caller_id": userID,
+			"call_type": req.Type,
+			"title":     callTitle,
+			"body":      "Incoming call on GoChat",
+			// Ring pushes are only relevant briefly; let FCM drop stale ones so a
+			// phone that was offline doesn't ring minutes after the call is over.
+			"ttl": "45s",
 		}
 		_ = fcm.SendToUser(pushCtx, req.ReceiverId, callTitle, "Incoming call", pushData)
 	}()
@@ -190,6 +193,28 @@ func (h *CallHandler) EndCall(c *gin.Context) {
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to end call")
 		return
+	}
+
+	// Tell the other party the call is over via push, so a device only reachable
+	// by FCM (backgrounded/locked) dismisses the ring and records a missed call
+	// instead of ringing forever after the caller hangs up.
+	if resp != nil && resp.Call != nil {
+		other := resp.Call.ReceiverId
+		if other == userID {
+			other = resp.Call.CallerId
+		}
+		if other != "" && other != userID {
+			cid := resp.Call.Id
+			go func() {
+				pushCtx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+				defer cancel()
+				_ = fcm.SendToUser(pushCtx, other, "Call ended", "", map[string]string{
+					"type":    "call_cancelled",
+					"call_id": cid,
+					"ttl":     "60s",
+				})
+			}()
+		}
 	}
 
 	c.JSON(http.StatusOK, resp.Call)

@@ -128,6 +128,22 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
             return
         }
 
+        // Caller hung up / call ended before it was answered: dismiss any lingering
+        // ring notification and mark the call missed locally. Prevents a device that
+        // was only reachable by FCM from ringing forever after the caller cancels.
+        if (eventType == "call_cancelled" || eventType == "call_ended" || eventType == "call_canceled") {
+            val callId = data["call_id"] ?: data["id"] ?: return
+            NotificationHelper.cancelCallNotification(applicationContext, callId)
+            serviceScope.launch {
+                try {
+                    callRepository.updateCallStatus(
+                        callId, com.example.gochat.data.model.CallStatus.MISSED, 0
+                    )
+                } catch (_: Exception) {}
+            }
+            return
+        }
+
         // Handle Incoming Call notifications
         if (eventType == "incoming_call" || eventType == "call" || eventType == "call_incoming") {
             val callId = data["call_id"] ?: data["id"] ?: "call_${System.currentTimeMillis()}"
