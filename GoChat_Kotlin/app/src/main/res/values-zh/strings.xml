@@ -652,4 +652,20 @@
     <string name="coupon_item_total_off">目前已优惠 %1$s</string>
     <string name="coupon_item_starts">%1$s 开始</string>
     <string name="coupon_item_first_order">仅限首单</string>
+
+    <!-- Batch 18: seller payout ledger -->
+    <string name="seller_hub_earnings">收入</string>
+    <string name="seller_hub_earnings_sub">您的结算单与净余额</string>
+    <string name="payout_ledger_title">收入</string>
+    <string name="payout_ledger_view">查看</string>
+    <string name="payout_ledger_orders_header">按订单明细</string>
+    <string name="payout_ledger_empty">暂无已付款订单。首次销售后，收入将显示在此处。</string>
+    <string name="payout_ledger_failed">无法加载收入</string>
+    <string name="payout_ledger_net">净收入</string>
+    <string name="payout_ledger_gross">总销售额</string>
+    <string name="payout_ledger_commission">平台费（%1$s%%）</string>
+    <string name="payout_ledger_order_count">已付款订单</string>
+    <string name="payout_ledger_order_fallback">订单</string>
+    <string name="payout_ledger_entry_meta">总额 %1$s • 手续费 %2$s</string>
+    <string name="payout_ledger_settled">已结算</string>
 </resources>

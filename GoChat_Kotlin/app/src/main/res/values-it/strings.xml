@@ -652,4 +652,20 @@
     <string name="coupon_item_total_off">%1$s scontati finora</string>
     <string name="coupon_item_starts">Inizia il %1$s</string>
     <string name="coupon_item_first_order">Solo primo ordine</string>
+
+    <!-- Batch 18: seller payout ledger -->
+    <string name="seller_hub_earnings">GUADAGNI</string>
+    <string name="seller_hub_earnings_sub">Il tuo estratto conto e saldo netto</string>
+    <string name="payout_ledger_title">Guadagni</string>
+    <string name="payout_ledger_view">VEDI</string>
+    <string name="payout_ledger_orders_header">Dettaglio per ordine</string>
+    <string name="payout_ledger_empty">Ancora nessun ordine pagato. I guadagni appariranno qui dopo la prima vendita.</string>
+    <string name="payout_ledger_failed">Impossibile caricare i guadagni</string>
+    <string name="payout_ledger_net">Guadagni netti</string>
+    <string name="payout_ledger_gross">Vendite lorde</string>
+    <string name="payout_ledger_commission">Commissione della piattaforma (%1$s%%)</string>
+    <string name="payout_ledger_order_count">Ordini pagati</string>
+    <string name="payout_ledger_order_fallback">Ordine</string>
+    <string name="payout_ledger_entry_meta">Lordo %1$s • commissione %2$s</string>
+    <string name="payout_ledger_settled">Liquidato</string>
 </resources>

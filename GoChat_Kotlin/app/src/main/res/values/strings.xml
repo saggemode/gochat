@@ -766,4 +766,20 @@
     <string name="coupon_item_total_off">%1$s discounted so far</string>
     <string name="coupon_item_starts">Starts %1$s</string>
     <string name="coupon_item_first_order">First order only</string>
+
+    <!-- Seller payout ledger / statement -->
+    <string name="seller_hub_earnings">EARNINGS</string>
+    <string name="seller_hub_earnings_sub">Your payout statement and net balance</string>
+    <string name="payout_ledger_title">Earnings</string>
+    <string name="payout_ledger_view">VIEW</string>
+    <string name="payout_ledger_orders_header">Per-order breakdown</string>
+    <string name="payout_ledger_empty">No paid orders yet. Earnings appear here after your first sale.</string>
+    <string name="payout_ledger_failed">Could not load earnings</string>
+    <string name="payout_ledger_net">Net earnings</string>
+    <string name="payout_ledger_gross">Gross sales</string>
+    <string name="payout_ledger_commission">Platform fee (%1$s%%)</string>
+    <string name="payout_ledger_order_count">Paid orders</string>
+    <string name="payout_ledger_order_fallback">Order</string>
+    <string name="payout_ledger_entry_meta">Gross %1$s • fee %2$s</string>
+    <string name="payout_ledger_settled">Settled</string>
 </resources>

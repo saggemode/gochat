@@ -455,6 +455,9 @@ interface GoChatApiService {
         @Path("id") couponId: String
     ): Response<JsonObject>
 
+    @GET(ApiConstants.BUSINESS_PAYOUT_LEDGER)
+    suspend fun getPayoutLedger(): Response<JsonObject>
+
     @POST(ApiConstants.ORDERS)
     suspend fun placeOrder(
         @Body body: JsonObject

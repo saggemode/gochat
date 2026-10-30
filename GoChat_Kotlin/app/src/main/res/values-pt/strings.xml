@@ -652,4 +652,20 @@
     <string name="coupon_item_total_off">%1$s descontado até agora</string>
     <string name="coupon_item_starts">Começa em %1$s</string>
     <string name="coupon_item_first_order">Apenas primeiro pedido</string>
+
+    <!-- Batch 18: seller payout ledger -->
+    <string name="seller_hub_earnings">GANHOS</string>
+    <string name="seller_hub_earnings_sub">Seu extrato de pagamentos e saldo líquido</string>
+    <string name="payout_ledger_title">Ganhos</string>
+    <string name="payout_ledger_view">VER</string>
+    <string name="payout_ledger_orders_header">Detalhamento por pedido</string>
+    <string name="payout_ledger_empty">Ainda sem pedidos pagos. Seus ganhos aparecerão aqui após a primeira venda.</string>
+    <string name="payout_ledger_failed">Não foi possível carregar os ganhos</string>
+    <string name="payout_ledger_net">Ganhos líquidos</string>
+    <string name="payout_ledger_gross">Vendas brutas</string>
+    <string name="payout_ledger_commission">Taxa da plataforma (%1$s%%)</string>
+    <string name="payout_ledger_order_count">Pedidos pagos</string>
+    <string name="payout_ledger_order_fallback">Pedido</string>
+    <string name="payout_ledger_entry_meta">Bruto %1$s • taxa %2$s</string>
+    <string name="payout_ledger_settled">Liquidado</string>
 </resources>

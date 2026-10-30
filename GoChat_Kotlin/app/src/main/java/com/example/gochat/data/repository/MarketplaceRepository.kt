@@ -1417,6 +1417,61 @@ class MarketplaceRepository @Inject constructor(
         }
     }
 
+    /** One paid order's earnings breakdown. */
+    data class LedgerEntry(
+        val orderNumber: String,
+        val status: String,
+        val createdAt: String,
+        val gross: Double,
+        val commission: Double,
+        val net: Double,
+        val settled: Boolean
+    )
+
+    /** A seller's payout statement: per-order entries plus roll-up totals. */
+    data class PayoutLedger(
+        val commissionPercent: Double,
+        val orders: Int,
+        val gross: Double,
+        val commission: Double,
+        val net: Double,
+        val entries: List<LedgerEntry>
+    )
+
+    /** Fetches the signed-in seller's payout ledger (derived from paid orders). */
+    suspend fun getPayoutLedger(): Result<PayoutLedger> {
+        return try {
+            val resp = api.getPayoutLedger()
+            if (!resp.isSuccessful) return Result.failure(Exception("HTTP ${resp.code()}"))
+            val o = resp.body() ?: return Result.failure(Exception("empty ledger"))
+            val summary = o["summary"] as? JsonObject
+            val entries = (o["entries"] as? JsonArray).orEmpty().mapNotNull { el ->
+                val e = el as? JsonObject ?: return@mapNotNull null
+                LedgerEntry(
+                    orderNumber = e["order_number"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                    status = e["status"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                    createdAt = e["created_at"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                    gross = e["gross"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
+                    commission = e["commission"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
+                    net = e["net"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
+                    settled = e["settled"]?.jsonPrimitive?.booleanOrNull ?: false
+                )
+            }
+            Result.success(
+                PayoutLedger(
+                    commissionPercent = o["commission_percent"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
+                    orders = summary?.get("orders")?.jsonPrimitive?.intOrNull ?: entries.size,
+                    gross = summary?.get("gross")?.jsonPrimitive?.doubleOrNull ?: 0.0,
+                    commission = summary?.get("commission")?.jsonPrimitive?.doubleOrNull ?: 0.0,
+                    net = summary?.get("net")?.jsonPrimitive?.doubleOrNull ?: 0.0,
+                    entries = entries
+                )
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     data class PaymentInit(val authorizationUrl: String, val reference: String)
 
     /**

@@ -652,4 +652,20 @@
     <string name="coupon_item_total_off">Şu ana kadar %1$s indirim</string>
     <string name="coupon_item_starts">%1$s tarihinde başlar</string>
     <string name="coupon_item_first_order">Yalnızca ilk sipariş</string>
+
+    <!-- Batch 18: seller payout ledger -->
+    <string name="seller_hub_earnings">KAZANÇLAR</string>
+    <string name="seller_hub_earnings_sub">Ödeme dökümünüz ve net bakiyeniz</string>
+    <string name="payout_ledger_title">Kazançlar</string>
+    <string name="payout_ledger_view">GÖR</string>
+    <string name="payout_ledger_orders_header">Sipariş bazında döküm</string>
+    <string name="payout_ledger_empty">Henüz ödenmiş sipariş yok. İlk satışınızdan sonra kazançlar burada görünecek.</string>
+    <string name="payout_ledger_failed">Kazançlar yüklenemedi</string>
+    <string name="payout_ledger_net">Net kazanç</string>
+    <string name="payout_ledger_gross">Brüt satışlar</string>
+    <string name="payout_ledger_commission">Platform ücreti (%%%1$s)</string>
+    <string name="payout_ledger_order_count">Ödenen siparişler</string>
+    <string name="payout_ledger_order_fallback">Sipariş</string>
+    <string name="payout_ledger_entry_meta">Brüt %1$s • ücret %2$s</string>
+    <string name="payout_ledger_settled">Ödendi</string>
 </resources>

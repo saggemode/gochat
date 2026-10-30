@@ -656,4 +656,20 @@
     <string name="coupon_item_total_off">%1$s de remise jusqu\'à présent</string>
     <string name="coupon_item_starts">Début le %1$s</string>
     <string name="coupon_item_first_order">Première commande uniquement</string>
+
+    <!-- Batch 18: seller payout ledger -->
+    <string name="seller_hub_earnings">REVENUS</string>
+    <string name="seller_hub_earnings_sub">Votre relevé de versements et solde net</string>
+    <string name="payout_ledger_title">Revenus</string>
+    <string name="payout_ledger_view">VOIR</string>
+    <string name="payout_ledger_orders_header">Détail par commande</string>
+    <string name="payout_ledger_empty">Aucune commande payée pour le moment. Vos revenus apparaîtront ici après votre première vente.</string>
+    <string name="payout_ledger_failed">Impossible de charger les revenus</string>
+    <string name="payout_ledger_net">Revenus nets</string>
+    <string name="payout_ledger_gross">Ventes brutes</string>
+    <string name="payout_ledger_commission">Frais de plateforme (%1$s %%)</string>
+    <string name="payout_ledger_order_count">Commandes payées</string>
+    <string name="payout_ledger_order_fallback">Commande</string>
+    <string name="payout_ledger_entry_meta">Brut %1$s • frais %2$s</string>
+    <string name="payout_ledger_settled">Versé</string>
 </resources>

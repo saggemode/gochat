@@ -652,4 +652,20 @@
     <string name="coupon_item_total_off">अब तक %1$s की छूट</string>
     <string name="coupon_item_starts">%1$s को आरंभ</string>
     <string name="coupon_item_first_order">केवल पहला ऑर्डर</string>
+
+    <!-- Batch 18: seller payout ledger -->
+    <string name="seller_hub_earnings">कमाई</string>
+    <string name="seller_hub_earnings_sub">आपका पेआउट विवरण और शुद्ध शेष</string>
+    <string name="payout_ledger_title">कमाई</string>
+    <string name="payout_ledger_view">देखें</string>
+    <string name="payout_ledger_orders_header">प्रति-ऑर्डर विवरण</string>
+    <string name="payout_ledger_empty">अभी कोई भुगतान किया ऑर्डर नहीं। पहली बिक्री के बाद कमाई यहाँ दिखाई देगी।</string>
+    <string name="payout_ledger_failed">कमाई लोड नहीं हो सकी</string>
+    <string name="payout_ledger_net">शुद्ध कमाई</string>
+    <string name="payout_ledger_gross">सकल बिक्री</string>
+    <string name="payout_ledger_commission">प्लेटफ़ॉर्म शुल्क (%1$s%%)</string>
+    <string name="payout_ledger_order_count">भुगतान किए ऑर्डर</string>
+    <string name="payout_ledger_order_fallback">ऑर्डर</string>
+    <string name="payout_ledger_entry_meta">सकल %1$s • शुल्क %2$s</string>
+    <string name="payout_ledger_settled">निपटान हो गया</string>
 </resources>

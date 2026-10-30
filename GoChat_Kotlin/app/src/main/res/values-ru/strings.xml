@@ -652,4 +652,20 @@
     <string name="coupon_item_total_off">Скидок на сумму %1$s</string>
     <string name="coupon_item_starts">Начинается %1$s</string>
     <string name="coupon_item_first_order">Только первый заказ</string>
+
+    <!-- Batch 18: seller payout ledger -->
+    <string name="seller_hub_earnings">ДОХОД</string>
+    <string name="seller_hub_earnings_sub">Ваша выписка по выплатам и чистый баланс</string>
+    <string name="payout_ledger_title">Доход</string>
+    <string name="payout_ledger_view">ПОСМОТРЕТЬ</string>
+    <string name="payout_ledger_orders_header">Разбивка по заказам</string>
+    <string name="payout_ledger_empty">Пока нет оплаченных заказов. Доход появится здесь после первой продажи.</string>
+    <string name="payout_ledger_failed">Не удалось загрузить доход</string>
+    <string name="payout_ledger_net">Чистый доход</string>
+    <string name="payout_ledger_gross">Валовые продажи</string>
+    <string name="payout_ledger_commission">Комиссия платформы (%1$s%%)</string>
+    <string name="payout_ledger_order_count">Оплаченные заказы</string>
+    <string name="payout_ledger_order_fallback">Заказ</string>
+    <string name="payout_ledger_entry_meta">Валовая %1$s • комиссия %2$s</string>
+    <string name="payout_ledger_settled">Выплачено</string>
 </resources>

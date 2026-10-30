@@ -652,4 +652,20 @@
     <string name="coupon_item_total_off">%1$s zimepunguzwa hadi sasa</string>
     <string name="coupon_item_starts">Huanza %1$s</string>
     <string name="coupon_item_first_order">Agizo la kwanza pekee</string>
+
+    <!-- Batch 18: seller payout ledger -->
+    <string name="seller_hub_earnings">MAPATO</string>
+    <string name="seller_hub_earnings_sub">Taarifa yako ya malipo na salio halisi</string>
+    <string name="payout_ledger_title">Mapato</string>
+    <string name="payout_ledger_view">TAZAMA</string>
+    <string name="payout_ledger_orders_header">Mchanganuo kwa kila agizo</string>
+    <string name="payout_ledger_empty">Hakuna maagizo yaliyolipwa bado. Mapato yataonekana hapa baada ya mauzo yako ya kwanza.</string>
+    <string name="payout_ledger_failed">Imeshindwa kupakia mapato</string>
+    <string name="payout_ledger_net">Mapato halisi</string>
+    <string name="payout_ledger_gross">Mauzo ghafi</string>
+    <string name="payout_ledger_commission">Ada ya jukwaa (%1$s%%)</string>
+    <string name="payout_ledger_order_count">Maagizo yaliyolipwa</string>
+    <string name="payout_ledger_order_fallback">Agizo</string>
+    <string name="payout_ledger_entry_meta">Ghafi %1$s • ada %2$s</string>
+    <string name="payout_ledger_settled">Imelipwa</string>
 </resources>

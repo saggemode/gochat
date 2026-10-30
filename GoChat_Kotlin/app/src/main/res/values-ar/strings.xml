@@ -652,4 +652,20 @@
     <string name="coupon_item_total_off">تم خصم %1$s حتى الآن</string>
     <string name="coupon_item_starts">يبدأ في %1$s</string>
     <string name="coupon_item_first_order">الطلب الأول فقط</string>
+
+    <!-- Batch 18: seller payout ledger -->
+    <string name="seller_hub_earnings">الأرباح</string>
+    <string name="seller_hub_earnings_sub">كشف مدفوعاتك والرصيد الصافي</string>
+    <string name="payout_ledger_title">الأرباح</string>
+    <string name="payout_ledger_view">عرض</string>
+    <string name="payout_ledger_orders_header">التفصيل حسب الطلب</string>
+    <string name="payout_ledger_empty">لا طلبات مدفوعة بعد. ستظهر أرباحك هنا بعد أول عملية بيع.</string>
+    <string name="payout_ledger_failed">تعذّر تحميل الأرباح</string>
+    <string name="payout_ledger_net">صافي الأرباح</string>
+    <string name="payout_ledger_gross">إجمالي المبيعات</string>
+    <string name="payout_ledger_commission">رسوم المنصة (%1$s%%)</string>
+    <string name="payout_ledger_order_count">الطلبات المدفوعة</string>
+    <string name="payout_ledger_order_fallback">طلب</string>
+    <string name="payout_ledger_entry_meta">الإجمالي %1$s • الرسوم %2$s</string>
+    <string name="payout_ledger_settled">تمت التسوية</string>
 </resources>

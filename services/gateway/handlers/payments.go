@@ -448,12 +448,7 @@ func (h *BusinessHandler) CreateSellerSubaccount(c *gin.Context) {
 		businessName = "GoChat Seller " + shortID
 	}
 
-	commission := 5.0
-	if v := os.Getenv("PLATFORM_COMMISSION_PERCENT"); v != "" {
-		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 && f < 100 {
-			commission = f
-		}
-	}
+	commission := platformCommissionPercent()
 
 	payload, _ := json.Marshal(map[string]any{
 		"business_name":    businessName,
@@ -538,5 +533,79 @@ func (h *BusinessHandler) GetMyPayoutAccount(c *gin.Context) {
 		"account_name":   resp.AccountName,
 		"bank_code":      resp.BankCode,
 		"bank_name":      resp.BankName,
+	})
+}
+
+// platformCommissionPercent is the platform's cut of each sale, from
+// PLATFORM_COMMISSION_PERCENT (default 5%). Shared by subaccount creation and
+// the payout ledger so the numbers always agree.
+func platformCommissionPercent() float64 {
+	commission := 5.0
+	if v := os.Getenv("PLATFORM_COMMISSION_PERCENT"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 && f < 100 {
+			commission = f
+		}
+	}
+	return commission
+}
+
+// GetPayoutLedger returns a per-order earnings ledger for the signed-in seller,
+// derived from their paid orders: gross (grand total the buyer paid), the
+// platform commission, and the seller's net. With Paystack subaccount splits the
+// net settles directly to the seller at payment time, so paid entries are marked
+// settled. Includes a summary of gross/commission/net totals.
+func (h *BusinessHandler) GetPayoutLedger(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+
+	resp, err := h.client.ListSellerOrders(c.Request.Context(), &pb.ListSellerOrdersRequest{
+		BusinessId: userID,
+		Limit:      500,
+		Offset:     0,
+	}, jsonOpt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	pct := platformCommissionPercent()
+	entries := make([]gin.H, 0, len(resp.Orders))
+	var totalGross, totalCommission, totalNet float64
+	for _, o := range resp.Orders {
+		if o.PaymentStatus != "paid" {
+			continue
+		}
+		gross := o.GrandTotal
+		if gross == 0 {
+			gross = o.TotalAmount
+		}
+		commission := gross * pct / 100.0
+		net := gross - commission
+		totalGross += gross
+		totalCommission += commission
+		totalNet += net
+		entries = append(entries, gin.H{
+			"order_id":     o.Id,
+			"order_number": o.OrderNumber,
+			"status":       o.Status,
+			"created_at":   o.CreatedAt,
+			"gross":        gross,
+			"commission":   commission,
+			"net":          net,
+			"settled":      true,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"commission_percent": pct,
+		"summary": gin.H{
+			"orders":     len(entries),
+			"gross":      totalGross,
+			"commission": totalCommission,
+			"net":        totalNet,
+		},
+		"entries": entries,
 	})
 }

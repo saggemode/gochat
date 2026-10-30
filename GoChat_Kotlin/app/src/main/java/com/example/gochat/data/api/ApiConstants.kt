@@ -59,6 +59,7 @@ object ApiConstants {
     const val BUSINESS_PRODUCTS = "api/v1/business/products"
     const val BUSINESS_ORDERS = "api/v1/business/orders"
     const val BUSINESS_COUPONS = "api/v1/business/coupons"
+    const val BUSINESS_PAYOUT_LEDGER = "api/v1/business/payouts/ledger"
     const val PRODUCTS = "api/v1/marketplace/products"
     const val CATEGORIES = "api/v1/marketplace/categories"
     const val CART = "api/v1/marketplace/cart"
