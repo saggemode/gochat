@@ -753,6 +753,11 @@
     <string name="coupon_deleted">Coupon deleted</string>
     <string name="coupon_delete_failed">Could not delete coupon</string>
 
+    <!-- E2EE safety-number change -->
+    <string name="safety_number_changed">Your safety number with %1$s changed. Tap to verify.</string>
+    <string name="safety_number_verify">Verify</string>
+    <string name="safety_number_contact_fallback">this contact</string>
+
     <!-- Call reliability -->
     <string name="call_reconnecting">Reconnecting…</string>
     <string name="call_reconnect_failed">Couldn\'t reconnect. Call ended.</string>

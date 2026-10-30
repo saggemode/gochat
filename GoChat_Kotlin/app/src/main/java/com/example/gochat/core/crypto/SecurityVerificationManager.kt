@@ -81,4 +81,24 @@ class SecurityVerificationManager @Inject constructor(
     fun setVerified(conversationId: String, verified: Boolean) {
         prefs.edit().putBoolean("$verifiedPrefix$conversationId", verified).apply()
     }
+
+    private val seenPrefix = "e2ee_seen_"
+
+    /**
+     * Compares the current safety number for a conversation against the last one
+     * seen, records the new value, and reports whether it changed. A change means
+     * the contact's identity (ids/PIN) is different from before — a standard E2EE
+     * trust signal. On a real change the conversation is also un-verified so the
+     * user is prompted to re-verify. Returns false the first time (nothing to
+     * compare against) and when the number is unchanged.
+     */
+    fun recordAndDetectChange(conversationId: String, currentSafetyNumber: String): Boolean {
+        val key = "$seenPrefix$conversationId"
+        val previous = prefs.getString(key, null)
+        prefs.edit().putString(key, currentSafetyNumber).apply()
+        if (previous == null || previous == currentSafetyNumber) return false
+        // Identity changed since last time: drop the verified flag.
+        setVerified(conversationId, false)
+        return true
+    }
 }

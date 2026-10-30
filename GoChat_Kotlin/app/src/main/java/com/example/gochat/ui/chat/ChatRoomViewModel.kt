@@ -41,8 +41,50 @@ class ChatRoomViewModel @Inject constructor(
     private val encryptionManager: EncryptionManager,
     private val networkMonitor: NetworkMonitor,
     private val marketplaceRepository: MarketplaceRepository,
-    private val authRepository: com.example.gochat.data.repository.AuthRepository
+    private val authRepository: com.example.gochat.data.repository.AuthRepository,
+    private val securityVerificationManager: com.example.gochat.core.crypto.SecurityVerificationManager
 ) : AndroidViewModel(application) {
+
+    // Emits true once when the contact's safety number has changed since last seen
+    // (a standard E2EE trust signal). The chat screen shows a banner; cleared by ack.
+    private val _safetyNumberChanged = MutableStateFlow(false)
+    val safetyNumberChanged: StateFlow<Boolean> = _safetyNumberChanged.asStateFlow()
+
+    // Peer's PIN for the current direct chat, cached so the safety-number-change
+    // banner can open the verification screen with the same inputs.
+    var partnerPin: String? = null
+        private set
+
+    /**
+     * Recomputes the direct-chat safety number and flags a change versus the last
+     * value seen for this conversation. Best-effort and silent on any failure;
+     * never flags on the first observation. No-op for group chats.
+     */
+    fun checkSafetyNumberChange(convId: String, isGroup: Boolean) {
+        if (isGroup || convId.isBlank()) return
+        viewModelScope.launch {
+            try {
+                val conv = chatRepository.getConversationById(convId) ?: return@launch
+                val myId = tokenManager.userId ?: return@launch
+                val peerId = currentPartnerId
+                    ?: conv.memberIds.firstOrNull { it != myId }
+                    ?: return@launch
+                partnerPin = conv.partnerPin
+                val number = securityVerificationManager.generateSafetyNumber(
+                    myUserId = myId,
+                    peerUserId = peerId,
+                    conversationId = convId,
+                    myPin = tokenManager.userPin,
+                    peerPin = conv.partnerPin
+                )
+                if (securityVerificationManager.recordAndDetectChange(convId, number)) {
+                    _safetyNumberChanged.value = true
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun acknowledgeSafetyNumberChange() { _safetyNumberChanged.value = false }
 
     // First-contact country hint (derived from the partner's phone/registration country, like WhatsApp).
     private val _partnerCountry = MutableStateFlow<com.example.gochat.ui.auth.Country?>(null)

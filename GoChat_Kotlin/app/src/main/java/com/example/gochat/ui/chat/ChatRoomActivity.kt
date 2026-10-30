@@ -482,7 +482,10 @@ class ChatRoomActivity : AppCompatActivity() {
                 binding.tvBotBanner.visibility = View.GONE
             }
             viewModel.initConversation(convId, isGroupChat)
-            if (!isGroupChat) viewModel.resolvePartnerCountry()
+            if (!isGroupChat) {
+                viewModel.resolvePartnerCountry()
+                viewModel.checkSafetyNumberChange(convId, isGroupChat)
+            }
         }
 
         setupLinkedOrderBanner()
@@ -1908,6 +1911,27 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Shows a trust-signal banner when a contact's E2EE safety number has changed.
+     * Offers to open the verification screen. Non-blocking (a long Snackbar).
+     */
+    private fun showSafetyNumberChangedBanner() {
+        val name = intent.getStringExtra(EXTRA_CONVERSATION_TITLE) ?: getString(R.string.safety_number_contact_fallback)
+        Snackbar.make(binding.root, getString(R.string.safety_number_changed, name), Snackbar.LENGTH_INDEFINITE)
+            .setAction(getString(R.string.safety_number_verify)) {
+                val convId = intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty()
+                val peerId = intent.getStringExtra(EXTRA_PARTNER_ID).orEmpty()
+                val intent = Intent(this, com.example.gochat.ui.security.SecurityVerificationActivity::class.java).apply {
+                    putExtra(com.example.gochat.ui.security.SecurityVerificationActivity.EXTRA_CONVERSATION_ID, convId)
+                    putExtra(com.example.gochat.ui.security.SecurityVerificationActivity.EXTRA_PEER_USER_ID, peerId)
+                    putExtra(com.example.gochat.ui.security.SecurityVerificationActivity.EXTRA_PEER_PIN, viewModel.partnerPin)
+                    putExtra(com.example.gochat.ui.security.SecurityVerificationActivity.EXTRA_PEER_NAME, name)
+                }
+                startActivity(intent)
+            }
+            .show()
+    }
+
     private fun observeState() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -1924,6 +1948,15 @@ class ChatRoomActivity : AppCompatActivity() {
                 launch {
                     viewModel.messagesPaged.collectLatest { pagingData ->
                         messageAdapter.submitData(pagingData)
+                    }
+                }
+
+                launch {
+                    viewModel.safetyNumberChanged.collect { changed ->
+                        if (changed) {
+                            showSafetyNumberChangedBanner()
+                            viewModel.acknowledgeSafetyNumberChange()
+                        }
                     }
                 }
 

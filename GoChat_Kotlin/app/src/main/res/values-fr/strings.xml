@@ -709,4 +709,9 @@
     <!-- Batch 21: call reliability -->
     <string name="call_reconnecting">Reconnexion…</string>
     <string name="call_reconnect_failed">Reconnexion impossible. Appel terminé.</string>
+
+    <!-- Batch 22: E2EE safety-number change -->
+    <string name="safety_number_changed">Votre numéro de sécurité avec %1$s a changé. Appuyez pour vérifier.</string>
+    <string name="safety_number_verify">Vérifier</string>
+    <string name="safety_number_contact_fallback">ce contact</string>
 </resources>

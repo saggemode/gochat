@@ -705,4 +705,9 @@
     <!-- Batch 21: call reliability -->
     <string name="call_reconnecting">正在重新连接…</string>
     <string name="call_reconnect_failed">无法重新连接。通话已结束。</string>
+
+    <!-- Batch 22: E2EE safety-number change -->
+    <string name="safety_number_changed">您与 %1$s 的安全码已更改。点击验证。</string>
+    <string name="safety_number_verify">验证</string>
+    <string name="safety_number_contact_fallback">此联系人</string>
 </resources>

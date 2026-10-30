@@ -705,4 +705,9 @@
     <!-- Batch 21: call reliability -->
     <string name="call_reconnecting">Переподключение…</string>
     <string name="call_reconnect_failed">Не удалось переподключиться. Звонок завершён.</string>
+
+    <!-- Batch 22: E2EE safety-number change -->
+    <string name="safety_number_changed">Ваш код безопасности с %1$s изменился. Нажмите для проверки.</string>
+    <string name="safety_number_verify">Проверить</string>
+    <string name="safety_number_contact_fallback">этот контакт</string>
 </resources>
