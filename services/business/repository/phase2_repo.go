@@ -127,6 +127,9 @@ type Coupon struct {
 	ProductID      string
 	MaxUsesPerUser int32
 	ProductName    string
+	StartsAt       *time.Time
+	FirstOrderOnly bool
+	TotalDiscount  float64 // analytics: sum of discounts given so far (read-only)
 }
 
 // Refund represents a refund request
@@ -1982,10 +1985,10 @@ func (r *BusinessRepository) CreateCoupon(ctx context.Context, c *Coupon) (*Coup
 	}
 
 	_, err := r.db.Exec(ctx,
-		`INSERT INTO business.coupons (id, business_id, code, discount_type, discount_value, min_spend, max_uses, expires_at, is_active, product_id, max_uses_per_user)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-		 ON CONFLICT (business_id, code) DO UPDATE SET discount_type = $4, discount_value = $5, min_spend = $6, max_uses = $7, expires_at = $8, is_active = $9, product_id = $10, max_uses_per_user = $11`,
-		c.ID, c.BusinessID, c.Code, c.DiscountType, c.DiscountValue, c.MinSpend, c.MaxUses, c.ExpiresAt, c.IsActive, prodID, c.MaxUsesPerUser,
+		`INSERT INTO business.coupons (id, business_id, code, discount_type, discount_value, min_spend, max_uses, expires_at, is_active, product_id, max_uses_per_user, starts_at, first_order_only)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		 ON CONFLICT (business_id, code) DO UPDATE SET discount_type = $4, discount_value = $5, min_spend = $6, max_uses = $7, expires_at = $8, is_active = $9, product_id = $10, max_uses_per_user = $11, starts_at = $12, first_order_only = $13`,
+		c.ID, c.BusinessID, c.Code, c.DiscountType, c.DiscountValue, c.MinSpend, c.MaxUses, c.ExpiresAt, c.IsActive, prodID, c.MaxUsesPerUser, c.StartsAt, c.FirstOrderOnly,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create coupon: %w", err)
@@ -1997,7 +2000,10 @@ func (r *BusinessRepository) CreateCoupon(ctx context.Context, c *Coupon) (*Coup
 func (r *BusinessRepository) ListBusinessCoupons(ctx context.Context, businessID string) ([]*Coupon, error) {
 	rows, err := r.db.Query(ctx,
 		`SELECT c.id, c.business_id, c.code, c.discount_type, c.discount_value, c.min_spend, c.max_uses, c.used_count, c.expires_at, c.is_active, c.created_at,
-		        COALESCE(c.product_id::text, ''), COALESCE(c.max_uses_per_user, 0), COALESCE(p.name, 'All Store Products')
+		        COALESCE(c.product_id::text, ''), COALESCE(c.max_uses_per_user, 0), COALESCE(p.name, 'All Store Products'),
+		        c.starts_at, COALESCE(c.first_order_only, FALSE),
+		        COALESCE((SELECT SUM(o.discount_amount) FROM business.orders o
+		                  WHERE o.business_id = c.business_id AND LOWER(o.coupon_code) = LOWER(c.code)), 0)
 		 FROM business.coupons c
 		 LEFT JOIN business.products p ON p.id = c.product_id
 		 WHERE c.business_id = $1
@@ -2010,7 +2016,7 @@ func (r *BusinessRepository) ListBusinessCoupons(ctx context.Context, businessID
 	var coupons []*Coupon
 	for rows.Next() {
 		c := &Coupon{}
-		if err := rows.Scan(&c.ID, &c.BusinessID, &c.Code, &c.DiscountType, &c.DiscountValue, &c.MinSpend, &c.MaxUses, &c.UsedCount, &c.ExpiresAt, &c.IsActive, &c.CreatedAt, &c.ProductID, &c.MaxUsesPerUser, &c.ProductName); err == nil {
+		if err := rows.Scan(&c.ID, &c.BusinessID, &c.Code, &c.DiscountType, &c.DiscountValue, &c.MinSpend, &c.MaxUses, &c.UsedCount, &c.ExpiresAt, &c.IsActive, &c.CreatedAt, &c.ProductID, &c.MaxUsesPerUser, &c.ProductName, &c.StartsAt, &c.FirstOrderOnly, &c.TotalDiscount); err == nil {
 			coupons = append(coupons, c)
 		}
 	}
@@ -2033,10 +2039,11 @@ func (r *BusinessRepository) UpdateCoupon(ctx context.Context, c *Coupon) (*Coup
 	tag, err := r.db.Exec(ctx,
 		`UPDATE business.coupons
 		 SET discount_type = $3, discount_value = $4, min_spend = $5, max_uses = $6,
-		     expires_at = $7, is_active = $8, product_id = $9, max_uses_per_user = $10
+		     expires_at = $7, is_active = $8, product_id = $9, max_uses_per_user = $10,
+		     starts_at = $11, first_order_only = $12
 		 WHERE id = $1 AND business_id = $2`,
 		c.ID, c.BusinessID, c.DiscountType, c.DiscountValue, c.MinSpend, c.MaxUses,
-		c.ExpiresAt, c.IsActive, prodID, c.MaxUsesPerUser,
+		c.ExpiresAt, c.IsActive, prodID, c.MaxUsesPerUser, c.StartsAt, c.FirstOrderOnly,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("update coupon: %w", err)
@@ -2048,11 +2055,14 @@ func (r *BusinessRepository) UpdateCoupon(ctx context.Context, c *Coupon) (*Coup
 	out := &Coupon{}
 	err = r.db.QueryRow(ctx,
 		`SELECT c.id, c.business_id, c.code, c.discount_type, c.discount_value, c.min_spend, c.max_uses, c.used_count, c.expires_at, c.is_active, c.created_at,
-		        COALESCE(c.product_id::text, ''), COALESCE(c.max_uses_per_user, 0), COALESCE(p.name, 'All Store Products')
+		        COALESCE(c.product_id::text, ''), COALESCE(c.max_uses_per_user, 0), COALESCE(p.name, 'All Store Products'),
+		        c.starts_at, COALESCE(c.first_order_only, FALSE),
+		        COALESCE((SELECT SUM(o.discount_amount) FROM business.orders o
+		                  WHERE o.business_id = c.business_id AND LOWER(o.coupon_code) = LOWER(c.code)), 0)
 		 FROM business.coupons c
 		 LEFT JOIN business.products p ON p.id = c.product_id
 		 WHERE c.id = $1 AND c.business_id = $2`, c.ID, c.BusinessID).
-		Scan(&out.ID, &out.BusinessID, &out.Code, &out.DiscountType, &out.DiscountValue, &out.MinSpend, &out.MaxUses, &out.UsedCount, &out.ExpiresAt, &out.IsActive, &out.CreatedAt, &out.ProductID, &out.MaxUsesPerUser, &out.ProductName)
+		Scan(&out.ID, &out.BusinessID, &out.Code, &out.DiscountType, &out.DiscountValue, &out.MinSpend, &out.MaxUses, &out.UsedCount, &out.ExpiresAt, &out.IsActive, &out.CreatedAt, &out.ProductID, &out.MaxUsesPerUser, &out.ProductName, &out.StartsAt, &out.FirstOrderOnly, &out.TotalDiscount)
 	if err != nil {
 		return nil, fmt.Errorf("reload coupon: %w", err)
 	}
@@ -2076,11 +2086,12 @@ func (r *BusinessRepository) ValidateCoupon(ctx context.Context, businessID, cod
 	c := &Coupon{}
 	err := r.db.QueryRow(ctx,
 		`SELECT c.id, c.business_id, c.code, c.discount_type, c.discount_value, c.min_spend, c.max_uses, c.used_count, c.expires_at, c.is_active, c.created_at,
-		        COALESCE(c.product_id::text, ''), COALESCE(c.max_uses_per_user, 0), COALESCE(p.name, 'All Store Products')
+		        COALESCE(c.product_id::text, ''), COALESCE(c.max_uses_per_user, 0), COALESCE(p.name, 'All Store Products'),
+		        c.starts_at, COALESCE(c.first_order_only, FALSE)
 		 FROM business.coupons c
 		 LEFT JOIN business.products p ON p.id = c.product_id
 		 WHERE c.business_id = $1 AND LOWER(c.code) = LOWER($2)`, businessID, strings.TrimSpace(code)).
-		Scan(&c.ID, &c.BusinessID, &c.Code, &c.DiscountType, &c.DiscountValue, &c.MinSpend, &c.MaxUses, &c.UsedCount, &c.ExpiresAt, &c.IsActive, &c.CreatedAt, &c.ProductID, &c.MaxUsesPerUser, &c.ProductName)
+		Scan(&c.ID, &c.BusinessID, &c.Code, &c.DiscountType, &c.DiscountValue, &c.MinSpend, &c.MaxUses, &c.UsedCount, &c.ExpiresAt, &c.IsActive, &c.CreatedAt, &c.ProductID, &c.MaxUsesPerUser, &c.ProductName, &c.StartsAt, &c.FirstOrderOnly)
 
 	if err != nil {
 		return false, "Invalid coupon code", 0, nil, nil
@@ -2090,8 +2101,21 @@ func (r *BusinessRepository) ValidateCoupon(ctx context.Context, businessID, cod
 		return false, "Coupon is inactive", 0, nil, nil
 	}
 
+	if c.StartsAt != nil && c.StartsAt.After(time.Now()) {
+		return false, "Coupon is not active yet", 0, nil, nil
+	}
+
 	if c.ExpiresAt != nil && c.ExpiresAt.Before(time.Now()) {
 		return false, "Coupon has expired", 0, nil, nil
+	}
+
+	// First-order-only: reject if this buyer already has an order with this store.
+	if c.FirstOrderOnly && userID != "" {
+		var priorOrders int32
+		_ = r.db.QueryRow(ctx, `SELECT COUNT(*)::int FROM business.orders WHERE buyer_id = $1 AND business_id = $2`, userID, businessID).Scan(&priorOrders)
+		if priorOrders > 0 {
+			return false, "Coupon is valid only on your first order from this store", 0, nil, nil
+		}
 	}
 
 	if c.MaxUses > 0 && c.UsedCount >= c.MaxUses {

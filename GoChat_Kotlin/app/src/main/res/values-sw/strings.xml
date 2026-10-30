@@ -642,4 +642,14 @@
     <!-- Batch 16: stock / inventory -->
     <string name="product_out_of_stock">Hakuna stoki</string>
     <string name="checkout_out_of_stock">Baadhi ya bidhaa hazipo stoki</string>
+
+    <!-- Batch 17: coupon scheduling + analytics -->
+    <string name="coupon_start_label">Huanza</string>
+    <string name="coupon_start_none">Inaanza mara moja</string>
+    <string name="coupon_start_set">Chagua tarehe</string>
+    <string name="coupon_start_prefix">Huanza %1$s</string>
+    <string name="coupon_first_order_only">Agizo la kwanza pekee (wateja wapya)</string>
+    <string name="coupon_item_total_off">%1$s zimepunguzwa hadi sasa</string>
+    <string name="coupon_item_starts">Huanza %1$s</string>
+    <string name="coupon_item_first_order">Agizo la kwanza pekee</string>
 </resources>

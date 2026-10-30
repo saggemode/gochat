@@ -642,4 +642,14 @@
     <!-- Batch 16: stock / inventory -->
     <string name="product_out_of_stock">Stokta yok</string>
     <string name="checkout_out_of_stock">Bazı ürünler stokta yok</string>
+
+    <!-- Batch 17: coupon scheduling + analytics -->
+    <string name="coupon_start_label">Başlangıç</string>
+    <string name="coupon_start_none">Hemen etkin</string>
+    <string name="coupon_start_set">Tarih seç</string>
+    <string name="coupon_start_prefix">%1$s tarihinde başlar</string>
+    <string name="coupon_first_order_only">Yalnızca ilk sipariş (yeni müşteriler)</string>
+    <string name="coupon_item_total_off">Şu ana kadar %1$s indirim</string>
+    <string name="coupon_item_starts">%1$s tarihinde başlar</string>
+    <string name="coupon_item_first_order">Yalnızca ilk sipariş</string>
 </resources>

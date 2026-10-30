@@ -756,4 +756,14 @@
     <!-- Stock / inventory -->
     <string name="product_out_of_stock">Out of stock</string>
     <string name="checkout_out_of_stock">Some items are out of stock</string>
+
+    <!-- Coupon scheduling + analytics -->
+    <string name="coupon_start_label">Starts</string>
+    <string name="coupon_start_none">Starts immediately</string>
+    <string name="coupon_start_set">Set date</string>
+    <string name="coupon_start_prefix">Starts %1$s</string>
+    <string name="coupon_first_order_only">First order only (new customers)</string>
+    <string name="coupon_item_total_off">%1$s discounted so far</string>
+    <string name="coupon_item_starts">Starts %1$s</string>
+    <string name="coupon_item_first_order">First order only</string>
 </resources>

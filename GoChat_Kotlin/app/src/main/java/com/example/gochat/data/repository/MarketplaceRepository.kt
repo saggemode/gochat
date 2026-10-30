@@ -1276,7 +1276,10 @@ class MarketplaceRepository @Inject constructor(
         val expiresAt: String,
         val isActive: Boolean,
         val productId: String,
-        val productName: String
+        val productName: String,
+        val startsAt: String = "",       // RFC3339; blank = active immediately
+        val firstOrderOnly: Boolean = false,
+        val totalDiscount: Double = 0.0  // analytics: total value discounted so far
     )
 
     private fun parseCoupon(o: JsonObject?): Coupon? {
@@ -1294,7 +1297,10 @@ class MarketplaceRepository @Inject constructor(
             expiresAt = o["expires_at"]?.jsonPrimitive?.contentOrNull.orEmpty(),
             isActive = o["is_active"]?.jsonPrimitive?.booleanOrNull ?: true,
             productId = o["product_id"]?.jsonPrimitive?.contentOrNull.orEmpty(),
-            productName = o["product_name"]?.jsonPrimitive?.contentOrNull.orEmpty()
+            productName = o["product_name"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            startsAt = o["starts_at"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+            firstOrderOnly = o["first_order_only"]?.jsonPrimitive?.booleanOrNull ?: false,
+            totalDiscount = o["total_discount"]?.jsonPrimitive?.doubleOrNull ?: 0.0
         )
     }
 
@@ -1324,7 +1330,9 @@ class MarketplaceRepository @Inject constructor(
         maxUses: Int,
         maxUsesPerUser: Int,
         expiresAt: String,
-        productId: String
+        productId: String,
+        startsAt: String = "",
+        firstOrderOnly: Boolean = false
     ): Result<Coupon> {
         return try {
             val body = buildJsonObject {
@@ -1336,6 +1344,8 @@ class MarketplaceRepository @Inject constructor(
                 put("max_uses_per_user", maxUsesPerUser)
                 if (expiresAt.isNotBlank()) put("expires_at", expiresAt)
                 if (productId.isNotBlank()) put("product_id", productId)
+                if (startsAt.isNotBlank()) put("starts_at", startsAt)
+                put("first_order_only", firstOrderOnly)
             }
             val resp = api.createCoupon(body)
             if (!resp.isSuccessful) {
@@ -1363,7 +1373,9 @@ class MarketplaceRepository @Inject constructor(
         maxUsesPerUser: Int,
         expiresAt: String,
         productId: String,
-        isActive: Boolean
+        isActive: Boolean,
+        startsAt: String = "",
+        firstOrderOnly: Boolean = false
     ): Result<Coupon> {
         return try {
             val body = buildJsonObject {
@@ -1375,6 +1387,8 @@ class MarketplaceRepository @Inject constructor(
                 put("expires_at", expiresAt) // empty string clears the expiry
                 put("product_id", productId) // empty string = store-wide
                 put("is_active", isActive)
+                put("starts_at", startsAt)   // empty string clears the start date
+                put("first_order_only", firstOrderOnly)
             }
             val resp = api.updateCoupon(couponId, body)
             if (!resp.isSuccessful) {

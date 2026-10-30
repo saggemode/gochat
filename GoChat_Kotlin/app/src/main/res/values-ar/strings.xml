@@ -642,4 +642,14 @@
     <!-- Batch 16: stock / inventory -->
     <string name="product_out_of_stock">نفد من المخزون</string>
     <string name="checkout_out_of_stock">بعض العناصر نفدت من المخزون</string>
+
+    <!-- Batch 17: coupon scheduling + analytics -->
+    <string name="coupon_start_label">البدء</string>
+    <string name="coupon_start_none">نشط فورًا</string>
+    <string name="coupon_start_set">اختيار التاريخ</string>
+    <string name="coupon_start_prefix">يبدأ في %1$s</string>
+    <string name="coupon_first_order_only">الطلب الأول فقط (العملاء الجدد)</string>
+    <string name="coupon_item_total_off">تم خصم %1$s حتى الآن</string>
+    <string name="coupon_item_starts">يبدأ في %1$s</string>
+    <string name="coupon_item_first_order">الطلب الأول فقط</string>
 </resources>

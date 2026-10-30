@@ -450,6 +450,8 @@ func (h *BusinessHandler) CreateCoupon(c *gin.Context) {
 		ExpiresAt      string  `json:"expires_at"`
 		ProductID      string  `json:"product_id"`
 		MaxUsesPerUser int32   `json:"max_uses_per_user"`
+		StartsAt       string  `json:"starts_at"`
+		FirstOrderOnly bool    `json:"first_order_only"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -466,6 +468,8 @@ func (h *BusinessHandler) CreateCoupon(c *gin.Context) {
 		ExpiresAt:      req.ExpiresAt,
 		ProductId:      req.ProductID,
 		MaxUsesPerUser: req.MaxUsesPerUser,
+		StartsAt:       req.StartsAt,
+		FirstOrderOnly: req.FirstOrderOnly,
 	}, jsonOpt)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -535,6 +539,8 @@ func (h *BusinessHandler) UpdateCoupon(c *gin.Context) {
 		ProductID      string  `json:"product_id"`
 		MaxUsesPerUser int32   `json:"max_uses_per_user"`
 		IsActive       bool    `json:"is_active"`
+		StartsAt       string  `json:"starts_at"`
+		FirstOrderOnly bool    `json:"first_order_only"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -552,6 +558,8 @@ func (h *BusinessHandler) UpdateCoupon(c *gin.Context) {
 		ProductId:      req.ProductID,
 		MaxUsesPerUser: req.MaxUsesPerUser,
 		IsActive:       req.IsActive,
+		StartsAt:       req.StartsAt,
+		FirstOrderOnly: req.FirstOrderOnly,
 	}, jsonOpt)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

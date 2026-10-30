@@ -149,6 +149,10 @@ func couponToPB(c *repository.Coupon) *pb.Coupon {
 	if c.ExpiresAt != nil {
 		exp = c.ExpiresAt.Format(time.RFC3339)
 	}
+	starts := ""
+	if c.StartsAt != nil {
+		starts = c.StartsAt.Format(time.RFC3339)
+	}
 	return &pb.Coupon{
 		Id:             c.ID,
 		BusinessId:     c.BusinessID,
@@ -164,7 +168,22 @@ func couponToPB(c *repository.Coupon) *pb.Coupon {
 		ProductId:      c.ProductID,
 		MaxUsesPerUser: c.MaxUsesPerUser,
 		ProductName:    c.ProductName,
+		StartsAt:       starts,
+		FirstOrderOnly: c.FirstOrderOnly,
+		TotalDiscount:  c.TotalDiscount,
 	}
+}
+
+// parseRFC3339Ptr returns a *time.Time for a non-empty RFC3339 string, else nil.
+func parseRFC3339Ptr(s string) *time.Time {
+	if s == "" {
+		return nil
+	}
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return nil
+	}
+	return &t
 }
 
 // ── Cart Handlers ────────────────────────────────────────────────────────────
@@ -439,6 +458,8 @@ func (s *BusinessServer) CreateCoupon(ctx context.Context, req *pb.CreateCouponR
 		MaxUses:        req.MaxUses,
 		ProductID:      req.ProductId,
 		MaxUsesPerUser: req.MaxUsesPerUser,
+		StartsAt:       parseRFC3339Ptr(req.StartsAt),
+		FirstOrderOnly: req.FirstOrderOnly,
 	}
 	if req.ExpiresAt != "" {
 		t, err := time.Parse(time.RFC3339, req.ExpiresAt)
@@ -500,6 +521,8 @@ func (s *BusinessServer) UpdateCoupon(ctx context.Context, req *pb.UpdateCouponR
 		ProductID:      req.ProductId,
 		MaxUsesPerUser: req.MaxUsesPerUser,
 		IsActive:       req.IsActive,
+		StartsAt:       parseRFC3339Ptr(req.StartsAt),
+		FirstOrderOnly: req.FirstOrderOnly,
 	}
 	if req.ExpiresAt != "" {
 		t, err := time.Parse(time.RFC3339, req.ExpiresAt)

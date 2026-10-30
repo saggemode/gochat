@@ -44,6 +44,7 @@ class CouponManagerActivity : AppCompatActivity() {
 
     private var products: List<Product> = emptyList()
     private var expiryMillis: Long? = null
+    private var startMillis: Long? = null
     private var storeCurrency: String? = null
 
     // Non-null while the form is editing an existing coupon rather than creating one.
@@ -58,6 +59,8 @@ class CouponManagerActivity : AppCompatActivity() {
     private lateinit var maxUsesInput: EditText
     private lateinit var perUserInput: EditText
     private lateinit var scopeSpinner: Spinner
+    private lateinit var firstOrderCheck: android.widget.CheckBox
+    private lateinit var startView: TextView
     private lateinit var expiryView: TextView
     private lateinit var saveBtn: Button
     private lateinit var cancelEditBtn: Button
@@ -147,6 +150,33 @@ class CouponManagerActivity : AppCompatActivity() {
         root.addView(label(getString(R.string.coupon_scope_label)))
         scopeSpinner = Spinner(this)
         root.addView(scopeSpinner)
+
+        root.addView(label(getString(R.string.coupon_start_label)))
+        startView = TextView(this).apply {
+            text = getString(R.string.coupon_start_none)
+            textSize = 14f
+            setPadding(0, dp(4), 0, dp(4))
+        }
+        root.addView(startView)
+        val startRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        startRow.addView(Button(this).apply {
+            text = getString(R.string.coupon_start_set)
+            setOnClickListener { pickStart() }
+        })
+        startRow.addView(Button(this).apply {
+            text = getString(R.string.coupon_expiry_clear)
+            setOnClickListener {
+                startMillis = null
+                startView.text = getString(R.string.coupon_start_none)
+            }
+        })
+        root.addView(startRow)
+
+        firstOrderCheck = android.widget.CheckBox(this).apply {
+            text = getString(R.string.coupon_first_order_only)
+            setPadding(0, dp(8), 0, 0)
+        }
+        root.addView(firstOrderCheck)
 
         root.addView(label(getString(R.string.coupon_expiry_label)))
         expiryView = TextView(this).apply {
@@ -260,6 +290,30 @@ class CouponManagerActivity : AppCompatActivity() {
         }.show()
     }
 
+    private fun pickStart() {
+        val now = Calendar.getInstance()
+        DatePickerDialog(
+            this,
+            { _, year, month, day ->
+                val c = Calendar.getInstance().apply {
+                    set(year, month, day, 0, 0, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                startMillis = c.timeInMillis
+                startView.text = getString(R.string.coupon_start_prefix, dateLabel(c))
+            },
+            now.get(Calendar.YEAR), now.get(Calendar.MONTH), now.get(Calendar.DAY_OF_MONTH)
+        ).apply { datePicker.minDate = now.timeInMillis }.show()
+    }
+
+    /** Converts the chosen start date (start of day) to an RFC3339 UTC timestamp. */
+    private fun startRfc3339(): String {
+        val ms = startMillis ?: return ""
+        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
+        fmt.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        return fmt.format(java.util.Date(ms))
+    }
+
     private fun dateLabel(c: Calendar): String =
         android.text.format.DateFormat.getMediumDateFormat(this).format(c.time)
 
@@ -340,6 +394,30 @@ class CouponManagerActivity : AppCompatActivity() {
             setTextColor(resources.getColor(R.color.gochat_text_muted, theme))
             setPadding(0, dp(2), 0, 0)
         })
+
+        // Analytics: total value discounted so far by this coupon.
+        if (c.totalDiscount > 0) {
+            row.addView(TextView(this).apply {
+                text = getString(R.string.coupon_item_total_off, CurrencyManager.formatPrice(c.totalDiscount, storeCurrency))
+                textSize = 12f
+                setTextColor(resources.getColor(R.color.whatsapp_teal_light, theme))
+                setPadding(0, dp(2), 0, 0)
+            })
+        }
+
+        // Scheduling / targeting badges.
+        val badges = mutableListOf<String>()
+        if (c.startsAt.isNotBlank()) badges.add(getString(R.string.coupon_item_starts, c.startsAt.take(10)))
+        if (c.firstOrderOnly) badges.add(getString(R.string.coupon_item_first_order))
+        if (badges.isNotEmpty()) {
+            row.addView(TextView(this).apply {
+                text = badges.joinToString("  •  ")
+                textSize = 11f
+                setTextColor(resources.getColor(R.color.gochat_text_muted, theme))
+                setPadding(0, dp(2), 0, 0)
+            })
+        }
+
         if (!c.isActive) {
             row.addView(TextView(this).apply {
                 text = getString(R.string.coupon_item_inactive)
@@ -391,6 +469,12 @@ class CouponManagerActivity : AppCompatActivity() {
             val cal = Calendar.getInstance().apply { timeInMillis = it }
             getString(R.string.coupon_expiry_prefix, dateLabel(cal))
         } ?: getString(R.string.coupon_expiry_none)
+        startMillis = parseRfc3339(c.startsAt)
+        startView.text = startMillis?.let {
+            val cal = Calendar.getInstance().apply { timeInMillis = it }
+            getString(R.string.coupon_start_prefix, dateLabel(cal))
+        } ?: getString(R.string.coupon_start_none)
+        firstOrderCheck.isChecked = c.firstOrderOnly
         saveBtn.text = getString(R.string.coupon_update)
         cancelEditBtn.visibility = View.VISIBLE
     }
@@ -407,6 +491,9 @@ class CouponManagerActivity : AppCompatActivity() {
         scopeSpinner.setSelection(0)
         expiryMillis = null
         expiryView.text = getString(R.string.coupon_expiry_none)
+        startMillis = null
+        startView.text = getString(R.string.coupon_start_none)
+        firstOrderCheck.isChecked = false
         saveBtn.text = getString(R.string.coupon_save)
         cancelEditBtn.visibility = View.GONE
     }
@@ -424,7 +511,9 @@ class CouponManagerActivity : AppCompatActivity() {
                 maxUsesPerUser = c.maxUsesPerUser,
                 expiresAt = c.expiresAt,
                 productId = c.productId,
-                isActive = !c.isActive
+                isActive = !c.isActive,
+                startsAt = c.startsAt,
+                firstOrderOnly = c.firstOrderOnly
             )
             setBusy(false)
             res.onSuccess { loadCoupons() }
@@ -505,7 +594,9 @@ class CouponManagerActivity : AppCompatActivity() {
                     maxUsesPerUser = perUser,
                     expiresAt = expiryRfc3339(),
                     productId = productId,
-                    isActive = editingActive
+                    isActive = editingActive,
+                    startsAt = startRfc3339(),
+                    firstOrderOnly = firstOrderCheck.isChecked
                 )
             } else {
                 repository.createCoupon(
@@ -516,7 +607,9 @@ class CouponManagerActivity : AppCompatActivity() {
                     maxUses = maxUses,
                     maxUsesPerUser = perUser,
                     expiresAt = expiryRfc3339(),
-                    productId = productId
+                    productId = productId,
+                    startsAt = startRfc3339(),
+                    firstOrderOnly = firstOrderCheck.isChecked
                 )
             }
             setBusy(false)

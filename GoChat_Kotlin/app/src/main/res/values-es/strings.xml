@@ -642,4 +642,14 @@
     <!-- Batch 16: stock / inventory -->
     <string name="product_out_of_stock">Agotado</string>
     <string name="checkout_out_of_stock">Algunos artículos están agotados</string>
+
+    <!-- Batch 17: coupon scheduling + analytics -->
+    <string name="coupon_start_label">Inicio</string>
+    <string name="coupon_start_none">Activo de inmediato</string>
+    <string name="coupon_start_set">Elegir fecha</string>
+    <string name="coupon_start_prefix">Inicia el %1$s</string>
+    <string name="coupon_first_order_only">Solo primer pedido (clientes nuevos)</string>
+    <string name="coupon_item_total_off">%1$s descontado hasta ahora</string>
+    <string name="coupon_item_starts">Inicia el %1$s</string>
+    <string name="coupon_item_first_order">Solo primer pedido</string>
 </resources>

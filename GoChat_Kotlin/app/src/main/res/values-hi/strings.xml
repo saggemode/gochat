@@ -642,4 +642,14 @@
     <!-- Batch 16: stock / inventory -->
     <string name="product_out_of_stock">स्टॉक में नहीं</string>
     <string name="checkout_out_of_stock">कुछ आइटम स्टॉक में नहीं हैं</string>
+
+    <!-- Batch 17: coupon scheduling + analytics -->
+    <string name="coupon_start_label">आरंभ</string>
+    <string name="coupon_start_none">तुरंत सक्रिय</string>
+    <string name="coupon_start_set">तारीख चुनें</string>
+    <string name="coupon_start_prefix">%1$s को आरंभ</string>
+    <string name="coupon_first_order_only">केवल पहला ऑर्डर (नए ग्राहक)</string>
+    <string name="coupon_item_total_off">अब तक %1$s की छूट</string>
+    <string name="coupon_item_starts">%1$s को आरंभ</string>
+    <string name="coupon_item_first_order">केवल पहला ऑर्डर</string>
 </resources>

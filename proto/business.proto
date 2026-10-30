@@ -814,6 +814,9 @@ message Coupon {
   string product_id        = 12;
   int32  max_uses_per_user = 13;
   string product_name      = 14;
+  string starts_at         = 15;
+  bool   first_order_only  = 16;
+  double total_discount    = 17; // analytics: total value discounted so far (read-only)
 }
 
 message CreateCouponRequest {
@@ -826,6 +829,8 @@ message CreateCouponRequest {
   string expires_at        = 7;
   string product_id        = 8;
   int32  max_uses_per_user = 9;
+  string starts_at         = 10;
+  bool   first_order_only  = 11;
 }
 message CreateCouponResponse { Coupon coupon = 1; }
 
@@ -843,6 +848,8 @@ message UpdateCouponRequest {
   string product_id        = 8; // empty = store-wide
   int32  max_uses_per_user = 9;
   bool   is_active         = 10;
+  string starts_at         = 11;
+  bool   first_order_only  = 12;
 }
 
 message DeleteCouponRequest {

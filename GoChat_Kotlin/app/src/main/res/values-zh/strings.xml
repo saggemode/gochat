@@ -642,4 +642,14 @@
     <!-- Batch 16: stock / inventory -->
     <string name="product_out_of_stock">缺货</string>
     <string name="checkout_out_of_stock">部分商品缺货</string>
+
+    <!-- Batch 17: coupon scheduling + analytics -->
+    <string name="coupon_start_label">开始</string>
+    <string name="coupon_start_none">立即生效</string>
+    <string name="coupon_start_set">选择日期</string>
+    <string name="coupon_start_prefix">%1$s 开始</string>
+    <string name="coupon_first_order_only">仅限首单（新客户）</string>
+    <string name="coupon_item_total_off">目前已优惠 %1$s</string>
+    <string name="coupon_item_starts">%1$s 开始</string>
+    <string name="coupon_item_first_order">仅限首单</string>
 </resources>

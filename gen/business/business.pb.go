@@ -7718,6 +7718,9 @@ type Coupon struct {
 	ProductId      string                 `protobuf:"bytes,12,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
 	MaxUsesPerUser int32                  `protobuf:"varint,13,opt,name=max_uses_per_user,json=maxUsesPerUser,proto3" json:"max_uses_per_user,omitempty"`
 	ProductName    string                 `protobuf:"bytes,14,opt,name=product_name,json=productName,proto3" json:"product_name,omitempty"`
+	StartsAt       string                 `protobuf:"bytes,15,opt,name=starts_at,json=startsAt,proto3" json:"starts_at,omitempty"`
+	FirstOrderOnly bool                   `protobuf:"varint,16,opt,name=first_order_only,json=firstOrderOnly,proto3" json:"first_order_only,omitempty"`
+	TotalDiscount  float64                `protobuf:"fixed64,17,opt,name=total_discount,json=totalDiscount,proto3" json:"total_discount,omitempty"` // analytics: total value discounted so far (read-only)
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -7850,6 +7853,27 @@ func (x *Coupon) GetProductName() string {
 	return ""
 }
 
+func (x *Coupon) GetStartsAt() string {
+	if x != nil {
+		return x.StartsAt
+	}
+	return ""
+}
+
+func (x *Coupon) GetFirstOrderOnly() bool {
+	if x != nil {
+		return x.FirstOrderOnly
+	}
+	return false
+}
+
+func (x *Coupon) GetTotalDiscount() float64 {
+	if x != nil {
+		return x.TotalDiscount
+	}
+	return 0
+}
+
 type CreateCouponRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	BusinessId     string                 `protobuf:"bytes,1,opt,name=business_id,json=businessId,proto3" json:"business_id,omitempty"`
@@ -7861,6 +7885,8 @@ type CreateCouponRequest struct {
 	ExpiresAt      string                 `protobuf:"bytes,7,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
 	ProductId      string                 `protobuf:"bytes,8,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
 	MaxUsesPerUser int32                  `protobuf:"varint,9,opt,name=max_uses_per_user,json=maxUsesPerUser,proto3" json:"max_uses_per_user,omitempty"`
+	StartsAt       string                 `protobuf:"bytes,10,opt,name=starts_at,json=startsAt,proto3" json:"starts_at,omitempty"`
+	FirstOrderOnly bool                   `protobuf:"varint,11,opt,name=first_order_only,json=firstOrderOnly,proto3" json:"first_order_only,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -7956,6 +7982,20 @@ func (x *CreateCouponRequest) GetMaxUsesPerUser() int32 {
 		return x.MaxUsesPerUser
 	}
 	return 0
+}
+
+func (x *CreateCouponRequest) GetStartsAt() string {
+	if x != nil {
+		return x.StartsAt
+	}
+	return ""
+}
+
+func (x *CreateCouponRequest) GetFirstOrderOnly() bool {
+	if x != nil {
+		return x.FirstOrderOnly
+	}
+	return false
 }
 
 type CreateCouponResponse struct {
@@ -8102,6 +8142,8 @@ type UpdateCouponRequest struct {
 	ProductId      string                 `protobuf:"bytes,8,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"` // empty = store-wide
 	MaxUsesPerUser int32                  `protobuf:"varint,9,opt,name=max_uses_per_user,json=maxUsesPerUser,proto3" json:"max_uses_per_user,omitempty"`
 	IsActive       bool                   `protobuf:"varint,10,opt,name=is_active,json=isActive,proto3" json:"is_active,omitempty"`
+	StartsAt       string                 `protobuf:"bytes,11,opt,name=starts_at,json=startsAt,proto3" json:"starts_at,omitempty"`
+	FirstOrderOnly bool                   `protobuf:"varint,12,opt,name=first_order_only,json=firstOrderOnly,proto3" json:"first_order_only,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -8202,6 +8244,20 @@ func (x *UpdateCouponRequest) GetMaxUsesPerUser() int32 {
 func (x *UpdateCouponRequest) GetIsActive() bool {
 	if x != nil {
 		return x.IsActive
+	}
+	return false
+}
+
+func (x *UpdateCouponRequest) GetStartsAt() string {
+	if x != nil {
+		return x.StartsAt
+	}
+	return ""
+}
+
+func (x *UpdateCouponRequest) GetFirstOrderOnly() bool {
+	if x != nil {
+		return x.FirstOrderOnly
 	}
 	return false
 }
@@ -11897,7 +11953,7 @@ const file_proto_business_proto_rawDesc = "" +
 	"\x17estimated_delivery_date\x18\x06 \x01(\tR\x15estimatedDeliveryDate\x12%\n" +
 	"\x0edelivery_notes\x18\a \x01(\tR\rdeliveryNotes\"D\n" +
 	"\x1bUpdateOrderTrackingResponse\x12%\n" +
-	"\x05order\x18\x01 \x01(\v2\x0f.business.OrderR\x05order\"\xb8\x03\n" +
+	"\x05order\x18\x01 \x01(\v2\x0f.business.OrderR\x05order\"\xa6\x04\n" +
 	"\x06Coupon\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vbusiness_id\x18\x02 \x01(\tR\n" +
@@ -11918,7 +11974,10 @@ const file_proto_business_proto_rawDesc = "" +
 	"\n" +
 	"product_id\x18\f \x01(\tR\tproductId\x12)\n" +
 	"\x11max_uses_per_user\x18\r \x01(\x05R\x0emaxUsesPerUser\x12!\n" +
-	"\fproduct_name\x18\x0e \x01(\tR\vproductName\"\xb7\x02\n" +
+	"\fproduct_name\x18\x0e \x01(\tR\vproductName\x12\x1b\n" +
+	"\tstarts_at\x18\x0f \x01(\tR\bstartsAt\x12(\n" +
+	"\x10first_order_only\x18\x10 \x01(\bR\x0efirstOrderOnly\x12%\n" +
+	"\x0etotal_discount\x18\x11 \x01(\x01R\rtotalDiscount\"\xfe\x02\n" +
 	"\x13CreateCouponRequest\x12\x1f\n" +
 	"\vbusiness_id\x18\x01 \x01(\tR\n" +
 	"businessId\x12\x12\n" +
@@ -11931,14 +11990,17 @@ const file_proto_business_proto_rawDesc = "" +
 	"expires_at\x18\a \x01(\tR\texpiresAt\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\b \x01(\tR\tproductId\x12)\n" +
-	"\x11max_uses_per_user\x18\t \x01(\x05R\x0emaxUsesPerUser\"@\n" +
+	"\x11max_uses_per_user\x18\t \x01(\x05R\x0emaxUsesPerUser\x12\x1b\n" +
+	"\tstarts_at\x18\n" +
+	" \x01(\tR\bstartsAt\x12(\n" +
+	"\x10first_order_only\x18\v \x01(\bR\x0efirstOrderOnly\"@\n" +
 	"\x14CreateCouponResponse\x12(\n" +
 	"\x06coupon\x18\x01 \x01(\v2\x10.business.CouponR\x06coupon\"=\n" +
 	"\x1aListBusinessCouponsRequest\x12\x1f\n" +
 	"\vbusiness_id\x18\x01 \x01(\tR\n" +
 	"businessId\"I\n" +
 	"\x1bListBusinessCouponsResponse\x12*\n" +
-	"\acoupons\x18\x01 \x03(\v2\x10.business.CouponR\acoupons\"\xdd\x02\n" +
+	"\acoupons\x18\x01 \x03(\v2\x10.business.CouponR\acoupons\"\xa4\x03\n" +
 	"\x13UpdateCouponRequest\x12\x1f\n" +
 	"\vbusiness_id\x18\x01 \x01(\tR\n" +
 	"businessId\x12\x1b\n" +
@@ -11953,7 +12015,9 @@ const file_proto_business_proto_rawDesc = "" +
 	"product_id\x18\b \x01(\tR\tproductId\x12)\n" +
 	"\x11max_uses_per_user\x18\t \x01(\x05R\x0emaxUsesPerUser\x12\x1b\n" +
 	"\tis_active\x18\n" +
-	" \x01(\bR\bisActive\"S\n" +
+	" \x01(\bR\bisActive\x12\x1b\n" +
+	"\tstarts_at\x18\v \x01(\tR\bstartsAt\x12(\n" +
+	"\x10first_order_only\x18\f \x01(\bR\x0efirstOrderOnly\"S\n" +
 	"\x13DeleteCouponRequest\x12\x1f\n" +
 	"\vbusiness_id\x18\x01 \x01(\tR\n" +
 	"businessId\x12\x1b\n" +

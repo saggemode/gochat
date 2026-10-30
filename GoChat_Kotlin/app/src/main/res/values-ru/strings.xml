@@ -642,4 +642,14 @@
     <!-- Batch 16: stock / inventory -->
     <string name="product_out_of_stock">Нет в наличии</string>
     <string name="checkout_out_of_stock">Некоторых товаров нет в наличии</string>
+
+    <!-- Batch 17: coupon scheduling + analytics -->
+    <string name="coupon_start_label">Начало</string>
+    <string name="coupon_start_none">Активен сразу</string>
+    <string name="coupon_start_set">Выбрать дату</string>
+    <string name="coupon_start_prefix">Начинается %1$s</string>
+    <string name="coupon_first_order_only">Только первый заказ (новые клиенты)</string>
+    <string name="coupon_item_total_off">Скидок на сумму %1$s</string>
+    <string name="coupon_item_starts">Начинается %1$s</string>
+    <string name="coupon_item_first_order">Только первый заказ</string>
 </resources>
