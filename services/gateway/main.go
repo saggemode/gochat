@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -273,6 +274,23 @@ func main() {
 	searchHandler := handlers.NewSearchHandler(cfg.SearchServiceURL, log)
 	docsHandler := handlers.NewDocsHandler()
 
+	// ── Admin console read pool ──────────────────────────────────────────────
+	// The /api/v1/admin endpoints read directly from the shared database to
+	// aggregate cross-service data. The pool is only opened when the admin
+	// console is actually enabled (ADMIN_EMAILS set), so deployments that don't
+	// use it add no extra DB connections. Pool size is tunable via DB_MAX_CONNS.
+	var adminDB *pgxpool.Pool
+	if len(cfg.AdminEmails) > 0 && cfg.PostgresDSN != "" {
+		if pool, dbErr := database.NewPostgres(ctx, cfg.PostgresDSN, log); dbErr != nil {
+			log.Warn("admin DB pool unavailable; /api/v1/admin will return 503", zap.Error(dbErr))
+		} else {
+			adminDB = pool
+			defer adminDB.Close()
+			log.Info("admin console enabled", zap.Int("admins", len(cfg.AdminEmails)))
+		}
+	}
+	adminHandler := handlers.NewAdminHandler(adminDB, log)
+
 	// ── Root Status & Health Endpoints ──────────────────────────────────────
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -353,6 +371,19 @@ func main() {
 		r.POST("/webhooks/shipping/carrier", businessHandler.CarrierTrackingWebhook)
 	}
 
+	// ── Admin Console Routes ───────────────────────────────────────────────
+	// Authenticated + email-allowlisted (ADMIN_EMAILS). Read-only in this
+	// first increment; serves the admin dashboard (users, disputes, KPIs).
+	admin := api.Group("/admin")
+	admin.Use(
+		middleware.AuthMiddleware(authClient, redisClient),
+		middleware.AdminMiddleware(cfg.AdminEmails),
+	)
+	{
+		admin.GET("/overview", adminHandler.Overview)
+		admin.GET("/users", adminHandler.ListUsers)
+		admin.GET("/disputes", adminHandler.ListDisputes)
+	}
 
 	// Authenticated Routes
 	authRequired := api.Group("")

@@ -1,0 +1,144 @@
+"use client"
+
+import { useMemo, useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  Check,
+  Flag,
+  MessageSquare,
+  User,
+  Clapperboard,
+  Radio,
+  Package,
+  X,
+  type LucideIcon,
+} from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Select } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import { StatusBadge } from "@/components/status-badge"
+import { formatRelative } from "@/lib/format"
+import { getReports } from "@/lib/resources"
+import type { AdminReport, ReportStatus, ReportTarget } from "@/lib/types"
+
+const TARGET_ICON: Record<ReportTarget, LucideIcon> = {
+  message: MessageSquare,
+  user: User,
+  story: Clapperboard,
+  channel: Radio,
+  product: Package,
+}
+
+export default function ModerationPage() {
+  const qc = useQueryClient()
+  const { data, isLoading } = useQuery({ queryKey: ["reports"], queryFn: getReports })
+  const [status, setStatus] = useState<ReportStatus | "all">("pending")
+  const [severity, setSeverity] = useState<AdminReport["severity"] | "all">("all")
+
+  const reports = useMemo(() => data ?? [], [data])
+  const filtered = useMemo(
+    () =>
+      reports.filter((r) => {
+        if (status !== "all" && r.status !== status) return false
+        if (severity !== "all" && r.severity !== severity) return false
+        return true
+      }),
+    [reports, status, severity],
+  )
+
+  const pending = reports.filter((r) => r.status === "pending").length
+
+  function act(id: string, next: ReportStatus) {
+    qc.setQueryData<AdminReport[]>(["reports"], (prev) =>
+      (prev ?? []).map((r) => (r.id === id ? { ...r, status: next } : r)),
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant={pending ? "destructive" : "secondary"} className="h-9 px-3">
+          <Flag className="mr-1" /> {pending} pending
+        </Badge>
+        <Select value={status} onChange={(e) => setStatus(e.target.value as ReportStatus | "all")}>
+          <option value="all">All statuses</option>
+          <option value="pending">Pending</option>
+          <option value="actioned">Actioned</option>
+          <option value="dismissed">Dismissed</option>
+        </Select>
+        <Select value={severity} onChange={(e) => setSeverity(e.target.value as AdminReport["severity"] | "all")}>
+          <option value="all">All severities</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </Select>
+        <span className="text-muted-foreground ml-auto text-sm">{filtered.length} items</span>
+      </div>
+
+      {isLoading ? (
+        <div className="grid gap-3 md:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-36 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <Card>
+          <CardContent className="text-muted-foreground py-16 text-center text-sm">
+            Nothing in the queue. 🎉
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          {filtered.map((r) => {
+            const Icon = TARGET_ICON[r.target]
+            return (
+              <Card key={r.id} className="gap-0 py-0">
+                <CardContent className="space-y-3 p-4">
+                  <div className="flex items-start gap-3">
+                    <span className="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-lg">
+                      <Icon className="size-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium capitalize">{r.target}</span>
+                        <span className="text-muted-foreground truncate text-sm">· {r.reportedName}</span>
+                      </div>
+                      <p className="text-muted-foreground text-xs">
+                        Reported by {r.reporter} · {formatRelative(r.createdAt)}
+                      </p>
+                    </div>
+                    <StatusBadge status={r.severity} />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{r.reason}</Badge>
+                    <StatusBadge status={r.status} />
+                  </div>
+
+                  {r.excerpt ? (
+                    <p className="bg-muted/50 text-muted-foreground rounded-md px-3 py-2 text-sm italic">
+                      “{r.excerpt}”
+                    </p>
+                  ) : null}
+
+                  {r.status === "pending" ? (
+                    <div className="flex gap-2 pt-1">
+                      <Button size="sm" variant="destructive" className="flex-1" onClick={() => act(r.id, "actioned")}>
+                        <Check /> Take action
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1" onClick={() => act(r.id, "dismissed")}>
+                        <X /> Dismiss
+                      </Button>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}

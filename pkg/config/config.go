@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -97,6 +98,11 @@ type Config struct {
 	GRPCTLSClientCert string // optional mTLS client cert (PEM)
 	GRPCTLSClientKey  string // optional mTLS client key (PEM)
 	GRPCTLSServerName string // optional override for TLS server name
+
+	// Admin console: lower-cased allowlist of emails permitted to use the
+	// /api/v1/admin endpoints (env ADMIN_EMAILS, comma-separated). Empty means
+	// no one is an admin — the admin API stays locked until it is set.
+	AdminEmails []string
 }
 
 // Load reads all config from environment variables with sensible defaults.
@@ -175,7 +181,26 @@ func Load() *Config {
 		GRPCTLSClientCert: getEnv("GRPC_TLS_CLIENT_CERT", ""),
 		GRPCTLSClientKey:  getEnv("GRPC_TLS_CLIENT_KEY", ""),
 		GRPCTLSServerName: getEnv("GRPC_TLS_SERVER_NAME", ""),
+
+		AdminEmails: getEnvCSV("ADMIN_EMAILS"),
 	}
+}
+
+// getEnvCSV parses a comma-separated env var into a slice of trimmed,
+// lower-cased, non-empty values (used for allowlists like ADMIN_EMAILS).
+func getEnvCSV(key string) []string {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if v := strings.ToLower(strings.TrimSpace(p)); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 func getEnv(key, fallback string) string {
