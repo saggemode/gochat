@@ -20,7 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { formatCompact, formatRelative, initials } from "@/lib/format"
-import { getUsers } from "@/lib/resources"
+import { getUsers, setUserStatus as apiSetUserStatus } from "@/lib/resources"
 import type { AdminUser, UserStatus } from "@/lib/types"
 
 export default function UsersPage() {
@@ -52,10 +52,19 @@ export default function UsersPage() {
     return c
   }, [users])
 
-  function setUserStatus(id: string, next: UserStatus) {
-    qc.setQueryData<AdminUser[]>(["users"], (prev) =>
-      (prev ?? []).map((u) => (u.id === id ? { ...u, status: next } : u)),
+  async function setUserStatus(id: string, next: UserStatus) {
+    const prev = qc.getQueryData<AdminUser[]>(["users"])
+    // Optimistic update.
+    qc.setQueryData<AdminUser[]>(["users"], (cur) =>
+      (cur ?? []).map((u) => (u.id === id ? { ...u, status: next } : u)),
     )
+    try {
+      await apiSetUserStatus(id, next)
+    } catch {
+      // Revert on failure.
+      if (prev) qc.setQueryData(["users"], prev)
+      alert("Failed to update user status")
+    }
   }
 
   return (
@@ -113,7 +122,6 @@ export default function UsersPage() {
                 <TableHead>User</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Country</TableHead>
-                <TableHead className="text-right">Messages</TableHead>
                 <TableHead className="text-right">Orders</TableHead>
                 <TableHead>Last active</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -123,14 +131,14 @@ export default function UsersPage() {
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={7}>
+                    <TableCell colSpan={6}>
                       <Skeleton className="h-8 w-full" />
                     </TableCell>
                   </TableRow>
                 ))
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-muted-foreground py-10 text-center">
+                  <TableCell colSpan={6} className="text-muted-foreground py-10 text-center">
                     No users match your filters.
                   </TableCell>
                 </TableRow>
@@ -161,7 +169,6 @@ export default function UsersPage() {
                       <StatusBadge status={u.status} />
                     </TableCell>
                     <TableCell className="text-muted-foreground">{u.country}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatCompact(u.messages)}</TableCell>
                     <TableCell className="text-right tabular-nums">{u.orders}</TableCell>
                     <TableCell className="text-muted-foreground">{formatRelative(u.lastActiveAt)}</TableCell>
                     <TableCell>

@@ -31,10 +31,10 @@ import (
 	storypb "gochat/gen/story"
 	"gochat/pkg/cdn"
 	"gochat/pkg/config"
-	"gochat/pkg/fcm"
 	"gochat/pkg/database"
 	"gochat/pkg/discovery"
 	"gochat/pkg/eventbus"
+	"gochat/pkg/fcm"
 	"gochat/pkg/logger"
 	"gochat/pkg/metrics"
 	"gochat/services/gateway/handlers"
@@ -289,7 +289,22 @@ func main() {
 			log.Info("admin console enabled", zap.Int("admins", len(cfg.AdminEmails)))
 		}
 	}
-	adminHandler := handlers.NewAdminHandler(adminDB, log)
+	adminServiceConns := map[string]*grpc.ClientConn{
+		"auth":     authConn,
+		"chat":     chatConn,
+		"group":    groupConn,
+		"story":    storyConn,
+		"call":     callConn,
+		"channel":  channelConn,
+		"social":   socialConn,
+		"miniapp":  miniappConn,
+		"business": businessConn,
+		"media":    mediaConn,
+	}
+	if aiConn != nil {
+		adminServiceConns["ai"] = aiConn
+	}
+	adminHandler := handlers.NewAdminHandler(adminDB, businessClient, adminServiceConns, log)
 
 	// ── Root Status & Health Endpoints ──────────────────────────────────────
 	r.GET("/", func(c *gin.Context) {
@@ -354,7 +369,6 @@ func main() {
 
 		api.GET("/fx/rates", businessHandler.GetFxRates)
 
-
 		// Search Service Proxy
 		api.GET("/search", searchHandler.ProxySearch)
 		api.GET("/search/suggestions", searchHandler.ProxySearch)
@@ -381,8 +395,18 @@ func main() {
 	)
 	{
 		admin.GET("/overview", adminHandler.Overview)
+		admin.GET("/metrics/growth", adminHandler.GrowthSeries)
+		admin.GET("/metrics/revenue", adminHandler.RevenueSeries)
+		admin.GET("/metrics/messages", adminHandler.MessageMix)
+		admin.GET("/activity", adminHandler.Activity)
+		admin.GET("/health", adminHandler.SystemHealth)
 		admin.GET("/users", adminHandler.ListUsers)
+		admin.POST("/users/:id/status", adminHandler.UpdateUserStatus)
+		admin.GET("/orders", adminHandler.ListOrders)
 		admin.GET("/disputes", adminHandler.ListDisputes)
+		admin.POST("/disputes/:id/resolve", adminHandler.ResolveDispute)
+		admin.GET("/reports", adminHandler.ListReports)
+		admin.POST("/reports/:id/status", adminHandler.UpdateReportStatus)
 	}
 
 	// Authenticated Routes
@@ -646,7 +670,6 @@ func main() {
 		authRequired.POST("/marketplace/stores/:id/follow", businessHandler.ToggleFollowStore)
 		authRequired.GET("/marketplace/stores/:id/following", businessHandler.IsFollowingStore)
 		authRequired.GET("/marketplace/followed-stores", businessHandler.GetFollowedStores)
-
 
 		// Product Variants
 		authRequired.POST("/business/products/:id/variants", businessHandler.CreateProductVariant)
@@ -991,4 +1014,3 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 		}
 	}()
 }
-

@@ -188,7 +188,7 @@ export default function OverviewPage() {
       <Card>
         <CardHeader>
           <CardTitle>Service health</CardTitle>
-          <CardDescription>gRPC microservices — latency &amp; uptime (from /readyz + /metrics)</CardDescription>
+          <CardDescription>Live gRPC connectivity from the gateway to each microservice</CardDescription>
         </CardHeader>
         <CardContent>
           {health.isLoading ? (

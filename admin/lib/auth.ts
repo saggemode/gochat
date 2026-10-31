@@ -52,23 +52,71 @@ function persist(session: AdminSession) {
   }
 }
 
+const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS !== "false"
+
+type LoginResponse = {
+  access_token?: string
+  refresh_token?: string
+  user?: { id?: string; email?: string; display_name?: string }
+}
+
 /**
- * Sign in. Mock mode: accepts a non-empty email + password and mints a fake
- * token. Replace the body with a real gateway call when an admin login exists:
- *   const res = await apiFetch("/auth/login", { method: "POST", body: ... })
+ * Sign in.
+ * - Mock mode (default): accepts any non-empty email + password, mints a fake
+ *   token.
+ * - Real mode (NEXT_PUBLIC_USE_MOCKS=false): POSTs to the gateway
+ *   /api/v1/auth/login, then verifies the account is an admin by probing
+ *   /api/v1/admin/overview. A valid-but-non-admin account is rejected here so
+ *   the user sees a clear message instead of empty pages.
  */
 export async function login(email: string, password: string): Promise<AdminSession> {
-  await new Promise((r) => setTimeout(r, 450)) // simulate network
   if (!email.trim() || !password.trim()) {
     throw new Error("Email and password are required")
   }
-  const session: AdminSession = {
-    token: "mock." + btoa(email) + "." + Date.now(),
-    name: email.split("@")[0].replace(/[._]/g, " ") || "Admin",
-    email,
+
+  if (USE_MOCKS) {
+    await new Promise((r) => setTimeout(r, 450)) // simulate network
+    const session: AdminSession = {
+      token: "mock." + btoa(email) + "." + Date.now(),
+      name: email.split("@")[0].replace(/[._]/g, " ") || "Admin",
+      email,
+    }
+    persist(session)
+    notify()
+    return session
   }
-  persist(session)
+
+  // Real login against the gateway. Imported lazily to avoid a static import
+  // cycle (api.ts imports getToken from this module).
+  const { apiFetch, ApiError } = await import("./api")
+  const res = await apiFetch<LoginResponse>("/api/v1/auth/login", {
+    method: "POST",
+    anonymous: true,
+    body: { email, password },
+  })
+  if (!res.access_token) {
+    throw new Error("Login did not return a token")
+  }
+
+  const session: AdminSession = {
+    token: res.access_token,
+    name: res.user?.display_name || res.user?.email || email,
+    email: res.user?.email || email,
+  }
+  persist(session) // persist first so the admin probe is authenticated
   notify()
+
+  // Verify admin access. 403 => not an admin; 503 => DB not configured (allow,
+  // can't verify); other/network errors => allow, surfaced later on data load.
+  try {
+    await apiFetch("/api/v1/admin/overview")
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 403) {
+      logout()
+      throw new Error("This account does not have admin access")
+    }
+  }
+
   return session
 }
 

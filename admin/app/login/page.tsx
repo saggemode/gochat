@@ -72,9 +72,15 @@ export default function LoginPage() {
               {loading ? <Loader2 className="animate-spin" /> : null}
               Sign in
             </Button>
-            <p className="text-muted-foreground pt-1 text-center text-xs">
-              Mock auth — any email &amp; password works for now.
-            </p>
+            {process.env.NEXT_PUBLIC_USE_MOCKS !== "false" ? (
+              <p className="text-muted-foreground pt-1 text-center text-xs">
+                Mock auth — any email &amp; password works for now.
+              </p>
+            ) : (
+              <p className="text-muted-foreground pt-1 text-center text-xs">
+                Use your GoChat admin account.
+              </p>
+            )}
           </form>
         </CardContent>
       </Card>

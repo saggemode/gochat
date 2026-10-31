@@ -1,13 +1,18 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { formatPercent } from "@/lib/format"
 import type { ServiceHealth } from "@/lib/types"
 
 const DOT: Record<ServiceHealth["status"], string> = {
   healthy: "bg-emerald-500",
   degraded: "bg-amber-500",
   down: "bg-red-500",
+}
+
+const LABEL: Record<ServiceHealth["status"], string> = {
+  healthy: "Connected",
+  degraded: "Connecting",
+  down: "Unreachable",
 }
 
 export function ServiceHealthGrid({ services }: { services: ServiceHealth[] }) {
@@ -20,10 +25,8 @@ export function ServiceHealthGrid({ services }: { services: ServiceHealth[] }) {
         >
           <span className={cn("size-2 shrink-0 rounded-full", DOT[s.status])} />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{s.name}</p>
-            <p className="text-muted-foreground text-xs">
-              {s.latencyMs}ms · {formatPercent(s.uptime, 2)}
-            </p>
+            <p className="truncate text-sm font-medium capitalize">{s.name}</p>
+            <p className="text-muted-foreground text-xs">{LABEL[s.status]}</p>
           </div>
         </div>
       ))}

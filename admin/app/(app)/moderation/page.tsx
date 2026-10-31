@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { StatusBadge } from "@/components/status-badge"
 import { formatRelative } from "@/lib/format"
-import { getReports } from "@/lib/resources"
+import { getReports, setReportStatus } from "@/lib/resources"
 import type { AdminReport, ReportStatus, ReportTarget } from "@/lib/types"
 
 const TARGET_ICON: Record<ReportTarget, LucideIcon> = {
@@ -35,25 +35,26 @@ export default function ModerationPage() {
   const qc = useQueryClient()
   const { data, isLoading } = useQuery({ queryKey: ["reports"], queryFn: getReports })
   const [status, setStatus] = useState<ReportStatus | "all">("pending")
-  const [severity, setSeverity] = useState<AdminReport["severity"] | "all">("all")
 
   const reports = useMemo(() => data ?? [], [data])
   const filtered = useMemo(
-    () =>
-      reports.filter((r) => {
-        if (status !== "all" && r.status !== status) return false
-        if (severity !== "all" && r.severity !== severity) return false
-        return true
-      }),
-    [reports, status, severity],
+    () => reports.filter((r) => status === "all" || r.status === status),
+    [reports, status],
   )
 
   const pending = reports.filter((r) => r.status === "pending").length
 
-  function act(id: string, next: ReportStatus) {
-    qc.setQueryData<AdminReport[]>(["reports"], (prev) =>
-      (prev ?? []).map((r) => (r.id === id ? { ...r, status: next } : r)),
+  async function act(id: string, next: "actioned" | "dismissed") {
+    const prev = qc.getQueryData<AdminReport[]>(["reports"])
+    qc.setQueryData<AdminReport[]>(["reports"], (cur) =>
+      (cur ?? []).map((r) => (r.id === id ? { ...r, status: next } : r)),
     )
+    try {
+      await setReportStatus(id, next)
+    } catch {
+      if (prev) qc.setQueryData(["reports"], prev)
+      alert("Failed to update report")
+    }
   }
 
   return (
@@ -67,12 +68,6 @@ export default function ModerationPage() {
           <option value="pending">Pending</option>
           <option value="actioned">Actioned</option>
           <option value="dismissed">Dismissed</option>
-        </Select>
-        <Select value={severity} onChange={(e) => setSeverity(e.target.value as AdminReport["severity"] | "all")}>
-          <option value="all">All severities</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
         </Select>
         <span className="text-muted-foreground ml-auto text-sm">{filtered.length} items</span>
       </div>
@@ -109,12 +104,11 @@ export default function ModerationPage() {
                         Reported by {r.reporter} · {formatRelative(r.createdAt)}
                       </p>
                     </div>
-                    <StatusBadge status={r.severity} />
+                    <StatusBadge status={r.status} />
                   </div>
 
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">{r.reason}</Badge>
-                    <StatusBadge status={r.status} />
                   </div>
 
                   {r.excerpt ? (

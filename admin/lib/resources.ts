@@ -1,16 +1,9 @@
-// Data resources: the ONE place mocks are swapped for real gateway calls.
+// Data resources. REAL by default — every resource calls the gateway admin API
+// (/api/v1/admin/*). Set NEXT_PUBLIC_USE_MOCKS=true to fall back to seeded
+// fixtures (lib/mock.ts) for offline/local UI work.
 //
-// Mock mode (default) returns seeded fixtures (lib/mock.ts). Set
-// NEXT_PUBLIC_USE_MOCKS=false to hit the real gateway admin API
-// (/api/v1/admin/*), which requires the signed-in account's email to be in the
-// gateway's ADMIN_EMAILS allowlist.
-//
-// Three resources are wired to real endpoints that now exist:
-//   getKpis      -> GET /admin/overview
-//   getUsers     -> GET /admin/users
-//   getDisputes  -> GET /admin/disputes
-// The rest (growth/revenue/message-mix/activity/service-health) stay on mock
-// until matching endpoints are built, and are annotated SOURCE: mock below.
+// Real mode requires the signed-in account's email to be in the gateway's
+// ADMIN_EMAILS allowlist, and NEXT_PUBLIC_API_BASE_URL pointing at the gateway.
 
 import { apiFetch } from "./api"
 import {
@@ -25,9 +18,21 @@ import {
   mockServiceHealth,
   mockUsers,
 } from "./mock"
-import type { AdminDispute, AdminUser, KpiMetric } from "./types"
+import type {
+  ActivityItem,
+  AdminDispute,
+  AdminOrder,
+  AdminReport,
+  AdminUser,
+  KpiMetric,
+  MultiSeries,
+  ReportStatus,
+  ServiceHealth,
+  TimeseriesPoint,
+  UserStatus,
+} from "./types"
 
-const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS !== "false"
+const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === "true"
 
 function delay<T>(value: T, ms = 300): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), ms))
@@ -51,6 +56,9 @@ type ApiUser = {
   last_active_at: string
   country: string
   joined_at: string
+  status: UserStatus
+  is_seller: boolean
+  orders: number
 }
 type ApiDispute = {
   id: string
@@ -62,17 +70,44 @@ type ApiDispute = {
   amount: number
   opened_at: string
 }
+type ApiOrder = {
+  id: string
+  reference: string
+  buyer: string
+  store: string
+  total: number
+  status: AdminOrder["status"]
+  items: number
+  created_at: string
+}
+type ApiReport = {
+  id: string
+  target: AdminReport["target"]
+  reason: string
+  status: string
+  created_at: string
+  reporter: string
+  reported_name: string
+}
+type ApiActivity = {
+  id: string
+  kind: ActivityItem["kind"]
+  title: string
+  subtitle: string
+  at: string
+  amount: number
+}
+type ApiServiceHealth = { name: string; status: ServiceHealth["status"] }
 
 // ── adapters: API shape -> UI type ─────────────────────────────────────────
 function overviewToKpis(o: ApiOverview): KpiMetric[] {
   const signups = o.signups_14d?.map((p) => p.value) ?? []
-  const flat = (n: number) => [n]
   const zero = { delta: 0, series: [] as number[] }
   return [
     { key: "users", label: "Total Users", value: o.users.total, format: "number", trend: { delta: 0, series: signups } },
     { key: "active", label: "Online Now", value: o.users.online_now, format: "number", trend: zero },
     { key: "new30", label: "New (30d)", value: o.users.new_30d, format: "number", trend: { delta: 0, series: signups } },
-    { key: "gmv", label: "GMV (paid)", value: Math.round(o.orders.gmv_paid), format: "currency", trend: { delta: 0, series: flat(o.orders.gmv_paid) } },
+    { key: "gmv", label: "GMV (paid)", value: Math.round(o.orders.gmv_paid), format: "currency", trend: { delta: 0, series: [o.orders.gmv_paid] } },
     { key: "orders", label: "Paid Orders", value: o.orders.paid, format: "number", trend: zero },
     { key: "disputes", label: "Open Disputes", value: o.disputes.open, format: "number", trend: zero },
   ]
@@ -85,21 +120,93 @@ function apiUserToAdmin(u: ApiUser): AdminUser {
     phone: u.phone,
     email: u.email || undefined,
     avatarUrl: u.avatar_url || undefined,
-    // core.users has no status column yet — everyone reads as active until a
-    // moderation-state migration lands. verified maps to phone_verified.
-    status: "active",
+    status: u.status ?? "active",
     verified: u.phone_verified,
-    isSeller: false,
-    messages: 0,
-    orders: 0,
+    isSeller: u.is_seller,
+    messages: 0, // not tracked per-user in the admin API
+    orders: u.orders,
     joinedAt: u.joined_at,
     lastActiveAt: u.last_active_at,
     country: u.country || "—",
   }
 }
 
-function apiDisputeToAdmin(d: ApiDispute): AdminDispute {
+function apiReportToAdmin(r: ApiReport): AdminReport {
+  // The API has no 'reviewed' state in the UI union — fold it into pending.
+  const status: ReportStatus = r.status === "actioned" || r.status === "dismissed" ? r.status : "pending"
   return {
+    id: r.id,
+    target: r.target,
+    reportedName: r.reported_name,
+    reason: r.reason || "Reported",
+    reporter: r.reporter,
+    status,
+    createdAt: r.created_at,
+  }
+}
+
+// ── reads ─────────────────────────────────────────────────────────────────
+export async function getKpis(): Promise<KpiMetric[]> {
+  if (USE_MOCKS) return delay(mockKpis())
+  return overviewToKpis(await apiFetch<ApiOverview>("/api/v1/admin/overview"))
+}
+
+export async function getGrowthSeries(): Promise<MultiSeries[]> {
+  if (USE_MOCKS) return delay(mockGrowthSeries())
+  const res = await apiFetch<{ series: MultiSeries[] }>("/api/v1/admin/metrics/growth")
+  return res.series ?? []
+}
+
+export async function getRevenueSeries(): Promise<TimeseriesPoint[]> {
+  if (USE_MOCKS) return delay(mockRevenueSeries())
+  const res = await apiFetch<{ points: TimeseriesPoint[] }>("/api/v1/admin/metrics/revenue")
+  return res.points ?? []
+}
+
+export async function getMessageMix(): Promise<{ name: string; value: number }[]> {
+  if (USE_MOCKS) return delay(mockMessageMix())
+  const res = await apiFetch<{ mix: { name: string; value: number }[] }>("/api/v1/admin/metrics/messages")
+  return res.mix ?? []
+}
+
+export async function getActivity(): Promise<ActivityItem[]> {
+  if (USE_MOCKS) return delay(mockActivity(14))
+  const res = await apiFetch<{ items: ApiActivity[] }>("/api/v1/admin/activity")
+  return (res.items ?? []).map((a) => ({
+    id: a.id,
+    kind: a.kind,
+    title: a.title,
+    subtitle: a.subtitle,
+    at: a.at,
+    amount: a.amount > 0 ? a.amount : undefined,
+  }))
+}
+
+export async function getUsers(): Promise<AdminUser[]> {
+  if (USE_MOCKS) return delay(mockUsers(60))
+  const res = await apiFetch<{ users: ApiUser[] }>("/api/v1/admin/users?limit=200")
+  return (res.users ?? []).map(apiUserToAdmin)
+}
+
+export async function getOrders(): Promise<AdminOrder[]> {
+  if (USE_MOCKS) return delay(mockOrders(40))
+  const res = await apiFetch<{ orders: ApiOrder[] }>("/api/v1/admin/orders?limit=200")
+  return (res.orders ?? []).map((o) => ({
+    id: o.id,
+    reference: o.reference,
+    buyer: o.buyer,
+    store: o.store,
+    total: o.total,
+    status: o.status,
+    items: o.items,
+    createdAt: o.created_at,
+  }))
+}
+
+export async function getDisputes(): Promise<AdminDispute[]> {
+  if (USE_MOCKS) return delay(mockDisputes(18))
+  const res = await apiFetch<{ disputes: ApiDispute[] }>("/api/v1/admin/disputes")
+  return (res.disputes ?? []).map((d) => ({
     id: d.id,
     orderRef: d.order_ref || "—",
     store: d.store,
@@ -108,44 +215,46 @@ function apiDisputeToAdmin(d: ApiDispute): AdminDispute {
     status: d.status,
     amount: d.amount,
     openedAt: d.opened_at,
+  }))
+}
+
+export async function getReports(): Promise<AdminReport[]> {
+  if (USE_MOCKS) return delay(mockReports(24))
+  const res = await apiFetch<{ reports: ApiReport[] }>("/api/v1/admin/reports")
+  return (res.reports ?? []).map(apiReportToAdmin)
+}
+
+export async function getServiceHealth(): Promise<ServiceHealth[]> {
+  if (USE_MOCKS) return delay(mockServiceHealth())
+  const res = await apiFetch<{ services: ApiServiceHealth[] }>("/api/v1/admin/health")
+  return (res.services ?? []).map((s) => ({ name: s.name, status: s.status, latencyMs: 0, uptime: 0 }))
+}
+
+// ── mutations ───────────────────────────────────────────────────────────────
+export async function setUserStatus(id: string, status: UserStatus): Promise<void> {
+  if (USE_MOCKS) {
+    await delay(null, 200)
+    return
   }
+  await apiFetch(`/api/v1/admin/users/${id}/status`, { method: "POST", body: { status } })
 }
 
-// ── resources ───────────────────────────────────────────────────────────────
-
-// SOURCE: gateway (/admin/overview) when NEXT_PUBLIC_USE_MOCKS=false.
-export async function getKpis(): Promise<KpiMetric[]> {
-  if (USE_MOCKS) return delay(mockKpis())
-  const o = await apiFetch<ApiOverview>("/api/v1/admin/overview")
-  return overviewToKpis(o)
+export async function resolveDispute(
+  id: string,
+  action: "resolved" | "rejected",
+  note = "",
+): Promise<void> {
+  if (USE_MOCKS) {
+    await delay(null, 200)
+    return
+  }
+  await apiFetch(`/api/v1/admin/disputes/${id}/resolve`, { method: "POST", body: { action, note } })
 }
 
-// SOURCE: gateway (/admin/users) when NEXT_PUBLIC_USE_MOCKS=false.
-export async function getUsers(): Promise<AdminUser[]> {
-  if (USE_MOCKS) return delay(mockUsers(60))
-  const res = await apiFetch<{ users: ApiUser[] }>("/api/v1/admin/users?limit=200")
-  return (res.users ?? []).map(apiUserToAdmin)
+export async function setReportStatus(id: string, status: "actioned" | "dismissed"): Promise<void> {
+  if (USE_MOCKS) {
+    await delay(null, 200)
+    return
+  }
+  await apiFetch(`/api/v1/admin/reports/${id}/status`, { method: "POST", body: { status } })
 }
-
-// SOURCE: gateway (/admin/disputes) when NEXT_PUBLIC_USE_MOCKS=false.
-export async function getDisputes(): Promise<AdminDispute[]> {
-  if (USE_MOCKS) return delay(mockDisputes(18))
-  const res = await apiFetch<{ disputes: ApiDispute[] }>("/api/v1/admin/disputes")
-  return (res.disputes ?? []).map(apiDisputeToAdmin)
-}
-
-// SOURCE: mock — need /admin/metrics timeseries endpoints.
-export const getGrowthSeries = () => delay(mockGrowthSeries())
-export const getRevenueSeries = () => delay(mockRevenueSeries())
-export const getMessageMix = () => delay(mockMessageMix())
-export const getActivity = () => delay(mockActivity(14))
-
-// SOURCE: mock — the business service has order data, but no admin list route.
-export const getOrders = () => delay(mockOrders(40))
-
-// SOURCE: mock — need a moderation/reports service + endpoint.
-export const getReports = () => delay(mockReports(24))
-
-// SOURCE: mock — each service exposes /readyz + /metrics (pkg/health); needs an
-// aggregated admin health endpoint to be real.
-export const getServiceHealth = () => delay(mockServiceHealth())

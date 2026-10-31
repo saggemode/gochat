@@ -50,12 +50,12 @@ type RefreshToken struct {
 }
 
 var (
-	ErrUserNotFound        = errors.New("user not found")
-	ErrEmailAlreadyTaken   = errors.New("email already taken")
-	ErrPhoneAlreadyTaken   = errors.New("phone number already registered")
-	ErrInvalidPassword     = errors.New("invalid password")
-	ErrTokenRevoked        = errors.New("refresh token has been revoked")
-	ErrTokenNotFound       = errors.New("refresh token not found")
+	ErrUserNotFound      = errors.New("user not found")
+	ErrEmailAlreadyTaken = errors.New("email already taken")
+	ErrPhoneAlreadyTaken = errors.New("phone number already registered")
+	ErrInvalidPassword   = errors.New("invalid password")
+	ErrTokenRevoked      = errors.New("refresh token has been revoked")
+	ErrTokenNotFound     = errors.New("refresh token not found")
 )
 
 // UserRepository handles all user and auth-related DB operations.
@@ -72,6 +72,22 @@ func NewUserRepository(db *pgxpool.Pool) *UserRepository {
 // NewUserRepositoryWithEncryptor creates a new repository with encryption-at-rest for E2EE keys.
 func NewUserRepositoryWithEncryptor(db *pgxpool.Pool, enc *crypto.Encryptor) *UserRepository {
 	return &UserRepository{db: db, encryptor: enc}
+}
+
+// GetAccountStatus returns the moderation status of a user: "active",
+// "suspended" or "banned". A missing user yields ErrUserNotFound. The column
+// is added by migration auth/009; coalesce guards against NULLs.
+func (r *UserRepository) GetAccountStatus(ctx context.Context, id uuid.UUID) (string, error) {
+	var st string
+	err := r.db.QueryRow(ctx,
+		`SELECT coalesce(account_status, 'active') FROM users WHERE id = $1`, id).Scan(&st)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrUserNotFound
+	}
+	if err != nil {
+		return "", err
+	}
+	return st, nil
 }
 
 // GenerateUniquePIN generates a unique 8-character alphanumeric PIN (A-Z, 0-9)

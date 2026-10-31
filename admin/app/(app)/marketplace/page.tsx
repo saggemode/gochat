@@ -19,8 +19,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { formatDate, formatNaira } from "@/lib/format"
-import { getDisputes, getOrders } from "@/lib/resources"
-import type { AdminDispute, AdminOrder, DisputeStatus, OrderStatus } from "@/lib/types"
+import { getDisputes, getOrders, resolveDispute } from "@/lib/resources"
+import type { AdminDispute, AdminOrder, OrderStatus } from "@/lib/types"
 
 export default function MarketplacePage() {
   const orders = useQuery({ queryKey: ["orders"], queryFn: getOrders })
@@ -161,10 +161,17 @@ function OrdersTable({ orders, loading }: { orders: AdminOrder[]; loading: boole
 function DisputesTable({ disputes, loading }: { disputes: AdminDispute[]; loading: boolean }) {
   const qc = useQueryClient()
 
-  function resolve(id: string, next: DisputeStatus) {
-    qc.setQueryData<AdminDispute[]>(["disputes"], (prev) =>
-      (prev ?? []).map((d) => (d.id === id ? { ...d, status: next } : d)),
+  async function resolve(id: string, action: "resolved" | "rejected") {
+    const prev = qc.getQueryData<AdminDispute[]>(["disputes"])
+    qc.setQueryData<AdminDispute[]>(["disputes"], (cur) =>
+      (cur ?? []).map((d) => (d.id === id ? { ...d, status: action } : d)),
     )
+    try {
+      await resolveDispute(id, action)
+    } catch {
+      if (prev) qc.setQueryData(["disputes"], prev)
+      alert("Failed to resolve dispute")
+    }
   }
 
   return (

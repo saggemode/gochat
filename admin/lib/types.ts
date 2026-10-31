@@ -104,7 +104,7 @@ export type AdminReport = {
   reason: string
   reporter: string
   status: ReportStatus
-  severity: "low" | "medium" | "high"
+  severity?: "low" | "medium" | "high"
   createdAt: string
   excerpt?: string
 }

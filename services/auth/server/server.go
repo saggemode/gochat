@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,11 +33,59 @@ type AuthServer struct {
 	notifier notifier.Notifier
 	appEnv   string
 	log      *zap.Logger
+
+	// Short-TTL cache of account moderation status, so ValidateToken (called on
+	// every authenticated request) does not hit the DB per request. A ban takes
+	// effect within statusCacheTTL on existing tokens.
+	statusCacheMu sync.RWMutex
+	statusCache   map[string]statusEntry
 }
+
+type statusEntry struct {
+	status string
+	exp    time.Time
+}
+
+const statusCacheTTL = 30 * time.Second
 
 // New creates an AuthServer.
 func New(repo *repository.UserRepository, jwt *jwtutil.Manager, redis *redis.Client, log *zap.Logger) *AuthServer {
-	return &AuthServer{repo: repo, jwt: jwt, redis: redis, log: log, appEnv: "development"}
+	return &AuthServer{
+		repo:        repo,
+		jwt:         jwt,
+		redis:       redis,
+		log:         log,
+		appEnv:      "development",
+		statusCache: make(map[string]statusEntry),
+	}
+}
+
+// accountStatus returns the user's moderation status, cached for statusCacheTTL.
+// It fails OPEN ("active") on parse/lookup errors so a transient DB blip never
+// locks the whole platform out.
+func (s *AuthServer) accountStatus(ctx context.Context, userID string) string {
+	now := time.Now()
+
+	s.statusCacheMu.RLock()
+	e, ok := s.statusCache[userID]
+	s.statusCacheMu.RUnlock()
+	if ok && now.Before(e.exp) {
+		return e.status
+	}
+
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return "active"
+	}
+	st, err := s.repo.GetAccountStatus(ctx, uid)
+	if err != nil {
+		return "active"
+	}
+
+	s.statusCacheMu.Lock()
+	s.statusCache[userID] = statusEntry{status: st, exp: now.Add(statusCacheTTL)}
+	s.statusCacheMu.Unlock()
+	return st
 }
 
 // WithNotifier attaches a Notifier.
@@ -162,6 +211,14 @@ func (s *AuthServer) Login(ctx context.Context, req *authpb.LoginRequest) (*auth
 		}
 	}
 
+	// Block suspended / banned accounts from obtaining new tokens.
+	switch s.accountStatus(ctx, user.ID.String()) {
+	case "banned":
+		return nil, status.Error(codes.PermissionDenied, "account banned")
+	case "suspended":
+		return nil, status.Error(codes.PermissionDenied, "account suspended")
+	}
+
 	identifier := user.Email
 	if identifier == "" {
 		identifier = user.Phone
@@ -211,6 +268,12 @@ func (s *AuthServer) RefreshToken(ctx context.Context, req *authpb.RefreshTokenR
 		return nil, status.Error(codes.Unauthenticated, "refresh token has been revoked")
 	}
 
+	// Do not rotate tokens for suspended / banned accounts.
+	switch s.accountStatus(ctx, claims.UserID) {
+	case "banned", "suspended":
+		return nil, status.Error(codes.PermissionDenied, "account disabled")
+	}
+
 	// Rotate: revoke old, issue new pair
 	_ = s.repo.RevokeRefreshToken(ctx, claims.ID)
 
@@ -233,6 +296,12 @@ func (s *AuthServer) RefreshToken(ctx context.Context, req *authpb.RefreshTokenR
 func (s *AuthServer) ValidateToken(ctx context.Context, req *authpb.ValidateTokenRequest) (*authpb.ValidateTokenResponse, error) {
 	claims, err := s.jwt.ValidateAccess(req.Token)
 	if err != nil {
+		return &authpb.ValidateTokenResponse{Valid: false}, nil
+	}
+	// Reject tokens of suspended / banned accounts so an admin action kills
+	// active sessions (within statusCacheTTL), not just future logins.
+	switch s.accountStatus(ctx, claims.UserID) {
+	case "banned", "suspended":
 		return &authpb.ValidateTokenResponse{Valid: false}, nil
 	}
 	return &authpb.ValidateTokenResponse{
@@ -843,4 +912,3 @@ func (s *AuthServer) invalidateUserSessions(ctx context.Context, userID string) 
 		_ = s.redis.Del(ctx, devicesKey).Err()
 	}
 }
-
