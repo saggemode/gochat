@@ -8,6 +8,7 @@ import { ActivityFeed } from "@/components/dashboard/activity-feed"
 import { ServiceHealthGrid } from "@/components/dashboard/service-health"
 import { EChart, type ChartTokens } from "@/components/charts/echart"
 import { Skeleton } from "@/components/ui/skeleton"
+import { usePermissions } from "@/lib/use-permissions"
 import { formatDate, formatNaira } from "@/lib/format"
 import {
   getActivity,
@@ -19,9 +20,11 @@ import {
 } from "@/lib/resources"
 
 export default function OverviewPage() {
+  const { can } = usePermissions()
+  const showFinance = can("admin:finance:read")
   const kpis = useQuery({ queryKey: ["kpis"], queryFn: getKpis })
   const growth = useQuery({ queryKey: ["growth"], queryFn: getGrowthSeries })
-  const revenue = useQuery({ queryKey: ["revenue"], queryFn: getRevenueSeries })
+  const revenue = useQuery({ queryKey: ["revenue"], queryFn: getRevenueSeries, enabled: showFinance })
   const mix = useQuery({ queryKey: ["messageMix"], queryFn: getMessageMix })
   const activity = useQuery({ queryKey: ["activity"], queryFn: getActivity })
   const health = useQuery({ queryKey: ["health"], queryFn: getServiceHealth })
@@ -153,19 +156,21 @@ export default function OverviewPage() {
         </Card>
       </div>
 
-      {/* Revenue + activity */}
+      {/* Revenue (finance only) + activity */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Marketplace revenue</CardTitle>
-            <CardDescription>Daily GMV over the last 30 days</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {revenue.isLoading ? <Skeleton className="h-[260px] w-full" /> : <EChart build={revenueBuild} height={260} />}
-          </CardContent>
-        </Card>
+        {showFinance ? (
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Marketplace revenue</CardTitle>
+              <CardDescription>Daily GMV over the last 30 days</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {revenue.isLoading ? <Skeleton className="h-[260px] w-full" /> : <EChart build={revenueBuild} height={260} />}
+            </CardContent>
+          </Card>
+        ) : null}
 
-        <Card>
+        <Card className={showFinance ? "" : "lg:col-span-3"}>
           <CardHeader>
             <CardTitle>Recent activity</CardTitle>
             <CardDescription>Across the platform</CardDescription>

@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { StatusBadge } from "@/components/status-badge"
 import { formatRelative } from "@/lib/format"
 import { getReports, setReportStatus } from "@/lib/resources"
+import { usePermissions } from "@/lib/use-permissions"
 import type { AdminReport, ReportStatus, ReportTarget } from "@/lib/types"
 
 const TARGET_ICON: Record<ReportTarget, LucideIcon> = {
@@ -33,6 +34,8 @@ const TARGET_ICON: Record<ReportTarget, LucideIcon> = {
 
 export default function ModerationPage() {
   const qc = useQueryClient()
+  const { can } = usePermissions()
+  const canAction = can("admin:reports:action")
   const { data, isLoading } = useQuery({ queryKey: ["reports"], queryFn: getReports })
   const [status, setStatus] = useState<ReportStatus | "all">("pending")
 
@@ -117,7 +120,7 @@ export default function ModerationPage() {
                     </p>
                   ) : null}
 
-                  {r.status === "pending" ? (
+                  {r.status === "pending" && canAction ? (
                     <div className="flex gap-2 pt-1">
                       <Button size="sm" variant="destructive" className="flex-1" onClick={() => act(r.id, "actioned")}>
                         <Check /> Take action

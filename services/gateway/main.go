@@ -20,6 +20,7 @@ import (
 
 	aipb "gochat/gen/ai"
 	authpb "gochat/gen/auth"
+	authzpb "gochat/gen/authz"
 	businesspb "gochat/gen/business"
 	callpb "gochat/gen/call"
 	channelpb "gochat/gen/channel"
@@ -206,6 +207,17 @@ func main() {
 	defer businessConn.Close()
 	businessClient := businesspb.NewBusinessServiceClient(businessConn)
 
+	// authz is used for admin-console RBAC. Optional: if unreachable, the admin
+	// gate falls back to the ADMIN_EMAILS bootstrap allowlist.
+	authzConn, authzErr := dialService("authz-service", cfg.AuthzGRPCAddr)
+	var authzClient authzpb.AuthzServiceClient
+	if authzErr != nil {
+		log.Warn("could not connect to authz service; admin RBAC falls back to ADMIN_EMAILS bootstrap", zap.Error(authzErr))
+	} else {
+		defer authzConn.Close()
+		authzClient = authzpb.NewAuthzServiceClient(authzConn)
+	}
+
 	// Media service requires a larger message size limit for client streaming uploads
 	mediaOpts := []grpc.DialOption{
 		grpc.WithDefaultCallOptions(
@@ -287,6 +299,43 @@ func main() {
 			adminDB = pool
 			defer adminDB.Close()
 			log.Info("admin console enabled", zap.Int("admins", len(cfg.AdminEmails)))
+
+			// Ensure the admin audit log exists (works even if the authz
+			// service isn't deployed). Simple protocol allows multi-statement.
+			if _, aerr := adminDB.Exec(ctx, `
+				CREATE SCHEMA IF NOT EXISTS authz;
+				CREATE TABLE IF NOT EXISTS authz.admin_audit_log (
+					id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+					actor_id    TEXT        NOT NULL DEFAULT '',
+					actor_email TEXT        NOT NULL DEFAULT '',
+					action      TEXT        NOT NULL,
+					target_type TEXT        NOT NULL DEFAULT '',
+					target_id   TEXT        NOT NULL DEFAULT '',
+					detail      TEXT        NOT NULL DEFAULT '',
+					created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+				);`); aerr != nil {
+				log.Warn("could not ensure admin_audit_log table", zap.Error(aerr))
+			}
+
+			// Bootstrap: grant the super_admin role to the ADMIN_EMAILS
+			// accounts so they can manage roles via RBAC. Best-effort.
+			if authzClient != nil {
+				for _, email := range cfg.AdminEmails {
+					u, uerr := authClient.GetUser(ctx, &authpb.GetUserRequest{UserId: email})
+					if uerr != nil || u.GetUser() == nil {
+						log.Warn("admin bootstrap: user not found for ADMIN_EMAILS entry", zap.String("email", email), zap.Error(uerr))
+						continue
+					}
+					if _, rerr := authzClient.AssignRole(ctx, &authzpb.AssignRoleRequest{
+						UserId: u.GetUser().GetId(),
+						Role:   "super_admin",
+					}); rerr != nil {
+						log.Warn("admin bootstrap: failed to assign super_admin", zap.String("email", email), zap.Error(rerr))
+					} else {
+						log.Info("admin bootstrap: assigned super_admin", zap.String("email", email))
+					}
+				}
+			}
 		}
 	}
 	adminServiceConns := map[string]*grpc.ClientConn{
@@ -304,7 +353,10 @@ func main() {
 	if aiConn != nil {
 		adminServiceConns["ai"] = aiConn
 	}
-	adminHandler := handlers.NewAdminHandler(adminDB, businessClient, adminServiceConns, log)
+	if authzConn != nil && authzErr == nil {
+		adminServiceConns["authz"] = authzConn
+	}
+	adminHandler := handlers.NewAdminHandler(adminDB, businessClient, authzClient, adminServiceConns, log)
 
 	// ── Root Status & Health Endpoints ──────────────────────────────────────
 	r.GET("/", func(c *gin.Context) {
@@ -391,22 +443,31 @@ func main() {
 	admin := api.Group("/admin")
 	admin.Use(
 		middleware.AuthMiddleware(authClient, redisClient),
-		middleware.AdminMiddleware(cfg.AdminEmails),
+		middleware.AdminMiddleware(authzClient, cfg.AdminEmails, log),
 	)
 	{
+		// Identity & audit (any admin).
+		admin.GET("/me", adminHandler.Me)
+		admin.GET("/audit", adminHandler.ListAudit)
+
+		// Reads available to any admin.
 		admin.GET("/overview", adminHandler.Overview)
 		admin.GET("/metrics/growth", adminHandler.GrowthSeries)
-		admin.GET("/metrics/revenue", adminHandler.RevenueSeries)
 		admin.GET("/metrics/messages", adminHandler.MessageMix)
 		admin.GET("/activity", adminHandler.Activity)
 		admin.GET("/health", adminHandler.SystemHealth)
 		admin.GET("/users", adminHandler.ListUsers)
-		admin.POST("/users/:id/status", adminHandler.UpdateUserStatus)
-		admin.GET("/orders", adminHandler.ListOrders)
 		admin.GET("/disputes", adminHandler.ListDisputes)
-		admin.POST("/disputes/:id/resolve", adminHandler.ResolveDispute)
 		admin.GET("/reports", adminHandler.ListReports)
-		admin.POST("/reports/:id/status", adminHandler.UpdateReportStatus)
+
+		// Financial reads require admin:finance:read.
+		admin.GET("/orders", middleware.RequirePermission(authzClient, "admin:finance:read", log), adminHandler.ListOrders)
+		admin.GET("/metrics/revenue", middleware.RequirePermission(authzClient, "admin:finance:read", log), adminHandler.RevenueSeries)
+
+		// Mutations require their specific permission.
+		admin.POST("/users/:id/status", middleware.RequirePermission(authzClient, "admin:users:write", log), adminHandler.UpdateUserStatus)
+		admin.POST("/disputes/:id/resolve", middleware.RequirePermission(authzClient, "admin:disputes:resolve", log), adminHandler.ResolveDispute)
+		admin.POST("/reports/:id/status", middleware.RequirePermission(authzClient, "admin:reports:action", log), adminHandler.UpdateReportStatus)
 	}
 
 	// Authenticated Routes

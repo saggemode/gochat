@@ -3,6 +3,7 @@ import {
   Users,
   ShoppingBag,
   ShieldAlert,
+  ScrollText,
   type LucideIcon,
 } from "lucide-react"
 
@@ -19,4 +20,5 @@ export const NAV: NavItem[] = [
   { label: "Users", href: "/users", icon: Users },
   { label: "Marketplace", href: "/marketplace", icon: ShoppingBag, badge: "disputes" },
   { label: "Moderation", href: "/moderation", icon: ShieldAlert, badge: "reports" },
+  { label: "Audit log", href: "/audit", icon: ScrollText },
 ]

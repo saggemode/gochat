@@ -258,3 +258,77 @@ export async function setReportStatus(id: string, status: "actioned" | "dismisse
   }
   await apiFetch(`/api/v1/admin/reports/${id}/status`, { method: "POST", body: { status } })
 }
+
+// ── identity / RBAC ───────────────────────────────────────────────────────
+export type AdminMe = {
+  userId: string
+  email: string
+  roles: string[]
+  permissions: Record<string, boolean>
+  bootstrap: boolean
+}
+
+export async function getMe(): Promise<AdminMe> {
+  if (USE_MOCKS) {
+    return delay({
+      userId: "mock",
+      email: "admin@gochat.app",
+      roles: ["super_admin"],
+      permissions: {
+        "admin:users:write": true,
+        "admin:disputes:resolve": true,
+        "admin:reports:action": true,
+        "admin:finance:read": true,
+      },
+      bootstrap: true,
+    })
+  }
+  const r = await apiFetch<{
+    user_id: string
+    email: string
+    roles: string[]
+    permissions: Record<string, boolean>
+    bootstrap: boolean
+  }>("/api/v1/admin/me")
+  return {
+    userId: r.user_id,
+    email: r.email,
+    roles: r.roles ?? [],
+    permissions: r.permissions ?? {},
+    bootstrap: !!r.bootstrap,
+  }
+}
+
+export type AuditEntry = {
+  id: string
+  actorEmail: string
+  action: string
+  targetType: string
+  targetId: string
+  detail: string
+  createdAt: string
+}
+
+type ApiAuditEntry = {
+  id: string
+  actor_email: string
+  action: string
+  target_type: string
+  target_id: string
+  detail: string
+  created_at: string
+}
+
+export async function getAudit(): Promise<AuditEntry[]> {
+  if (USE_MOCKS) return delay([] as AuditEntry[])
+  const r = await apiFetch<{ entries: ApiAuditEntry[] }>("/api/v1/admin/audit")
+  return (r.entries ?? []).map((e) => ({
+    id: e.id,
+    actorEmail: e.actor_email,
+    action: e.action,
+    targetType: e.target_type,
+    targetId: e.target_id,
+    detail: e.detail,
+    createdAt: e.created_at,
+  }))
+}

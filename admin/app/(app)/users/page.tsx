@@ -21,10 +21,13 @@ import {
 } from "@/components/ui/table"
 import { formatCompact, formatRelative, initials } from "@/lib/format"
 import { getUsers, setUserStatus as apiSetUserStatus } from "@/lib/resources"
+import { usePermissions } from "@/lib/use-permissions"
 import type { AdminUser, UserStatus } from "@/lib/types"
 
 export default function UsersPage() {
   const qc = useQueryClient()
+  const { can } = usePermissions()
+  const canWrite = can("admin:users:write")
   const { data, isLoading } = useQuery({ queryKey: ["users"], queryFn: getUsers })
   const [q, setQ] = useState("")
   const [status, setStatus] = useState<UserStatus | "all">("all")
@@ -173,7 +176,10 @@ export default function UsersPage() {
                     <TableCell className="text-muted-foreground">{formatRelative(u.lastActiveAt)}</TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-1">
-                        {u.status !== "active" ? (
+                        {!canWrite ? (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        ) : null}
+                        {canWrite && u.status !== "active" ? (
                           <Button
                             variant="ghost"
                             size="icon-sm"
@@ -183,7 +189,7 @@ export default function UsersPage() {
                             <Check className="text-emerald-500" />
                           </Button>
                         ) : null}
-                        {u.status !== "suspended" && u.status !== "banned" ? (
+                        {canWrite && u.status !== "suspended" && u.status !== "banned" ? (
                           <Button
                             variant="ghost"
                             size="icon-sm"
@@ -193,7 +199,7 @@ export default function UsersPage() {
                             <Pause className="text-amber-500" />
                           </Button>
                         ) : null}
-                        {u.status !== "banned" ? (
+                        {canWrite && u.status !== "banned" ? (
                           <Button
                             variant="ghost"
                             size="icon-sm"

@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
+	authzpb "gochat/gen/authz"
 	businesspb "gochat/gen/business"
 )
 
@@ -29,12 +30,36 @@ import (
 type AdminHandler struct {
 	db       *pgxpool.Pool
 	business businesspb.BusinessServiceClient
+	authz    authzpb.AuthzServiceClient
 	services map[string]*grpc.ClientConn // for real per-service connectivity health
 	log      *zap.Logger
 }
 
-func NewAdminHandler(db *pgxpool.Pool, business businesspb.BusinessServiceClient, services map[string]*grpc.ClientConn, log *zap.Logger) *AdminHandler {
-	return &AdminHandler{db: db, business: business, services: services, log: log}
+func NewAdminHandler(db *pgxpool.Pool, business businesspb.BusinessServiceClient, authz authzpb.AuthzServiceClient, services map[string]*grpc.ClientConn, log *zap.Logger) *AdminHandler {
+	return &AdminHandler{db: db, business: business, authz: authz, services: services, log: log}
+}
+
+// adminCapabilities is the set of fine-grained permissions the UI gates on.
+var adminCapabilities = []string{
+	"admin:users:write",
+	"admin:disputes:resolve",
+	"admin:reports:action",
+	"admin:finance:read",
+}
+
+// audit records an admin mutation to authz.admin_audit_log (best-effort; a
+// failure is logged but never blocks the action).
+func (h *AdminHandler) audit(c *gin.Context, action, targetType, targetID, detail string) {
+	if h.db == nil {
+		return
+	}
+	_, err := h.db.Exec(c.Request.Context(),
+		`INSERT INTO authz.admin_audit_log (actor_id, actor_email, action, target_type, target_id, detail)
+		 VALUES ($1, $2, $3, $4, $5, $6)`,
+		c.GetString("user_id"), c.GetString("email"), action, targetType, targetID, detail)
+	if err != nil {
+		h.log.Warn("admin audit write failed", zap.String("action", action), zap.Error(err))
+	}
 }
 
 // ready returns false (after writing a 503) when no database is configured.
@@ -361,11 +386,11 @@ func (h *AdminHandler) UpdateUserStatus(c *gin.Context) {
 		return
 	}
 
-	actor, _ := c.Get("email")
+	h.audit(c, "user:status", "user", id, body.Status)
 	h.log.Info("admin changed user status",
 		zap.String("user_id", id),
 		zap.String("status", body.Status),
-		zap.Any("by", actor))
+		zap.String("by", c.GetString("email")))
 
 	c.JSON(http.StatusOK, gin.H{"id": id, "status": body.Status})
 }
@@ -425,11 +450,11 @@ func (h *AdminHandler) ResolveDispute(c *gin.Context) {
 		return
 	}
 
-	actor, _ := c.Get("email")
+	h.audit(c, "dispute:resolve", "dispute", disputeID, body.Action)
 	h.log.Info("admin resolved dispute",
 		zap.String("dispute_id", disputeID),
 		zap.String("action", body.Action),
-		zap.Any("by", actor))
+		zap.String("by", c.GetString("email")))
 
 	c.JSON(http.StatusOK, resp.GetDispute())
 }
@@ -695,6 +720,7 @@ func (h *AdminHandler) UpdateReportStatus(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "report not found"})
 		return
 	}
+	h.audit(c, "report:status", "report", id, body.Status)
 	c.JSON(http.StatusOK, gin.H{"id": id, "status": body.Status})
 }
 
@@ -739,6 +765,78 @@ func (h *AdminHandler) SystemHealth(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"services": out})
+}
+
+// GET /api/v1/admin/me — the signed-in admin's identity, roles and the
+// fine-grained capabilities the UI should enable. Bootstrap admins (ADMIN_EMAILS)
+// report all capabilities true.
+func (h *AdminHandler) Me(c *gin.Context) {
+	userID := c.GetString("user_id")
+	bootstrap := c.GetBool("is_bootstrap_admin")
+
+	roles := []string{}
+	caps := map[string]bool{}
+
+	if h.authz != nil && !bootstrap {
+		if r, err := h.authz.GetUserRoles(c.Request.Context(), &authzpb.GetUserRolesRequest{UserId: userID}); err == nil {
+			roles = r.GetRoles()
+		}
+		for _, perm := range adminCapabilities {
+			resp, err := h.authz.Authorize(c.Request.Context(), &authzpb.AuthorizeRequest{UserId: userID, Action: perm})
+			caps[perm] = err == nil && resp.GetAllowed()
+		}
+	} else {
+		// Break-glass bootstrap admin: full capabilities.
+		roles = []string{"super_admin"}
+		for _, perm := range adminCapabilities {
+			caps[perm] = true
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"user_id":     userID,
+		"email":       c.GetString("email"),
+		"roles":       roles,
+		"permissions": caps,
+		"bootstrap":   bootstrap,
+	})
+}
+
+// GET /api/v1/admin/audit?limit= — recent admin actions.
+func (h *AdminHandler) ListAudit(c *gin.Context) {
+	if !h.ready(c) {
+		return
+	}
+	limit := clampInt(atoiDefault(c.Query("limit"), 100), 100, 1, 500)
+
+	rows, err := h.db.Query(c.Request.Context(),
+		`SELECT id, actor_email, action, target_type, target_id, detail, created_at
+		 FROM authz.admin_audit_log ORDER BY created_at DESC LIMIT $1`, limit)
+	if err != nil {
+		h.log.Error("admin list audit failed", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load audit log"})
+		return
+	}
+	defer rows.Close()
+
+	type entry struct {
+		ID         string    `json:"id"`
+		ActorEmail string    `json:"actor_email"`
+		Action     string    `json:"action"`
+		TargetType string    `json:"target_type"`
+		TargetID   string    `json:"target_id"`
+		Detail     string    `json:"detail"`
+		CreatedAt  time.Time `json:"created_at"`
+	}
+	entries := []entry{}
+	for rows.Next() {
+		var e entry
+		if err := rows.Scan(&e.ID, &e.ActorEmail, &e.Action, &e.TargetType, &e.TargetID, &e.Detail, &e.CreatedAt); err != nil {
+			continue
+		}
+		entries = append(entries, e)
+	}
+	c.JSON(http.StatusOK, gin.H{"entries": entries})
 }
 
 func atoiDefault(s string, def int) int {

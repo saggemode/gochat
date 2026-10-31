@@ -20,10 +20,16 @@ import {
 } from "@/components/ui/table"
 import { formatDate, formatNaira } from "@/lib/format"
 import { getDisputes, getOrders, resolveDispute } from "@/lib/resources"
+import { usePermissions } from "@/lib/use-permissions"
 import type { AdminDispute, AdminOrder, OrderStatus } from "@/lib/types"
 
 export default function MarketplacePage() {
-  const orders = useQuery({ queryKey: ["orders"], queryFn: getOrders })
+  const { can } = usePermissions()
+  const canFinance = can("admin:finance:read")
+  const canResolve = can("admin:disputes:resolve")
+
+  // Orders are financial data — only fetched for finance/admin roles.
+  const orders = useQuery({ queryKey: ["orders"], queryFn: getOrders, enabled: canFinance })
   const disputes = useQuery({ queryKey: ["disputes"], queryFn: getDisputes })
 
   const gmv = useMemo(
@@ -36,29 +42,35 @@ export default function MarketplacePage() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="GMV (sample)" value={orders.isLoading ? "—" : formatNaira(gmv, { compact: true })} />
-        <Stat label="Orders" value={orders.isLoading ? "—" : String(orders.data?.length ?? 0)} />
-        <Stat
-          label="Avg. order value"
-          value={orders.isLoading || !paidCount ? "—" : formatNaira(Math.round(gmv / Math.max(paidCount, 1)), { compact: true })}
-        />
+        {canFinance ? (
+          <>
+            <Stat label="GMV (sample)" value={orders.isLoading ? "—" : formatNaira(gmv, { compact: true })} />
+            <Stat label="Orders" value={orders.isLoading ? "—" : String(orders.data?.length ?? 0)} />
+            <Stat
+              label="Avg. order value"
+              value={orders.isLoading || !paidCount ? "—" : formatNaira(Math.round(gmv / Math.max(paidCount, 1)), { compact: true })}
+            />
+          </>
+        ) : null}
         <Stat label="Open disputes" value={disputes.isLoading ? "—" : String(openDisputes)} />
       </div>
 
-      <Tabs defaultValue="orders">
+      <Tabs defaultValue={canFinance ? "orders" : "disputes"}>
         <TabsList>
-          <TabsTrigger value="orders">Orders</TabsTrigger>
+          {canFinance ? <TabsTrigger value="orders">Orders</TabsTrigger> : null}
           <TabsTrigger value="disputes">
             Disputes{openDisputes ? ` (${openDisputes})` : ""}
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="orders">
-          <OrdersTable orders={orders.data ?? []} loading={orders.isLoading} />
-        </TabsContent>
+        {canFinance ? (
+          <TabsContent value="orders">
+            <OrdersTable orders={orders.data ?? []} loading={orders.isLoading} />
+          </TabsContent>
+        ) : null}
 
         <TabsContent value="disputes">
-          <DisputesTable disputes={disputes.data ?? []} loading={disputes.isLoading} />
+          <DisputesTable disputes={disputes.data ?? []} loading={disputes.isLoading} canResolve={canResolve} />
         </TabsContent>
       </Tabs>
     </div>
@@ -158,7 +170,15 @@ function OrdersTable({ orders, loading }: { orders: AdminOrder[]; loading: boole
   )
 }
 
-function DisputesTable({ disputes, loading }: { disputes: AdminDispute[]; loading: boolean }) {
+function DisputesTable({
+  disputes,
+  loading,
+  canResolve,
+}: {
+  disputes: AdminDispute[]
+  loading: boolean
+  canResolve: boolean
+}) {
   const qc = useQueryClient()
 
   async function resolve(id: string, action: "resolved" | "rejected") {
@@ -215,7 +235,7 @@ function DisputesTable({ disputes, loading }: { disputes: AdminDispute[]; loadin
                     <TableCell className="text-muted-foreground">{formatDate(d.openedAt)}</TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-1">
-                        {openish ? (
+                        {openish && canResolve ? (
                           <>
                             <Button variant="ghost" size="icon-sm" title="Resolve for buyer" onClick={() => resolve(d.id, "resolved")}>
                               <Check className="text-emerald-500" />
