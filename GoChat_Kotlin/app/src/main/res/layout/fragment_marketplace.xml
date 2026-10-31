@@ -1074,11 +1074,12 @@
                                 android:paddingHorizontal="14dp"
                                 android:paddingVertical="13dp">
 
-                                <TextView
-                                    android:layout_width="30dp"
-                                    android:layout_height="wrap_content"
-                                    android:text="💳"
-                                    android:textSize="18sp" />
+                                <ImageView
+                                    android:layout_width="24dp"
+                                    android:layout_height="24dp"
+                                    android:contentDescription="@string/seller_hub_payout"
+                                    android:src="@drawable/ic_payment_card"
+                                    app:tint="@color/whatsapp_teal_light" />
 
                                 <LinearLayout
                                     android:layout_width="0dp"
@@ -1133,11 +1134,12 @@
                                 android:paddingHorizontal="14dp"
                                 android:paddingVertical="13dp">
 
-                                <TextView
-                                    android:layout_width="30dp"
-                                    android:layout_height="wrap_content"
-                                    android:text="💰"
-                                    android:textSize="18sp" />
+                                <ImageView
+                                    android:layout_width="24dp"
+                                    android:layout_height="24dp"
+                                    android:contentDescription="@string/seller_hub_earnings"
+                                    android:src="@drawable/ic_earnings"
+                                    app:tint="@color/whatsapp_teal_light" />
 
                                 <LinearLayout
                                     android:layout_width="0dp"
@@ -1189,11 +1191,12 @@
                                 android:paddingHorizontal="14dp"
                                 android:paddingVertical="13dp">
 
-                                <TextView
-                                    android:layout_width="30dp"
-                                    android:layout_height="wrap_content"
-                                    android:text="🎫"
-                                    android:textSize="18sp" />
+                                <ImageView
+                                    android:layout_width="24dp"
+                                    android:layout_height="24dp"
+                                    android:contentDescription="@string/seller_hub_coupons"
+                                    android:src="@drawable/ic_coupon"
+                                    app:tint="@color/whatsapp_teal_light" />
 
                                 <LinearLayout
                                     android:layout_width="0dp"
@@ -1245,11 +1248,12 @@
                                 android:paddingHorizontal="14dp"
                                 android:paddingVertical="13dp">
 
-                                <TextView
-                                    android:layout_width="30dp"
-                                    android:layout_height="wrap_content"
-                                    android:text="⚖️"
-                                    android:textSize="18sp" />
+                                <ImageView
+                                    android:layout_width="24dp"
+                                    android:layout_height="24dp"
+                                    android:contentDescription="@string/seller_hub_disputes"
+                                    android:src="@drawable/ic_report"
+                                    app:tint="@color/whatsapp_teal_light" />
 
                                 <LinearLayout
                                     android:layout_width="0dp"
