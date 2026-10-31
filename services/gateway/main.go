@@ -270,7 +270,7 @@ func main() {
 	socialHandler := handlers.NewSocialHandler(socialClient, authClient, log)
 	miniappHandler := handlers.NewMiniAppHandler(miniappClient, log)
 	businessHandler := handlers.NewBusinessHandler(businessClient, hub, log).WithRedis(redisClient)
-	searchHandler := handlers.NewSearchHandler("http://localhost:8095", log)
+	searchHandler := handlers.NewSearchHandler(cfg.SearchServiceURL, log)
 	docsHandler := handlers.NewDocsHandler()
 
 	// ── Root Status & Health Endpoints ──────────────────────────────────────

@@ -38,6 +38,9 @@ type Config struct {
 	MiniAppGRPCAddr  string
 	BusinessGRPCAddr string
 
+	// Search service base URL (HTTP), used by the gateway's search handler.
+	SearchServiceURL string
+
 	// gRPC port (used by each service)
 	GRPCPort string
 
@@ -131,6 +134,8 @@ func Load() *Config {
 		SocialGRPCAddr:   getEnv("SOCIAL_GRPC_ADDR", "localhost:50061"),
 		MiniAppGRPCAddr:  getEnv("MINIAPP_GRPC_ADDR", "localhost:50062"),
 		BusinessGRPCAddr: getEnv("BUSINESS_GRPC_ADDR", "localhost:50063"),
+
+		SearchServiceURL: getEnv("SEARCH_SERVICE_URL", "http://localhost:8095"),
 
 		GRPCPort:   getEnv("GRPC_PORT", "50051"),
 		HTTPPort:   getEnv("PORT", getEnv("HTTP_PORT", "8080")),
