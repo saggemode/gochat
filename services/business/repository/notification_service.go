@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
+
+	"gochat/pkg/fcm"
 )
 
 // NotificationType represents different types of business notifications
@@ -334,7 +336,9 @@ func (ns *NotificationService) getPreferredChannels(prefs *NotificationPreferenc
 	if prefs != nil && len(prefs.PreferredChannels) > 0 {
 		return prefs.PreferredChannels
 	}
-	return []NotificationChannel{ChannelInApp}
+	// Default: in-app record plus a device push, so order updates / cart nudges
+	// actually reach the user even when they have no stored preferences.
+	return []NotificationChannel{ChannelInApp, ChannelPush}
 }
 
 // isQuietHours checks if current time is within user's quiet hours
@@ -449,9 +453,29 @@ func (ns *NotificationService) sendSMSNotification(ctx context.Context, notifica
 	return nil
 }
 
-// sendPushNotification sends a push notification
+// sendPushNotification delivers the notification as an FCM push to the user's
+// registered devices. It reuses pkg/fcm.SendToUser — the same path the gateway
+// uses for chat/call pushes — which resolves device tokens from
+// auth.user_push_tokens and degrades gracefully (no tokens → no-op) so a user
+// without a device simply gets no push.
 func (ns *NotificationService) sendPushNotification(ctx context.Context, notification *Notification) error {
-	ns.logger.Info("Sending push notification",
+	data := make(map[string]string, len(notification.Data)+1)
+	data["type"] = string(notification.Type)
+	for k, v := range notification.Data {
+		data[k] = fmt.Sprintf("%v", v)
+	}
+
+	if err := fcm.SendToUser(ctx, notification.UserID, notification.Title, notification.Body, data); err != nil {
+		// A missing FCM client / token lookup failure must not break the
+		// notification flow; the in-app record is still stored.
+		ns.logger.Warn("push notification dispatch failed",
+			zap.String("id", notification.ID),
+			zap.String("user_id", notification.UserID),
+			zap.Error(err))
+		return nil
+	}
+
+	ns.logger.Info("Sent push notification",
 		zap.String("id", notification.ID),
 		zap.String("user_id", notification.UserID))
 	return nil
