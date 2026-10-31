@@ -729,4 +729,10 @@
     <!-- Batch 25: seller hub section headers -->
     <string name="seller_hub_management">УПРАВЛЕНИЕ МАГАЗИНОМ</string>
     <string name="seller_hub_payout">СЧЁТ ДЛЯ ВЫПЛАТ</string>
+
+    <!-- Batch 26: my products page -->
+    <string name="my_products_title">Мои товары</string>
+    <string name="my_products_empty">Пока нет товаров. Нажмите «Добавить товар», чтобы разместить первый.</string>
+    <string name="my_products_delete_confirm">Удалить \"%1$s\"? Это действие необратимо.</string>
+    <string name="my_products_deleted">Товар удалён</string>
 </resources>

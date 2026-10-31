@@ -729,4 +729,10 @@
     <!-- Batch 25: seller hub section headers -->
     <string name="seller_hub_management">स्टोर प्रबंधन</string>
     <string name="seller_hub_payout">भुगतान खाता</string>
+
+    <!-- Batch 26: my products page -->
+    <string name="my_products_title">मेरे उत्पाद</string>
+    <string name="my_products_empty">अभी कोई उत्पाद नहीं। अपना पहला आइटम सूचीबद्ध करने के लिए उत्पाद जोड़ें पर टैप करें।</string>
+    <string name="my_products_delete_confirm">\"%1$s\" हटाएँ? इसे पूर्ववत नहीं किया जा सकता।</string>
+    <string name="my_products_deleted">उत्पाद हटाया गया</string>
 </resources>

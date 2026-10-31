@@ -729,4 +729,10 @@
     <!-- Batch 25: seller hub section headers -->
     <string name="seller_hub_management">GESTÃO DA LOJA</string>
     <string name="seller_hub_payout">CONTA DE PAGAMENTO</string>
+
+    <!-- Batch 26: my products page -->
+    <string name="my_products_title">Meus produtos</string>
+    <string name="my_products_empty">Ainda sem produtos. Toque em Adicionar produto para anunciar seu primeiro item.</string>
+    <string name="my_products_delete_confirm">Excluir \"%1$s\"? Isto não pode ser desfeito.</string>
+    <string name="my_products_deleted">Produto excluído</string>
 </resources>

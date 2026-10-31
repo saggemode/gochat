@@ -729,4 +729,10 @@
     <!-- Batch 25: seller hub section headers -->
     <string name="seller_hub_management">إدارة المتجر</string>
     <string name="seller_hub_payout">حساب الدفع</string>
+
+    <!-- Batch 26: my products page -->
+    <string name="my_products_title">منتجاتي</string>
+    <string name="my_products_empty">لا منتجات بعد. اضغط على إضافة منتج لإدراج أول عنصر لك.</string>
+    <string name="my_products_delete_confirm">حذف \"%1$s\"؟ لا يمكن التراجع عن ذلك.</string>
+    <string name="my_products_deleted">تم حذف المنتج</string>
 </resources>

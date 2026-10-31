@@ -729,4 +729,10 @@
     <!-- Batch 25: seller hub section headers -->
     <string name="seller_hub_management">USIMAMIZI WA DUKA</string>
     <string name="seller_hub_payout">AKAUNTI YA MALIPO</string>
+
+    <!-- Batch 26: my products page -->
+    <string name="my_products_title">Bidhaa zangu</string>
+    <string name="my_products_empty">Hakuna bidhaa bado. Gusa Ongeza bidhaa ili kuorodhesha bidhaa yako ya kwanza.</string>
+    <string name="my_products_delete_confirm">Futa \"%1$s\"? Haiwezi kutenduliwa.</string>
+    <string name="my_products_deleted">Bidhaa imefutwa</string>
 </resources>

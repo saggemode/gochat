@@ -729,4 +729,10 @@
     <!-- Batch 25: seller hub section headers -->
     <string name="seller_hub_management">SHOP-VERWALTUNG</string>
     <string name="seller_hub_payout">AUSZAHLUNGSKONTO</string>
+
+    <!-- Batch 26: my products page -->
+    <string name="my_products_title">Meine Produkte</string>
+    <string name="my_products_empty">Noch keine Produkte. Tippe auf Produkt hinzufügen, um deinen ersten Artikel einzustellen.</string>
+    <string name="my_products_delete_confirm">\"%1$s\" löschen? Dies kann nicht rückgängig gemacht werden.</string>
+    <string name="my_products_deleted">Produkt gelöscht</string>
 </resources>

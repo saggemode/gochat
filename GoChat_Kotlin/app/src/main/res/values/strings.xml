@@ -764,6 +764,12 @@
     <string name="safety_number_verify">Verify</string>
     <string name="safety_number_contact_fallback">this contact</string>
 
+    <!-- My Products page -->
+    <string name="my_products_title">My Products</string>
+    <string name="my_products_empty">No products yet. Tap Add Product to list your first item.</string>
+    <string name="my_products_delete_confirm">Delete \"%1$s\"? This cannot be undone.</string>
+    <string name="my_products_deleted">Product deleted</string>
+
     <!-- Create call link -->
     <string name="call_link_title">Call link</string>
     <string name="call_link_ready_title">Call link ready</string>

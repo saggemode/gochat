@@ -729,4 +729,10 @@
     <!-- Batch 25: seller hub section headers -->
     <string name="seller_hub_management">店铺管理</string>
     <string name="seller_hub_payout">收款账户</string>
+
+    <!-- Batch 26: my products page -->
+    <string name="my_products_title">我的商品</string>
+    <string name="my_products_empty">暂无商品。点击添加商品以发布您的第一件商品。</string>
+    <string name="my_products_delete_confirm">删除\"%1$s\"？此操作无法撤销。</string>
+    <string name="my_products_deleted">商品已删除</string>
 </resources>

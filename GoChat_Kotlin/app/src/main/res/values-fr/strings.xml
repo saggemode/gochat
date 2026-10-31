@@ -733,4 +733,10 @@
     <!-- Batch 25: seller hub section headers -->
     <string name="seller_hub_management">GESTION DE LA BOUTIQUE</string>
     <string name="seller_hub_payout">COMPTE DE VERSEMENT</string>
+
+    <!-- Batch 26: my products page -->
+    <string name="my_products_title">Mes produits</string>
+    <string name="my_products_empty">Aucun produit pour le moment. Appuyez sur Ajouter un produit pour référencer votre premier article.</string>
+    <string name="my_products_delete_confirm">Supprimer \"%1$s\" ? Cette action est irréversible.</string>
+    <string name="my_products_deleted">Produit supprimé</string>
 </resources>

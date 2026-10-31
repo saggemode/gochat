@@ -729,4 +729,10 @@
     <!-- Batch 25: seller hub section headers -->
     <string name="seller_hub_management">MAĞAZA YÖNETİMİ</string>
     <string name="seller_hub_payout">ÖDEME HESABI</string>
+
+    <!-- Batch 26: my products page -->
+    <string name="my_products_title">Ürünlerim</string>
+    <string name="my_products_empty">Henüz ürün yok. İlk ürününüzü listelemek için Ürün ekle\'ye dokunun.</string>
+    <string name="my_products_delete_confirm">\"%1$s\" silinsin mi? Bu işlem geri alınamaz.</string>
+    <string name="my_products_deleted">Ürün silindi</string>
 </resources>
