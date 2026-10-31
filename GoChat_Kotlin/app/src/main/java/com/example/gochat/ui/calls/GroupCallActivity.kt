@@ -11,6 +11,7 @@ import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import com.example.gochat.core.ui.applySystemBarInsets
 import androidx.lifecycle.lifecycleScope
 import com.example.gochat.core.webrtc.CallAudioController
 import com.example.gochat.core.webrtc.GroupCallClient
@@ -80,7 +81,9 @@ class GroupCallActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         if (callId.isBlank()) { finish(); return }
         audioController = CallAudioController(this)
-        setContentView(buildUi())
+        val rootUi = buildUi()
+        setContentView(rootUi)
+        rootUi.applySystemBarInsets() // keep title/controls clear of the status & nav bars
 
         val perms = mutableListOf(android.Manifest.permission.RECORD_AUDIO)
         if (isVideo) perms.add(android.Manifest.permission.CAMERA)

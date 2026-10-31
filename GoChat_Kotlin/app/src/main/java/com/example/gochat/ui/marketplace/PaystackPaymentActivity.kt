@@ -10,6 +10,7 @@ import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.ProgressBar
 import androidx.appcompat.app.AppCompatActivity
+import com.example.gochat.core.ui.applySystemBarInsets
 
 /**
  * Hosts the Paystack checkout in a WebView. We don't trust the WebView to decide
@@ -57,6 +58,7 @@ class PaystackPaymentActivity : AppCompatActivity() {
         root.addView(webView)
         root.addView(progress)
         setContentView(root)
+        root.applySystemBarInsets() // clear the status bar / nav bar (edge-to-edge)
 
         fun finishWithReference() {
             setResult(Activity.RESULT_OK, intent.putExtra(RESULT_REFERENCE, reference))

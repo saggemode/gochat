@@ -20,6 +20,7 @@ import androidx.core.view.setPadding
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.gochat.core.ui.applySystemBarInsets
 import com.example.gochat.data.repository.MarketplaceRepository
 import com.google.android.material.button.MaterialButton
 import dagger.hilt.android.AndroidEntryPoint
@@ -121,6 +122,7 @@ class MyProductsActivity : AppCompatActivity() {
         })
 
         setContentView(root)
+        root.applySystemBarInsets() // clear the status bar / nav bar (edge-to-edge)
 
         lifecycleScope.launch {
             viewModel.myProducts.collectLatest { products ->

@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.setPadding
 import androidx.lifecycle.lifecycleScope
+import com.example.gochat.core.ui.applySystemBarInsets
 import com.example.gochat.data.repository.MarketplaceRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -65,6 +66,7 @@ class DisputesActivity : AppCompatActivity() {
         root.addView(listContainer)
 
         setContentView(ScrollView(this).apply { addView(root) })
+        root.applySystemBarInsets() // clear the status bar / nav bar (edge-to-edge)
         load()
     }
 

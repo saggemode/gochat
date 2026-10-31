@@ -21,6 +21,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.setPadding
 import androidx.lifecycle.lifecycleScope
 import com.example.gochat.core.currency.CurrencyManager
+import com.example.gochat.core.ui.applySystemBarInsets
 import com.example.gochat.data.model.Category
 import com.example.gochat.data.model.Product
 import com.example.gochat.data.repository.MarketplaceRepository
@@ -254,6 +255,7 @@ class CouponManagerActivity : AppCompatActivity() {
         root.addView(listContainer)
 
         setContentView(ScrollView(this).apply { addView(root) })
+        root.applySystemBarInsets() // clear the status bar / nav bar (edge-to-edge)
 
         loadProducts()
         loadCoupons()

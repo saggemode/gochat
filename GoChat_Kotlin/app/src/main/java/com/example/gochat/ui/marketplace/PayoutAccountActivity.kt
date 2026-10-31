@@ -17,6 +17,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.example.gochat.core.ui.applySystemBarInsets
 import com.example.gochat.data.repository.MarketplaceRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -140,6 +141,7 @@ class PayoutAccountActivity : AppCompatActivity() {
             addView(scroll)
         }
         setContentView(container)
+        container.applySystemBarInsets() // clear the status bar / nav bar (edge-to-edge)
 
         loadData()
     }
