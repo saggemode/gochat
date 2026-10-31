@@ -369,7 +369,19 @@ class MarketplaceFragment : Fragment() {
         }
 
         binding.cardMetricProducts.setOnClickListener {
-            binding.layoutStoreTab.smoothScrollTo(0, binding.tvInventoryTitle.top)
+            // Reveal the Store Inventory section (full product list with per-item
+            // edit/delete and the Add Product button at its top). tvInventoryTitle.top
+            // is relative to its immediate parent, so sum offsets up to the scroll
+            // view to get the true scroll position.
+            binding.layoutStoreTab.post {
+                var y = 0
+                var v: android.view.View? = binding.tvInventoryTitle
+                while (v != null && v !== binding.layoutStoreTab) {
+                    y += v.top
+                    v = v.parent as? android.view.View
+                }
+                binding.layoutStoreTab.smoothScrollTo(0, y)
+            }
         }
 
         binding.cardMetricFollowers.setOnClickListener {
