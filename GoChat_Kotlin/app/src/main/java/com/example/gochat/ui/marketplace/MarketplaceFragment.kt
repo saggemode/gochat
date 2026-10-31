@@ -57,7 +57,6 @@ class MarketplaceFragment : Fragment() {
 
     private lateinit var productAdapter: ProductAdapter
     private lateinit var categoryAdapter: CategoryAdapter
-    private lateinit var storeProductAdapter: StoreProductAdapter
     private lateinit var searchSuggestionAdapter: SearchSuggestionAdapter
     private lateinit var followedStoreAdapter: FollowedStoreAdapter
     private lateinit var followedProductAdapter: ProductAdapter
@@ -179,32 +178,8 @@ class MarketplaceFragment : Fragment() {
             layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
         }
 
-        // 3. Store Inventory Adapter (Seller Hub)
-        storeProductAdapter = StoreProductAdapter(
-            onClick = { product ->
-                val intent = Intent(requireContext(), ProductDetailsActivity::class.java).apply {
-                    putExtra("product_id", product.id)
-                }
-                startActivity(intent)
-            },
-            onEdit = { product ->
-                lifecycleScope.launch {
-                    val fullProduct = viewModel.getProductById(product.id) ?: product
-                    showEditProductBottomSheet(fullProduct)
-                }
-            },
-            onDelete = { product ->
-                showDeleteProductDialog(product)
-            },
-            onShare = { product ->
-                val shareSheet = com.example.gochat.ui.chat.ShareToChatBottomSheet(product)
-                shareSheet.show(childFragmentManager, "ShareToChat")
-            }
-        )
-        binding.rvStoreProducts.apply {
-            adapter = storeProductAdapter
-            layoutManager = LinearLayoutManager(requireContext())
-        }
+        // Store products are managed on the dedicated My Products page
+        // (MyProductsActivity), opened from the Listed Products metric tile.
 
         // 4. Search Suggestions
         searchSuggestionAdapter = SearchSuggestionAdapter { suggestion ->
@@ -399,10 +374,6 @@ class MarketplaceFragment : Fragment() {
 
         binding.btnCreateStore.setOnClickListener {
             handleCreateStore()
-        }
-
-        binding.btnAddProduct.setOnClickListener {
-            showAddProductBottomSheet()
         }
 
         binding.btnShareStore.setOnClickListener {
@@ -701,13 +672,10 @@ class MarketplaceFragment : Fragment() {
                     }
                 }
 
-                // 5. Store Inventory
+                // 5. Listed Products count (metric tile → opens My Products page)
                 launch {
                     viewModel.myProducts.collect { products ->
-                        storeProductAdapter.submitList(products)
-                        binding.tvEmptyStoreProducts.visibility = if (products.isEmpty()) View.VISIBLE else View.GONE
                         binding.tvMetricProducts.text = products.size.toString()
-                        binding.tvInventoryTitle.text = String.format(Locale.US, "STORE INVENTORY (%d)", products.size)
                     }
                 }
 
