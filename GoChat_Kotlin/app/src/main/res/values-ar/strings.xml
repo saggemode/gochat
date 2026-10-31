@@ -725,4 +725,8 @@
     <string name="call_link_join">انضمام</string>
     <string name="call_link_close">إغلاق</string>
     <string name="call_link_share_text">انضم إلى مكالمتي على GoChat: %1$s</string>
+
+    <!-- Batch 25: seller hub section headers -->
+    <string name="seller_hub_management">إدارة المتجر</string>
+    <string name="seller_hub_payout">حساب الدفع</string>
 </resources>

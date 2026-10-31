@@ -725,4 +725,8 @@
     <string name="call_link_join">加入</string>
     <string name="call_link_close">关闭</string>
     <string name="call_link_share_text">加入我的 GoChat 通话：%1$s</string>
+
+    <!-- Batch 25: seller hub section headers -->
+    <string name="seller_hub_management">店铺管理</string>
+    <string name="seller_hub_payout">收款账户</string>
 </resources>

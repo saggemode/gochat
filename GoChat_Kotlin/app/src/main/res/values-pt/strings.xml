@@ -725,4 +725,8 @@
     <string name="call_link_join">Entrar</string>
     <string name="call_link_close">Fechar</string>
     <string name="call_link_share_text">Entre na minha chamada do GoChat: %1$s</string>
+
+    <!-- Batch 25: seller hub section headers -->
+    <string name="seller_hub_management">GESTÃO DA LOJA</string>
+    <string name="seller_hub_payout">CONTA DE PAGAMENTO</string>
 </resources>

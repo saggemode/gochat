@@ -792,6 +792,8 @@
     <string name="coupon_item_first_order">First order only</string>
 
     <!-- Seller payout ledger / statement -->
+    <string name="seller_hub_management">STORE MANAGEMENT</string>
+    <string name="seller_hub_payout">PAYOUT ACCOUNT</string>
     <string name="seller_hub_earnings">EARNINGS</string>
     <string name="seller_hub_earnings_sub">Your payout statement and net balance</string>
     <string name="payout_ledger_title">Earnings</string>

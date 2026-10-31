@@ -725,4 +725,8 @@
     <string name="call_link_join">शामिल हों</string>
     <string name="call_link_close">बंद करें</string>
     <string name="call_link_share_text">मेरी GoChat कॉल में शामिल हों: %1$s</string>
+
+    <!-- Batch 25: seller hub section headers -->
+    <string name="seller_hub_management">स्टोर प्रबंधन</string>
+    <string name="seller_hub_payout">भुगतान खाता</string>
 </resources>

@@ -725,4 +725,8 @@
     <string name="call_link_join">Jiunge</string>
     <string name="call_link_close">Funga</string>
     <string name="call_link_share_text">Jiunge na simu yangu ya GoChat: %1$s</string>
+
+    <!-- Batch 25: seller hub section headers -->
+    <string name="seller_hub_management">USIMAMIZI WA DUKA</string>
+    <string name="seller_hub_payout">AKAUNTI YA MALIPO</string>
 </resources>

@@ -725,4 +725,8 @@
     <string name="call_link_join">Присоединиться</string>
     <string name="call_link_close">Закрыть</string>
     <string name="call_link_share_text">Присоединяйтесь к моему звонку в GoChat: %1$s</string>
+
+    <!-- Batch 25: seller hub section headers -->
+    <string name="seller_hub_management">УПРАВЛЕНИЕ МАГАЗИНОМ</string>
+    <string name="seller_hub_payout">СЧЁТ ДЛЯ ВЫПЛАТ</string>
 </resources>

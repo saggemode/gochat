@@ -725,4 +725,8 @@
     <string name="call_link_join">Katıl</string>
     <string name="call_link_close">Kapat</string>
     <string name="call_link_share_text">GoChat aramama katıl: %1$s</string>
+
+    <!-- Batch 25: seller hub section headers -->
+    <string name="seller_hub_management">MAĞAZA YÖNETİMİ</string>
+    <string name="seller_hub_payout">ÖDEME HESABI</string>
 </resources>

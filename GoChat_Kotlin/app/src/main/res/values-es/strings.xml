@@ -725,4 +725,8 @@
     <string name="call_link_join">Unirse</string>
     <string name="call_link_close">Cerrar</string>
     <string name="call_link_share_text">Únete a mi llamada de GoChat: %1$s</string>
+
+    <!-- Batch 25: seller hub section headers -->
+    <string name="seller_hub_management">GESTIÓN DE LA TIENDA</string>
+    <string name="seller_hub_payout">CUENTA DE PAGO</string>
 </resources>
