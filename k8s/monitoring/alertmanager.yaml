@@ -15,10 +15,11 @@ data:
   alertmanager.yml: |
     global:
       resolve_timeout: 5m
-      # --- SMTP settings: replace the placeholders with your mail provider's ---
-      smtp_smarthost: 'smtp.example.com:587'
-      smtp_from: 'alerts@example.com'
-      smtp_auth_username: 'alerts@example.com'
+      # SMTP via Gmail. The App Password is NOT stored here — it's read from the
+      # mounted secret file (gochat-secrets → SMTP_PASSWORD), injected at deploy.
+      smtp_smarthost: 'smtp.gmail.com:587'
+      smtp_from: 'umeh288@gmail.com'
+      smtp_auth_username: 'umeh288@gmail.com'
       smtp_auth_password_file: /etc/alertmanager/secrets/smtp-password
       smtp_require_tls: true
     route:
@@ -35,8 +36,7 @@ data:
     receivers:
       - name: 'email'
         email_configs:
-          # Replace with the address that should receive alerts.
-          - to: 'you@example.com'
+          - to: 'umeh288@gmail.com'
             send_resolved: true
             headers:
               Subject: '[GoChat] {{ .Status | toUpper }}: {{ .CommonLabels.alertname }}'
