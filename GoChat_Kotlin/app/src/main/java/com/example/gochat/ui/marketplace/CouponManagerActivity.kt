@@ -381,7 +381,7 @@ class CouponManagerActivity : AppCompatActivity() {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply { topMargin = dp(8) }
             layoutParams = lp
-            setBackgroundResource(android.R.drawable.dialog_holo_light_frame)
+            setBackgroundResource(R.drawable.bg_card_dark)
         }
 
         val discount = if (c.discountType == "fixed") {

@@ -90,7 +90,7 @@ class DisputesActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply { topMargin = dp(8) }
-            setBackgroundResource(android.R.drawable.dialog_holo_light_frame)
+            setBackgroundResource(R.drawable.bg_card_dark)
         }
         row.addView(TextView(this).apply {
             text = getString(R.string.disputes_order_reason, d.orderNumber.ifBlank { d.orderId.take(8) }, d.reason)

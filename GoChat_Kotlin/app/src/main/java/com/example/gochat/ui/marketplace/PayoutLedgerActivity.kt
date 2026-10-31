@@ -54,7 +54,7 @@ class PayoutLedgerActivity : AppCompatActivity() {
         summaryBox = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(14), dp(14), dp(14))
-            setBackgroundResource(android.R.drawable.dialog_holo_light_frame)
+            setBackgroundResource(R.drawable.bg_card_dark)
         }
         root.addView(summaryBox)
 
@@ -121,7 +121,7 @@ class PayoutLedgerActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply { topMargin = dp(8) }
-            setBackgroundResource(android.R.drawable.dialog_holo_light_frame)
+            setBackgroundResource(R.drawable.bg_card_dark)
         }
         val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         head.addView(TextView(this).apply {
