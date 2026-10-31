@@ -156,6 +156,9 @@ func (m *mockAuthClient) GetUsers(_ context.Context, _ *authpb.GetUsersRequest, 
 func (m *mockAuthClient) SetPresence(_ context.Context, _ *authpb.SetPresenceRequest, _ ...grpc.CallOption) (*authpb.SetPresenceResponse, error) {
 	panic("not used in middleware tests")
 }
+func (m *mockAuthClient) SaveContacts(_ context.Context, _ *authpb.SaveContactsRequest, _ ...grpc.CallOption) (*authpb.SaveContactsResponse, error) {
+	panic("not used in middleware tests")
+}
 func (m *mockAuthClient) SetTwoStepPIN(_ context.Context, _ *authpb.SetTwoStepPINRequest, _ ...grpc.CallOption) (*authpb.SetTwoStepPINResponse, error) {
 	panic("not used in middleware tests")
 }

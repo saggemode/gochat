@@ -141,6 +141,10 @@ func (s *stubAuthServiceClient) VerifyAccountRecovery(_ context.Context, in *aut
 	}, nil
 }
 
+func (s *stubAuthServiceClient) SaveContacts(context.Context, *authpb.SaveContactsRequest, ...grpc.CallOption) (*authpb.SaveContactsResponse, error) {
+	return &authpb.SaveContactsResponse{}, nil
+}
+
 func TestAuthHandler_AccountRecovery(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	h := NewAuthHandler(&stubAuthServiceClient{}, zap.NewNop())
