@@ -31,3 +31,7 @@ resources:
   # 4. Gateway & Routing
   - gateway/gateway.yaml
   - gateway/ingress.yaml
+
+  # 5. Monitoring (Prometheus + Alertmanager)
+  - monitoring/prometheus.yaml
+  - monitoring/alertmanager.yaml

@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 )
 
@@ -65,6 +66,11 @@ func (s *Server) Start() {
 	// Readiness probe: can the service handle traffic?
 	// Returns 200 only if all dependency checks pass.
 	mux.HandleFunc("/readyz", s.handleReadiness)
+
+	// Prometheus metrics: every service with a health server now also exposes
+	// Go runtime / process metrics (and any custom metrics registered to the
+	// default registry) on its health port, so each can be scraped individually.
+	mux.Handle("/metrics", promhttp.Handler())
 
 	s.httpServer = &http.Server{
 		Addr:         fmt.Sprintf(":%s", s.port),
