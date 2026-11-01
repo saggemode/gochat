@@ -35,13 +35,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     reports: reports.data?.filter((r) => r.status === "pending").length,
   }
 
-  if (!ready || !session) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-muted-foreground text-sm">
-        Loading…
-      </div>
-    )
-  }
+  // Always render the shell + page segment (so navigation stays instant and
+  // the segment is never "dropped"); overlay a loading state until the client
+  // session is known. Unauthenticated visitors are redirected by the effect
+  // above.
+  const gated = !ready || !session
 
   return (
     <div className="flex min-h-screen">
@@ -50,6 +48,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Topbar title={titleFor(pathname)} onMenu={() => setOpen(true)} />
         <main className="flex-1 p-4 md:p-6">{children}</main>
       </div>
+      {gated ? (
+        <div className="bg-background fixed inset-0 z-[60] flex items-center justify-center text-muted-foreground text-sm">
+          Loading…
+        </div>
+      ) : null}
     </div>
   )
 }

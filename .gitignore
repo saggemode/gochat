@@ -75,3 +75,8 @@ minio_data/
 # ide
 .idea/
 .vscode/
+
+# Local admin gateway launcher + its runtime log (not for commit)
+scripts-run-gateway.sh
+gateway-run.log
+bin/
