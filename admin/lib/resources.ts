@@ -268,6 +268,7 @@ export type AdminMe = {
   roles: string[]
   permissions: Record<string, boolean>
   bootstrap: boolean
+  mustChangePassword: boolean
 }
 
 export async function getMe(): Promise<AdminMe> {
@@ -281,8 +282,10 @@ export async function getMe(): Promise<AdminMe> {
         "admin:disputes:resolve": true,
         "admin:reports:action": true,
         "admin:finance:read": true,
+        "admin:roles:write": true,
       },
       bootstrap: true,
+      mustChangePassword: false,
     })
   }
   const r = await apiFetch<{
@@ -291,6 +294,7 @@ export async function getMe(): Promise<AdminMe> {
     roles: string[]
     permissions: Record<string, boolean>
     bootstrap: boolean
+    must_change_password: boolean
   }>("/api/v1/admin/me")
   return {
     userId: r.user_id,
@@ -298,6 +302,7 @@ export async function getMe(): Promise<AdminMe> {
     roles: r.roles ?? [],
     permissions: r.permissions ?? {},
     bootstrap: !!r.bootstrap,
+    mustChangePassword: !!r.must_change_password,
   }
 }
 
@@ -393,17 +398,22 @@ export async function getRoles(): Promise<RoleInfo[]> {
   return r.roles ?? []
 }
 
+export type CreateUserResult = { tempPassword: string; emailSent: boolean }
+
 export async function createUser(input: {
   email: string
-  password: string
   name: string
   roles: string[]
-}): Promise<void> {
+}): Promise<CreateUserResult> {
   if (USE_MOCKS) {
     await delay(null, 300)
-    return
+    return { tempPassword: "Mock-temp-" + Math.random().toString(36).slice(2, 8), emailSent: false }
   }
-  await apiFetch("/api/v1/admin/users", { method: "POST", body: input })
+  const r = await apiFetch<{ temp_password?: string; email_sent?: boolean }>("/api/v1/admin/users", {
+    method: "POST",
+    body: input,
+  })
+  return { tempPassword: r.temp_password ?? "", emailSent: !!r.email_sent }
 }
 
 export async function setUserRoles(id: string, roles: string[]): Promise<void> {
@@ -412,6 +422,14 @@ export async function setUserRoles(id: string, roles: string[]): Promise<void> {
     return
   }
   await apiFetch(`/api/v1/admin/users/${id}/roles`, { method: "POST", body: { roles } })
+}
+
+export async function changePassword(newPassword: string): Promise<void> {
+  if (USE_MOCKS) {
+    await delay(null, 200)
+    return
+  }
+  await apiFetch("/api/v1/admin/password", { method: "POST", body: { new_password: newPassword } })
 }
 
 export async function getAudit(): Promise<AuditEntry[]> {

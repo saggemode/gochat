@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"crypto/rand"
 	"net/http"
 	"sort"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	grpcstatus "google.golang.org/grpc/status"
@@ -17,7 +19,22 @@ import (
 	authpb "gochat/gen/auth"
 	authzpb "gochat/gen/authz"
 	businesspb "gochat/gen/business"
+	"gochat/pkg/notifier"
 )
+
+// generateTempPassword returns a readable, reasonably strong temporary password
+// (no ambiguous chars). ~72 bits of entropy over 14 chars.
+func generateTempPassword() string {
+	const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
+	b := make([]byte, 14)
+	if _, err := rand.Read(b); err != nil {
+		return "Gochat-" + strconv.FormatInt(time.Now().UnixNano(), 36)
+	}
+	for i := range b {
+		b[i] = charset[int(b[i])%len(charset)]
+	}
+	return string(b[:4]) + "-" + string(b[4:9]) + "-" + string(b[9:])
+}
 
 // assignableRoles are the roles the super admin can grant to other accounts.
 var assignableRoles = []struct {
@@ -56,12 +73,13 @@ type AdminHandler struct {
 	auth     authpb.AuthServiceClient
 	business businesspb.BusinessServiceClient
 	authz    authzpb.AuthzServiceClient
+	notifier notifier.Notifier
 	services map[string]*grpc.ClientConn // for real per-service connectivity health
 	log      *zap.Logger
 }
 
-func NewAdminHandler(db *pgxpool.Pool, auth authpb.AuthServiceClient, business businesspb.BusinessServiceClient, authz authzpb.AuthzServiceClient, services map[string]*grpc.ClientConn, log *zap.Logger) *AdminHandler {
-	return &AdminHandler{db: db, auth: auth, business: business, authz: authz, services: services, log: log}
+func NewAdminHandler(db *pgxpool.Pool, auth authpb.AuthServiceClient, business businesspb.BusinessServiceClient, authz authzpb.AuthzServiceClient, mailer notifier.Notifier, services map[string]*grpc.ClientConn, log *zap.Logger) *AdminHandler {
+	return &AdminHandler{db: db, auth: auth, business: business, authz: authz, notifier: mailer, services: services, log: log}
 }
 
 // adminCapabilities is the set of fine-grained permissions the UI gates on.
@@ -821,12 +839,20 @@ func (h *AdminHandler) Me(c *gin.Context) {
 		}
 	}
 
+	// Whether this account must set a new password before using the console.
+	mustChange := false
+	if h.db != nil && userID != "" {
+		_ = h.db.QueryRow(c.Request.Context(),
+			`SELECT coalesce(must_change_password, false) FROM core.users WHERE id = $1`, userID).Scan(&mustChange)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"user_id":     userID,
-		"email":       c.GetString("email"),
-		"roles":       roles,
-		"permissions": caps,
-		"bootstrap":   bootstrap,
+		"user_id":              userID,
+		"email":                c.GetString("email"),
+		"roles":                roles,
+		"permissions":          caps,
+		"bootstrap":            bootstrap,
+		"must_change_password": mustChange,
 	})
 }
 
@@ -956,8 +982,10 @@ func (h *AdminHandler) registerOrLookup(ctx context.Context, email, password, na
 	return gu.GetUser().GetId(), "", "", gu.GetUser(), nil
 }
 
-// POST /api/v1/admin/users — super admin only. Create an account and assign
-// roles. Body: {email, password, name, roles[]}.
+// POST /api/v1/admin/users — super admin only. Create a staff account with an
+// auto-generated temporary password (emailed to the staff member), assign
+// roles, and flag the account to force a password change on first login.
+// Body: {email, name, roles[]}.
 func (h *AdminHandler) CreateUser(c *gin.Context) {
 	if !h.ready(c) {
 		return
@@ -967,17 +995,16 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 		return
 	}
 	var body struct {
-		Email    string   `json:"email"`
-		Password string   `json:"password"`
-		Name     string   `json:"name"`
-		Roles    []string `json:"roles"`
+		Email string   `json:"email"`
+		Name  string   `json:"name"`
+		Roles []string `json:"roles"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
 		return
 	}
-	if body.Email == "" || len(body.Password) < 8 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "email and a password of at least 8 characters are required"})
+	if body.Email == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email is required"})
 		return
 	}
 	for _, r := range body.Roles {
@@ -987,7 +1014,8 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 		}
 	}
 
-	resp, err := h.auth.Register(c.Request.Context(), &authpb.RegisterRequest{Email: body.Email, Password: body.Password, DisplayName: body.Name})
+	tempPassword := generateTempPassword()
+	resp, err := h.auth.Register(c.Request.Context(), &authpb.RegisterRequest{Email: body.Email, Password: tempPassword, DisplayName: body.Name})
 	if err != nil {
 		if grpcstatus.Code(err) == codes.AlreadyExists {
 			c.JSON(http.StatusConflict, gin.H{"error": "an account with that email already exists"})
@@ -998,13 +1026,93 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 		return
 	}
 	userID := resp.GetUser().GetId()
+
 	for _, r := range body.Roles {
 		if _, err := h.authz.AssignRole(c.Request.Context(), &authzpb.AssignRoleRequest{UserId: userID, Role: r}); err != nil {
 			h.log.Warn("admin create user: assign role failed", zap.String("role", r), zap.Error(err))
 		}
 	}
-	h.audit(c, "user:create", "user", userID, body.Email)
-	c.JSON(http.StatusCreated, gin.H{"id": userID, "email": body.Email, "roles": body.Roles})
+
+	// Force a password change on first login.
+	if _, err := h.db.Exec(c.Request.Context(),
+		`UPDATE core.users SET must_change_password = true WHERE id = $1`, userID); err != nil {
+		h.log.Warn("create user: could not set must_change_password", zap.Error(err))
+	}
+
+	emailSent := h.sendTempPasswordEmail(c.Request.Context(), body.Email, body.Name, tempPassword)
+	h.audit(c, "user:create", "user", userID, body.Email+" roles="+joinRoles(body.Roles))
+
+	c.JSON(http.StatusCreated, gin.H{
+		"id":            userID,
+		"email":         body.Email,
+		"roles":         body.Roles,
+		"temp_password": tempPassword, // shown to the super admin as a fallback
+		"email_sent":    emailSent,
+	})
+}
+
+func (h *AdminHandler) sendTempPasswordEmail(ctx context.Context, to, name, tempPassword string) bool {
+	if h.notifier == nil {
+		return false
+	}
+	if name == "" {
+		name = "there"
+	}
+	subject := "Your GoChat admin account"
+	text := "Hello " + name + ",\n\n" +
+		"An admin account has been created for you on the GoChat console.\n\n" +
+		"Email: " + to + "\n" +
+		"Temporary password: " + tempPassword + "\n\n" +
+		"You'll be asked to set a new password the first time you sign in.\n\n— GoChat"
+	if err := h.notifier.SendEmail(ctx, to, subject, text, ""); err != nil {
+		h.log.Warn("failed to email temporary password", zap.String("to", to), zap.Error(err))
+		return false
+	}
+	return true
+}
+
+// POST /api/v1/admin/password — the signed-in admin sets their own password
+// (used for the forced first-login change and for self-service changes).
+// Body: {new_password}.
+func (h *AdminHandler) ChangePassword(c *gin.Context) {
+	if !h.ready(c) {
+		return
+	}
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+		return
+	}
+	var body struct {
+		NewPassword string `json:"new_password"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
+		return
+	}
+	if len(body.NewPassword) < 8 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "password must be at least 8 characters"})
+		return
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(body.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash password"})
+		return
+	}
+	tag, err := h.db.Exec(c.Request.Context(),
+		`UPDATE core.users SET password_hash = $1, must_change_password = false, updated_at = now() WHERE id = $2`,
+		string(hash), userID)
+	if err != nil {
+		h.log.Error("change password failed", zap.String("user_id", userID), zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update password"})
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+	h.audit(c, "password:change", "user", userID, "")
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
 // POST /api/v1/admin/users/:id/roles — super admin only. Sets the user's roles

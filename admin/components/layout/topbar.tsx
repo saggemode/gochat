@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { Menu, LogOut, Search } from "lucide-react"
+import { Menu, LogOut, Search, KeyRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -49,6 +49,15 @@ export function Topbar({ title, onMenu }: { title: string; onMenu: () => void })
           <div className="font-medium">{session?.name ?? "Admin"}</div>
           <div className="text-muted-foreground text-xs">{session?.email ?? ""}</div>
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.push("/change-password")}
+          aria-label="Change password"
+          title="Change password"
+        >
+          <KeyRound />
+        </Button>
         <Button variant="ghost" size="icon" onClick={signOut} aria-label="Sign out" title="Sign out">
           <LogOut />
         </Button>

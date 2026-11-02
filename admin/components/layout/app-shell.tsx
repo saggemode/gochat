@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/layout/sidebar"
 import { Topbar } from "@/components/layout/topbar"
 import { NAV } from "@/components/layout/nav"
 import { useSession } from "@/lib/auth"
+import { usePermissions } from "@/lib/use-permissions"
 import { getDisputes, getReports } from "@/lib/resources"
 
 function titleFor(pathname: string): string {
@@ -25,6 +26,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (ready && !session) router.replace("/login")
   }, [ready, session, router])
+
+  // Force a password change for accounts flagged must_change_password.
+  const { me } = usePermissions()
+  useEffect(() => {
+    if (me?.mustChangePassword && !pathname.startsWith("/change-password")) {
+      router.replace("/change-password")
+    }
+  }, [me?.mustChangePassword, pathname, router])
 
   // Sidebar badge counts (open disputes / pending reports).
   const disputes = useQuery({ queryKey: ["disputes"], queryFn: getDisputes, enabled: !!session })

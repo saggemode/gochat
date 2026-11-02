@@ -38,6 +38,7 @@ import (
 	"gochat/pkg/fcm"
 	"gochat/pkg/logger"
 	"gochat/pkg/metrics"
+	"gochat/pkg/notifier"
 	"gochat/services/gateway/handlers"
 	"gochat/services/gateway/middleware"
 	"gochat/services/gateway/ws"
@@ -356,7 +357,8 @@ func main() {
 	if authzConn != nil && authzErr == nil {
 		adminServiceConns["authz"] = authzConn
 	}
-	adminHandler := handlers.NewAdminHandler(adminDB, authClient, businessClient, authzClient, adminServiceConns, log)
+	adminMailer := notifier.New(cfg, log)
+	adminHandler := handlers.NewAdminHandler(adminDB, authClient, businessClient, authzClient, adminMailer, adminServiceConns, log)
 
 	// ── Root Status & Health Endpoints ──────────────────────────────────────
 	r.GET("/", func(c *gin.Context) {
@@ -451,8 +453,9 @@ func main() {
 		middleware.AdminMiddleware(authzClient, cfg.AdminEmails, log),
 	)
 	{
-		// Identity & audit (any admin).
+		// Identity, self-service password change & audit (any admin).
 		admin.GET("/me", adminHandler.Me)
+		admin.POST("/password", adminHandler.ChangePassword)
 		admin.GET("/audit", adminHandler.ListAudit)
 
 		// Reads available to any admin.

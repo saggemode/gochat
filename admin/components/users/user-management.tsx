@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
-import { createUser, getRoles, setUserRoles, type RoleInfo } from "@/lib/resources"
+import { createUser, getRoles, setUserRoles, type CreateUserResult, type RoleInfo } from "@/lib/resources"
 import type { AdminUser } from "@/lib/types"
 
 function RolePicker({
@@ -57,34 +57,30 @@ export function NewUserButton() {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const [roles, setRoles] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [created, setCreated] = useState<CreateUserResult & { email: string } | null>(null)
   const rolesQuery = useQuery({ queryKey: ["roles"], queryFn: getRoles, enabled: open })
 
-  function reset() {
+  function closeAll() {
+    setOpen(false)
     setName("")
     setEmail("")
-    setPassword("")
     setRoles(new Set())
     setError(null)
+    setCreated(null)
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters")
-      return
-    }
     setLoading(true)
     try {
-      await createUser({ email, password, name, roles: [...roles] })
+      const res = await createUser({ email, name, roles: [...roles] })
       await qc.invalidateQueries({ queryKey: ["users"] })
       await qc.invalidateQueries({ queryKey: ["staff"] })
-      setOpen(false)
-      reset()
+      setCreated({ ...res, email })
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create account")
     } finally {
@@ -97,34 +93,61 @@ export function NewUserButton() {
       <Button onClick={() => setOpen(true)}>
         <UserPlus /> New user
       </Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="Create account" description="Create a user and assign roles.">
-        <form onSubmit={submit} className="space-y-3">
-          <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <Input type="password" placeholder="Temporary password (min 8 chars)" value={password} onChange={(e) => setPassword(e.target.value)} />
-          <div>
-            <p className="mb-1.5 text-sm font-medium">Roles</p>
-            <RolePicker
-              roles={rolesQuery.data ?? []}
-              selected={roles}
-              onToggle={(n) =>
-                setRoles((s) => {
-                  const next = new Set(s)
-                  if (next.has(n)) next.delete(n)
-                  else next.add(n)
-                  return next
-                })
-              }
-            />
+      <Dialog open={open} onClose={closeAll} title="Create staff account" description="A temporary password is generated and emailed to them.">
+        {created ? (
+          <div className="space-y-3">
+            <p className="text-sm">
+              Account created for <span className="font-medium">{created.email}</span>.
+              {created.emailSent
+                ? " A temporary password was emailed to them."
+                : " Email isn’t configured — share this temporary password with them:"}
+            </p>
+            <div className="bg-muted flex items-center justify-between gap-2 rounded-lg px-3 py-2 font-mono text-sm">
+              <span className="truncate">{created.tempPassword}</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => navigator.clipboard?.writeText(created.tempPassword)}
+              >
+                Copy
+              </Button>
+            </div>
+            <p className="text-muted-foreground text-xs">
+              They’ll be required to set their own password on first sign-in.
+            </p>
+            <div className="flex justify-end">
+              <Button onClick={closeAll}>Done</Button>
+            </div>
           </div>
-          {error ? <p className="text-destructive text-sm">{error}</p> : null}
-          <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? <Loader2 className="animate-spin" /> : null} Create
-            </Button>
-          </div>
-        </form>
+        ) : (
+          <form onSubmit={submit} className="space-y-3">
+            <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+            <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <div>
+              <p className="mb-1.5 text-sm font-medium">Roles</p>
+              <RolePicker
+                roles={rolesQuery.data ?? []}
+                selected={roles}
+                onToggle={(n) =>
+                  setRoles((s) => {
+                    const next = new Set(s)
+                    if (next.has(n)) next.delete(n)
+                    else next.add(n)
+                    return next
+                  })
+                }
+              />
+            </div>
+            {error ? <p className="text-destructive text-sm">{error}</p> : null}
+            <div className="flex justify-end gap-2 pt-1">
+              <Button type="button" variant="outline" onClick={closeAll}>Cancel</Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? <Loader2 className="animate-spin" /> : null} Create &amp; email password
+              </Button>
+            </div>
+          </form>
+        )}
       </Dialog>
     </>
   )

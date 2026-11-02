@@ -35,6 +35,8 @@ type Notifier interface {
 	SendRecoverySMS(ctx context.Context, req RecoveryRequest) error
 	SendPINResetConfirmation(ctx context.Context, email, phone, displayName string) error
 	SendPhoneOTP(ctx context.Context, phone, otp string) error
+	// SendEmail sends a generic email. htmlBody may be empty for text-only.
+	SendEmail(ctx context.Context, to, subject, textBody, htmlBody string) error
 }
 
 // DefaultNotifier implements Notifier with real SMTP, Twilio SMS, and structured dev logging.
@@ -235,6 +237,22 @@ func (n *DefaultNotifier) SendPINResetConfirmation(ctx context.Context, email, p
 	}
 
 	return nil
+}
+
+// SendEmail sends a generic email. When SMTP is not configured it logs the
+// message (dev/mock mode) and returns nil, so callers never fail on a missing
+// mailer.
+func (n *DefaultNotifier) SendEmail(ctx context.Context, to, subject, textBody, htmlBody string) error {
+	if to == "" {
+		return fmt.Errorf("recipient email is required")
+	}
+	if n.cfg.SMTPHost == "" {
+		n.log.Info("email (mock — SMTP not configured)",
+			zap.String("to", MaskEmail(to)),
+			zap.String("subject", subject))
+		return nil
+	}
+	return n.sendSMTP(to, subject, textBody, htmlBody)
 }
 
 // sendSMTP sends a multipart/alternative email via SMTP.
