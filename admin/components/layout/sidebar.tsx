@@ -6,6 +6,7 @@ import { MessageCircle, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { usePermissions } from "@/lib/use-permissions"
 import { NAV } from "./nav"
 
 function isActive(pathname: string, href: string) {
@@ -23,6 +24,8 @@ export function Sidebar({
   counts: { disputes?: number; reports?: number }
 }) {
   const pathname = usePathname()
+  const { can } = usePermissions()
+  const items = NAV.filter((item) => !item.perm || can(item.perm))
 
   return (
     <>
@@ -58,7 +61,7 @@ export function Sidebar({
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {NAV.map((item) => {
+          {items.map((item) => {
             const active = isActive(pathname, item.href)
             const count = item.badge ? counts[item.badge] : undefined
             return (

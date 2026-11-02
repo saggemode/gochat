@@ -1070,6 +1070,58 @@ func (h *AdminHandler) SetUserRoles(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"id": id, "roles": body.Roles})
 }
 
+// GET /api/v1/admin/staff — accounts that hold at least one admin role.
+// Separate from the regular user directory. Super admin only.
+func (h *AdminHandler) ListStaff(c *gin.Context) {
+	if !h.ready(c) {
+		return
+	}
+	roleNames := make([]string, 0, len(assignableRoles))
+	for _, r := range assignableRoles {
+		roleNames = append(roleNames, r.Name)
+	}
+
+	rows, err := h.db.Query(c.Request.Context(),
+		`SELECT u.id, u.email, u.display_name, coalesce(u.avatar_url,''),
+		        u.is_online, u.last_seen, u.created_at, coalesce(u.account_status,'active'),
+		        array_agg(ur.role_name ORDER BY ur.role_name) AS roles
+		 FROM core.users u
+		 JOIN authz.user_roles ur ON ur.user_id = u.id
+		 WHERE ur.role_name = ANY($1)
+		 GROUP BY u.id
+		 ORDER BY u.created_at DESC`,
+		roleNames)
+	if err != nil {
+		h.log.Error("admin list staff failed", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load staff"})
+		return
+	}
+	defer rows.Close()
+
+	type staff struct {
+		ID           string    `json:"id"`
+		Email        string    `json:"email"`
+		Name         string    `json:"name"`
+		AvatarURL    string    `json:"avatar_url"`
+		Online       bool      `json:"online"`
+		LastActiveAt time.Time `json:"last_active_at"`
+		JoinedAt     time.Time `json:"joined_at"`
+		Status       string    `json:"status"`
+		Roles        []string  `json:"roles"`
+	}
+	out := []staff{}
+	for rows.Next() {
+		var s staff
+		if err := rows.Scan(&s.ID, &s.Email, &s.Name, &s.AvatarURL, &s.Online,
+			&s.LastActiveAt, &s.JoinedAt, &s.Status, &s.Roles); err != nil {
+			h.log.Warn("staff row scan failed", zap.Error(err))
+			continue
+		}
+		out = append(out, s)
+	}
+	c.JSON(http.StatusOK, gin.H{"staff": out})
+}
+
 // GET /api/v1/admin/roles — the roles a super admin can assign.
 func (h *AdminHandler) ListRoles(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"roles": assignableRoles})

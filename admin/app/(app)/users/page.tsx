@@ -22,14 +22,12 @@ import {
 import { formatCompact, formatRelative, initials } from "@/lib/format"
 import { getUsers, setUserStatus as apiSetUserStatus } from "@/lib/resources"
 import { usePermissions } from "@/lib/use-permissions"
-import { NewUserButton, EditRolesButton } from "@/components/users/user-management"
 import type { AdminUser, UserStatus } from "@/lib/types"
 
 export default function UsersPage() {
   const qc = useQueryClient()
   const { can } = usePermissions()
   const canWrite = can("admin:users:write")
-  const canManageRoles = can("admin:roles:write")
   const { data, isLoading } = useQuery({ queryKey: ["users"], queryFn: getUsers })
   const [q, setQ] = useState("")
   const [status, setStatus] = useState<UserStatus | "all">("all")
@@ -113,7 +111,6 @@ export default function UsersPage() {
         >
           <Store /> Sellers
         </Button>
-        {canManageRoles ? <NewUserButton /> : null}
         <span className="text-muted-foreground ml-auto text-sm">
           {filtered.length} of {users.length}
         </span>
@@ -168,15 +165,6 @@ export default function UsersPage() {
                             {u.phone}
                             {u.email ? ` · ${u.email}` : ""}
                           </div>
-                          {u.roles && u.roles.length ? (
-                            <div className="mt-1 flex flex-wrap gap-1">
-                              {u.roles.map((r) => (
-                                <Badge key={r} variant={r === "super_admin" ? "default" : "secondary"} className="capitalize">
-                                  {r.replace(/_/g, " ")}
-                                </Badge>
-                              ))}
-                            </div>
-                          ) : null}
                         </div>
                       </div>
                     </TableCell>
@@ -188,8 +176,7 @@ export default function UsersPage() {
                     <TableCell className="text-muted-foreground">{formatRelative(u.lastActiveAt)}</TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-1">
-                        {canManageRoles ? <EditRolesButton user={u} /> : null}
-                        {!canWrite && !canManageRoles ? (
+                        {!canWrite ? (
                           <span className="text-muted-foreground text-xs">—</span>
                         ) : null}
                         {canWrite && u.status !== "active" ? (

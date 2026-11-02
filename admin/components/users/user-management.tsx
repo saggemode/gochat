@@ -82,6 +82,7 @@ export function NewUserButton() {
     try {
       await createUser({ email, password, name, roles: [...roles] })
       await qc.invalidateQueries({ queryKey: ["users"] })
+      await qc.invalidateQueries({ queryKey: ["staff"] })
       setOpen(false)
       reset()
     } catch (err) {
@@ -149,6 +150,7 @@ export function EditRolesButton({ user }: { user: AdminUser }) {
     try {
       await setUserRoles(user.id, [...roles])
       await qc.invalidateQueries({ queryKey: ["users"] })
+      await qc.invalidateQueries({ queryKey: ["staff"] })
       setOpen(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update roles")

@@ -321,6 +321,44 @@ type ApiAuditEntry = {
   created_at: string
 }
 
+type ApiStaff = {
+  id: string
+  email: string
+  name: string
+  avatar_url: string
+  online: boolean
+  last_active_at: string
+  joined_at: string
+  status: UserStatus
+  roles: string[] | null
+}
+
+// SOURCE: gateway (/admin/staff) — accounts holding an admin role.
+export async function getStaff(): Promise<AdminUser[]> {
+  if (USE_MOCKS) {
+    return delay([
+      { id: "s1", name: "You (super admin)", phone: "", email: "admin@gochat.app", status: "active", verified: true, isSeller: false, messages: 0, orders: 0, joinedAt: new Date().toISOString(), lastActiveAt: new Date().toISOString(), country: "—", roles: ["super_admin"] },
+    ])
+  }
+  const res = await apiFetch<{ staff: ApiStaff[] }>("/api/v1/admin/staff")
+  return (res.staff ?? []).map((s) => ({
+    id: s.id,
+    name: s.name || s.email,
+    phone: "",
+    email: s.email || undefined,
+    avatarUrl: s.avatar_url || undefined,
+    status: s.status ?? "active",
+    verified: true,
+    isSeller: false,
+    messages: 0,
+    orders: 0,
+    joinedAt: s.joined_at,
+    lastActiveAt: s.last_active_at,
+    country: "—",
+    roles: s.roles ?? [],
+  }))
+}
+
 // ── first-run setup + account/role management ──────────────────────────────
 export type RoleInfo = { name: string; description: string }
 

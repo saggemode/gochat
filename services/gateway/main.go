@@ -474,7 +474,8 @@ func main() {
 		admin.POST("/disputes/:id/resolve", middleware.RequirePermission(authzClient, "admin:disputes:resolve", log), adminHandler.ResolveDispute)
 		admin.POST("/reports/:id/status", middleware.RequirePermission(authzClient, "admin:reports:action", log), adminHandler.UpdateReportStatus)
 
-		// Account & role management — super admin only (admin:roles:write).
+		// Staff directory + account & role management — super admin only.
+		admin.GET("/staff", middleware.RequirePermission(authzClient, "admin:roles:write", log), adminHandler.ListStaff)
 		admin.GET("/roles", adminHandler.ListRoles)
 		admin.POST("/users", middleware.RequirePermission(authzClient, "admin:roles:write", log), adminHandler.CreateUser)
 		admin.POST("/users/:id/roles", middleware.RequirePermission(authzClient, "admin:roles:write", log), adminHandler.SetUserRoles)
