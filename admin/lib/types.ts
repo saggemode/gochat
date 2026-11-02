@@ -60,6 +60,7 @@ export type AdminUser = {
   joinedAt: string
   lastActiveAt: string
   country: string
+  roles?: string[]
 }
 
 export type OrderStatus =

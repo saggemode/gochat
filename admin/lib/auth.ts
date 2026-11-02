@@ -120,6 +120,12 @@ export async function login(email: string, password: string): Promise<AdminSessi
   return session
 }
 
+/** Persist a session obtained outside the normal login (e.g. first-run setup). */
+export function setSession(session: AdminSession) {
+  persist(session)
+  notify()
+}
+
 export function logout() {
   try {
     window.localStorage.removeItem(TOKEN_KEY)

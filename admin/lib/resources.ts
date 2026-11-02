@@ -59,6 +59,7 @@ type ApiUser = {
   status: UserStatus
   is_seller: boolean
   orders: number
+  roles: string[] | null
 }
 type ApiDispute = {
   id: string
@@ -128,6 +129,7 @@ function apiUserToAdmin(u: ApiUser): AdminUser {
     joinedAt: u.joined_at,
     lastActiveAt: u.last_active_at,
     country: u.country || "—",
+    roles: u.roles ?? [],
   }
 }
 
@@ -317,6 +319,61 @@ type ApiAuditEntry = {
   target_id: string
   detail: string
   created_at: string
+}
+
+// ── first-run setup + account/role management ──────────────────────────────
+export type RoleInfo = { name: string; description: string }
+
+export async function getSetupStatus(): Promise<{ needsSetup: boolean }> {
+  if (USE_MOCKS) return delay({ needsSetup: false })
+  const r = await apiFetch<{ needs_setup: boolean }>("/api/v1/admin/setup/status", { anonymous: true })
+  return { needsSetup: !!r.needs_setup }
+}
+
+export type SetupResult = { token: string; name: string; email: string }
+
+export async function setupSuperAdmin(email: string, password: string, name: string): Promise<SetupResult> {
+  const r = await apiFetch<{ access_token?: string; user?: { display_name?: string; email?: string } }>(
+    "/api/v1/admin/setup",
+    { method: "POST", anonymous: true, body: { email, password, name } },
+  )
+  if (!r.access_token) throw new Error("Setup did not return a token")
+  return { token: r.access_token, name: r.user?.display_name || name || email, email: r.user?.email || email }
+}
+
+export async function getRoles(): Promise<RoleInfo[]> {
+  if (USE_MOCKS) {
+    return delay([
+      { name: "super_admin", description: "Full platform control" },
+      { name: "admin", description: "All admin permissions" },
+      { name: "moderator", description: "Ban users, resolve disputes, action reports" },
+      { name: "support", description: "View console, action reports" },
+      { name: "finance", description: "View revenue, orders, payouts" },
+    ])
+  }
+  const r = await apiFetch<{ roles: RoleInfo[] }>("/api/v1/admin/roles")
+  return r.roles ?? []
+}
+
+export async function createUser(input: {
+  email: string
+  password: string
+  name: string
+  roles: string[]
+}): Promise<void> {
+  if (USE_MOCKS) {
+    await delay(null, 300)
+    return
+  }
+  await apiFetch("/api/v1/admin/users", { method: "POST", body: input })
+}
+
+export async function setUserRoles(id: string, roles: string[]): Promise<void> {
+  if (USE_MOCKS) {
+    await delay(null, 200)
+    return
+  }
+  await apiFetch(`/api/v1/admin/users/${id}/roles`, { method: "POST", body: { roles } })
 }
 
 export async function getAudit(): Promise<AuditEntry[]> {

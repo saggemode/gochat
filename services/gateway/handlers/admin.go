@@ -11,10 +11,34 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
 
+	authpb "gochat/gen/auth"
 	authzpb "gochat/gen/authz"
 	businesspb "gochat/gen/business"
 )
+
+// assignableRoles are the roles the super admin can grant to other accounts.
+var assignableRoles = []struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}{
+	{"super_admin", "Full platform control"},
+	{"admin", "All admin permissions"},
+	{"moderator", "Ban users, resolve disputes, action reports"},
+	{"support", "View console, action reports"},
+	{"finance", "View revenue, orders, payouts"},
+}
+
+func isAssignableRole(r string) bool {
+	for _, ar := range assignableRoles {
+		if ar.Name == r {
+			return true
+		}
+	}
+	return false
+}
 
 // AdminHandler serves the platform-admin console endpoints. It reads directly
 // from the shared Postgres database (schema-per-service: core.*, business.*),
@@ -29,14 +53,15 @@ import (
 // rather than panicking.
 type AdminHandler struct {
 	db       *pgxpool.Pool
+	auth     authpb.AuthServiceClient
 	business businesspb.BusinessServiceClient
 	authz    authzpb.AuthzServiceClient
 	services map[string]*grpc.ClientConn // for real per-service connectivity health
 	log      *zap.Logger
 }
 
-func NewAdminHandler(db *pgxpool.Pool, business businesspb.BusinessServiceClient, authz authzpb.AuthzServiceClient, services map[string]*grpc.ClientConn, log *zap.Logger) *AdminHandler {
-	return &AdminHandler{db: db, business: business, authz: authz, services: services, log: log}
+func NewAdminHandler(db *pgxpool.Pool, auth authpb.AuthServiceClient, business businesspb.BusinessServiceClient, authz authzpb.AuthzServiceClient, services map[string]*grpc.ClientConn, log *zap.Logger) *AdminHandler {
+	return &AdminHandler{db: db, auth: auth, business: business, authz: authz, services: services, log: log}
 }
 
 // adminCapabilities is the set of fine-grained permissions the UI gates on.
@@ -45,6 +70,7 @@ var adminCapabilities = []string{
 	"admin:disputes:resolve",
 	"admin:reports:action",
 	"admin:finance:read",
+	"admin:roles:write",
 }
 
 // audit records an admin mutation to authz.admin_audit_log (best-effort; a
@@ -174,7 +200,8 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 		        u.phone_verified, u.is_online, u.last_seen, coalesce(u.country_code,''), u.created_at,
 		        coalesce(u.account_status,'active'),
 		        (bp.user_id IS NOT NULL) AS is_seller,
-		        (SELECT count(*) FROM business.orders o WHERE o.buyer_id = u.id)::int AS orders
+		        (SELECT count(*) FROM business.orders o WHERE o.buyer_id = u.id)::int AS orders,
+		        coalesce((SELECT array_agg(ur.role_name) FROM authz.user_roles ur WHERE ur.user_id = u.id), '{}') AS roles
 		 FROM core.users u
 		 LEFT JOIN business.business_profiles bp ON bp.user_id = u.id
 		 WHERE ($1 = '' OR u.display_name ILIKE '%'||$1||'%'
@@ -204,6 +231,7 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 		Status        string    `json:"status"`
 		IsSeller      bool      `json:"is_seller"`
 		Orders        int       `json:"orders"`
+		Roles         []string  `json:"roles"`
 	}
 
 	users := []adminUser{}
@@ -211,7 +239,7 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 		var u adminUser
 		if err := rows.Scan(&u.ID, &u.Email, &u.Name, &u.AvatarURL, &u.Phone,
 			&u.PhoneVerified, &u.Online, &u.LastActiveAt, &u.Country, &u.JoinedAt, &u.Status,
-			&u.IsSeller, &u.Orders); err != nil {
+			&u.IsSeller, &u.Orders, &u.Roles); err != nil {
 			h.log.Warn("admin user row scan failed", zap.Error(err))
 			continue
 		}
@@ -837,6 +865,228 @@ func (h *AdminHandler) ListAudit(c *gin.Context) {
 		entries = append(entries, e)
 	}
 	c.JSON(http.StatusOK, gin.H{"entries": entries})
+}
+
+func (h *AdminHandler) superAdminCount(ctx context.Context) (int, error) {
+	var n int
+	err := h.db.QueryRow(ctx, `SELECT count(*) FROM authz.user_roles WHERE role_name = 'super_admin'`).Scan(&n)
+	return n, err
+}
+
+// GET /api/v1/admin/setup/status — PUBLIC. Reports whether a first-run setup
+// (create the first super admin) is needed.
+func (h *AdminHandler) SetupStatus(c *gin.Context) {
+	if h.db == nil {
+		c.JSON(http.StatusOK, gin.H{"needs_setup": false})
+		return
+	}
+	n, err := h.superAdminCount(c.Request.Context())
+	if err != nil {
+		h.log.Warn("setup status check failed", zap.Error(err))
+		c.JSON(http.StatusOK, gin.H{"needs_setup": false})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"needs_setup": n == 0})
+}
+
+// POST /api/v1/admin/setup — PUBLIC, one-time. Creates the first super admin.
+// Body: {email, password, name}. Refuses once any super admin exists.
+func (h *AdminHandler) Setup(c *gin.Context) {
+	if !h.ready(c) {
+		return
+	}
+	if h.auth == nil || h.authz == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "auth/authz unavailable"})
+		return
+	}
+	n, err := h.superAdminCount(c.Request.Context())
+	if err == nil && n > 0 {
+		c.JSON(http.StatusConflict, gin.H{"error": "setup already completed"})
+		return
+	}
+
+	var body struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+		Name     string `json:"name"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
+		return
+	}
+	if body.Email == "" || len(body.Password) < 8 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email and a password of at least 8 characters are required"})
+		return
+	}
+
+	userID, access, refresh, usr, err := h.registerOrLookup(c.Request.Context(), body.Email, body.Password, body.Name)
+	if err != nil {
+		h.log.Error("setup: register failed", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create account"})
+		return
+	}
+
+	if _, err := h.authz.AssignRole(c.Request.Context(), &authzpb.AssignRoleRequest{UserId: userID, Role: "super_admin"}); err != nil {
+		h.log.Error("setup: assign super_admin failed", zap.String("user_id", userID), zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "account created but role assignment failed"})
+		return
+	}
+	h.audit(c, "setup:super_admin", "user", userID, body.Email)
+	h.log.Info("admin setup: created super admin", zap.String("email", body.Email))
+
+	c.JSON(http.StatusOK, gin.H{"access_token": access, "refresh_token": refresh, "user": usr})
+}
+
+// registerOrLookup creates the account, or (if it already exists) looks it up
+// and logs in to obtain tokens. Returns userID, tokens and the user object.
+func (h *AdminHandler) registerOrLookup(ctx context.Context, email, password, name string) (string, string, string, *authpb.User, error) {
+	resp, err := h.auth.Register(ctx, &authpb.RegisterRequest{Email: email, Password: password, DisplayName: name})
+	if err == nil && resp.GetUser() != nil {
+		return resp.GetUser().GetId(), resp.GetAccessToken(), resp.GetRefreshToken(), resp.GetUser(), nil
+	}
+	// Account may already exist — look it up and log in for tokens.
+	gu, guErr := h.auth.GetUser(ctx, &authpb.GetUserRequest{UserId: email})
+	if guErr != nil || gu.GetUser() == nil {
+		return "", "", "", nil, err // return the original register error
+	}
+	lr, _ := h.auth.Login(ctx, &authpb.LoginRequest{Email: email, Password: password})
+	if lr != nil {
+		return gu.GetUser().GetId(), lr.GetAccessToken(), lr.GetRefreshToken(), gu.GetUser(), nil
+	}
+	return gu.GetUser().GetId(), "", "", gu.GetUser(), nil
+}
+
+// POST /api/v1/admin/users — super admin only. Create an account and assign
+// roles. Body: {email, password, name, roles[]}.
+func (h *AdminHandler) CreateUser(c *gin.Context) {
+	if !h.ready(c) {
+		return
+	}
+	if h.auth == nil || h.authz == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "auth/authz unavailable"})
+		return
+	}
+	var body struct {
+		Email    string   `json:"email"`
+		Password string   `json:"password"`
+		Name     string   `json:"name"`
+		Roles    []string `json:"roles"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
+		return
+	}
+	if body.Email == "" || len(body.Password) < 8 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email and a password of at least 8 characters are required"})
+		return
+	}
+	for _, r := range body.Roles {
+		if !isAssignableRole(r) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "unknown role: " + r})
+			return
+		}
+	}
+
+	resp, err := h.auth.Register(c.Request.Context(), &authpb.RegisterRequest{Email: body.Email, Password: body.Password, DisplayName: body.Name})
+	if err != nil {
+		if grpcstatus.Code(err) == codes.AlreadyExists {
+			c.JSON(http.StatusConflict, gin.H{"error": "an account with that email already exists"})
+			return
+		}
+		h.log.Error("admin create user failed", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create account"})
+		return
+	}
+	userID := resp.GetUser().GetId()
+	for _, r := range body.Roles {
+		if _, err := h.authz.AssignRole(c.Request.Context(), &authzpb.AssignRoleRequest{UserId: userID, Role: r}); err != nil {
+			h.log.Warn("admin create user: assign role failed", zap.String("role", r), zap.Error(err))
+		}
+	}
+	h.audit(c, "user:create", "user", userID, body.Email)
+	c.JSON(http.StatusCreated, gin.H{"id": userID, "email": body.Email, "roles": body.Roles})
+}
+
+// POST /api/v1/admin/users/:id/roles — super admin only. Sets the user's roles
+// to exactly the supplied set. Body: {roles[]}.
+func (h *AdminHandler) SetUserRoles(c *gin.Context) {
+	if !h.ready(c) {
+		return
+	}
+	if h.authz == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "authz unavailable"})
+		return
+	}
+	id := c.Param("id")
+	var body struct {
+		Roles []string `json:"roles"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
+		return
+	}
+	desired := map[string]bool{}
+	for _, r := range body.Roles {
+		if !isAssignableRole(r) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "unknown role: " + r})
+			return
+		}
+		desired[r] = true
+	}
+
+	cur, err := h.authz.GetUserRoles(c.Request.Context(), &authzpb.GetUserRolesRequest{UserId: id})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read current roles"})
+		return
+	}
+	current := map[string]bool{}
+	for _, r := range cur.GetRoles() {
+		current[r] = true
+	}
+
+	// Guard: never remove the last super admin (avoids lockout).
+	if current["super_admin"] && !desired["super_admin"] {
+		if n, _ := h.superAdminCount(c.Request.Context()); n <= 1 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "cannot remove the last super admin"})
+			return
+		}
+	}
+
+	for r := range desired {
+		if !current[r] {
+			if _, err := h.authz.AssignRole(c.Request.Context(), &authzpb.AssignRoleRequest{UserId: id, Role: r}); err != nil {
+				h.log.Warn("set roles: assign failed", zap.String("role", r), zap.Error(err))
+			}
+		}
+	}
+	for r := range current {
+		if !desired[r] && isAssignableRole(r) {
+			if _, err := h.authz.RevokeRole(c.Request.Context(), &authzpb.RevokeRoleRequest{UserId: id, Role: r}); err != nil {
+				h.log.Warn("set roles: revoke failed", zap.String("role", r), zap.Error(err))
+			}
+		}
+	}
+	h.audit(c, "user:roles", "user", id, joinRoles(body.Roles))
+	c.JSON(http.StatusOK, gin.H{"id": id, "roles": body.Roles})
+}
+
+// GET /api/v1/admin/roles — the roles a super admin can assign.
+func (h *AdminHandler) ListRoles(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"roles": assignableRoles})
+}
+
+func joinRoles(r []string) string {
+	out := ""
+	for i, s := range r {
+		if i > 0 {
+			out += ","
+		}
+		out += s
+	}
+	if out == "" {
+		return "(none)"
+	}
+	return out
 }
 
 func atoiDefault(s string, def int) int {

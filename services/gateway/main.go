@@ -292,13 +292,13 @@ func main() {
 	// console is actually enabled (ADMIN_EMAILS set), so deployments that don't
 	// use it add no extra DB connections. Pool size is tunable via DB_MAX_CONNS.
 	var adminDB *pgxpool.Pool
-	if len(cfg.AdminEmails) > 0 && cfg.PostgresDSN != "" {
+	if cfg.PostgresDSN != "" {
 		if pool, dbErr := database.NewPostgres(ctx, cfg.PostgresDSN, log); dbErr != nil {
 			log.Warn("admin DB pool unavailable; /api/v1/admin will return 503", zap.Error(dbErr))
 		} else {
 			adminDB = pool
 			defer adminDB.Close()
-			log.Info("admin console enabled", zap.Int("admins", len(cfg.AdminEmails)))
+			log.Info("admin console enabled (first-run setup creates the super admin)", zap.Int("bootstrap_admins", len(cfg.AdminEmails)))
 
 			// Ensure the admin audit log exists (works even if the authz
 			// service isn't deployed). Simple protocol allows multi-statement.
@@ -356,7 +356,7 @@ func main() {
 	if authzConn != nil && authzErr == nil {
 		adminServiceConns["authz"] = authzConn
 	}
-	adminHandler := handlers.NewAdminHandler(adminDB, businessClient, authzClient, adminServiceConns, log)
+	adminHandler := handlers.NewAdminHandler(adminDB, authClient, businessClient, authzClient, adminServiceConns, log)
 
 	// ── Root Status & Health Endpoints ──────────────────────────────────────
 	r.GET("/", func(c *gin.Context) {
@@ -435,6 +435,11 @@ func main() {
 		// Paystack sends server-to-server webhooks (no user auth); verified by signature.
 		api.POST("/payments/paystack/webhook", businessHandler.PaystackWebhook)
 		r.POST("/webhooks/shipping/carrier", businessHandler.CarrierTrackingWebhook)
+
+		// Admin first-run setup (PUBLIC, one-time): create the first super admin.
+		// Self-guards — refuses once any super admin exists.
+		api.GET("/admin/setup/status", adminHandler.SetupStatus)
+		api.POST("/admin/setup", adminHandler.Setup)
 	}
 
 	// ── Admin Console Routes ───────────────────────────────────────────────
@@ -468,6 +473,11 @@ func main() {
 		admin.POST("/users/:id/status", middleware.RequirePermission(authzClient, "admin:users:write", log), adminHandler.UpdateUserStatus)
 		admin.POST("/disputes/:id/resolve", middleware.RequirePermission(authzClient, "admin:disputes:resolve", log), adminHandler.ResolveDispute)
 		admin.POST("/reports/:id/status", middleware.RequirePermission(authzClient, "admin:reports:action", log), adminHandler.UpdateReportStatus)
+
+		// Account & role management — super admin only (admin:roles:write).
+		admin.GET("/roles", adminHandler.ListRoles)
+		admin.POST("/users", middleware.RequirePermission(authzClient, "admin:roles:write", log), adminHandler.CreateUser)
+		admin.POST("/users/:id/roles", middleware.RequirePermission(authzClient, "admin:roles:write", log), adminHandler.SetUserRoles)
 	}
 
 	// Authenticated Routes

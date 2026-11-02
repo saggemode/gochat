@@ -15,7 +15,8 @@ INSERT INTO authz.permissions (name, description) VALUES
     ('admin:users:write',      'Suspend / ban / reactivate users'),
     ('admin:disputes:resolve', 'Resolve or reject marketplace disputes'),
     ('admin:reports:action',   'Action or dismiss moderation reports'),
-    ('admin:finance:read',     'View revenue, GMV, orders and payouts')
+    ('admin:finance:read',     'View revenue, GMV, orders and payouts'),
+    ('admin:roles:write',      'Create accounts and assign roles (super admin)')
 ON CONFLICT (name) DO NOTHING;
 
 -- Staff roles (admin/super_admin/user are seeded by 001_authz.sql).

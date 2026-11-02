@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { login, useSession } from "@/lib/auth"
+import { getSetupStatus } from "@/lib/resources"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -19,6 +20,19 @@ export default function LoginPage() {
   useEffect(() => {
     if (ready && session) router.replace("/")
   }, [ready, session, router])
+
+  // First run: if no super admin exists yet, send the user to setup.
+  useEffect(() => {
+    let active = true
+    getSetupStatus()
+      .then((s) => {
+        if (active && s.needsSetup) router.replace("/setup")
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [router])
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
