@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Pagination } from "@/components/ui/pagination"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -20,7 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { formatDate, formatNaira, formatRelative } from "@/lib/format"
-import { getDisputes, getOrders, resolveDispute } from "@/lib/resources"
+import { getCoupons, getDisputes, getOrders, getPayouts, resolveDispute } from "@/lib/resources"
 import { usePermissions } from "@/lib/use-permissions"
 import { confirm } from "@/lib/confirm"
 import { toast } from "@/lib/toast"
@@ -43,6 +44,8 @@ export default function MarketplacePage() {
         <TabsList>
           {canFinance ? <TabsTrigger value="orders">Orders</TabsTrigger> : null}
           <TabsTrigger value="disputes">Disputes{openDisputes ? ` (${openDisputes})` : ""}</TabsTrigger>
+          {canFinance ? <TabsTrigger value="payouts">Payouts</TabsTrigger> : null}
+          {canFinance ? <TabsTrigger value="coupons">Coupons</TabsTrigger> : null}
         </TabsList>
 
         {canFinance ? (
@@ -58,6 +61,17 @@ export default function MarketplacePage() {
             canResolve={canResolve}
           />
         </TabsContent>
+
+        {canFinance ? (
+          <TabsContent value="payouts">
+            <PayoutsTab />
+          </TabsContent>
+        ) : null}
+        {canFinance ? (
+          <TabsContent value="coupons">
+            <CouponsTab />
+          </TabsContent>
+        ) : null}
       </Tabs>
     </div>
   )
@@ -231,6 +245,92 @@ function DisputesTable({
                   </TableRow>
                 )
               })
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  )
+}
+
+function PayoutsTab() {
+  const { data, isLoading } = useQuery({ queryKey: ["payouts"], queryFn: getPayouts })
+  const payouts = data?.payouts ?? []
+  return (
+    <Card className="py-0">
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Store</TableHead>
+              <TableHead className="text-right">Paid orders</TableHead>
+              <TableHead className="text-right">Gross</TableHead>
+              <TableHead className="text-right">Commission ({data?.commissionPercent ?? 0}%)</TableHead>
+              <TableHead className="text-right">Net payable</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+              ))
+            ) : payouts.length === 0 ? (
+              <TableRow><TableCell colSpan={5} className="text-muted-foreground py-10 text-center">No paid orders yet.</TableCell></TableRow>
+            ) : (
+              payouts.map((p) => (
+                <TableRow key={p.store}>
+                  <TableCell className="font-medium">{p.store}</TableCell>
+                  <TableCell className="text-right tabular-nums">{p.orders}</TableCell>
+                  <TableCell className="text-right tabular-nums">{formatNaira(p.gross)}</TableCell>
+                  <TableCell className="text-muted-foreground text-right tabular-nums">{formatNaira(p.commission)}</TableCell>
+                  <TableCell className="text-right font-medium tabular-nums">{formatNaira(p.net)}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  )
+}
+
+function CouponsTab() {
+  const { data, isLoading } = useQuery({ queryKey: ["coupons"], queryFn: getCoupons })
+  const coupons = data ?? []
+  return (
+    <Card className="py-0">
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Code</TableHead>
+              <TableHead>Store</TableHead>
+              <TableHead>Discount</TableHead>
+              <TableHead className="text-right">Used</TableHead>
+              <TableHead>Expires</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+              ))
+            ) : coupons.length === 0 ? (
+              <TableRow><TableCell colSpan={6} className="text-muted-foreground py-10 text-center">No coupons.</TableCell></TableRow>
+            ) : (
+              coupons.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-mono font-medium">{c.code}</TableCell>
+                  <TableCell className="text-muted-foreground">{c.store}</TableCell>
+                  <TableCell>{c.discountType === "percentage" ? `${c.discountValue}%` : formatNaira(c.discountValue)}{c.minSpend ? ` · min ${formatNaira(c.minSpend)}` : ""}</TableCell>
+                  <TableCell className="text-right tabular-nums">{c.usedCount}{c.maxUses ? ` / ${c.maxUses}` : ""}</TableCell>
+                  <TableCell className="text-muted-foreground">{c.expiresAt ? formatDate(c.expiresAt) : "—"}</TableCell>
+                  <TableCell>
+                    <Badge variant={c.isActive ? "success" : "secondary"}>{c.isActive ? "Active" : "Inactive"}</Badge>
+                  </TableCell>
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>

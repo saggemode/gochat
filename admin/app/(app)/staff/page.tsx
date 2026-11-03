@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { Pause, Check } from "lucide-react"
+import { Pause, Check, LogOut } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table"
 import { NewUserButton, EditRolesButton, ResetPasswordButton } from "@/components/users/user-management"
 import { usePermissions } from "@/lib/use-permissions"
-import { getStaff, setUserStatus } from "@/lib/resources"
+import { getStaff, setUserStatus, forceLogout } from "@/lib/resources"
 import { confirm } from "@/lib/confirm"
 import { toast } from "@/lib/toast"
 import { formatDate, initials } from "@/lib/format"
@@ -48,6 +48,21 @@ export default function StaffPage() {
       qc.invalidateQueries({ queryKey: ["staff"] })
     } catch {
       toast.error("Failed to update staff")
+    }
+  }
+
+  async function signOut(u: AdminUser) {
+    const { confirmed } = await confirm({
+      title: `Force sign-out ${u.name}?`,
+      message: "Their sessions are revoked; they'll be signed out once their current token expires.",
+      confirmLabel: "Sign out",
+    })
+    if (!confirmed) return
+    try {
+      const r = await forceLogout(u.id)
+      toast.success(`Revoked ${r.sessionsRevoked} session(s)`)
+    } catch {
+      toast.error("Failed to sign out user")
     }
   }
 
@@ -129,6 +144,9 @@ export default function StaffPage() {
                     <TableCell>
                       <div className="flex justify-end gap-1">
                         <ResetPasswordButton user={u} />
+                        <Button variant="ghost" size="icon-sm" title="Force sign-out" onClick={() => signOut(u)}>
+                          <LogOut />
+                        </Button>
                         <EditRolesButton user={u} />
                         <Button
                           variant="ghost"

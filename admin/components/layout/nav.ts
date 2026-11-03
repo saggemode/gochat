@@ -5,6 +5,7 @@ import {
   ShoppingBag,
   ShieldAlert,
   ScrollText,
+  Megaphone,
   type LucideIcon,
 } from "lucide-react"
 
@@ -24,5 +25,6 @@ export const NAV: NavItem[] = [
   { label: "Staff", href: "/staff", icon: UserCog, perm: "admin:roles:write" },
   { label: "Marketplace", href: "/marketplace", icon: ShoppingBag, badge: "disputes" },
   { label: "Moderation", href: "/moderation", icon: ShieldAlert, badge: "reports" },
+  { label: "Broadcast", href: "/broadcast", icon: Megaphone, perm: "admin:roles:write" },
   { label: "Audit log", href: "/audit", icon: ScrollText },
 ]

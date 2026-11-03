@@ -464,6 +464,7 @@ func main() {
 		admin.GET("/metrics/messages", adminHandler.MessageMix)
 		admin.GET("/activity", adminHandler.Activity)
 		admin.GET("/health", adminHandler.SystemHealth)
+		admin.GET("/search", adminHandler.Search)
 		admin.GET("/users", adminHandler.ListUsers)
 		admin.GET("/users/:id", adminHandler.GetUserDetail)
 		admin.GET("/disputes", adminHandler.ListDisputes)
@@ -472,11 +473,15 @@ func main() {
 		// Financial reads require admin:finance:read.
 		admin.GET("/orders", middleware.RequirePermission(authzClient, "admin:finance:read", log), adminHandler.ListOrders)
 		admin.GET("/metrics/revenue", middleware.RequirePermission(authzClient, "admin:finance:read", log), adminHandler.RevenueSeries)
+		admin.GET("/payouts", middleware.RequirePermission(authzClient, "admin:finance:read", log), adminHandler.ListPayouts)
+		admin.GET("/coupons", middleware.RequirePermission(authzClient, "admin:finance:read", log), adminHandler.ListCoupons)
 
 		// Mutations require their specific permission.
 		admin.POST("/users/:id/status", middleware.RequirePermission(authzClient, "admin:users:write", log), adminHandler.UpdateUserStatus)
+		admin.POST("/users/:id/logout", middleware.RequirePermission(authzClient, "admin:users:write", log), adminHandler.ForceLogout)
 		admin.POST("/disputes/:id/resolve", middleware.RequirePermission(authzClient, "admin:disputes:resolve", log), adminHandler.ResolveDispute)
 		admin.POST("/reports/:id/status", middleware.RequirePermission(authzClient, "admin:reports:action", log), adminHandler.UpdateReportStatus)
+		admin.POST("/reports/:id/takedown", middleware.RequirePermission(authzClient, "admin:reports:action", log), adminHandler.TakedownReport)
 
 		// Staff directory + account & role management — super admin only.
 		admin.GET("/staff", middleware.RequirePermission(authzClient, "admin:roles:write", log), adminHandler.ListStaff)
@@ -484,6 +489,7 @@ func main() {
 		admin.POST("/users", middleware.RequirePermission(authzClient, "admin:roles:write", log), adminHandler.CreateUser)
 		admin.POST("/users/:id/roles", middleware.RequirePermission(authzClient, "admin:roles:write", log), adminHandler.SetUserRoles)
 		admin.POST("/users/:id/reset-password", middleware.RequirePermission(authzClient, "admin:roles:write", log), adminHandler.ResetUserPassword)
+		admin.POST("/broadcast", middleware.RequirePermission(authzClient, "admin:roles:write", log), adminHandler.Broadcast)
 	}
 
 	// Authenticated Routes

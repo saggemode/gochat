@@ -325,6 +325,88 @@ export async function setReportStatus(id: string, status: "actioned" | "dismisse
   await apiFetch(`/api/v1/admin/reports/${id}/status`, { method: "POST", body: { status, reason } })
 }
 
+// Removes the reported content (hide/unpublish/expire/ban/delete) and marks the
+// report actioned.
+export async function takedownReport(id: string, reason = ""): Promise<{ action: string }> {
+  if (USE_MOCKS) {
+    await delay(null, 300)
+    return { action: "removed (mock)" }
+  }
+  return apiFetch<{ action: string }>(`/api/v1/admin/reports/${id}/takedown`, { method: "POST", body: { reason } })
+}
+
+// ── global search + session management ─────────────────────────────────────
+export type SearchResults = {
+  users: { id: string; name: string; email: string; status: string }[]
+  orders: { reference: string; status: string; total: number }[]
+  stores: { id: string; name: string }[]
+}
+
+export async function search(q: string): Promise<SearchResults> {
+  const empty: SearchResults = { users: [], orders: [], stores: [] }
+  if (q.trim().length < 2) return empty
+  if (USE_MOCKS) return delay(empty)
+  const r = await apiFetch<SearchResults>(`/api/v1/admin/search?q=${encodeURIComponent(q)}`)
+  return { users: r.users ?? [], orders: r.orders ?? [], stores: r.stores ?? [] }
+}
+
+export async function forceLogout(id: string): Promise<{ sessionsRevoked: number }> {
+  if (USE_MOCKS) {
+    await delay(null, 200)
+    return { sessionsRevoked: 0 }
+  }
+  const r = await apiFetch<{ sessions_revoked: number }>(`/api/v1/admin/users/${id}/logout`, { method: "POST" })
+  return { sessionsRevoked: r.sessions_revoked ?? 0 }
+}
+
+// ── payouts / coupons / broadcast ──────────────────────────────────────────
+export type Payout = { store: string; orders: number; gross: number; commission: number; net: number }
+
+export async function getPayouts(): Promise<{ payouts: Payout[]; commissionPercent: number }> {
+  if (USE_MOCKS) {
+    return delay({
+      payouts: [{ store: "Lagos Threads", orders: 12, gross: 240000, commission: 24000, net: 216000 }],
+      commissionPercent: 10,
+    })
+  }
+  const r = await apiFetch<{ payouts: Payout[]; commission_percent: number }>("/api/v1/admin/payouts")
+  return { payouts: r.payouts ?? [], commissionPercent: r.commission_percent ?? 0 }
+}
+
+export type Coupon = {
+  id: string; code: string; store: string; discountType: string; discountValue: number
+  minSpend: number; maxUses: number; usedCount: number; expiresAt?: string; isActive: boolean
+}
+
+export async function getCoupons(): Promise<Coupon[]> {
+  if (USE_MOCKS) {
+    return delay([
+      { id: "c1", code: "WELCOME10", store: "Lagos Threads", discountType: "percentage", discountValue: 10, minSpend: 0, maxUses: 100, usedCount: 23, isActive: true },
+    ])
+  }
+  const r = await apiFetch<{
+    coupons: {
+      id: string; code: string; store: string; discount_type: string; discount_value: number
+      min_spend: number; max_uses: number; used_count: number; expires_at?: string; is_active: boolean
+    }[]
+  }>("/api/v1/admin/coupons")
+  return (r.coupons ?? []).map((c) => ({
+    id: c.id, code: c.code, store: c.store, discountType: c.discount_type, discountValue: c.discount_value,
+    minSpend: c.min_spend, maxUses: c.max_uses, usedCount: c.used_count, expiresAt: c.expires_at, isActive: c.is_active,
+  }))
+}
+
+export async function broadcast(title: string, body: string): Promise<{ recipients: number; sent: number }> {
+  if (USE_MOCKS) {
+    await delay(null, 400)
+    return { recipients: 0, sent: 0 }
+  }
+  return apiFetch<{ recipients: number; sent: number }>("/api/v1/admin/broadcast", {
+    method: "POST",
+    body: { title, body },
+  })
+}
+
 // ── identity / RBAC ───────────────────────────────────────────────────────
 export type AdminMe = {
   userId: string

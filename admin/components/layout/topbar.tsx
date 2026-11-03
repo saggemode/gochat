@@ -34,10 +34,17 @@ export function Topbar({ title, onMenu }: { title: string; onMenu: () => void })
         </Badge>
       ) : null}
 
-      <div className="relative ml-auto hidden w-64 md:block">
+      <form
+        className="relative ml-auto hidden w-64 md:block"
+        onSubmit={(e) => {
+          e.preventDefault()
+          const q = (new FormData(e.currentTarget).get("q") as string)?.trim()
+          if (q) router.push(`/search?q=${encodeURIComponent(q)}`)
+        }}
+      >
         <Search className="text-muted-foreground pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2" />
-        <Input placeholder="Search…" className="pl-8" />
-      </div>
+        <Input name="q" placeholder="Search users, orders, stores…" className="pl-8" />
+      </form>
 
       <ThemeToggle />
 

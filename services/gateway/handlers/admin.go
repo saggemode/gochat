@@ -20,6 +20,7 @@ import (
 	authpb "gochat/gen/auth"
 	authzpb "gochat/gen/authz"
 	businesspb "gochat/gen/business"
+	"gochat/pkg/fcm"
 	"gochat/pkg/notifier"
 )
 
@@ -1375,6 +1376,300 @@ func (h *AdminHandler) ListStaff(c *gin.Context) {
 		out = append(out, s)
 	}
 	c.JSON(http.StatusOK, gin.H{"staff": out})
+}
+
+// POST /api/v1/admin/reports/:id/takedown — remove the reported content and
+// mark the report actioned. Requires admin:reports:action. The removal is a
+// soft action per content type (hide/unpublish/expire/ban) rather than a hard
+// delete, except channels which are deleted.
+func (h *AdminHandler) TakedownReport(c *gin.Context) {
+	if !h.ready(c) {
+		return
+	}
+	reportID := c.Param("id")
+	var takedownBody struct {
+		Reason string `json:"reason"`
+	}
+	_ = c.ShouldBindJSON(&takedownBody)
+
+	var targetType, targetID string
+	if err := h.db.QueryRow(c.Request.Context(),
+		`SELECT target_type, target_id FROM social.reports WHERE id = $1`, reportID).
+		Scan(&targetType, &targetID); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "report not found"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	var action string
+	var err error
+	switch targetType {
+	case "message":
+		_, err = h.db.Exec(ctx, `UPDATE chat.messages SET is_deleted = true, deleted_at = now() WHERE id = $1`, targetID)
+		action = "message hidden"
+	case "story":
+		_, err = h.db.Exec(ctx, `UPDATE story.stories SET expires_at = now() WHERE id = $1`, targetID)
+		action = "story removed"
+	case "product":
+		_, err = h.db.Exec(ctx, `UPDATE business.products SET is_published = false WHERE id = $1`, targetID)
+		action = "product unpublished"
+	case "channel":
+		_, err = h.db.Exec(ctx, `DELETE FROM channel.channels WHERE id = $1`, targetID)
+		action = "channel deleted"
+	case "user":
+		_, err = h.db.Exec(ctx, `UPDATE core.users SET account_status = 'banned', updated_at = now() WHERE id = $1`, targetID)
+		action = "user banned"
+		if err == nil && h.redis != nil {
+			_ = h.redis.Set(ctx, userBanKey(targetID), "1", 0).Err()
+		}
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "takedown not supported for target type: " + targetType})
+		return
+	}
+	if err != nil {
+		h.log.Error("takedown failed", zap.String("target_type", targetType), zap.String("target_id", targetID), zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "takedown failed: " + err.Error()})
+		return
+	}
+
+	reviewer := c.GetString("user_id")
+	var reviewerArg interface{}
+	if reviewer != "" {
+		reviewerArg = reviewer
+	}
+	_, _ = h.db.Exec(ctx,
+		`UPDATE social.reports SET status = 'actioned', reviewer_id = $1, updated_at = now() WHERE id = $2`,
+		reviewerArg, reportID)
+
+	tdDetail := action
+	if takedownBody.Reason != "" {
+		tdDetail += " — " + takedownBody.Reason
+	}
+	h.audit(c, "report:takedown", targetType, targetID, tdDetail)
+	c.JSON(http.StatusOK, gin.H{"ok": true, "action": action})
+}
+
+// GET /api/v1/admin/search?q= — cross-entity search over users, orders, stores.
+func (h *AdminHandler) Search(c *gin.Context) {
+	if !h.ready(c) {
+		return
+	}
+	q := c.Query("q")
+	if len(q) < 2 {
+		c.JSON(http.StatusOK, gin.H{"users": []any{}, "orders": []any{}, "stores": []any{}})
+		return
+	}
+	ctx := c.Request.Context()
+
+	type userHit struct {
+		ID     string `json:"id"`
+		Name   string `json:"name"`
+		Email  string `json:"email"`
+		Status string `json:"status"`
+	}
+	users := []userHit{}
+	if rows, err := h.db.Query(ctx,
+		`SELECT id, display_name, coalesce(email,''), coalesce(account_status,'active')
+		 FROM core.users
+		 WHERE display_name ILIKE '%'||$1||'%' OR email ILIKE '%'||$1||'%' OR coalesce(phone,'') ILIKE '%'||$1||'%'
+		 ORDER BY created_at DESC LIMIT 5`, q); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var u userHit
+			if rows.Scan(&u.ID, &u.Name, &u.Email, &u.Status) == nil {
+				users = append(users, u)
+			}
+		}
+	}
+
+	type orderHit struct {
+		Reference string  `json:"reference"`
+		Status    string  `json:"status"`
+		Total     float64 `json:"total"`
+	}
+	orders := []orderHit{}
+	if rows, err := h.db.Query(ctx,
+		`SELECT order_number, status, grand_total::float8 FROM business.orders
+		 WHERE order_number ILIKE '%'||$1||'%' ORDER BY created_at DESC LIMIT 5`, q); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var o orderHit
+			if rows.Scan(&o.Reference, &o.Status, &o.Total) == nil {
+				orders = append(orders, o)
+			}
+		}
+	}
+
+	type storeHit struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+	stores := []storeHit{}
+	if rows, err := h.db.Query(ctx,
+		`SELECT user_id, business_name FROM business.business_profiles
+		 WHERE business_name ILIKE '%'||$1||'%' ORDER BY business_name LIMIT 5`, q); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var s storeHit
+			if rows.Scan(&s.ID, &s.Name) == nil {
+				stores = append(stores, s)
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"users": users, "orders": orders, "stores": stores})
+}
+
+// POST /api/v1/admin/users/:id/logout — revoke a user's refresh tokens so they
+// are signed out once their short-lived access token expires. Requires
+// admin:users:write.
+func (h *AdminHandler) ForceLogout(c *gin.Context) {
+	if !h.ready(c) {
+		return
+	}
+	id := c.Param("id")
+	tag, err := h.db.Exec(c.Request.Context(),
+		`UPDATE auth.refresh_tokens SET revoked = true WHERE user_id = $1 AND revoked = false`, id)
+	if err != nil {
+		h.log.Error("force logout failed", zap.String("user_id", id), zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to sign out user"})
+		return
+	}
+	h.audit(c, "user:logout", "user", id, "")
+	c.JSON(http.StatusOK, gin.H{"ok": true, "sessions_revoked": tag.RowsAffected()})
+}
+
+// GET /api/v1/admin/payouts — per-store paid earnings, platform commission and
+// net payable. Finance only.
+func (h *AdminHandler) ListPayouts(c *gin.Context) {
+	if !h.ready(c) {
+		return
+	}
+	rows, err := h.db.Query(c.Request.Context(),
+		`SELECT coalesce(bp.business_name, o.business_id::text) AS store,
+		        count(*)::bigint AS orders,
+		        coalesce(sum(o.grand_total), 0)::float8 AS gross
+		 FROM business.orders o
+		 LEFT JOIN business.business_profiles bp ON bp.user_id = o.business_id
+		 WHERE o.payment_status = 'paid'
+		 GROUP BY o.business_id, bp.business_name
+		 ORDER BY gross DESC`)
+	if err != nil {
+		h.log.Error("admin payouts failed", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load payouts"})
+		return
+	}
+	defer rows.Close()
+
+	commission := platformCommissionPercent() / 100.0
+	type payout struct {
+		Store      string  `json:"store"`
+		Orders     int64   `json:"orders"`
+		Gross      float64 `json:"gross"`
+		Commission float64 `json:"commission"`
+		Net        float64 `json:"net"`
+	}
+	out := []payout{}
+	for rows.Next() {
+		var p payout
+		if err := rows.Scan(&p.Store, &p.Orders, &p.Gross); err != nil {
+			continue
+		}
+		p.Commission = p.Gross * commission
+		p.Net = p.Gross - p.Commission
+		out = append(out, p)
+	}
+	c.JSON(http.StatusOK, gin.H{"payouts": out, "commission_percent": platformCommissionPercent()})
+}
+
+// GET /api/v1/admin/coupons — all marketplace coupons across stores. Finance only.
+func (h *AdminHandler) ListCoupons(c *gin.Context) {
+	if !h.ready(c) {
+		return
+	}
+	rows, err := h.db.Query(c.Request.Context(),
+		`SELECT c.id, c.code, coalesce(bp.business_name, c.business_id::text) AS store,
+		        c.discount_type, c.discount_value::float8, coalesce(c.min_spend,0)::float8,
+		        coalesce(c.max_uses,0), coalesce(c.used_count,0), c.expires_at, coalesce(c.is_active,true)
+		 FROM business.coupons c
+		 LEFT JOIN business.business_profiles bp ON bp.user_id = c.business_id
+		 ORDER BY c.is_active DESC, c.code`)
+	if err != nil {
+		h.log.Error("admin coupons failed", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load coupons"})
+		return
+	}
+	defer rows.Close()
+
+	type coupon struct {
+		ID            string     `json:"id"`
+		Code          string     `json:"code"`
+		Store         string     `json:"store"`
+		DiscountType  string     `json:"discount_type"`
+		DiscountValue float64    `json:"discount_value"`
+		MinSpend      float64    `json:"min_spend"`
+		MaxUses       int        `json:"max_uses"`
+		UsedCount     int        `json:"used_count"`
+		ExpiresAt     *time.Time `json:"expires_at,omitempty"`
+		IsActive      bool       `json:"is_active"`
+	}
+	out := []coupon{}
+	for rows.Next() {
+		var cp coupon
+		if err := rows.Scan(&cp.ID, &cp.Code, &cp.Store, &cp.DiscountType, &cp.DiscountValue,
+			&cp.MinSpend, &cp.MaxUses, &cp.UsedCount, &cp.ExpiresAt, &cp.IsActive); err != nil {
+			continue
+		}
+		out = append(out, cp)
+	}
+	c.JSON(http.StatusOK, gin.H{"coupons": out})
+}
+
+// POST /api/v1/admin/broadcast — push a message to every registered device.
+// Super admin only. Body: {title, body}.
+func (h *AdminHandler) Broadcast(c *gin.Context) {
+	if !h.ready(c) {
+		return
+	}
+	var body struct {
+		Title string `json:"title"`
+		Body  string `json:"body"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil || body.Title == "" || body.Body == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "title and body are required"})
+		return
+	}
+
+	client := fcm.GetDefaultClient()
+	if client == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "push notifications not configured (FIREBASE_CREDENTIALS_JSON)"})
+		return
+	}
+
+	// Collect device tokens (capped to keep a single broadcast bounded).
+	rows, err := h.db.Query(c.Request.Context(),
+		`SELECT push_token FROM auth.user_push_tokens LIMIT 5000`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load device tokens"})
+		return
+	}
+	defer rows.Close()
+	tokens := []string{}
+	for rows.Next() {
+		var t string
+		if err := rows.Scan(&t); err == nil && t != "" {
+			tokens = append(tokens, t)
+		}
+	}
+	if len(tokens) == 0 {
+		c.JSON(http.StatusOK, gin.H{"recipients": 0, "sent": 0})
+		return
+	}
+
+	sent := client.SendMulticast(c.Request.Context(), tokens, body.Title, body.Body, map[string]string{"type": "broadcast"})
+	h.audit(c, "broadcast", "all", "", body.Title)
+	h.log.Info("admin broadcast", zap.Int("recipients", len(tokens)), zap.Int("sent", sent))
+	c.JSON(http.StatusOK, gin.H{"recipients": len(tokens), "sent": sent})
 }
 
 // GET /api/v1/admin/roles — the roles a super admin can assign.

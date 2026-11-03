@@ -11,6 +11,7 @@ import {
   Radio,
   Package,
   X,
+  Trash2,
   type LucideIcon,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -20,7 +21,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { StatusBadge } from "@/components/status-badge"
 import { formatRelative } from "@/lib/format"
-import { getReports, setReportStatus } from "@/lib/resources"
+import { getReports, setReportStatus, takedownReport } from "@/lib/resources"
 import { usePermissions } from "@/lib/use-permissions"
 import { confirm } from "@/lib/confirm"
 import { toast } from "@/lib/toast"
@@ -68,6 +69,25 @@ export default function ModerationPage() {
     } catch {
       if (prev) qc.setQueryData(["reports"], prev)
       toast.error("Failed to update report")
+    }
+  }
+
+  async function takedown(r: AdminReport) {
+    const { confirmed, reason } = await confirm({
+      title: `Take down this ${r.target}?`,
+      message: "The reported content will be removed and the report marked actioned. This can't be undone.",
+      confirmLabel: "Take down",
+      danger: true,
+      withReason: true,
+      reasonLabel: "Reason (recorded in audit log)",
+    })
+    if (!confirmed) return
+    try {
+      const res = await takedownReport(r.id, reason)
+      toast.success(`Taken down — ${res.action}`)
+      qc.invalidateQueries({ queryKey: ["reports"] })
+    } catch {
+      toast.error("Takedown failed")
     }
   }
 
@@ -133,8 +153,11 @@ export default function ModerationPage() {
 
                   {r.status === "pending" && canAction ? (
                     <div className="flex gap-2 pt-1">
-                      <Button size="sm" variant="destructive" className="flex-1" onClick={() => act(r.id, "actioned")}>
-                        <Check /> Take action
+                      <Button size="sm" variant="destructive" className="flex-1" onClick={() => takedown(r)}>
+                        <Trash2 /> Take down
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => act(r.id, "actioned")} title="Mark handled without removing">
+                        <Check />
                       </Button>
                       <Button size="sm" variant="outline" className="flex-1" onClick={() => act(r.id, "dismissed")}>
                         <X /> Dismiss
