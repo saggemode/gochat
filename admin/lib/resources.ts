@@ -153,15 +153,15 @@ export async function getKpis(): Promise<KpiMetric[]> {
   return overviewToKpis(await apiFetch<ApiOverview>("/api/v1/admin/overview"))
 }
 
-export async function getGrowthSeries(): Promise<MultiSeries[]> {
+export async function getGrowthSeries(days = 30): Promise<MultiSeries[]> {
   if (USE_MOCKS) return delay(mockGrowthSeries())
-  const res = await apiFetch<{ series: MultiSeries[] }>("/api/v1/admin/metrics/growth")
+  const res = await apiFetch<{ series: MultiSeries[] }>(`/api/v1/admin/metrics/growth?days=${days}`)
   return res.series ?? []
 }
 
-export async function getRevenueSeries(): Promise<TimeseriesPoint[]> {
+export async function getRevenueSeries(days = 30): Promise<TimeseriesPoint[]> {
   if (USE_MOCKS) return delay(mockRevenueSeries())
-  const res = await apiFetch<{ points: TimeseriesPoint[] }>("/api/v1/admin/metrics/revenue")
+  const res = await apiFetch<{ points: TimeseriesPoint[] }>(`/api/v1/admin/metrics/revenue?days=${days}`)
   return res.points ?? []
 }
 
@@ -184,16 +184,29 @@ export async function getActivity(): Promise<ActivityItem[]> {
   }))
 }
 
-export async function getUsers(): Promise<AdminUser[]> {
-  if (USE_MOCKS) return delay(mockUsers(60))
-  const res = await apiFetch<{ users: ApiUser[] }>("/api/v1/admin/users?limit=200")
-  return (res.users ?? []).map(apiUserToAdmin)
+export type PageOpts = { search?: string; status?: string; limit?: number; offset?: number }
+export type Paged<T> = { rows: T[]; total: number }
+
+function pageQuery(opts: PageOpts): string {
+  const p = new URLSearchParams()
+  if (opts.search) p.set("search", opts.search)
+  if (opts.status && opts.status !== "all") p.set("status", opts.status)
+  p.set("limit", String(opts.limit ?? 25))
+  p.set("offset", String(opts.offset ?? 0))
+  return p.toString()
 }
 
-export async function getOrders(): Promise<AdminOrder[]> {
-  if (USE_MOCKS) return delay(mockOrders(40))
-  const res = await apiFetch<{ orders: ApiOrder[] }>("/api/v1/admin/orders?limit=200")
-  return (res.orders ?? []).map((o) => ({
+export async function getUsers(opts: PageOpts = {}): Promise<Paged<AdminUser>> {
+  if (USE_MOCKS) {
+    const all = mockUsers(60)
+    return delay({ rows: all.slice(opts.offset ?? 0, (opts.offset ?? 0) + (opts.limit ?? 25)), total: all.length })
+  }
+  const res = await apiFetch<{ users: ApiUser[]; total: number }>(`/api/v1/admin/users?${pageQuery(opts)}`)
+  return { rows: (res.users ?? []).map(apiUserToAdmin), total: res.total ?? 0 }
+}
+
+export async function getOrders(opts: PageOpts = {}): Promise<Paged<AdminOrder>> {
+  const map = (o: ApiOrder): AdminOrder => ({
     id: o.id,
     reference: o.reference,
     buyer: o.buyer,
@@ -202,7 +215,13 @@ export async function getOrders(): Promise<AdminOrder[]> {
     status: o.status,
     items: o.items,
     createdAt: o.created_at,
-  }))
+  })
+  if (USE_MOCKS) {
+    const all = mockOrders(40)
+    return delay({ rows: all.slice(opts.offset ?? 0, (opts.offset ?? 0) + (opts.limit ?? 25)), total: all.length })
+  }
+  const res = await apiFetch<{ orders: ApiOrder[]; total: number }>(`/api/v1/admin/orders?${pageQuery(opts)}`)
+  return { rows: (res.orders ?? []).map(map), total: res.total ?? 0 }
 }
 
 export async function getDisputes(): Promise<AdminDispute[]> {
@@ -233,12 +252,57 @@ export async function getServiceHealth(): Promise<ServiceHealth[]> {
 }
 
 // ── mutations ───────────────────────────────────────────────────────────────
-export async function setUserStatus(id: string, status: UserStatus): Promise<void> {
+export async function setUserStatus(id: string, status: UserStatus, reason = ""): Promise<void> {
   if (USE_MOCKS) {
     await delay(null, 200)
     return
   }
-  await apiFetch(`/api/v1/admin/users/${id}/status`, { method: "POST", body: { status } })
+  await apiFetch(`/api/v1/admin/users/${id}/status`, { method: "POST", body: { status, reason } })
+}
+
+// User detail (profile + roles + recent orders).
+export type UserDetail = {
+  user: AdminUser & { phoneVerified: boolean }
+  orders: { reference: string; store: string; total: number; status: string; createdAt: string }[]
+}
+
+export async function getUserDetail(id: string): Promise<UserDetail> {
+  if (USE_MOCKS) {
+    const u = mockUsers(1)[0]
+    return delay({ user: { ...u, phoneVerified: u.verified }, orders: [] })
+  }
+  const r = await apiFetch<{
+    user: {
+      id: string; email: string; name: string; avatar_url: string; phone: string
+      phone_verified: boolean; online: boolean; last_active_at: string; country: string
+      joined_at: string; status: UserStatus; roles: string[] | null
+    }
+    orders: { reference: string; store: string; total: number; status: string; created_at: string }[]
+  }>(`/api/v1/admin/users/${id}`)
+  const u = r.user
+  return {
+    user: {
+      id: u.id, name: u.name || u.email, phone: u.phone, email: u.email || undefined,
+      avatarUrl: u.avatar_url || undefined, status: u.status ?? "active", verified: u.phone_verified,
+      phoneVerified: u.phone_verified, isSeller: false, messages: 0, orders: 0,
+      joinedAt: u.joined_at, lastActiveAt: u.last_active_at, country: u.country || "—", roles: u.roles ?? [],
+    },
+    orders: (r.orders ?? []).map((o) => ({
+      reference: o.reference, store: o.store, total: o.total, status: o.status, createdAt: o.created_at,
+    })),
+  }
+}
+
+export async function resetUserPassword(id: string): Promise<{ tempPassword: string; emailSent: boolean; email: string }> {
+  if (USE_MOCKS) {
+    await delay(null, 300)
+    return { tempPassword: "Mock-temp-" + Math.random().toString(36).slice(2, 8), emailSent: false, email: "" }
+  }
+  const r = await apiFetch<{ temp_password?: string; email_sent?: boolean; email?: string }>(
+    `/api/v1/admin/users/${id}/reset-password`,
+    { method: "POST" },
+  )
+  return { tempPassword: r.temp_password ?? "", emailSent: !!r.email_sent, email: r.email ?? "" }
 }
 
 export async function resolveDispute(
@@ -253,12 +317,12 @@ export async function resolveDispute(
   await apiFetch(`/api/v1/admin/disputes/${id}/resolve`, { method: "POST", body: { action, note } })
 }
 
-export async function setReportStatus(id: string, status: "actioned" | "dismissed"): Promise<void> {
+export async function setReportStatus(id: string, status: "actioned" | "dismissed", reason = ""): Promise<void> {
   if (USE_MOCKS) {
     await delay(null, 200)
     return
   }
-  await apiFetch(`/api/v1/admin/reports/${id}/status`, { method: "POST", body: { status } })
+  await apiFetch(`/api/v1/admin/reports/${id}/status`, { method: "POST", body: { status, reason } })
 }
 
 // ── identity / RBAC ───────────────────────────────────────────────────────

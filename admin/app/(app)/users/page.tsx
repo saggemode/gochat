@@ -1,8 +1,8 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { Ban, Check, Pause, Search, ShieldCheck, Store } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
+import { Ban, Check, Download, Pause, Search, ShieldCheck } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Pagination } from "@/components/ui/pagination"
 import { StatusBadge } from "@/components/status-badge"
 import {
   Table,
@@ -19,86 +20,75 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { formatCompact, formatRelative, initials } from "@/lib/format"
-import { getUsers, setUserStatus as apiSetUserStatus } from "@/lib/resources"
+import { UserDetailDialog } from "@/components/users/user-detail"
+import { formatRelative } from "@/lib/format"
+import { getUsers, setUserStatus } from "@/lib/resources"
 import { usePermissions } from "@/lib/use-permissions"
-import type { AdminUser, UserStatus } from "@/lib/types"
+import { confirm } from "@/lib/confirm"
+import { toast } from "@/lib/toast"
+import { exportCsv } from "@/lib/csv"
+import type { UserStatus } from "@/lib/types"
+
+const PAGE = 25
 
 export default function UsersPage() {
   const qc = useQueryClient()
   const { can } = usePermissions()
   const canWrite = can("admin:users:write")
-  const { data, isLoading } = useQuery({ queryKey: ["users"], queryFn: getUsers })
-  const [q, setQ] = useState("")
+
+  const [searchInput, setSearchInput] = useState("")
+  const [search, setSearch] = useState("")
   const [status, setStatus] = useState<UserStatus | "all">("all")
-  const [sellersOnly, setSellersOnly] = useState(false)
+  const [offset, setOffset] = useState(0)
+  const [detailId, setDetailId] = useState<string | null>(null)
 
-  const users = useMemo(() => data ?? [], [data])
+  // Debounce search; reset to first page on any filter change.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchInput)
+      setOffset(0)
+    }, 350)
+    return () => clearTimeout(t)
+  }, [searchInput])
 
-  const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase()
-    return users.filter((u) => {
-      if (status !== "all" && u.status !== status) return false
-      if (sellersOnly && !u.isSeller) return false
-      if (!needle) return true
-      return (
-        u.name.toLowerCase().includes(needle) ||
-        u.phone.includes(needle) ||
-        (u.email?.toLowerCase().includes(needle) ?? false)
-      )
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ["users", { search, status, offset }],
+    queryFn: () => getUsers({ search, status, limit: PAGE, offset }),
+    placeholderData: keepPreviousData,
+  })
+
+  const rows = useMemo(() => data?.rows ?? [], [data])
+  const total = data?.total ?? 0
+
+  async function act(id: string, name: string, next: UserStatus) {
+    const verb = next === "banned" ? "Ban" : next === "suspended" ? "Suspend" : "Reactivate"
+    const { confirmed, reason } = await confirm({
+      title: `${verb} ${name}?`,
+      message: next === "banned" ? "They will be signed out immediately and unable to log in." : undefined,
+      confirmLabel: verb,
+      danger: next !== "active",
+      withReason: next !== "active",
+      reasonLabel: "Reason (recorded in audit log)",
     })
-  }, [users, q, status, sellersOnly])
-
-  const counts = useMemo(() => {
-    const c: Record<string, number> = { active: 0, suspended: 0, banned: 0, pending: 0 }
-    users.forEach((u) => (c[u.status] = (c[u.status] ?? 0) + 1))
-    return c
-  }, [users])
-
-  async function setUserStatus(id: string, next: UserStatus) {
-    const prev = qc.getQueryData<AdminUser[]>(["users"])
-    // Optimistic update.
-    qc.setQueryData<AdminUser[]>(["users"], (cur) =>
-      (cur ?? []).map((u) => (u.id === id ? { ...u, status: next } : u)),
-    )
+    if (!confirmed) return
     try {
-      await apiSetUserStatus(id, next)
+      await setUserStatus(id, next, reason)
+      toast.success(`${name} ${next === "active" ? "reactivated" : next}`)
+      qc.invalidateQueries({ queryKey: ["users"] })
     } catch {
-      // Revert on failure.
-      if (prev) qc.setQueryData(["users"], prev)
-      alert("Failed to update user status")
+      toast.error("Failed to update user status")
     }
   }
 
   return (
     <div className="space-y-4">
-      {/* status summary */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {(["active", "suspended", "banned", "pending"] as const).map((s) => (
-          <Card key={s} className="py-0">
-            <CardContent className="flex items-center justify-between p-4">
-              <div>
-                <p className="text-muted-foreground text-xs capitalize">{s}</p>
-                <p className="text-xl font-semibold">{isLoading ? "—" : formatCompact(counts[s] ?? 0)}</p>
-              </div>
-              <StatusBadge status={s} />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
       {/* toolbar */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-0 flex-1 sm:max-w-xs">
           <Search className="text-muted-foreground pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2" />
-          <Input
-            placeholder="Search name, phone, email…"
-            className="pl-8"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
+          <Input placeholder="Search name, phone, email…" className="pl-8" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
         </div>
-        <Select value={status} onChange={(e) => setStatus(e.target.value as UserStatus | "all")}>
+        <Select value={status} onChange={(e) => { setStatus(e.target.value as UserStatus | "all"); setOffset(0) }}>
           <option value="all">All statuses</option>
           <option value="active">Active</option>
           <option value="suspended">Suspended</option>
@@ -106,17 +96,19 @@ export default function UsersPage() {
           <option value="pending">Pending</option>
         </Select>
         <Button
-          variant={sellersOnly ? "default" : "outline"}
-          onClick={() => setSellersOnly((v) => !v)}
+          variant="outline"
+          onClick={() =>
+            exportCsv(
+              "users.csv",
+              rows.map((u) => ({ id: u.id, name: u.name, email: u.email ?? "", phone: u.phone, status: u.status, country: u.country, orders: u.orders, joined: u.joinedAt })),
+            )
+          }
         >
-          <Store /> Sellers
+          <Download /> Export
         </Button>
-        <span className="text-muted-foreground ml-auto text-sm">
-          {filtered.length} of {users.length}
-        </span>
+        <Pagination offset={offset} limit={PAGE} total={total} onChange={setOffset} />
       </div>
 
-      {/* table */}
       <Card className="py-0">
         <CardContent className="p-0">
           <Table>
@@ -130,82 +122,54 @@ export default function UsersPage() {
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className={isFetching ? "opacity-60" : ""}>
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={6}>
-                      <Skeleton className="h-8 w-full" />
-                    </TableCell>
+                    <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
                   </TableRow>
                 ))
-              ) : filtered.length === 0 ? (
+              ) : rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-muted-foreground py-10 text-center">
-                    No users match your filters.
-                  </TableCell>
+                  <TableCell colSpan={6} className="text-muted-foreground py-10 text-center">No users match your filters.</TableCell>
                 </TableRow>
               ) : (
-                filtered.map((u) => (
-                  <TableRow key={u.id}>
+                rows.map((u) => (
+                  <TableRow key={u.id} className="cursor-pointer" onClick={() => setDetailId(u.id)}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <Avatar className="size-8">
-                          <AvatarFallback>{initials(u.name)}</AvatarFallback>
-                        </Avatar>
+                        <Avatar className="size-8"><AvatarFallback>{u.name.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 font-medium">
                             <span className="truncate">{u.name}</span>
-                            {u.verified ? (
-                              <ShieldCheck className="size-3.5 shrink-0 text-sky-500" />
-                            ) : null}
+                            {u.verified ? <ShieldCheck className="size-3.5 shrink-0 text-sky-500" /> : null}
                             {u.isSeller ? <Badge variant="outline">Seller</Badge> : null}
                           </div>
                           <div className="text-muted-foreground text-xs">
-                            {u.phone}
-                            {u.email ? ` · ${u.email}` : ""}
+                            {u.phone}{u.email ? ` · ${u.email}` : ""}
                           </div>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <StatusBadge status={u.status} />
-                    </TableCell>
+                    <TableCell><StatusBadge status={u.status} /></TableCell>
                     <TableCell className="text-muted-foreground">{u.country}</TableCell>
                     <TableCell className="text-right tabular-nums">{u.orders}</TableCell>
                     <TableCell className="text-muted-foreground">{formatRelative(u.lastActiveAt)}</TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
-                        {!canWrite ? (
-                          <span className="text-muted-foreground text-xs">—</span>
-                        ) : null}
+                        {!canWrite ? <span className="text-muted-foreground text-xs">—</span> : null}
                         {canWrite && u.status !== "active" ? (
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            title="Activate"
-                            onClick={() => setUserStatus(u.id, "active")}
-                          >
+                          <Button variant="ghost" size="icon-sm" title="Reactivate" onClick={() => act(u.id, u.name, "active")}>
                             <Check className="text-emerald-500" />
                           </Button>
                         ) : null}
                         {canWrite && u.status !== "suspended" && u.status !== "banned" ? (
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            title="Suspend"
-                            onClick={() => setUserStatus(u.id, "suspended")}
-                          >
+                          <Button variant="ghost" size="icon-sm" title="Suspend" onClick={() => act(u.id, u.name, "suspended")}>
                             <Pause className="text-amber-500" />
                           </Button>
                         ) : null}
                         {canWrite && u.status !== "banned" ? (
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            title="Ban"
-                            onClick={() => setUserStatus(u.id, "banned")}
-                          >
+                          <Button variant="ghost" size="icon-sm" title="Ban" onClick={() => act(u.id, u.name, "banned")}>
                             <Ban className="text-destructive" />
                           </Button>
                         ) : null}
@@ -218,6 +182,8 @@ export default function UsersPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <UserDetailDialog userId={detailId} onClose={() => setDetailId(null)} />
     </div>
   )
 }

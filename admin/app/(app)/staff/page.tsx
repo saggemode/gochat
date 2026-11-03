@@ -1,9 +1,11 @@
 "use client"
 
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { Pause, Check } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { StatusBadge } from "@/components/status-badge"
 import {
@@ -14,16 +16,40 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { NewUserButton, EditRolesButton } from "@/components/users/user-management"
+import { NewUserButton, EditRolesButton, ResetPasswordButton } from "@/components/users/user-management"
 import { usePermissions } from "@/lib/use-permissions"
-import { getStaff } from "@/lib/resources"
+import { getStaff, setUserStatus } from "@/lib/resources"
+import { confirm } from "@/lib/confirm"
+import { toast } from "@/lib/toast"
 import { formatDate, initials } from "@/lib/format"
+import type { AdminUser, UserStatus } from "@/lib/types"
 
 export default function StaffPage() {
+  const qc = useQueryClient()
   const { can, ready } = usePermissions()
   const allowed = can("admin:roles:write")
   const { data, isLoading } = useQuery({ queryKey: ["staff"], queryFn: getStaff, enabled: allowed })
   const staff = data ?? []
+
+  async function toggleActive(u: AdminUser) {
+    const next: UserStatus = u.status === "active" ? "suspended" : "active"
+    const { confirmed, reason } = await confirm({
+      title: next === "suspended" ? `Deactivate ${u.name}?` : `Reactivate ${u.name}?`,
+      message: next === "suspended" ? "They will lose access to the console." : undefined,
+      confirmLabel: next === "suspended" ? "Deactivate" : "Reactivate",
+      danger: next === "suspended",
+      withReason: next === "suspended",
+      reasonLabel: "Reason (recorded in audit log)",
+    })
+    if (!confirmed) return
+    try {
+      await setUserStatus(u.id, next, reason)
+      toast.success(next === "suspended" ? "Staff deactivated" : "Staff reactivated")
+      qc.invalidateQueries({ queryKey: ["staff"] })
+    } catch {
+      toast.error("Failed to update staff")
+    }
+  }
 
   if (ready && !allowed) {
     return (
@@ -101,8 +127,17 @@ export default function StaffPage() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">{formatDate(u.joinedAt)}</TableCell>
                     <TableCell>
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-1">
+                        <ResetPasswordButton user={u} />
                         <EditRolesButton user={u} />
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          title={u.status === "active" ? "Deactivate" : "Reactivate"}
+                          onClick={() => toggleActive(u)}
+                        >
+                          {u.status === "active" ? <Pause className="text-amber-500" /> : <Check className="text-emerald-500" />}
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>

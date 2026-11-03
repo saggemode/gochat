@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
@@ -74,13 +75,18 @@ type AdminHandler struct {
 	business businesspb.BusinessServiceClient
 	authz    authzpb.AuthzServiceClient
 	notifier notifier.Notifier
+	redis    *redis.Client
 	services map[string]*grpc.ClientConn // for real per-service connectivity health
 	log      *zap.Logger
 }
 
-func NewAdminHandler(db *pgxpool.Pool, auth authpb.AuthServiceClient, business businesspb.BusinessServiceClient, authz authzpb.AuthzServiceClient, mailer notifier.Notifier, services map[string]*grpc.ClientConn, log *zap.Logger) *AdminHandler {
-	return &AdminHandler{db: db, auth: auth, business: business, authz: authz, notifier: mailer, services: services, log: log}
+func NewAdminHandler(db *pgxpool.Pool, auth authpb.AuthServiceClient, business businesspb.BusinessServiceClient, authz authzpb.AuthzServiceClient, mailer notifier.Notifier, rdb *redis.Client, services map[string]*grpc.ClientConn, log *zap.Logger) *AdminHandler {
+	return &AdminHandler{db: db, auth: auth, business: business, authz: authz, notifier: mailer, redis: rdb, services: services, log: log}
 }
+
+// userBanKey is the Redis key AuthMiddleware checks to instantly reject a
+// banned user's requests (independent of the auth service's status cache).
+func userBanKey(userID string) string { return "user:banned:" + userID }
 
 // adminCapabilities is the set of fine-grained permissions the UI gates on.
 var adminCapabilities = []string{
@@ -339,8 +345,20 @@ func (h *AdminHandler) ListOrders(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	status := c.Query("status")
+	search := c.Query("search")
 	limit := clampInt(atoiDefault(c.Query("limit"), 50), 50, 1, 200)
 	offset := clampInt(atoiDefault(c.Query("offset"), 0), 0, 0, 1_000_000)
+
+	var total int64
+	_ = h.db.QueryRow(ctx,
+		`SELECT count(*)::bigint FROM business.orders o
+		 LEFT JOIN business.business_profiles bp ON bp.user_id = o.business_id
+		 LEFT JOIN core.users bu ON bu.id = o.buyer_id
+		 WHERE ($1 = '' OR o.status = $1)
+		   AND ($2 = '' OR o.order_number ILIKE '%'||$2||'%'
+		        OR coalesce(bu.display_name, o.shipping_name) ILIKE '%'||$2||'%'
+		        OR coalesce(bp.business_name,'') ILIKE '%'||$2||'%')`,
+		status, search).Scan(&total)
 
 	rows, err := h.db.Query(ctx,
 		`SELECT o.id, o.order_number,
@@ -353,9 +371,12 @@ func (h *AdminHandler) ListOrders(c *gin.Context) {
 		 LEFT JOIN business.business_profiles bp ON bp.user_id = o.business_id
 		 LEFT JOIN core.users bu ON bu.id = o.buyer_id
 		 WHERE ($1 = '' OR o.status = $1)
+		   AND ($2 = '' OR o.order_number ILIKE '%'||$2||'%'
+		        OR coalesce(bu.display_name, o.shipping_name) ILIKE '%'||$2||'%'
+		        OR coalesce(bp.business_name,'') ILIKE '%'||$2||'%')
 		 ORDER BY o.created_at DESC
-		 LIMIT $2 OFFSET $3`,
-		status, limit, offset)
+		 LIMIT $3 OFFSET $4`,
+		status, search, limit, offset)
 	if err != nil {
 		h.log.Error("admin list orders failed", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load orders"})
@@ -386,7 +407,7 @@ func (h *AdminHandler) ListOrders(c *gin.Context) {
 		orders = append(orders, o)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"orders": orders})
+	c.JSON(http.StatusOK, gin.H{"orders": orders, "total": total, "limit": limit, "offset": offset})
 }
 
 // POST /api/v1/admin/users/:id/status — set a user's moderation status.
@@ -407,6 +428,7 @@ func (h *AdminHandler) UpdateUserStatus(c *gin.Context) {
 
 	var body struct {
 		Status string `json:"status"`
+		Reason string `json:"reason"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
@@ -432,7 +454,21 @@ func (h *AdminHandler) UpdateUserStatus(c *gin.Context) {
 		return
 	}
 
-	h.audit(c, "user:status", "user", id, body.Status)
+	// Instantly enforce bans at the gateway (AuthMiddleware checks this key),
+	// rather than waiting for the auth service's status cache to expire.
+	if h.redis != nil {
+		if body.Status == "banned" {
+			_ = h.redis.Set(c.Request.Context(), userBanKey(id), "1", 0).Err()
+		} else {
+			_ = h.redis.Del(c.Request.Context(), userBanKey(id)).Err()
+		}
+	}
+
+	detail := body.Status
+	if body.Reason != "" {
+		detail += " — " + body.Reason
+	}
+	h.audit(c, "user:status", "user", id, detail)
 	h.log.Info("admin changed user status",
 		zap.String("user_id", id),
 		zap.String("status", body.Status),
@@ -515,16 +551,17 @@ func (h *AdminHandler) GrowthSeries(c *gin.Context) {
 	if !h.ready(c) {
 		return
 	}
+	days := clampInt(atoiDefault(c.Query("days"), 30), 30, 7, 90)
 	rows, err := h.db.Query(c.Request.Context(),
 		`SELECT d::date,
 		        coalesce(c.n, 0)::float8 AS new_users,
 		        (SELECT count(*) FROM core.users u WHERE u.created_at < (d::date + interval '1 day'))::float8 AS cumulative
-		 FROM generate_series((now() - interval '29 days')::date, now()::date, '1 day') d
+		 FROM generate_series((now() - make_interval(days => ($1 - 1)))::date, now()::date, '1 day') d
 		 LEFT JOIN (
 		     SELECT created_at::date dd, count(*) n
-		     FROM core.users WHERE created_at >= now() - interval '30 days' GROUP BY dd
+		     FROM core.users WHERE created_at >= now() - make_interval(days => $1) GROUP BY dd
 		 ) c ON c.dd = d::date
-		 ORDER BY d`)
+		 ORDER BY d`, days)
 	if err != nil {
 		h.log.Error("admin growth series failed", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load growth"})
@@ -558,12 +595,13 @@ func (h *AdminHandler) RevenueSeries(c *gin.Context) {
 	if !h.ready(c) {
 		return
 	}
+	days := clampInt(atoiDefault(c.Query("days"), 30), 30, 7, 90)
 	rows, err := h.db.Query(c.Request.Context(),
 		`SELECT d::date, coalesce(sum(o.grand_total), 0)::float8
-		 FROM generate_series((now() - interval '29 days')::date, now()::date, '1 day') d
+		 FROM generate_series((now() - make_interval(days => ($1 - 1)))::date, now()::date, '1 day') d
 		 LEFT JOIN business.orders o
 		   ON o.created_at::date = d::date AND o.payment_status = 'paid'
-		 GROUP BY d ORDER BY d`)
+		 GROUP BY d ORDER BY d`, days)
 	if err != nil {
 		h.log.Error("admin revenue series failed", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load revenue"})
@@ -737,6 +775,7 @@ func (h *AdminHandler) UpdateReportStatus(c *gin.Context) {
 	id := c.Param("id")
 	var body struct {
 		Status string `json:"status"`
+		Reason string `json:"reason"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
@@ -766,7 +805,11 @@ func (h *AdminHandler) UpdateReportStatus(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "report not found"})
 		return
 	}
-	h.audit(c, "report:status", "report", id, body.Status)
+	rdetail := body.Status
+	if body.Reason != "" {
+		rdetail += " — " + body.Reason
+	}
+	h.audit(c, "report:status", "report", id, rdetail)
 	c.JSON(http.StatusOK, gin.H{"id": id, "status": body.Status})
 }
 
@@ -1064,11 +1107,21 @@ func (h *AdminHandler) sendTempPasswordEmail(ctx context.Context, to, name, temp
 		"Email: " + to + "\n" +
 		"Temporary password: " + tempPassword + "\n\n" +
 		"You'll be asked to set a new password the first time you sign in.\n\n— GoChat"
-	if err := h.notifier.SendEmail(ctx, to, subject, text, ""); err != nil {
-		h.log.Warn("failed to email temporary password", zap.String("to", to), zap.Error(err))
+	// Bound the wait so a blocked/slow SMTP port never hangs the request; the
+	// super admin still gets the temp password in the response as a fallback.
+	done := make(chan error, 1)
+	go func() { done <- h.notifier.SendEmail(context.Background(), to, subject, text, "") }()
+	select {
+	case err := <-done:
+		if err != nil {
+			h.log.Warn("failed to email temporary password", zap.String("to", to), zap.Error(err))
+			return false
+		}
+		return true
+	case <-time.After(8 * time.Second):
+		h.log.Warn("temp password email timed out (SMTP unreachable?); share the shown password manually", zap.String("to", to))
 		return false
 	}
-	return true
 }
 
 // POST /api/v1/admin/password — the signed-in admin sets their own password
@@ -1176,6 +1229,100 @@ func (h *AdminHandler) SetUserRoles(c *gin.Context) {
 	}
 	h.audit(c, "user:roles", "user", id, joinRoles(body.Roles))
 	c.JSON(http.StatusOK, gin.H{"id": id, "roles": body.Roles})
+}
+
+// GET /api/v1/admin/users/:id — one user with roles and recent orders.
+func (h *AdminHandler) GetUserDetail(c *gin.Context) {
+	if !h.ready(c) {
+		return
+	}
+	id := c.Param("id")
+	ctx := c.Request.Context()
+
+	type detail struct {
+		ID            string    `json:"id"`
+		Email         string    `json:"email"`
+		Name          string    `json:"name"`
+		AvatarURL     string    `json:"avatar_url"`
+		Phone         string    `json:"phone"`
+		PhoneVerified bool      `json:"phone_verified"`
+		Online        bool      `json:"online"`
+		LastActiveAt  time.Time `json:"last_active_at"`
+		Country       string    `json:"country"`
+		JoinedAt      time.Time `json:"joined_at"`
+		Status        string    `json:"status"`
+		Roles         []string  `json:"roles"`
+	}
+	var d detail
+	err := h.db.QueryRow(ctx,
+		`SELECT u.id, u.email, u.display_name, coalesce(u.avatar_url,''), coalesce(u.phone,''),
+		        u.phone_verified, u.is_online, u.last_seen, coalesce(u.country_code,''), u.created_at,
+		        coalesce(u.account_status,'active'),
+		        coalesce((SELECT array_agg(role_name) FROM authz.user_roles ur WHERE ur.user_id = u.id), '{}')
+		 FROM core.users u WHERE u.id = $1`, id).
+		Scan(&d.ID, &d.Email, &d.Name, &d.AvatarURL, &d.Phone, &d.PhoneVerified, &d.Online,
+			&d.LastActiveAt, &d.Country, &d.JoinedAt, &d.Status, &d.Roles)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	type order struct {
+		Reference string    `json:"reference"`
+		Store     string    `json:"store"`
+		Total     float64   `json:"total"`
+		Status    string    `json:"status"`
+		CreatedAt time.Time `json:"created_at"`
+	}
+	orders := []order{}
+	rows, err := h.db.Query(ctx,
+		`SELECT o.order_number, coalesce(bp.business_name, o.business_id::text), o.grand_total::float8, o.status, o.created_at
+		 FROM business.orders o
+		 LEFT JOIN business.business_profiles bp ON bp.user_id = o.business_id
+		 WHERE o.buyer_id = $1 ORDER BY o.created_at DESC LIMIT 10`, id)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var o order
+			if err := rows.Scan(&o.Reference, &o.Store, &o.Total, &o.Status, &o.CreatedAt); err == nil {
+				orders = append(orders, o)
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"user": d, "orders": orders})
+}
+
+// POST /api/v1/admin/users/:id/reset-password — super admin only. Issues a new
+// temporary password (emailed), and forces a change on next login.
+func (h *AdminHandler) ResetUserPassword(c *gin.Context) {
+	if !h.ready(c) {
+		return
+	}
+	id := c.Param("id")
+	var email, name string
+	if err := h.db.QueryRow(c.Request.Context(),
+		`SELECT email, display_name FROM core.users WHERE id = $1`, id).Scan(&email, &name); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	temp := generateTempPassword()
+	hash, err := bcrypt.GenerateFromPassword([]byte(temp), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash password"})
+		return
+	}
+	if _, err := h.db.Exec(c.Request.Context(),
+		`UPDATE core.users SET password_hash = $1, must_change_password = true, updated_at = now() WHERE id = $2`,
+		string(hash), id); err != nil {
+		h.log.Error("reset password failed", zap.String("user_id", id), zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reset password"})
+		return
+	}
+	emailSent := h.sendTempPasswordEmail(c.Request.Context(), email, name, temp)
+	h.audit(c, "password:reset", "user", id, email)
+	c.JSON(http.StatusOK, gin.H{"id": id, "email": email, "temp_password": temp, "email_sent": emailSent})
 }
 
 // GET /api/v1/admin/staff — accounts that hold at least one admin role.

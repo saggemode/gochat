@@ -2,13 +2,64 @@
 
 import { useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { KeyRound, Loader2, UserPlus } from "lucide-react"
+import { KeyRound, Loader2, RotateCcw, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
-import { createUser, getRoles, setUserRoles, type CreateUserResult, type RoleInfo } from "@/lib/resources"
+import { createUser, getRoles, resetUserPassword, setUserRoles, type CreateUserResult, type RoleInfo } from "@/lib/resources"
+import { toast } from "@/lib/toast"
 import type { AdminUser } from "@/lib/types"
+
+export function ResetPasswordButton({ user }: { user: AdminUser }) {
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<{ tempPassword: string; emailSent: boolean } | null>(null)
+
+  async function doReset() {
+    setLoading(true)
+    try {
+      const r = await resetUserPassword(user.id)
+      setResult(r)
+      toast.success(r.emailSent ? "Temporary password emailed" : "Temporary password generated")
+    } catch {
+      toast.error("Failed to reset password")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <Button variant="ghost" size="icon-sm" title="Reset password" onClick={() => { setResult(null); setOpen(true) }}>
+        <RotateCcw />
+      </Button>
+      <Dialog open={open} onClose={() => setOpen(false)} title="Reset password" description={user.email}>
+        {result ? (
+          <div className="space-y-3">
+            <p className="text-sm">
+              {result.emailSent ? "A new temporary password was emailed." : "Email isn’t configured — share this temporary password:"}
+            </p>
+            <div className="bg-muted flex items-center justify-between gap-2 rounded-lg px-3 py-2 font-mono text-sm">
+              <span className="truncate">{result.tempPassword}</span>
+              <Button variant="outline" size="sm" onClick={() => navigator.clipboard?.writeText(result.tempPassword)}>Copy</Button>
+            </div>
+            <p className="text-muted-foreground text-xs">They’ll be required to set a new password on next sign-in.</p>
+            <div className="flex justify-end"><Button onClick={() => setOpen(false)}>Done</Button></div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm">Generate a new temporary password for <span className="font-medium">{user.email}</span> and force a change on next login?</p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button onClick={doReset} disabled={loading}>{loading ? <Loader2 className="animate-spin" /> : null} Reset</Button>
+            </div>
+          </div>
+        )}
+      </Dialog>
+    </>
+  )
+}
 
 function RolePicker({
   roles,

@@ -22,6 +22,8 @@ import { StatusBadge } from "@/components/status-badge"
 import { formatRelative } from "@/lib/format"
 import { getReports, setReportStatus } from "@/lib/resources"
 import { usePermissions } from "@/lib/use-permissions"
+import { confirm } from "@/lib/confirm"
+import { toast } from "@/lib/toast"
 import type { AdminReport, ReportStatus, ReportTarget } from "@/lib/types"
 
 const TARGET_ICON: Record<ReportTarget, LucideIcon> = {
@@ -48,15 +50,24 @@ export default function ModerationPage() {
   const pending = reports.filter((r) => r.status === "pending").length
 
   async function act(id: string, next: "actioned" | "dismissed") {
+    const { confirmed, reason } = await confirm({
+      title: next === "actioned" ? "Take action on this report?" : "Dismiss this report?",
+      confirmLabel: next === "actioned" ? "Take action" : "Dismiss",
+      danger: next === "actioned",
+      withReason: true,
+      reasonLabel: "Note (recorded in audit log)",
+    })
+    if (!confirmed) return
     const prev = qc.getQueryData<AdminReport[]>(["reports"])
     qc.setQueryData<AdminReport[]>(["reports"], (cur) =>
       (cur ?? []).map((r) => (r.id === id ? { ...r, status: next } : r)),
     )
     try {
-      await setReportStatus(id, next)
+      await setReportStatus(id, next, reason)
+      toast.success(`Report ${next}`)
     } catch {
       if (prev) qc.setQueryData(["reports"], prev)
-      alert("Failed to update report")
+      toast.error("Failed to update report")
     }
   }
 

@@ -1,8 +1,9 @@
 "use client"
 
-import { useCallback } from "react"
+import { useCallback, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select } from "@/components/ui/select"
 import { KpiCard, KpiCardSkeleton } from "@/components/dashboard/kpi-card"
 import { ActivityFeed } from "@/components/dashboard/activity-feed"
 import { ServiceHealthGrid } from "@/components/dashboard/service-health"
@@ -22,9 +23,10 @@ import {
 export default function OverviewPage() {
   const { can } = usePermissions()
   const showFinance = can("admin:finance:read")
+  const [days, setDays] = useState(30)
   const kpis = useQuery({ queryKey: ["kpis"], queryFn: getKpis })
-  const growth = useQuery({ queryKey: ["growth"], queryFn: getGrowthSeries })
-  const revenue = useQuery({ queryKey: ["revenue"], queryFn: getRevenueSeries, enabled: showFinance })
+  const growth = useQuery({ queryKey: ["growth", days], queryFn: () => getGrowthSeries(days) })
+  const revenue = useQuery({ queryKey: ["revenue", days], queryFn: () => getRevenueSeries(days), enabled: showFinance })
   const mix = useQuery({ queryKey: ["messageMix"], queryFn: getMessageMix })
   const activity = useQuery({ queryKey: ["activity"], queryFn: getActivity })
   const health = useQuery({ queryKey: ["health"], queryFn: getServiceHealth })
@@ -126,6 +128,14 @@ export default function OverviewPage() {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-end">
+        <Select value={days} onChange={(e) => setDays(Number(e.target.value))} aria-label="Date range">
+          <option value={7}>Last 7 days</option>
+          <option value={30}>Last 30 days</option>
+          <option value={90}>Last 90 days</option>
+        </Select>
+      </div>
+
       {/* KPI row */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {kpis.isLoading
@@ -138,7 +148,7 @@ export default function OverviewPage() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>User growth</CardTitle>
-            <CardDescription>New vs. active users over the last 30 days</CardDescription>
+            <CardDescription>New vs. cumulative users over the last {days} days</CardDescription>
           </CardHeader>
           <CardContent>
             {growth.isLoading ? <Skeleton className="h-[300px] w-full" /> : <EChart build={growthBuild} height={300} />}
@@ -162,7 +172,7 @@ export default function OverviewPage() {
           <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle>Marketplace revenue</CardTitle>
-              <CardDescription>Daily GMV over the last 30 days</CardDescription>
+              <CardDescription>Daily paid GMV over the last {days} days</CardDescription>
             </CardHeader>
             <CardContent>
               {revenue.isLoading ? <Skeleton className="h-[260px] w-full" /> : <EChart build={revenueBuild} height={260} />}

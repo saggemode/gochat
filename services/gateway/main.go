@@ -358,7 +358,7 @@ func main() {
 		adminServiceConns["authz"] = authzConn
 	}
 	adminMailer := notifier.New(cfg, log)
-	adminHandler := handlers.NewAdminHandler(adminDB, authClient, businessClient, authzClient, adminMailer, adminServiceConns, log)
+	adminHandler := handlers.NewAdminHandler(adminDB, authClient, businessClient, authzClient, adminMailer, redisClient, adminServiceConns, log)
 
 	// ── Root Status & Health Endpoints ──────────────────────────────────────
 	r.GET("/", func(c *gin.Context) {
@@ -465,6 +465,7 @@ func main() {
 		admin.GET("/activity", adminHandler.Activity)
 		admin.GET("/health", adminHandler.SystemHealth)
 		admin.GET("/users", adminHandler.ListUsers)
+		admin.GET("/users/:id", adminHandler.GetUserDetail)
 		admin.GET("/disputes", adminHandler.ListDisputes)
 		admin.GET("/reports", adminHandler.ListReports)
 
@@ -482,6 +483,7 @@ func main() {
 		admin.GET("/roles", adminHandler.ListRoles)
 		admin.POST("/users", middleware.RequirePermission(authzClient, "admin:roles:write", log), adminHandler.CreateUser)
 		admin.POST("/users/:id/roles", middleware.RequirePermission(authzClient, "admin:roles:write", log), adminHandler.SetUserRoles)
+		admin.POST("/users/:id/reset-password", middleware.RequirePermission(authzClient, "admin:roles:write", log), adminHandler.ResetUserPassword)
 	}
 
 	// Authenticated Routes

@@ -88,6 +88,16 @@ func AuthMiddleware(authClient authpb.AuthServiceClient, rdb ...*redis.Client) g
 			}
 		}
 
+		// Instant ban enforcement: an admin ban sets user:banned:<id> in Redis,
+		// which rejects the user immediately (before the auth status cache expires).
+		if redisClient != nil && resp.UserId != "" {
+			if banned, err := redisClient.Get(c.Request.Context(), "user:banned:"+resp.UserId).Result(); err == nil && banned != "" {
+				c.JSON(http.StatusForbidden, gin.H{"error": "Your account has been suspended."})
+				c.Abort()
+				return
+			}
+		}
+
 		// Store user details in context
 		c.Set("user_id", resp.UserId)
 		c.Set("email", resp.Email)
