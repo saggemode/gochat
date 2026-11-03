@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
@@ -1447,6 +1449,80 @@ func (h *AdminHandler) TakedownReport(c *gin.Context) {
 	}
 	h.audit(c, "report:takedown", targetType, targetID, tdDetail)
 	c.JSON(http.StatusOK, gin.H{"ok": true, "action": action})
+}
+
+// GET /api/v1/admin/metrics/system — the gateway process's own runtime +
+// HTTP metrics, gathered in-process from the Prometheus default registry (no
+// external Prometheus/Grafana needed).
+func (h *AdminHandler) SystemMetrics(c *gin.Context) {
+	mfs, err := prometheus.DefaultGatherer.Gather()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to gather metrics"})
+		return
+	}
+	var total, c2xx, c4xx, c5xx, durSum, durCount, goroutines, memBytes, startTime float64
+	for _, mf := range mfs {
+		switch mf.GetName() {
+		case "http_requests_total":
+			for _, m := range mf.GetMetric() {
+				v := m.GetCounter().GetValue()
+				total += v
+				for _, l := range m.GetLabel() {
+					if l.GetName() == "status" {
+						switch {
+						case strings.HasPrefix(l.GetValue(), "2"):
+							c2xx += v
+						case strings.HasPrefix(l.GetValue(), "4"):
+							c4xx += v
+						case strings.HasPrefix(l.GetValue(), "5"):
+							c5xx += v
+						}
+					}
+				}
+			}
+		case "http_request_duration_seconds":
+			for _, m := range mf.GetMetric() {
+				durSum += m.GetHistogram().GetSampleSum()
+				durCount += float64(m.GetHistogram().GetSampleCount())
+			}
+		case "go_goroutines":
+			for _, m := range mf.GetMetric() {
+				goroutines = m.GetGauge().GetValue()
+			}
+		case "process_resident_memory_bytes":
+			for _, m := range mf.GetMetric() {
+				memBytes = m.GetGauge().GetValue()
+			}
+		case "process_start_time_seconds":
+			for _, m := range mf.GetMetric() {
+				startTime = m.GetGauge().GetValue()
+			}
+		}
+	}
+
+	avgMs := 0.0
+	if durCount > 0 {
+		avgMs = durSum / durCount * 1000
+	}
+	errRate := 0.0
+	if total > 0 {
+		errRate = c5xx / total
+	}
+	uptime := int64(0)
+	if startTime > 0 {
+		uptime = time.Now().Unix() - int64(startTime)
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"requests_total": int64(total),
+		"requests_2xx":   int64(c2xx),
+		"requests_4xx":   int64(c4xx),
+		"requests_5xx":   int64(c5xx),
+		"error_rate":     errRate,
+		"avg_latency_ms": avgMs,
+		"goroutines":     int64(goroutines),
+		"memory_mb":      memBytes / 1024 / 1024,
+		"uptime_seconds": uptime,
+	})
 }
 
 // GET /api/v1/admin/search?q= — cross-entity search over users, orders, stores.

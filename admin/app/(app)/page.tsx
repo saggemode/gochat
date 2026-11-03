@@ -10,7 +10,7 @@ import { ServiceHealthGrid } from "@/components/dashboard/service-health"
 import { EChart, type ChartTokens } from "@/components/charts/echart"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePermissions } from "@/lib/use-permissions"
-import { formatDate, formatNaira } from "@/lib/format"
+import { formatCompact, formatDate, formatNaira } from "@/lib/format"
 import {
   getActivity,
   getGrowthSeries,
@@ -18,6 +18,7 @@ import {
   getMessageMix,
   getRevenueSeries,
   getServiceHealth,
+  getSystemMetrics,
 } from "@/lib/resources"
 
 export default function OverviewPage() {
@@ -30,6 +31,7 @@ export default function OverviewPage() {
   const mix = useQuery({ queryKey: ["messageMix"], queryFn: getMessageMix })
   const activity = useQuery({ queryKey: ["activity"], queryFn: getActivity })
   const health = useQuery({ queryKey: ["health"], queryFn: getServiceHealth })
+  const sys = useQuery({ queryKey: ["systemMetrics"], queryFn: getSystemMetrics, refetchInterval: 30_000 })
 
   const growthBuild = useCallback(
     (t: ChartTokens): echartsOption => {
@@ -217,8 +219,51 @@ export default function OverviewPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Gateway runtime metrics (in-process, no external Prometheus needed) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Gateway runtime</CardTitle>
+          <CardDescription>Live metrics from the API gateway process</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {sys.isLoading || !sys.data ? (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              <Metric label="Requests" value={formatCompact(sys.data.requestsTotal)} />
+              <Metric label="5xx errors" value={String(sys.data.requests5xx)} tone={sys.data.requests5xx > 0 ? "bad" : "ok"} />
+              <Metric label="Error rate" value={`${(sys.data.errorRate * 100).toFixed(2)}%`} tone={sys.data.errorRate > 0.05 ? "bad" : "ok"} />
+              <Metric label="Avg latency" value={`${sys.data.avgLatencyMs.toFixed(0)}ms`} />
+              <Metric label="Memory" value={`${sys.data.memoryMb.toFixed(0)} MB`} />
+              <Metric label="Uptime" value={formatUptime(sys.data.uptimeSeconds)} />
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
+}
+
+function Metric({ label, value, tone }: { label: string; value: string; tone?: "ok" | "bad" }) {
+  return (
+    <div className="rounded-lg border px-3 py-2">
+      <p className="text-muted-foreground text-xs">{label}</p>
+      <p className={tone === "bad" ? "text-destructive text-lg font-semibold" : "text-lg font-semibold"}>{value}</p>
+    </div>
+  )
+}
+
+function formatUptime(s: number): string {
+  if (s <= 0) return "—"
+  const d = Math.floor(s / 86400)
+  const h = Math.floor((s % 86400) / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  if (d > 0) return `${d}d ${h}h`
+  if (h > 0) return `${h}h ${m}m`
+  return `${m}m`
 }
 
 // Local alias to keep echarts option typing readable without importing the

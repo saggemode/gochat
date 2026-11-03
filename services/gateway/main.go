@@ -462,6 +462,7 @@ func main() {
 		admin.GET("/overview", adminHandler.Overview)
 		admin.GET("/metrics/growth", adminHandler.GrowthSeries)
 		admin.GET("/metrics/messages", adminHandler.MessageMix)
+		admin.GET("/metrics/system", adminHandler.SystemMetrics)
 		admin.GET("/activity", adminHandler.Activity)
 		admin.GET("/health", adminHandler.SystemHealth)
 		admin.GET("/search", adminHandler.Search)

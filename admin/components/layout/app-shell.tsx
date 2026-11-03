@@ -8,6 +8,7 @@ import { Topbar } from "@/components/layout/topbar"
 import { NAV } from "@/components/layout/nav"
 import { useSession } from "@/lib/auth"
 import { usePermissions } from "@/lib/use-permissions"
+import { useRealtime } from "@/lib/use-realtime"
 import { getDisputes, getReports } from "@/lib/resources"
 
 function titleFor(pathname: string): string {
@@ -22,6 +23,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  useRealtime()
 
   useEffect(() => {
     if (ready && !session) router.replace("/login")

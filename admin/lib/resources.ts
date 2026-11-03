@@ -335,6 +335,31 @@ export async function takedownReport(id: string, reason = ""): Promise<{ action:
   return apiFetch<{ action: string }>(`/api/v1/admin/reports/${id}/takedown`, { method: "POST", body: { reason } })
 }
 
+// ── system metrics (gateway runtime, in-process) ──────────────────────────
+export type SystemMetrics = {
+  requestsTotal: number
+  requests5xx: number
+  errorRate: number
+  avgLatencyMs: number
+  goroutines: number
+  memoryMb: number
+  uptimeSeconds: number
+}
+
+export async function getSystemMetrics(): Promise<SystemMetrics> {
+  if (USE_MOCKS) {
+    return delay({ requestsTotal: 1234, requests5xx: 2, errorRate: 0.0016, avgLatencyMs: 42, goroutines: 48, memoryMb: 120, uptimeSeconds: 36000 })
+  }
+  const r = await apiFetch<{
+    requests_total: number; requests_5xx: number; error_rate: number
+    avg_latency_ms: number; goroutines: number; memory_mb: number; uptime_seconds: number
+  }>("/api/v1/admin/metrics/system")
+  return {
+    requestsTotal: r.requests_total, requests5xx: r.requests_5xx, errorRate: r.error_rate,
+    avgLatencyMs: r.avg_latency_ms, goroutines: r.goroutines, memoryMb: r.memory_mb, uptimeSeconds: r.uptime_seconds,
+  }
+}
+
 // ── global search + session management ─────────────────────────────────────
 export type SearchResults = {
   users: { id: string; name: string; email: string; status: string }[]
