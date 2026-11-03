@@ -14,9 +14,16 @@ jobs:
     steps:
       - name: Ping gateway health endpoint
         run: |
-          for url in \
-            "https://gochat-kvpj.onrender.com/healthz" \
-            "https://gochat-gateway.onrender.com/healthz"; do
-            echo "Pinging $url"
-            curl -fsS --max-time 30 "$url" && echo " — OK" || echo " — unreachable (skipping)"
+          # A sleeping Render service can take ~30-50s to cold-start, so allow a
+          # generous timeout and a couple of retries to let it finish waking.
+          # The request resets Render's idle timer even if the first attempt is
+          # slow, so this keeps the service warm. Best-effort: never fail the job.
+          url="https://gochat-kvpj.onrender.com/healthz"
+          echo "Pinging $url"
+          for attempt in 1 2 3; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 75 "$url" || echo 000)
+            echo "attempt $attempt -> HTTP $code"
+            [ "$code" = "200" ] && { echo "warm ✔"; exit 0; }
+            sleep 10
           done
+          echo "did not get 200 (service was likely cold; the ping still triggered a wake)"
