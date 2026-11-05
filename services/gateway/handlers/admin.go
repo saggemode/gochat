@@ -1581,7 +1581,7 @@ func (h *AdminHandler) ForceLogout(c *gin.Context) {
 	}
 	id := c.Param("id")
 	tag, err := h.db.Exec(c.Request.Context(),
-		`UPDATE auth.refresh_tokens SET revoked = true WHERE user_id = $1 AND revoked = false`, id)
+		`UPDATE core.refresh_tokens SET revoked = true WHERE user_id = $1 AND revoked = false`, id)
 	if err != nil {
 		h.log.Error("force logout failed", zap.String("user_id", id), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to sign out user"})
@@ -1700,7 +1700,7 @@ func (h *AdminHandler) Broadcast(c *gin.Context) {
 
 	// Collect device tokens (capped to keep a single broadcast bounded).
 	rows, err := h.db.Query(c.Request.Context(),
-		`SELECT push_token FROM auth.user_push_tokens LIMIT 5000`)
+		`SELECT push_token FROM core.user_push_tokens LIMIT 5000`)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load device tokens"})
 		return

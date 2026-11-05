@@ -621,7 +621,7 @@ func (r *BusinessRepository) ListMarketplaceProducts(ctx context.Context, catego
 
 	// Hide listings from sellers the signed-in viewer has blocked.
 	if viewerID != "" {
-		whereClause += fmt.Sprintf(" AND p.owner_id NOT IN (SELECT blocked_id FROM auth.user_blocks WHERE blocker_id = $%d)", argIdx)
+		whereClause += fmt.Sprintf(" AND p.owner_id NOT IN (SELECT blocked_id FROM core.user_blocks WHERE blocker_id = $%d)", argIdx)
 		args = append(args, viewerID)
 		argIdx++
 	}

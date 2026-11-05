@@ -456,7 +456,7 @@ func (ns *NotificationService) sendSMSNotification(ctx context.Context, notifica
 // sendPushNotification delivers the notification as an FCM push to the user's
 // registered devices. It reuses pkg/fcm.SendToUser — the same path the gateway
 // uses for chat/call pushes — which resolves device tokens from
-// auth.user_push_tokens and degrades gracefully (no tokens → no-op) so a user
+// core.user_push_tokens and degrades gracefully (no tokens → no-op) so a user
 // without a device simply gets no push.
 func (ns *NotificationService) sendPushNotification(ctx context.Context, notification *Notification) error {
 	data := make(map[string]string, len(notification.Data)+1)

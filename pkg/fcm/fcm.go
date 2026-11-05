@@ -341,7 +341,7 @@ func GetPushTokensForUser(ctx context.Context, userID string) ([]string, error) 
 		return nil, errors.New("database pool unavailable")
 	}
 
-	rows, err := pool.Query(ctx, "SELECT push_token FROM auth.user_push_tokens WHERE user_id = $1", userID)
+	rows, err := pool.Query(ctx, "SELECT push_token FROM core.user_push_tokens WHERE user_id = $1", userID)
 	if err != nil {
 		return nil, err
 	}

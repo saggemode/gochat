@@ -137,10 +137,10 @@ func (r *StoryRepository) GetStoriesFeed(ctx context.Context, requesterID uuid.U
 	// stores they follow, and people they've had a two-way chat with (both sides have sent a
 	// message). Relies on all services sharing one database (social/business/chat schemas).
 	const visibility = `
-		AND s.user_id NOT IN (SELECT blocked_id FROM auth.user_blocks WHERE blocker_id = $1)
+		AND s.user_id NOT IN (SELECT blocked_id FROM core.user_blocks WHERE blocker_id = $1)
 		AND (
 		    s.user_id = $1
-		    OR s.user_id IN (SELECT contact_user_id FROM auth.user_contacts WHERE owner_id = $1)
+		    OR s.user_id IN (SELECT contact_user_id FROM core.user_contacts WHERE owner_id = $1)
 		    OR s.user_id IN (SELECT following_id FROM social.user_followers WHERE follower_id = $1)
 		    OR s.user_id IN (SELECT store_id FROM business.store_followers WHERE user_id = $1)
 		    OR s.user_id IN (

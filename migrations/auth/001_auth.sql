@@ -7,7 +7,7 @@
 SET search_path TO auth, core, public;
 
 -- ── Refresh Tokens ──────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS auth.refresh_tokens (
+CREATE TABLE IF NOT EXISTS core.refresh_tokens (
     id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id     UUID        NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
     jti         TEXT        NOT NULL UNIQUE,
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS auth.refresh_tokens (
 );
 
 -- ── User Ephemeral E2EE Prekeys ─────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS auth.user_prekeys (
+CREATE TABLE IF NOT EXISTS core.user_prekeys (
     user_id    UUID NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
     key_id     INT  NOT NULL,
     public_key TEXT NOT NULL,
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS auth.user_prekeys (
 );
 
 -- ── Push Tokens ─────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS auth.user_push_tokens (
+CREATE TABLE IF NOT EXISTS core.user_push_tokens (
     user_id    UUID        NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
     push_token TEXT        NOT NULL,
     platform   TEXT        NOT NULL,
@@ -35,18 +35,18 @@ CREATE TABLE IF NOT EXISTS auth.user_push_tokens (
 );
 
 -- ── User Blocks ─────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS auth.user_blocks (
+CREATE TABLE IF NOT EXISTS core.user_blocks (
     blocker_id UUID NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
     blocked_id UUID NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
     blocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (blocker_id, blocked_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_blocks_blocker ON auth.user_blocks(blocker_id);
-CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON auth.user_blocks(blocked_id);
+CREATE INDEX IF NOT EXISTS idx_user_blocks_blocker ON core.user_blocks(blocker_id);
+CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON core.user_blocks(blocked_id);
 
 -- ── Anonymous / Burner Identities ───────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS auth.anonymous_ids (
+CREATE TABLE IF NOT EXISTS core.anonymous_ids (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id      UUID NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
     alias        VARCHAR(100) NOT NULL UNIQUE,
@@ -55,10 +55,10 @@ CREATE TABLE IF NOT EXISTS auth.anonymous_ids (
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at   TIMESTAMPTZ
 );
-CREATE INDEX IF NOT EXISTS idx_anon_user ON auth.anonymous_ids(user_id);
+CREATE INDEX IF NOT EXISTS idx_anon_user ON core.anonymous_ids(user_id);
 
 -- ── Encrypted Cloud Backups ─────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS auth.encrypted_backups (
+CREATE TABLE IF NOT EXISTS core.encrypted_backups (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id       UUID NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
     backup_key    TEXT NOT NULL,
@@ -70,10 +70,10 @@ CREATE TABLE IF NOT EXISTS auth.encrypted_backups (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     completed_at  TIMESTAMPTZ
 );
-CREATE INDEX IF NOT EXISTS idx_backups_user ON auth.encrypted_backups(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_backups_user ON core.encrypted_backups(user_id, created_at DESC);
 
 -- ── Multi-Device Sessions ───────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS auth.device_sessions (
+CREATE TABLE IF NOT EXISTS core.device_sessions (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id       UUID NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
     device_name   VARCHAR(200) NOT NULL,
@@ -85,10 +85,10 @@ CREATE TABLE IF NOT EXISTS auth.device_sessions (
     is_active     BOOLEAN DEFAULT TRUE,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX IF NOT EXISTS idx_device_user ON auth.device_sessions(user_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_device_user ON core.device_sessions(user_id, is_active);
 
-CREATE TABLE IF NOT EXISTS auth.device_sync_cursors (
-    device_id       UUID NOT NULL REFERENCES auth.device_sessions(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS core.device_sync_cursors (
+    device_id       UUID NOT NULL REFERENCES core.device_sessions(id) ON DELETE CASCADE,
     conversation_id UUID NOT NULL,
     last_message_id UUID,
     synced_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS auth.device_sync_cursors (
 );
 
 -- ── Granular Privacy Settings ───────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS auth.privacy_settings (
+CREATE TABLE IF NOT EXISTS core.privacy_settings (
     user_id               UUID PRIMARY KEY REFERENCES core.users(id) ON DELETE CASCADE,
     last_seen_visibility  VARCHAR(20) DEFAULT 'everyone',
     profile_photo_visibility VARCHAR(20) DEFAULT 'everyone',
@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS auth.privacy_settings (
 );
 
 -- ── Stealth Mode Configuration ──────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS auth.stealth_config (
+CREATE TABLE IF NOT EXISTS core.stealth_config (
     user_id           UUID PRIMARY KEY REFERENCES core.users(id) ON DELETE CASCADE,
     hide_from_recents BOOLEAN DEFAULT FALSE,
     disguise_icon     VARCHAR(50),
