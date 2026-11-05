@@ -273,53 +273,86 @@ class ChatRepository @Inject constructor(
                 val currentUserId = tokenManager.userId ?: ""
                 val conv = dao.getConversationById(convId)
                 val clearedAt = conv?.clearedAt ?: 0L
-                val messages = rawList.mapNotNull { element ->
-                    if (element is JsonObject) {
-                        val msg = Message.fromJson(element, currentUserId)
-                        val localExisting = dao.getMessageById(msg.id)
-                        val isDeletedForMe = (localExisting?.deletedForMe == true) ||
-                                (clearedAt > 0L && msg.createdAt <= clearedAt && !msg.isStarred && localExisting?.isStarred != true)
-                        val isDeleted = (localExisting?.isDeleted == true) || msg.isDeleted
-                        val isStarred = if (isDeleted) false else (localExisting?.isStarred ?: msg.isStarred)
-                        val isPinned = if (isDeleted) false else (localExisting?.isPinned ?: msg.isPinned)
-                        val contentToUse = if (isDeleted) {
-                            "This message was deleted"
-                        } else if (localExisting != null && localExisting.content.isNotBlank() && !isBase64Ciphertext(localExisting.content)) {
-                            localExisting.content
-                        } else if (msg.isMe) {
-                            msg.content
-                        } else {
-                            tryDecryptMessage(msg).content
-                        }
-                        // Preserve the highest message status – never downgrade
-                        // (e.g. local READ must not revert to server's SENT)
-                        // Priority: SENDING(0) < FAILED(1) < SENT(2) < DELIVERED(3) < READ(4)
-                        val mergedStatus = if (localExisting != null) {
-                            val priority = mapOf(
-                                MessageStatus.SENDING to 0,
-                                MessageStatus.FAILED to 1,
-                                MessageStatus.SENT to 2,
-                                MessageStatus.DELIVERED to 3,
-                                MessageStatus.READ to 4
-                            )
-                            val localPri = priority[localExisting.status] ?: 0
-                            val serverPri = priority[msg.status] ?: 0
-                            if (localPri >= serverPri) localExisting.status else msg.status
-                        } else {
-                            msg.status
-                        }
+                // Explicit loop (not mapNotNull) so we can call the suspend decryptors:
+                // the HTTP sync path must decrypt text (1:1 + group) AND media, the same
+                // way the live WebSocket path does — otherwise anything received while the
+                // app was closed stays encrypted / shows a placeholder until re-received.
+                val messages = mutableListOf<Message>()
+                for (element in rawList) {
+                    if (element !is JsonObject) continue
+                    val msg = Message.fromJson(element, currentUserId)
 
+                    // Group sender-key distribution control messages are never displayed;
+                    // process any addressed to us so a missed live SKD still lands on sync.
+                    if (msg.content.startsWith(groupSkdMarker)) {
+                        if (!msg.isMe) handleGroupKeyDistribution(msg)
+                        continue
+                    }
+
+                    val localExisting = dao.getMessageById(msg.id)
+                    val isDeletedForMe = (localExisting?.deletedForMe == true) ||
+                            (clearedAt > 0L && msg.createdAt <= clearedAt && !msg.isStarred && localExisting?.isStarred != true)
+                    val isDeleted = (localExisting?.isDeleted == true) || msg.isDeleted
+                    val isStarred = if (isDeleted) false else (localExisting?.isStarred ?: msg.isStarred)
+                    val isPinned = if (isDeleted) false else (localExisting?.isPinned ?: msg.isPinned)
+
+                    // Decrypt received text + media heuristically (not gated on the local
+                    // E2EESettings flag — the recipient often didn't create the chat).
+                    var decrypted = msg
+                    if (!isDeleted && !msg.isMe) {
+                        decrypted = if (conv != null && !conv.isDirect) tryDecryptGroupMessage(msg) else tryDecryptMessage(msg)
+                        decrypted = decryptIncomingMedia(decrypted)
+                    }
+
+                    val hasGoodLocalText = localExisting != null &&
+                            localExisting.content.isNotBlank() && !isBase64Ciphertext(localExisting.content)
+                    val contentToUse = if (isDeleted) {
+                        "This message was deleted"
+                    } else if (hasGoodLocalText) {
+                        localExisting!!.content
+                    } else if (msg.isMe) {
+                        msg.content
+                    } else {
+                        decrypted.content
+                    }
+
+                    // Prefer an already-decrypted local media file (a non-http path) over
+                    // re-downloading; else use the freshly decrypted media path.
+                    val localMediaGood = localExisting?.mediaUrl?.let { it.isNotBlank() && !it.startsWith("http") } == true
+                    val mediaToUse = if (isDeleted) null
+                        else if (localMediaGood) localExisting!!.mediaUrl
+                        else decrypted.mediaUrl
+
+                    // Preserve the highest message status – never downgrade
+                    // (e.g. local READ must not revert to server's SENT)
+                    // Priority: SENDING(0) < FAILED(1) < SENT(2) < DELIVERED(3) < READ(4)
+                    val mergedStatus = if (localExisting != null) {
+                        val priority = mapOf(
+                            MessageStatus.SENDING to 0,
+                            MessageStatus.FAILED to 1,
+                            MessageStatus.SENT to 2,
+                            MessageStatus.DELIVERED to 3,
+                            MessageStatus.READ to 4
+                        )
+                        val localPri = priority[localExisting.status] ?: 0
+                        val serverPri = priority[msg.status] ?: 0
+                        if (localPri >= serverPri) localExisting.status else msg.status
+                    } else {
+                        msg.status
+                    }
+
+                    messages.add(
                         msg.copy(
                             content = contentToUse,
                             status = mergedStatus,
                             isDeleted = isDeleted,
-                            mediaUrl = if (isDeleted) null else msg.mediaUrl,
+                            mediaUrl = mediaToUse,
                             mediaThumbnail = if (isDeleted) null else msg.mediaThumbnail,
                             deletedForMe = isDeletedForMe,
                             isStarred = isStarred,
                             isPinned = isPinned
                         )
-                    } else null
+                    )
                 }
                 dao.insertMessages(messages)
                 Result.success(messages)
@@ -516,10 +549,14 @@ class ChatRepository @Inject constructor(
             }
 
             // For E2EE media, the wire `content` carries the (E2EE-encrypted) media
-            // key instead of a caption, so the recipient can decrypt the blob.
+            // key instead of a caption, so the recipient can decrypt the blob. We also
+            // carry the original filename E2EE (key \u0001 filename) so the recipient can
+            // restore the real name/extension — the server only ever sees ciphertext.
             if (e2eeMediaKeyB64 != null && !e2eeTarget.isNullOrBlank()) {
-                val wrapped = encryptionManager.encryptMessage(e2eeTarget, e2eeMediaKeyB64)
-                if (wrapped == e2eeMediaKeyB64) {
+                val origName = cachedMediaUri?.let { resolveDisplayName(it) }
+                val keyPayload = e2eeMediaKeyB64 + (origName?.takeIf { it.isNotBlank() }?.let { "\u0001$it" } ?: "")
+                val wrapped = encryptionManager.encryptMessage(e2eeTarget, keyPayload)
+                if (wrapped == keyPayload) {
                     val failed = createOptimisticMessage(
                         conversationId, content, type, mediaUrl,
                         replyToId, replyToText, replyToSenderName,
@@ -593,10 +630,33 @@ class ChatRepository @Inject constructor(
                 } else {
                     MessageStatus.SENT
                 }
+                // E2EE media: the server copy is ciphertext, so the sender must NOT
+                // point at parsed.mediaUrl (the encrypted blob URL) or they'd render
+                // garbage. Persist the plaintext locally (survives restart) and point
+                // the sender's own copy at that file.
+                val senderLocalMediaUrl: String? = if (e2eeMediaKeyB64 != null && cachedMediaBytes != null) {
+                    try {
+                        val dir = java.io.File(context.cacheDir, "e2ee_media").apply { if (!exists()) mkdirs() }
+                        val origName = cachedMediaUri?.let { resolveDisplayName(it) }
+                            ?.replace(Regex("[^A-Za-z0-9._-]"), "_")?.takeIf { it.isNotBlank() }
+                        val fileName = if (origName != null) "${parsed.id}_$origName" else {
+                            val ext = when (localMsg.type) {
+                                MessageType.IMAGE -> "jpg"; MessageType.VIDEO -> "mp4"
+                                MessageType.VOICE, MessageType.AUDIO -> "m4a"; else -> "bin"
+                            }
+                            "${parsed.id}.$ext"
+                        }
+                        val out = java.io.File(dir, fileName)
+                        out.writeBytes(cachedMediaBytes)
+                        out.absolutePath
+                    } catch (_: Exception) { mediaUrl }
+                } else null
+
                 val finalMsg = parsed.copy(
                     isMe = true,
                     content = content, // Preserve local plaintext
-                    mediaUrl = if (!parsed.mediaUrl.isNullOrBlank()) parsed.mediaUrl else finalMediaUrl,
+                    mediaUrl = senderLocalMediaUrl
+                        ?: if (!parsed.mediaUrl.isNullOrBlank()) parsed.mediaUrl else finalMediaUrl,
                     blurHash = if (!parsed.blurHash.isNullOrBlank()) parsed.blurHash else blurHash,
                     status = resolvedStatus,
                     isViewOnce = isViewOnce || parsed.isViewOnce,
@@ -649,6 +709,24 @@ class ChatRepository @Inject constructor(
                 .build()
             workManager.enqueueUniqueWork("msg_sync_$messageId", ExistingWorkPolicy.REPLACE, syncRequest)
         } catch (_: Exception) {}
+    }
+
+    /** Resolve a human-readable display name (with extension) for a content/file URI. */
+    private fun resolveDisplayName(uri: Uri): String? {
+        try {
+            if (uri.scheme == "content") {
+                context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                    if (c.moveToFirst()) {
+                        val idx = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        if (idx >= 0) {
+                            val name = c.getString(idx)
+                            if (!name.isNullOrBlank()) return name
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+        return uri.lastPathSegment?.substringAfterLast('/')?.takeIf { it.isNotBlank() }
     }
 
     private fun readUriBytes(uri: Uri): ByteArray? {
@@ -1306,12 +1384,23 @@ class ChatRepository @Inject constructor(
         if (message.isMe || message.type == MessageType.TEXT) return@withContext message
         val url = message.mediaUrl
         if (url.isNullOrBlank() || !url.startsWith("http")) return@withContext message
-        if (!com.example.gochat.core.crypto.E2EESettings.isEnabled(context, message.conversationId)) return@withContext message
+        // NOTE: decryption is heuristic (like tryDecryptMessage), NOT gated on the
+        // recipient's local E2EESettings flag. The recipient often didn't create the
+        // conversation, so that flag is false on their device — gating on it left
+        // E2EE media undecryptable (shown as ciphertext + placeholder). Instead we
+        // detect an E2EE media message by: content is a base64 ciphertext that our
+        // Signal session decrypts to a valid media key. Non-E2EE media (plaintext
+        // caption / no session) falls through unchanged.
         val keyCipher = message.content.trim()
         if (!isBase64Ciphertext(keyCipher)) return@withContext message
 
-        val keyB64 = encryptionManager.decryptMessage(message.senderId, keyCipher)
-        if (keyB64.isBlank() || keyB64 == keyCipher) return@withContext message // can't decrypt yet
+        val decryptedPayload = encryptionManager.decryptMessage(message.senderId, keyCipher)
+        if (decryptedPayload.isBlank() || decryptedPayload == keyCipher) return@withContext message // can't decrypt yet
+
+        // Payload is `base64(iv||key)` optionally followed by `\u0001<original filename>`.
+        val sep = decryptedPayload.indexOf('\u0001')
+        val keyB64 = if (sep >= 0) decryptedPayload.substring(0, sep) else decryptedPayload
+        val origName = if (sep >= 0) decryptedPayload.substring(sep + 1).takeIf { it.isNotBlank() } else null
 
         try {
             val req = okhttp3.Request.Builder().url(url).build()
@@ -1320,12 +1409,22 @@ class ChatRepository @Inject constructor(
                 resp.body?.bytes() ?: return@withContext message
             }
             val plain = com.example.gochat.core.crypto.MediaCrypto.open(bytes, keyB64)
-            val ext = when (message.type) {
-                MessageType.IMAGE -> "jpg"; MessageType.VIDEO -> "mp4"
-                MessageType.VOICE, MessageType.AUDIO -> "m4a"; else -> "bin"
-            }
             val dir = java.io.File(context.cacheDir, "e2ee_media").apply { if (!exists()) mkdirs() }
-            val out = java.io.File(dir, "${message.id}.$ext")
+            // Prefer the original filename (restores name + extension for documents);
+            // fall back to <id>.<ext-by-type>. Sanitize and prefix with the message id
+            // to avoid collisions between files that share a name.
+            val fileName = origName
+                ?.replace(Regex("[^A-Za-z0-9._-]"), "_")
+                ?.takeIf { it.isNotBlank() }
+                ?.let { "${message.id}_$it" }
+                ?: run {
+                    val ext = when (message.type) {
+                        MessageType.IMAGE -> "jpg"; MessageType.VIDEO -> "mp4"
+                        MessageType.VOICE, MessageType.AUDIO -> "m4a"; else -> "bin"
+                    }
+                    "${message.id}.$ext"
+                }
+            val out = java.io.File(dir, fileName)
             out.writeBytes(plain)
             message.copy(mediaUrl = out.absolutePath, content = "")
         } catch (e: Exception) {
