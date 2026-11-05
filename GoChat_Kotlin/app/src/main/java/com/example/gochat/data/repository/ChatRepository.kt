@@ -180,11 +180,10 @@ class ChatRepository @Inject constructor(
                 val convJson = data["conversation"]?.jsonObject ?: data
                 val conv = Conversation.fromJson(convJson, tokenManager.userId ?: "")
                 dao.insertConversation(conv)
-                // Phase 1 of the E2EE migration: new 1:1 chats are end-to-end
-                // encrypted by default (existing chats keep their current setting).
-                if (!isGroup && conv.isDirect) {
-                    com.example.gochat.core.crypto.E2EESettings.setEnabled(context, conv.id, true)
-                }
+                // E2EE migration: new chats are end-to-end encrypted by default —
+                // 1:1 via pairwise Signal sessions, groups via sender keys
+                // (existing chats keep their current setting).
+                com.example.gochat.core.crypto.E2EESettings.setEnabled(context, conv.id, true)
                 Result.success(conv)
             } else {
                 Result.failure(Exception("Failed to create conversation (${response.code()})"))
@@ -390,6 +389,26 @@ class ChatRepository @Inject constructor(
             }
         }
 
+        // Group E2EE (Signal sender keys) for text messages. Ensure this device's
+        // sender key is distributed to all members, then encrypt with the group
+        // cipher. No plaintext fallback (fail instead of leaking).
+        if (conv != null && !conv.isDirect && type == 0 &&
+            com.example.gochat.core.crypto.E2EESettings.isEnabled(context, conversationId)
+        ) {
+            ensureGroupSenderKeyDistributed(conv, currentUserId)
+            val enc = encryptionManager.encryptGroupMessage(conversationId, content)
+            if (enc == null) {
+                val failed = createOptimisticMessage(
+                    conversationId, content, type, mediaUrl,
+                    replyToId, replyToText, replyToSenderName,
+                    replyToMediaUrl, replyToMediaType
+                ).copy(status = MessageStatus.FAILED)
+                dao.insertMessage(failed)
+                return Result.success(failed)
+            }
+            encryptedContent = enc
+        }
+
         // 1. Pre-read media bytes and generate BlurHash BEFORE the optimistic insert,
         //    so the UI immediately shows the blurry placeholder while uploading.
         var cachedMediaBytes: ByteArray? = null
@@ -449,6 +468,12 @@ class ChatRepository @Inject constructor(
 
         return try {
             // 3. Upload media using the pre-cached bytes (no second read needed)
+            // Is this an E2EE direct conversation? (drives media encryption below)
+            val e2eeDirect = conv != null && conv.isDirect &&
+                com.example.gochat.core.crypto.E2EESettings.isEnabled(context, conversationId)
+            val e2eeTarget = if (e2eeDirect) conv!!.memberIds.find { it != currentUserId } else null
+            var e2eeMediaKeyB64: String? = null
+
             var finalMediaUrl = mediaUrl
             if (cachedMediaBytes != null && cachedMediaUri != null) {
                 val mimeType = when (localMsg.type) {
@@ -457,16 +482,53 @@ class ChatRepository @Inject constructor(
                     MessageType.VOICE, MessageType.AUDIO -> "audio/mp4"
                     else -> "application/octet-stream"
                 }
-                val uploaded = uploadMedia(cachedMediaBytes, mimeType, cachedMediaUri.lastPathSegment ?: "media.jpg")
-                if (!uploaded.isNullOrBlank()) {
+                if (e2eeDirect && !e2eeTarget.isNullOrBlank()) {
+                    // E2EE media: encrypt the blob with a random key, upload only the
+                    // ciphertext, and carry the key E2EE in `content` (set below). No
+                    // plaintext data-URI fallback — if the upload fails we fail the
+                    // message rather than leak the media in the clear.
+                    val sealed = com.example.gochat.core.crypto.MediaCrypto.seal(cachedMediaBytes)
+                    e2eeMediaKeyB64 = sealed.keyB64
+                    val uploaded = uploadMedia(sealed.ciphertext, "application/octet-stream",
+                        (cachedMediaUri.lastPathSegment ?: "media") + ".enc")
+                    if (uploaded.isNullOrBlank()) {
+                        val failed = createOptimisticMessage(
+                            conversationId, content, type, mediaUrl,
+                            replyToId, replyToText, replyToSenderName,
+                            replyToMediaUrl, replyToMediaType
+                        ).copy(status = MessageStatus.FAILED, mediaUrl = mediaUrl)
+                        dao.insertMessage(failed)
+                        return Result.success(failed)
+                    }
                     finalMediaUrl = uploaded
-                } else if (localMsg.type == MessageType.IMAGE) {
-                    // Critical fallback: If CDN/storage is unconfigured, offline, or returns error (e.g. Render no-storage),
-                    // fallback to standard Base64 Data URI so recipient immediately renders the real photo,
-                    // rather than failing on an unreachable local device path.
-                    val b64 = android.util.Base64.encodeToString(cachedMediaBytes, android.util.Base64.NO_WRAP)
-                    finalMediaUrl = "data:$mimeType;base64,$b64"
+                } else {
+                    val uploaded = uploadMedia(cachedMediaBytes, mimeType, cachedMediaUri.lastPathSegment ?: "media.jpg")
+                    if (!uploaded.isNullOrBlank()) {
+                        finalMediaUrl = uploaded
+                    } else if (localMsg.type == MessageType.IMAGE) {
+                        // Critical fallback: If CDN/storage is unconfigured, offline, or returns error (e.g. Render no-storage),
+                        // fallback to standard Base64 Data URI so recipient immediately renders the real photo,
+                        // rather than failing on an unreachable local device path.
+                        val b64 = android.util.Base64.encodeToString(cachedMediaBytes, android.util.Base64.NO_WRAP)
+                        finalMediaUrl = "data:$mimeType;base64,$b64"
+                    }
                 }
+            }
+
+            // For E2EE media, the wire `content` carries the (E2EE-encrypted) media
+            // key instead of a caption, so the recipient can decrypt the blob.
+            if (e2eeMediaKeyB64 != null && !e2eeTarget.isNullOrBlank()) {
+                val wrapped = encryptionManager.encryptMessage(e2eeTarget, e2eeMediaKeyB64)
+                if (wrapped == e2eeMediaKeyB64) {
+                    val failed = createOptimisticMessage(
+                        conversationId, content, type, mediaUrl,
+                        replyToId, replyToText, replyToSenderName,
+                        replyToMediaUrl, replyToMediaType
+                    ).copy(status = MessageStatus.FAILED, mediaUrl = mediaUrl)
+                    dao.insertMessage(failed)
+                    return Result.success(failed)
+                }
+                encryptedContent = wrapped
             }
 
             // CRITICAL SANITIZATION: Ensure the mediaUrl sent across the wire is NEVER a local device path (/data/..., /storage/..., file://)
@@ -662,6 +724,13 @@ class ChatRepository @Inject constructor(
                 return null
             }
 
+            // Group sender-key distribution control message: process (if from
+            // another member) and never display it. Our own echo is also dropped.
+            if (msg.content.startsWith(groupSkdMarker)) {
+                if (!msg.isMe) handleGroupKeyDistribution(msg)
+                return null
+            }
+
             // Guard: preserve locally-stored plaintext to prevent WS echo from
             // overwriting our decrypted/original content with server ciphertext.
             val localExisting = dao.getMessageById(msg.id)
@@ -686,8 +755,17 @@ class ChatRepository @Inject constructor(
             } else if (msg.isMe) {
                 // Own message echo with no local plaintext — keep as-is
             } else {
-                // Received message — attempt decryption
-                msg = tryDecryptMessage(msg)
+                // Received message — attempt decryption (text), then media.
+                // Groups use sender-key (group) decryption; 1:1 uses pairwise.
+                val incomingConv = dao.getConversationById(msg.conversationId)
+                msg = if (incomingConv != null && !incomingConv.isDirect &&
+                    com.example.gochat.core.crypto.E2EESettings.isEnabled(context, msg.conversationId)
+                ) {
+                    tryDecryptGroupMessage(msg)
+                } else {
+                    tryDecryptMessage(msg)
+                }
+                msg = decryptIncomingMedia(msg)
             }
 
             if (localExisting != null) {
@@ -1088,6 +1166,94 @@ class ChatRepository @Inject constructor(
         }
     }
 
+    // ── Group E2EE (Signal sender keys) distribution + decrypt ──────────────
+    // A sender-key distribution message (SKDM) is sent as an ordinary group
+    // "message" whose content carries this marker + a base64 JSON payload:
+    //   { "gid": <groupId>, "keys": { <memberId>: <1:1-E2EE-encrypted SKDM>, … } }
+    // Each member's SKDM is wrapped with that member's pairwise 1:1 session so
+    // only they can read it. Receivers intercept the marker, decrypt their own
+    // entry, process it, and never display the control message.
+    private val groupSkdMarker = "\u0001GKD1:"
+    private fun groupSkdPrefs() =
+        context.getSharedPreferences("gochat_group_e2ee", Context.MODE_PRIVATE)
+
+    /**
+     * Ensure this device's group sender key has been created and distributed to
+     * the current member set. Re-distributes (re-keys) whenever the member set
+     * changes. Sends the SKDM as a dedicated control message via [api]. Best
+     * effort: failures are swallowed so sending never hard-fails here (the
+     * message send itself will fail-closed if encryption can't proceed).
+     */
+    private suspend fun ensureGroupSenderKeyDistributed(conv: Conversation, myId: String) {
+        val others = conv.memberIds.filter { it.isNotBlank() && it != myId }.distinct()
+        if (others.isEmpty()) return
+        val signature = others.sorted().joinToString(",")
+        val prefs = groupSkdPrefs()
+        val key = "skd_${conv.id}"
+        // Already distributed to this exact member set → nothing to do.
+        if (prefs.getString(key, null) == signature) return
+
+        val skdm = encryptionManager.createGroupSenderKey(conv.id) ?: return
+        val keysObj = buildJsonObject {
+            for (m in others) {
+                // Wrap the SKDM under each member's pairwise session. If no session
+                // could be established, encryptMessage returns the plaintext
+                // unchanged — skip that member (they'll be re-keyed on next change).
+                val wrapped = encryptionManager.encryptMessage(m, skdm)
+                if (wrapped != skdm) put(m, wrapped)
+            }
+        }
+        if (keysObj.isEmpty()) return // couldn't reach any member yet; retry on next send
+
+        val payload = buildJsonObject {
+            put("gid", conv.id)
+            put("keys", keysObj)
+        }.toString()
+        val encoded = Base64.encodeToString(payload.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+        val body = buildJsonObject {
+            put("content", groupSkdMarker + encoded)
+            put("type", 0)
+        }
+        try {
+            api.sendMessage(conv.id, body)
+            prefs.edit().putString(key, signature).apply()
+        } catch (e: Exception) {
+            Log.w("ChatRepository", "SKDM distribution failed for ${conv.id}: ${e.message}")
+        }
+    }
+
+    /** Handle an incoming sender-key distribution control message: decrypt our
+     *  own entry and process it so we can decrypt that sender's group messages. */
+    private suspend fun handleGroupKeyDistribution(message: Message) {
+        try {
+            val encoded = message.content.removePrefix(groupSkdMarker)
+            val jsonStr = String(Base64.decode(encoded, Base64.NO_WRAP), Charsets.UTF_8)
+            val parser = Json { ignoreUnknownKeys = true; isLenient = true }
+            val obj = parser.parseToJsonElement(jsonStr).jsonObject
+            val gid = obj["gid"]?.jsonPrimitive?.contentOrNull ?: return
+            val myId = tokenManager.userId ?: return
+            val myEntry = obj["keys"]?.jsonObject?.get(myId)?.jsonPrimitive?.contentOrNull ?: return
+            val skdm = encryptionManager.decryptMessage(message.senderId, myEntry)
+            if (skdm.isNotBlank() && skdm != myEntry) {
+                encryptionManager.processGroupSenderKey(gid, message.senderId, skdm)
+            }
+        } catch (e: Exception) {
+            Log.w("ChatRepository", "handleGroupKeyDistribution failed: ${e.message}")
+        }
+    }
+
+    /** Decrypt a received group text message with the sender's group cipher.
+     *  Returns the message unchanged if we can't decrypt yet (SKDM not arrived). */
+    private fun tryDecryptGroupMessage(message: Message): Message {
+        if (message.type != MessageType.TEXT || message.isMe || message.content.isBlank()) {
+            return message
+        }
+        val trimmed = message.content.trim()
+        if (!isBase64Ciphertext(trimmed)) return message
+        val decrypted = encryptionManager.decryptGroupMessage(message.conversationId, message.senderId, trimmed)
+        return if (!decrypted.isNullOrBlank()) message.copy(content = decrypted) else message
+    }
+
     private fun tryDecryptMessage(message: Message): Message {
         if (message.type != MessageType.TEXT || message.isMe || message.content.isBlank()) {
             return message
@@ -1108,6 +1274,44 @@ class ChatRepository @Inject constructor(
             return message
         }
         return message
+    }
+
+    /**
+     * For a received E2EE media message, the wire `content` is the E2EE-encrypted
+     * media key and `mediaUrl` points to the encrypted blob. Decrypt the key,
+     * download the ciphertext, decrypt it to a local file, and repoint mediaUrl
+     * at that file so the UI renders it normally. No-op for non-E2EE / own / text.
+     */
+    private suspend fun decryptIncomingMedia(message: Message): Message = withContext(Dispatchers.IO) {
+        if (message.isMe || message.type == MessageType.TEXT) return@withContext message
+        val url = message.mediaUrl
+        if (url.isNullOrBlank() || !url.startsWith("http")) return@withContext message
+        if (!com.example.gochat.core.crypto.E2EESettings.isEnabled(context, message.conversationId)) return@withContext message
+        val keyCipher = message.content.trim()
+        if (!isBase64Ciphertext(keyCipher)) return@withContext message
+
+        val keyB64 = encryptionManager.decryptMessage(message.senderId, keyCipher)
+        if (keyB64.isBlank() || keyB64 == keyCipher) return@withContext message // can't decrypt yet
+
+        try {
+            val req = okhttp3.Request.Builder().url(url).build()
+            val bytes = NetworkModule.getOkHttpClient(context).newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext message
+                resp.body?.bytes() ?: return@withContext message
+            }
+            val plain = com.example.gochat.core.crypto.MediaCrypto.open(bytes, keyB64)
+            val ext = when (message.type) {
+                MessageType.IMAGE -> "jpg"; MessageType.VIDEO -> "mp4"
+                MessageType.VOICE, MessageType.AUDIO -> "m4a"; else -> "bin"
+            }
+            val dir = java.io.File(context.cacheDir, "e2ee_media").apply { if (!exists()) mkdirs() }
+            val out = java.io.File(dir, "${message.id}.$ext")
+            out.writeBytes(plain)
+            message.copy(mediaUrl = out.absolutePath, content = "")
+        } catch (e: Exception) {
+            Log.w("ChatRepository", "E2EE media decrypt failed for ${message.id}: ${e.message}")
+            message
+        }
     }
 
     private fun isBase64Ciphertext(text: String): Boolean {

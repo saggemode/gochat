@@ -163,4 +163,64 @@ class EncryptionManager @Inject constructor(
             }
         }
     }
+
+    // ── Group messaging (Signal "sender keys") ──────────────────────────────
+    // Each member has its own sender key per group. To send, a member creates a
+    // sender key and distributes the resulting SenderKeyDistributionMessage
+    // (SKDM) to every other member over their pairwise 1:1 session; recipients
+    // process it, then can decrypt that member's group messages.
+
+    private fun groupSenderName(groupId: String, senderUserId: String) =
+        org.whispersystems.libsignal.groups.SenderKeyName(groupId, SignalProtocolAddress(senderUserId, 1))
+
+    /** Create (or return existing) this device's sender key for [groupId];
+     *  returns the base64 SKDM to distribute to members. */
+    suspend fun createGroupSenderKey(groupId: String): String? = withContext(Dispatchers.IO) {
+        val myId = tokenManager.userId ?: return@withContext null
+        try {
+            val name = groupSenderName(groupId, myId)
+            val builder = org.whispersystems.libsignal.groups.GroupSessionBuilder(signalStore)
+            val skdm = builder.create(name)
+            Base64.encodeToString(skdm.serialize(), Base64.NO_WRAP)
+        } catch (e: Exception) {
+            Log.e("EncryptionManager", "createGroupSenderKey failed: ${e.message}")
+            null
+        }
+    }
+
+    /** Process a member's SKDM so we can later decrypt their group messages. */
+    suspend fun processGroupSenderKey(groupId: String, senderUserId: String, skdmB64: String) = withContext(Dispatchers.IO) {
+        try {
+            val name = groupSenderName(groupId, senderUserId)
+            val skdm = org.whispersystems.libsignal.protocol.SenderKeyDistributionMessage(Base64.decode(skdmB64, Base64.NO_WRAP))
+            org.whispersystems.libsignal.groups.GroupSessionBuilder(signalStore).process(name, skdm)
+        } catch (e: Exception) {
+            Log.e("EncryptionManager", "processGroupSenderKey failed: ${e.message}")
+        }
+    }
+
+    /** Encrypt a group message with this device's sender key. Returns null if no
+     *  sender key exists yet (caller must create + distribute one first). */
+    suspend fun encryptGroupMessage(groupId: String, plainText: String): String? = withContext(Dispatchers.IO) {
+        val myId = tokenManager.userId ?: return@withContext null
+        try {
+            val cipher = org.whispersystems.libsignal.groups.GroupCipher(signalStore, groupSenderName(groupId, myId))
+            Base64.encodeToString(cipher.encrypt(plainText.toByteArray(Charsets.UTF_8)), Base64.NO_WRAP)
+        } catch (e: Exception) {
+            Log.e("EncryptionManager", "encryptGroupMessage failed: ${e.message}")
+            null
+        }
+    }
+
+    /** Decrypt a group message from [senderUserId]. Returns null if we don't yet
+     *  hold that sender's key (their SKDM hasn't arrived/processed). */
+    fun decryptGroupMessage(groupId: String, senderUserId: String, base64Ciphertext: String): String? {
+        return try {
+            val cipher = org.whispersystems.libsignal.groups.GroupCipher(signalStore, groupSenderName(groupId, senderUserId))
+            String(cipher.decrypt(Base64.decode(base64Ciphertext, Base64.NO_WRAP)), Charsets.UTF_8)
+        } catch (e: Exception) {
+            Log.w("EncryptionManager", "decryptGroupMessage failed (no sender key yet?): ${e.message}")
+            null
+        }
+    }
 }

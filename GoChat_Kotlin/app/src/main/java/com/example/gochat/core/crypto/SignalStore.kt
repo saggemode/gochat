@@ -5,10 +5,26 @@ import android.util.Base64
 import org.whispersystems.libsignal.*
 import org.whispersystems.libsignal.state.*
 import org.whispersystems.libsignal.util.KeyHelper
+import org.whispersystems.libsignal.groups.SenderKeyName
+import org.whispersystems.libsignal.groups.state.SenderKeyRecord
+import org.whispersystems.libsignal.groups.state.SenderKeyStore
 
-class SignalStore(context: Context) : SignalProtocolStore {
+class SignalStore(context: Context) : SignalProtocolStore, SenderKeyStore {
 
     private val prefs = context.getSharedPreferences("signal_store", Context.MODE_PRIVATE)
+
+    // ── SenderKeyStore (group messaging) ─────────────────────────
+    private fun senderKeyId(name: SenderKeyName): String =
+        "senderkey_${name.groupId}_${name.sender.name}_${name.sender.deviceId}"
+
+    override fun storeSenderKey(senderKeyName: SenderKeyName, record: SenderKeyRecord) {
+        prefs.edit().putString(senderKeyId(senderKeyName), Base64.encodeToString(record.serialize(), Base64.DEFAULT)).apply()
+    }
+
+    override fun loadSenderKey(senderKeyName: SenderKeyName): SenderKeyRecord {
+        val encoded = prefs.getString(senderKeyId(senderKeyName), null) ?: return SenderKeyRecord()
+        return SenderKeyRecord(Base64.decode(encoded, Base64.DEFAULT))
+    }
 
     // ── IdentityKeyStore ─────────────────────────────────────────
 
