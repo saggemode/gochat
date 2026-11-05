@@ -86,7 +86,18 @@ func main() {
 	pollRepo := repository.NewPollRepository(db)
 
 	// ── Scheduler ─────────────────────────────────────────────────────────────
-	sched := scheduler.New(msgRepo, redisClient, log)
+	// Delete-after-delivery: keep an undelivered message at most this long
+	// (default 30 days, matching WhatsApp). CHAT_MESSAGE_RETENTION overrides,
+	// e.g. "720h" or "0" to disable the stale purge.
+	retention := 720 * time.Hour
+	if v := os.Getenv("CHAT_MESSAGE_RETENTION"); v != "" {
+		if d, perr := time.ParseDuration(v); perr == nil {
+			retention = d
+		} else {
+			log.Warn("invalid CHAT_MESSAGE_RETENTION, using default", zap.String("value", v))
+		}
+	}
+	sched := scheduler.New(msgRepo, redisClient, retention, log)
 	sched.Start()
 	defer sched.Stop()
 

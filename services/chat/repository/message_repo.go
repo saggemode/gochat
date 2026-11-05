@@ -951,6 +951,76 @@ func (r *MessageRepository) GetExpiredMessages(ctx context.Context) ([]*Message,
 	return scanMessages(rows)
 }
 
+// ── Delete-after-delivery ──────────────────────────────────────────────────────
+
+// RecordDeliveries marks the given messages as delivered to userID (idempotent).
+// A recipient never "delivers" their own message, so the sender is skipped.
+// Returns nil on an empty set.
+func (r *MessageRepository) RecordDeliveries(ctx context.Context, userID uuid.UUID, msgIDs []uuid.UUID) error {
+	if len(msgIDs) == 0 {
+		return nil
+	}
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO message_deliveries (message_id, user_id)
+		SELECT m.id, $2
+		FROM messages m
+		WHERE m.id = ANY($1) AND m.sender_id <> $2
+		ON CONFLICT (message_id, user_id) DO NOTHING
+	`, msgIDs, userID)
+	return err
+}
+
+// PurgeFullyDelivered hard-deletes every non-scheduled message for which every
+// intended recipient (all conversation members except the sender) has a
+// delivery row. This is the core of delete-after-delivery: the server keeps a
+// message only until it has reached everyone. Returns the number purged.
+// message_deliveries rows cascade away with the message.
+func (r *MessageRepository) PurgeFullyDelivered(ctx context.Context) (int64, error) {
+	tag, err := r.db.Exec(ctx, `
+		DELETE FROM messages m
+		WHERE m.status <> 'scheduled'
+		  AND m.is_deleted = FALSE
+		  -- there is at least one recipient other than the sender …
+		  AND EXISTS (
+		      SELECT 1 FROM conversation_members cm
+		      WHERE cm.conversation_id = m.conversation_id
+		        AND cm.user_id <> m.sender_id
+		  )
+		  -- … and no such recipient is still missing a delivery.
+		  AND NOT EXISTS (
+		      SELECT 1 FROM conversation_members cm
+		      WHERE cm.conversation_id = m.conversation_id
+		        AND cm.user_id <> m.sender_id
+		        AND NOT EXISTS (
+		            SELECT 1 FROM message_deliveries d
+		            WHERE d.message_id = m.id AND d.user_id = cm.user_id
+		        )
+		  )
+	`)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
+
+// PurgeStale hard-deletes undelivered (or partially delivered) messages older
+// than the retention window, so the server never keeps a message forever when a
+// recipient never comes back. Scheduled (not-yet-sent) messages are exempt.
+// Returns the number purged.
+func (r *MessageRepository) PurgeStale(ctx context.Context, olderThan time.Duration) (int64, error) {
+	cutoff := time.Now().Add(-olderThan)
+	tag, err := r.db.Exec(ctx, `
+		DELETE FROM messages
+		WHERE status <> 'scheduled'
+		  AND is_deleted = FALSE
+		  AND created_at < $1
+	`, cutoff)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 func (r *MessageRepository) hydrateMessages(ctx context.Context, msgs []*Message) ([]*Message, error) {

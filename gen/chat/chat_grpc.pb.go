@@ -35,6 +35,7 @@ const (
 	ChatService_AddReaction_FullMethodName             = "/chat.ChatService/AddReaction"
 	ChatService_RemoveReaction_FullMethodName          = "/chat.ChatService/RemoveReaction"
 	ChatService_MarkRead_FullMethodName                = "/chat.ChatService/MarkRead"
+	ChatService_AckDelivery_FullMethodName             = "/chat.ChatService/AckDelivery"
 	ChatService_PinMessage_FullMethodName              = "/chat.ChatService/PinMessage"
 	ChatService_UnpinMessage_FullMethodName            = "/chat.ChatService/UnpinMessage"
 	ChatService_SearchMessages_FullMethodName          = "/chat.ChatService/SearchMessages"
@@ -95,6 +96,8 @@ type ChatServiceClient interface {
 	RemoveReaction(ctx context.Context, in *RemoveReactionRequest, opts ...grpc.CallOption) (*RemoveReactionResponse, error)
 	// Mark messages as read (bulk)
 	MarkRead(ctx context.Context, in *MarkReadRequest, opts ...grpc.CallOption) (*MarkReadResponse, error)
+	// Acknowledge delivery of messages to a recipient (delete-after-delivery).
+	AckDelivery(ctx context.Context, in *AckDeliveryRequest, opts ...grpc.CallOption) (*AckDeliveryResponse, error)
 	// Pin a message in a conversation
 	PinMessage(ctx context.Context, in *PinMessageRequest, opts ...grpc.CallOption) (*PinMessageResponse, error)
 	// Unpin a message
@@ -293,6 +296,16 @@ func (c *chatServiceClient) MarkRead(ctx context.Context, in *MarkReadRequest, o
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MarkReadResponse)
 	err := c.cc.Invoke(ctx, ChatService_MarkRead_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) AckDelivery(ctx context.Context, in *AckDeliveryRequest, opts ...grpc.CallOption) (*AckDeliveryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AckDeliveryResponse)
+	err := c.cc.Invoke(ctx, ChatService_AckDelivery_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -564,6 +577,8 @@ type ChatServiceServer interface {
 	RemoveReaction(context.Context, *RemoveReactionRequest) (*RemoveReactionResponse, error)
 	// Mark messages as read (bulk)
 	MarkRead(context.Context, *MarkReadRequest) (*MarkReadResponse, error)
+	// Acknowledge delivery of messages to a recipient (delete-after-delivery).
+	AckDelivery(context.Context, *AckDeliveryRequest) (*AckDeliveryResponse, error)
 	// Pin a message in a conversation
 	PinMessage(context.Context, *PinMessageRequest) (*PinMessageResponse, error)
 	// Unpin a message
@@ -655,6 +670,9 @@ func (UnimplementedChatServiceServer) RemoveReaction(context.Context, *RemoveRea
 }
 func (UnimplementedChatServiceServer) MarkRead(context.Context, *MarkReadRequest) (*MarkReadResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method MarkRead not implemented")
+}
+func (UnimplementedChatServiceServer) AckDelivery(context.Context, *AckDeliveryRequest) (*AckDeliveryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AckDelivery not implemented")
 }
 func (UnimplementedChatServiceServer) PinMessage(context.Context, *PinMessageRequest) (*PinMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method PinMessage not implemented")
@@ -1027,6 +1045,24 @@ func _ChatService_MarkRead_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ChatServiceServer).MarkRead(ctx, req.(*MarkReadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_AckDelivery_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AckDeliveryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).AckDelivery(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_AckDelivery_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).AckDelivery(ctx, req.(*AckDeliveryRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1490,6 +1526,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "MarkRead",
 			Handler:    _ChatService_MarkRead_Handler,
+		},
+		{
+			MethodName: "AckDelivery",
+			Handler:    _ChatService_AckDelivery_Handler,
 		},
 		{
 			MethodName: "PinMessage",

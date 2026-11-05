@@ -14,19 +14,22 @@ import (
 // Scheduler polls for due scheduled messages and expired (self-destruct) messages,
 // fires them, and publishes events to Redis pub/sub for the gateway to fan-out.
 type Scheduler struct {
-	msgRepo *repository.MessageRepository
-	redis   *redis.Client
-	cron    *cron.Cron
-	log     *zap.Logger
+	msgRepo   *repository.MessageRepository
+	redis     *redis.Client
+	cron      *cron.Cron
+	log       *zap.Logger
+	retention time.Duration // max time to keep an undelivered message
 }
 
-// New creates a Scheduler.
-func New(msgRepo *repository.MessageRepository, redisClient *redis.Client, log *zap.Logger) *Scheduler {
+// New creates a Scheduler. retention is the max-retention TTL for undelivered
+// messages (delete-after-delivery); a non-positive value disables stale purge.
+func New(msgRepo *repository.MessageRepository, redisClient *redis.Client, retention time.Duration, log *zap.Logger) *Scheduler {
 	return &Scheduler{
-		msgRepo: msgRepo,
-		redis:   redisClient,
-		cron:    cron.New(cron.WithSeconds()),
-		log:     log,
+		msgRepo:   msgRepo,
+		redis:     redisClient,
+		cron:      cron.New(cron.WithSeconds()),
+		log:       log,
+		retention: retention,
 	}
 }
 
@@ -42,8 +45,21 @@ func (s *Scheduler) Start() {
 		s.log.Fatal("failed to add expiry-message cron", zap.Error(err))
 	}
 
+	// Delete-after-delivery: purge messages every recipient has received,
+	// every 15 seconds.
+	if _, err := s.cron.AddFunc("*/15 * * * * *", s.purgeDeliveredMessages); err != nil {
+		s.log.Fatal("failed to add delivered-purge cron", zap.Error(err))
+	}
+
+	// Drop undelivered messages older than the retention window, hourly.
+	if s.retention > 0 {
+		if _, err := s.cron.AddFunc("0 0 * * * *", s.purgeStaleMessages); err != nil {
+			s.log.Fatal("failed to add stale-purge cron", zap.Error(err))
+		}
+	}
+
 	s.cron.Start()
-	s.log.Info("message scheduler started")
+	s.log.Info("message scheduler started", zap.Duration("undelivered_retention", s.retention))
 }
 
 // Stop gracefully stops the scheduler.
@@ -116,6 +132,35 @@ func (s *Scheduler) deleteExpiredMessages() {
 		s.log.Info("self-destruct message deleted",
 			zap.String("msg_id", msg.ID.String()),
 		)
+	}
+}
+
+func (s *Scheduler) purgeDeliveredMessages() {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	n, err := s.msgRepo.PurgeFullyDelivered(ctx)
+	if err != nil {
+		s.log.Error("scheduler: purging delivered messages", zap.Error(err))
+		return
+	}
+	if n > 0 {
+		s.log.Info("delete-after-delivery: purged fully-delivered messages", zap.Int64("count", n))
+	}
+}
+
+func (s *Scheduler) purgeStaleMessages() {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	n, err := s.msgRepo.PurgeStale(ctx, s.retention)
+	if err != nil {
+		s.log.Error("scheduler: purging stale undelivered messages", zap.Error(err))
+		return
+	}
+	if n > 0 {
+		s.log.Info("delete-after-delivery: purged stale undelivered messages",
+			zap.Int64("count", n), zap.Duration("retention", s.retention))
 	}
 }
 

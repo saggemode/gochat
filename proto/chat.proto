@@ -55,6 +55,9 @@ service ChatService {
   // Mark messages as read (bulk)
   rpc MarkRead(MarkReadRequest) returns (MarkReadResponse);
 
+  // Acknowledge delivery of messages to a recipient (delete-after-delivery).
+  rpc AckDelivery(AckDeliveryRequest) returns (AckDeliveryResponse);
+
   // Pin a message in a conversation
   rpc PinMessage(PinMessageRequest) returns (PinMessageResponse);
 
@@ -388,6 +391,19 @@ message MarkReadRequest {
 }
 
 message MarkReadResponse {
+  bool success = 1;
+}
+
+// AckDelivery records that a recipient's device received the given messages.
+// Used by the delete-after-delivery policy: once every intended recipient has
+// acknowledged a message, the server purges its stored copy.
+message AckDeliveryRequest {
+  string          user_id         = 1;  // the recipient acknowledging delivery
+  string          conversation_id = 2;  // optional; for scoping / logging
+  repeated string message_ids     = 3;
+}
+
+message AckDeliveryResponse {
   bool success = 1;
 }
 

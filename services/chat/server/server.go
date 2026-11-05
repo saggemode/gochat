@@ -338,11 +338,44 @@ func (s *ChatServer) GetMessages(ctx context.Context, req *chatpb.GetMessagesReq
 		protoMsgs[i] = msgToProto(m)
 	}
 
+	// Delete-after-delivery: a recipient pulling messages has received them.
+	// Record delivery so the server can purge once everyone has them. Best
+	// effort — never fail a read because delivery bookkeeping failed.
+	if userID, uerr := uuid.Parse(req.UserId); uerr == nil && len(msgs) > 0 {
+		ids := make([]uuid.UUID, len(msgs))
+		for i, m := range msgs {
+			ids[i] = m.ID
+		}
+		if derr := s.msgRepo.RecordDeliveries(ctx, userID, ids); derr != nil {
+			s.log.Warn("record deliveries (GetMessages)", zap.Error(derr))
+		}
+	}
+
 	return &chatpb.GetMessagesResponse{
 		Messages:   protoMsgs,
 		NextCursor: nextCursor,
 		HasMore:    hasMore,
 	}, nil
+}
+
+// AckDelivery records that a recipient received the given messages. Once every
+// intended recipient has acknowledged a message, the scheduler purges it.
+func (s *ChatServer) AckDelivery(ctx context.Context, req *chatpb.AckDeliveryRequest) (*chatpb.AckDeliveryResponse, error) {
+	userID, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+	msgIDs := make([]uuid.UUID, 0, len(req.MessageIds))
+	for _, idStr := range req.MessageIds {
+		if id, perr := uuid.Parse(idStr); perr == nil {
+			msgIDs = append(msgIDs, id)
+		}
+	}
+	if err := s.msgRepo.RecordDeliveries(ctx, userID, msgIDs); err != nil {
+		s.log.Error("ack delivery", zap.Error(err))
+		return nil, status.Error(codes.Internal, "failed to record delivery")
+	}
+	return &chatpb.AckDeliveryResponse{Success: true}, nil
 }
 
 func (s *ChatServer) GetThread(ctx context.Context, req *chatpb.GetThreadRequest) (*chatpb.GetThreadResponse, error) {

@@ -1074,6 +1074,24 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 								"recipient_id":    memberID,
 							})
 							hub.SendToUser(actorIDStr, statusAck)
+
+							// Delete-after-delivery: record that this recipient
+							// received the message so the chat service can purge
+							// its stored copy once everyone has it. Fire-and-forget.
+							go func(recipient, msgID, convID string) {
+								ackCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+								defer cancel()
+								if _, err := chatClient.AckDelivery(ackCtx, &chatpb.AckDeliveryRequest{
+									UserId:         recipient,
+									ConversationId: convID,
+									MessageIds:     []string{msgID},
+								}); err != nil {
+									log.Debug("ack delivery failed",
+										zap.String("recipient_id", recipient),
+										zap.String("msg_id", msgID),
+										zap.Error(err))
+								}
+							}(memberID, msgIDStr, convIDStr)
 						}
 					} else if eventType == "new_message" {
 						// Recipient is offline — send a real FCM push so their device wakes.
