@@ -15,7 +15,12 @@ import kotlinx.serialization.json.*
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.security.MessageDigest
+import java.security.SecureRandom
+import javax.crypto.Cipher
 import javax.crypto.Mac
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -32,7 +37,11 @@ class ChatBackupManager @Inject constructor(
     private val prefs = context.getSharedPreferences("gochat_backup_prefs", Context.MODE_PRIVATE)
 
     companion object {
-        private const val HEADER_MAGIC = "GCBACKUP_V1"
+        private const val HEADER_MAGIC = "GCBACKUP_V1"      // legacy (repeating-XOR); read-only
+        private const val HEADER_MAGIC_V2 = "GCBACKUP_V2"   // AES-256-GCM + PBKDF2 (both 11 bytes)
+        private const val PBKDF2_ITERATIONS = 120_000
+        private const val GCM_IV_LEN = 12
+        private const val GCM_TAG_BITS = 128
         private const val PREF_LAST_BACKUP_JSON = "pref_last_backup_json"
     }
 
@@ -98,20 +107,20 @@ class ChatBackupManager @Inject constructor(
 
             val rawBytes = payloadObj.toString().toByteArray(Charsets.UTF_8)
 
-            // 4. Derive encryption key and HMAC key
+            // 4. Encrypt with AES-256-GCM (authenticated) using a PBKDF2-derived key.
+            onProgress?.invoke(0.8f, "Encrypting archive (AES-256-GCM)...")
             val salt = generateSalt()
-            val derivedKey = deriveKey(password, salt)
-            val hmacKey = sha256(derivedKey + byteArrayOf(0x01))
+            val key = deriveKeyPbkdf2(password, salt)
+            val iv = ByteArray(GCM_IV_LEN).also { SecureRandom().nextBytes(it) }
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(GCM_TAG_BITS, iv))
+            val encryptedData = cipher.doFinal(rawBytes) // ciphertext || 16-byte GCM tag
 
-            // Encrypt using key stream XOR cipher + HMAC verification
-            val encryptedData = xorCipher(rawBytes, derivedKey)
-            val hmacSignature = computeHmacSha256(encryptedData, hmacKey)
-
-            // Build binary container: [MAGIC (11 bytes)] [SALT (16 bytes)] [HMAC (32 bytes)] [ENCRYPTED DATA]
+            // Build binary container: [MAGIC_V2 (11)] [SALT (16)] [IV (12)] [GCM ciphertext+tag]
             val container = ByteArrayOutputStream().apply {
-                write(HEADER_MAGIC.toByteArray(Charsets.UTF_8))
+                write(HEADER_MAGIC_V2.toByteArray(Charsets.UTF_8))
                 write(salt)
-                write(hmacSignature)
+                write(iv)
                 write(encryptedData)
             }.toByteArray()
 
@@ -153,40 +162,50 @@ class ChatBackupManager @Inject constructor(
             }
 
             val bytes = backupFile.readBytes()
-            val magicBytes = HEADER_MAGIC.toByteArray(Charsets.UTF_8)
+            val magicV1 = HEADER_MAGIC.toByteArray(Charsets.UTF_8)
+            val magicV2 = HEADER_MAGIC_V2.toByteArray(Charsets.UTF_8)
+            val magicLen = magicV2.size // both magics are the same length
 
-            if (bytes.size < magicBytes.size + 16 + 32) {
+            if (bytes.size < magicLen + 16 + 16) {
                 return@withContext Result.failure(Exception("Invalid or corrupted GoChat backup file."))
             }
-
-            // Verify Magic header
-            for (i in magicBytes.indices) {
-                if (bytes[i] != magicBytes[i]) {
-                    return@withContext Result.failure(Exception("Not a valid GoChat backup file."))
-                }
+            val header = bytes.copyOfRange(0, magicLen)
+            val isV2 = header.contentEquals(magicV2)
+            val isV1 = header.contentEquals(magicV1)
+            if (!isV2 && !isV1) {
+                return@withContext Result.failure(Exception("Not a valid GoChat backup file."))
             }
 
             onProgress?.invoke(0.3f, "Verifying password and decrypting...")
 
-            var offset = magicBytes.size
-            val salt = bytes.copyOfRange(offset, offset + 16)
-            offset += 16
-            val expectedHmac = bytes.copyOfRange(offset, offset + 32)
-            offset += 32
-            val encryptedData = bytes.copyOfRange(offset, bytes.size)
-
-            // Derive keys
-            val derivedKey = deriveKey(password, salt)
-            val hmacKey = sha256(derivedKey + byteArrayOf(0x01))
-
-            // Verify HMAC signature
-            val computedHmac = computeHmacSha256(encryptedData, hmacKey)
-            if (!expectedHmac.contentEquals(computedHmac)) {
-                return@withContext Result.failure(InvalidPasswordException("Incorrect backup password or corrupted file."))
+            val decryptedBytes: ByteArray = if (isV2) {
+                // v2: [MAGIC][SALT 16][IV 12][AES-GCM ciphertext+tag]
+                var offset = magicLen
+                val salt = bytes.copyOfRange(offset, offset + 16); offset += 16
+                val iv = bytes.copyOfRange(offset, offset + GCM_IV_LEN); offset += GCM_IV_LEN
+                val ciphertext = bytes.copyOfRange(offset, bytes.size)
+                val key = deriveKeyPbkdf2(password, salt)
+                try {
+                    val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+                    cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(GCM_TAG_BITS, iv))
+                    cipher.doFinal(ciphertext) // throws AEADBadTagException on wrong password / tampering
+                } catch (e: javax.crypto.AEADBadTagException) {
+                    return@withContext Result.failure(InvalidPasswordException("Incorrect backup password or corrupted file."))
+                }
+            } else {
+                // v1 legacy: [MAGIC][SALT 16][HMAC 32][XOR data] — read-only for old backups.
+                var offset = magicLen
+                val salt = bytes.copyOfRange(offset, offset + 16); offset += 16
+                val expectedHmac = bytes.copyOfRange(offset, offset + 32); offset += 32
+                val encryptedData = bytes.copyOfRange(offset, bytes.size)
+                val derivedKey = deriveKey(password, salt)
+                val hmacKey = sha256(derivedKey + byteArrayOf(0x01))
+                if (!expectedHmac.contentEquals(computeHmacSha256(encryptedData, hmacKey))) {
+                    return@withContext Result.failure(InvalidPasswordException("Incorrect backup password or corrupted file."))
+                }
+                xorCipher(encryptedData, derivedKey)
             }
 
-            // Decrypt
-            val decryptedBytes = xorCipher(encryptedData, derivedKey)
             val jsonStr = String(decryptedBytes, Charsets.UTF_8)
             val rootObj = json.parseToJsonElement(jsonStr).jsonObject
 
@@ -289,6 +308,13 @@ class ChatBackupManager @Inject constructor(
         return hash.copyOfRange(0, 16)
     }
 
+    // AES-256 key via PBKDF2-HMAC-SHA256 (used by the v2 backup format).
+    private fun deriveKeyPbkdf2(password: String, salt: ByteArray): ByteArray {
+        val spec = PBEKeySpec(password.toCharArray(), salt, PBKDF2_ITERATIONS, 256)
+        return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
+    }
+
+    // Legacy v1 KDF — kept only to decrypt old backups.
     private fun deriveKey(password: String, salt: ByteArray): ByteArray {
         var key = sha256(password.toByteArray(Charsets.UTF_8) + salt)
         for (i in 0 until 2000) {

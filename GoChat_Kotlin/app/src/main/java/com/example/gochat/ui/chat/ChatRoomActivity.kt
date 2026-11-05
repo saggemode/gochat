@@ -963,10 +963,15 @@ class ChatRoomActivity : AppCompatActivity() {
                 }
             }
 
+            // When the input is tapped/focused, keep the latest message visible above
+            // the keyboard. With reverseLayout=true the newest message is position 0
+            // (the bottom) — scrolling to itemCount-1 would jump to the OLDEST loaded
+            // message and drag Paging3 into loading the whole history, which janks and
+            // can freeze the UI. Scroll to 0 (bottom) instead.
             etMessageInput.setOnClickListener {
                 if (messageAdapter.itemCount > 0) {
                     rvMessages.postDelayed({
-                        rvMessages.smoothScrollToPosition(messageAdapter.itemCount - 1)
+                        rvMessages.scrollToPosition(0)
                     }, 150)
                 }
             }
@@ -974,7 +979,7 @@ class ChatRoomActivity : AppCompatActivity() {
             etMessageInput.setOnFocusChangeListener { _, hasFocus ->
                 if (hasFocus && messageAdapter.itemCount > 0) {
                     rvMessages.postDelayed({
-                        rvMessages.smoothScrollToPosition(messageAdapter.itemCount - 1)
+                        rvMessages.scrollToPosition(0)
                     }, 150)
                 }
             }

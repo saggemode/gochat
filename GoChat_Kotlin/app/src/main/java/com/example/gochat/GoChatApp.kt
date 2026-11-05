@@ -9,6 +9,8 @@ import androidx.work.Configuration
 import androidx.hilt.work.HiltWorkerFactory
 import coil.ImageLoader
 import coil.ImageLoaderFactory
+import coil.disk.DiskCache
+import coil.memory.MemoryCache
 import com.example.gochat.core.notification.NotificationHelper
 import com.example.gochat.core.theme.ThemeManager
 import com.example.gochat.data.api.NetworkModule
@@ -131,6 +133,25 @@ class GoChatApp : Application(), Configuration.Provider, ImageLoaderFactory {
         return ImageLoader.Builder(this)
             .okHttpClient(NetworkModule.getOkHttpClient(this))
             .crossfade(true)
+            // In-memory thumbnail cache (~25% of app heap) so images already on
+            // screen rebind instantly while scrolling.
+            .memoryCache {
+                MemoryCache.Builder(this)
+                    .maxSizePercent(0.25)
+                    .build()
+            }
+            // Persistent disk cache so scrolling back through history serves media
+            // from disk instead of re-downloading/re-decoding it.
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(cacheDir.resolve("image_cache"))
+                    .maxSizeBytes(256L * 1024 * 1024)
+                    .build()
+            }
+            // The media proxy (/api/v1/media/download) doesn't send cache-control
+            // headers, so without this Coil would refetch every image on each
+            // scroll. Cache aggressively instead — this is the main scroll-jank fix.
+            .respectCacheHeaders(false)
             .components {
                 // Lets Coil decode a still frame from video files (video-note thumbnails).
                 add(coil.decode.VideoFrameDecoder.Factory())

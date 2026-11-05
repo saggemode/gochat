@@ -180,6 +180,11 @@ class ChatRepository @Inject constructor(
                 val convJson = data["conversation"]?.jsonObject ?: data
                 val conv = Conversation.fromJson(convJson, tokenManager.userId ?: "")
                 dao.insertConversation(conv)
+                // Phase 1 of the E2EE migration: new 1:1 chats are end-to-end
+                // encrypted by default (existing chats keep their current setting).
+                if (!isGroup && conv.isDirect) {
+                    com.example.gochat.core.crypto.E2EESettings.setEnabled(context, conv.id, true)
+                }
                 Result.success(conv)
             } else {
                 Result.failure(Exception("Failed to create conversation (${response.code()})"))
@@ -357,17 +362,31 @@ class ChatRepository @Inject constructor(
         var encryptedContent = content
         var blurHash: String? = null
 
-        // Opt-in end-to-end encryption (direct text chats only). Off by default per conversation,
-        // so existing plaintext chats are unaffected. encryptMessage() falls back to plaintext if
-        // a Signal session can't be established, so a message is never lost. The local copy keeps
-        // the plaintext (below) so the sender always sees their own text; only the wire copy is
-        // encrypted and the recipient decrypts it.
+        // End-to-end encryption (direct text chats). The local copy keeps the
+        // plaintext (below) so the sender always sees their own text; only the
+        // wire copy is encrypted and the recipient decrypts it.
+        //
+        // Phase 1 "no false privacy" rule: in an E2EE conversation we must NOT
+        // silently transmit plaintext if encryption fails (e.g. the recipient's
+        // keys aren't available yet). encryptMessage() returns the plaintext
+        // unchanged when it can't establish a Signal session; we detect that and
+        // fail the message (status FAILED, retryable) rather than leak cleartext.
         if (conv != null && conv.isDirect && type == 0 &&
             com.example.gochat.core.crypto.E2EESettings.isEnabled(context, conversationId)
         ) {
             val targetUserId = conv.memberIds.find { it != currentUserId }
             if (!targetUserId.isNullOrBlank()) {
                 encryptedContent = encryptionManager.encryptMessage(targetUserId, content)
+                if (encryptedContent == content) {
+                    // Encryption did not produce ciphertext → do not send in the clear.
+                    val failed = createOptimisticMessage(
+                        conversationId, content, type, mediaUrl,
+                        replyToId, replyToText, replyToSenderName,
+                        replyToMediaUrl, replyToMediaType
+                    ).copy(status = MessageStatus.FAILED)
+                    dao.insertMessage(failed)
+                    return Result.success(failed)
+                }
             }
         }
 
