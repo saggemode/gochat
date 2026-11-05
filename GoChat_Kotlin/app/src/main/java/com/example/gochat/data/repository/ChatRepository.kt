@@ -786,6 +786,13 @@ class ChatRepository @Inject constructor(
             if (msg.conversationId.isNotEmpty()) {
                 dao.insertMessage(msg)
 
+                // Delete-after-delivery: confirm to the server we persisted this
+                // received message, so it can purge its copy once every recipient
+                // has it. Explicit ack (vs. relying on socket-write success).
+                if (!msg.isMe) {
+                    ackDeliveryBestEffort(msg.conversationId, listOf(msg.id))
+                }
+
                 val isViewing = activeConversationId == msg.conversationId
                 if (isViewing) {
                     dao.markConversationAsRead(msg.conversationId)
@@ -1252,6 +1259,19 @@ class ChatRepository @Inject constructor(
         if (!isBase64Ciphertext(trimmed)) return message
         val decrypted = encryptionManager.decryptGroupMessage(message.conversationId, message.senderId, trimmed)
         return if (!decrypted.isNullOrBlank()) message.copy(content = decrypted) else message
+    }
+
+    /** Best-effort delivery acknowledgement (delete-after-delivery). Never throws. */
+    private suspend fun ackDeliveryBestEffort(convId: String, msgIds: List<String>) {
+        if (convId.isBlank() || msgIds.isEmpty()) return
+        try {
+            val body = buildJsonObject {
+                put("message_ids", buildJsonArray { msgIds.forEach { add(it) } })
+            }
+            api.ackDelivery(convId, body)
+        } catch (e: Exception) {
+            Log.w("ChatRepository", "ackDelivery failed: ${e.message}")
+        }
     }
 
     private fun tryDecryptMessage(message: Message): Message {

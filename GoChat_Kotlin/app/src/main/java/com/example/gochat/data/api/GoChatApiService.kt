@@ -162,6 +162,14 @@ interface GoChatApiService {
         @Body body: JsonObject
     ): Response<JsonObject>
 
+    // Delete-after-delivery: tell the server this device received these messages
+    // so it can purge its stored copy once every recipient has acknowledged.
+    @POST("api/v1/chat/conversations/{id}/delivered")
+    suspend fun ackDelivery(
+        @Path("id") convId: String,
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
     @POST("api/v1/chat/messages/{id}/pin")
     suspend fun pinMessage(
         @Path("id") messageId: String,

@@ -1163,6 +1163,35 @@ func (h *ChatHandler) MarkRead(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": resp.Success})
 }
 
+// AckDelivery records that the caller received the given messages (delete-after-delivery).
+func (h *ChatHandler) AckDelivery(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	convID := c.Param("id")
+
+	var req struct {
+		MessageIds []string `json:"message_ids"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || len(req.MessageIds) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "message_ids required"})
+		return
+	}
+
+	resp, err := h.client.AckDelivery(c.Request.Context(), &chatpb.AckDeliveryRequest{
+		UserId:         userID,
+		ConversationId: convID,
+		MessageIds:     req.MessageIds,
+	})
+	if err != nil {
+		h.handleGrpcError(c, err, "failed to acknowledge delivery")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": resp.Success})
+}
+
 // PinMessage pins a message inside its conversation.
 func (h *ChatHandler) PinMessage(c *gin.Context) {
 	userID := getUserID(c)
@@ -1231,37 +1260,22 @@ func (h *ChatHandler) UnpinMessage(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": resp.Success})
 }
 
-// SearchMessages performs full-text and fuzzy queries across conversation messages.
+// SearchMessages is disabled under always-on E2EE: the server only stores
+// ciphertext it cannot read, so server-side full-text search is impossible.
+// Returns an empty, disabled result so clients degrade gracefully (search must
+// be done client-side over the local decrypted store). Restore the gRPC call
+// below if E2EE is ever rolled back.
 func (h *ChatHandler) SearchMessages(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == "" {
 		return
 	}
-	query := c.Query("query")
-	convID := c.Query("conversation_id")
-	senderName := c.Query("sender_name")
-	mediaType := c.Query("media_type")
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-
-	if query == "" && convID == "" && senderName == "" && mediaType == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "at least one search filter (query, conversation_id, sender_name, or media_type) is required"})
-		return
-	}
-
-	resp, err := h.client.SearchMessages(c.Request.Context(), &chatpb.SearchMessagesRequest{
-		UserId:         userID,
-		Query:          query,
-		ConversationId: convID,
-		Limit:          int32(limit),
-		Offset:         int32(offset),
+	c.JSON(http.StatusOK, gin.H{
+		"messages": []any{},
+		"total":    0,
+		"disabled": true,
+		"reason":   "Messages are end-to-end encrypted; server-side search is unavailable. Search is performed on-device.",
 	})
-	if err != nil {
-		h.handleGrpcError(c, err, "failed to search messages")
-		return
-	}
-
-	c.JSON(http.StatusOK, resp)
 }
 
 // GetUnreadCounts gathers unread totals for each conversation.

@@ -107,7 +107,7 @@ export default function OverviewPage() {
 
   const mixBuild = useCallback(
     (t: ChartTokens): echartsOption => {
-      const data = mix.data ?? []
+      const data = mix.data?.items ?? []
       return {
         color: t.chart.length ? t.chart : [t.foreground, t.muted],
         tooltip: { trigger: "item", backgroundColor: t.tooltipBg, borderColor: t.border, textStyle: { color: t.foreground } },
@@ -160,10 +160,18 @@ export default function OverviewPage() {
         <Card>
           <CardHeader>
             <CardTitle>Message mix</CardTitle>
-            <CardDescription>By type, last 24h</CardDescription>
+            <CardDescription>{mix.data?.disabled ? "End-to-end encrypted" : "By type, last 24h"}</CardDescription>
           </CardHeader>
           <CardContent>
-            {mix.isLoading ? <Skeleton className="h-[300px] w-full" /> : <EChart build={mixBuild} height={300} />}
+            {mix.isLoading ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : mix.data?.disabled ? (
+              <div className="flex h-[300px] items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                {mix.data.reason ?? "Messages are end-to-end encrypted; content analytics are unavailable."}
+              </div>
+            ) : (
+              <EChart build={mixBuild} height={300} />
+            )}
           </CardContent>
         </Card>
       </div>

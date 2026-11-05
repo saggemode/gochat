@@ -22,8 +22,28 @@ func NewAIHandler(client aipb.AIServiceClient, log *zap.Logger) *AIHandler {
 	return &AIHandler{client: client, log: log}
 }
 
+// aiContentDisabled turns off all AI features that read message content.
+// Under always-on E2EE the server only ever sees ciphertext (and purges
+// delivered messages), so summarization, reply suggestions, translation, tone
+// adjustment and action-item extraction cannot work without breaking the E2EE
+// promise. It's a var (not a const) so flipping it to false cleanly restores
+// every feature if E2EE is ever rolled back.
+var aiContentDisabled = true
+
+// e2eeDisabled responds that an AI-on-content feature is turned off for E2EE.
+func (h *AIHandler) e2eeDisabled(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"disabled": true,
+		"reason":   "AI features that read message content are disabled: messages are end-to-end encrypted and the server cannot read them.",
+	})
+}
+
 // SummarizeChat handles POST /api/v1/ai/summarize
 func (h *AIHandler) SummarizeChat(c *gin.Context) {
+	if aiContentDisabled {
+		h.e2eeDisabled(c)
+		return
+	}
 	userID := getUserID(c)
 	if userID == "" {
 		return
@@ -65,6 +85,10 @@ func (h *AIHandler) SummarizeChat(c *gin.Context) {
 
 // SuggestReplies handles POST /api/v1/ai/suggest-replies
 func (h *AIHandler) SuggestReplies(c *gin.Context) {
+	if aiContentDisabled {
+		h.e2eeDisabled(c)
+		return
+	}
 	userID := getUserID(c)
 	if userID == "" {
 		return
@@ -102,6 +126,10 @@ func (h *AIHandler) SuggestReplies(c *gin.Context) {
 
 // TranslateMessage handles POST /api/v1/ai/translate
 func (h *AIHandler) TranslateMessage(c *gin.Context) {
+	if aiContentDisabled {
+		h.e2eeDisabled(c)
+		return
+	}
 	userID := getUserID(c)
 	if userID == "" {
 		return
@@ -142,6 +170,10 @@ func (h *AIHandler) TranslateMessage(c *gin.Context) {
 
 // AdjustTone handles POST /api/v1/ai/adjust-tone
 func (h *AIHandler) AdjustTone(c *gin.Context) {
+	if aiContentDisabled {
+		h.e2eeDisabled(c)
+		return
+	}
 	userID := getUserID(c)
 	if userID == "" {
 		return
@@ -180,6 +212,10 @@ func (h *AIHandler) AdjustTone(c *gin.Context) {
 
 // ExtractActionItems handles POST /api/v1/ai/action-items
 func (h *AIHandler) ExtractActionItems(c *gin.Context) {
+	if aiContentDisabled {
+		h.e2eeDisabled(c)
+		return
+	}
 	userID := getUserID(c)
 	if userID == "" {
 		return

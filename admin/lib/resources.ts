@@ -165,10 +165,20 @@ export async function getRevenueSeries(days = 30): Promise<TimeseriesPoint[]> {
   return res.points ?? []
 }
 
-export async function getMessageMix(): Promise<{ name: string; value: number }[]> {
-  if (USE_MOCKS) return delay(mockMessageMix())
-  const res = await apiFetch<{ mix: { name: string; value: number }[] }>("/api/v1/admin/metrics/messages")
-  return res.mix ?? []
+export async function getMessageMix(): Promise<{
+  items: { name: string; value: number }[]
+  disabled: boolean
+  reason?: string
+}> {
+  if (USE_MOCKS) return delay({ items: mockMessageMix(), disabled: false })
+  const res = await apiFetch<{
+    mix: { name: string; value: number }[]
+    disabled?: boolean
+    reason?: string
+  }>("/api/v1/admin/metrics/messages")
+  // Under always-on E2EE the server returns { disabled: true } — content
+  // analytics can't be computed from ciphertext that's purged after delivery.
+  return { items: res.mix ?? [], disabled: !!res.disabled, reason: res.reason }
 }
 
 export async function getActivity(): Promise<ActivityItem[]> {

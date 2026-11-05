@@ -626,44 +626,20 @@ func (h *AdminHandler) RevenueSeries(c *gin.Context) {
 
 // GET /api/v1/admin/metrics/messages — message counts by type, last 24h,
 // grouped into Text / Media / Voice.
+// MessageMix is disabled under the always-on E2EE + delete-after-delivery model.
+// Message content is encrypted (the server can't read it) and delivered messages
+// are purged, so any content/volume breakdown would be meaningless or misleading.
+// Kept as a stub (returning disabled=true) so the admin UI degrades gracefully;
+// remove the stub and restore the query if E2EE is ever rolled back.
 func (h *AdminHandler) MessageMix(c *gin.Context) {
 	if !h.ready(c) {
 		return
 	}
-	rows, err := h.db.Query(c.Request.Context(),
-		`SELECT type::text, count(*)::bigint
-		 FROM chat.messages WHERE created_at >= now() - interval '24 hours'
-		 GROUP BY type`)
-	if err != nil {
-		h.log.Error("admin message mix failed", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load message mix"})
-		return
-	}
-	defer rows.Close()
-
-	groups := map[string]int64{"Text": 0, "Media": 0, "Voice": 0}
-	for rows.Next() {
-		var t string
-		var n int64
-		if err := rows.Scan(&t, &n); err != nil {
-			continue
-		}
-		switch t {
-		case "text":
-			groups["Text"] += n
-		case "image", "video", "file":
-			groups["Media"] += n
-		case "voice", "audio":
-			groups["Voice"] += n
-		}
-	}
-
-	mix := []gin.H{
-		{"name": "Text", "value": groups["Text"]},
-		{"name": "Media", "value": groups["Media"]},
-		{"name": "Voice", "value": groups["Voice"]},
-	}
-	c.JSON(http.StatusOK, gin.H{"mix": mix})
+	c.JSON(http.StatusOK, gin.H{
+		"mix":      []gin.H{},
+		"disabled": true,
+		"reason":   "Messages are end-to-end encrypted and purged after delivery; content analytics are unavailable.",
+	})
 }
 
 // GET /api/v1/admin/activity — recent cross-service events.

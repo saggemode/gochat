@@ -589,6 +589,7 @@ func main() {
 
 		// Message Status & Pins
 		authRequired.POST("/chat/conversations/:id/read", chatHandler.MarkRead)
+		authRequired.POST("/chat/conversations/:id/delivered", chatHandler.AckDelivery)
 		authRequired.POST("/chat/messages/:id/pin", chatHandler.PinMessage)
 		authRequired.DELETE("/chat/messages/:id/pin", chatHandler.UnpinMessage)
 
