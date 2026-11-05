@@ -652,6 +652,13 @@ func (s *ChatServer) MarkRead(ctx context.Context, req *chatpb.MarkReadRequest) 
 		return nil, status.Error(codes.Internal, "failed to mark as read")
 	}
 
+	// A read implies delivery — record it so delete-after-delivery can purge.
+	if len(msgIDs) > 0 {
+		if derr := s.msgRepo.RecordDeliveries(ctx, userID, msgIDs); derr != nil {
+			s.log.Warn("record deliveries (MarkRead)", zap.Error(derr))
+		}
+	}
+
 	s.publishEvent(ctx, "read", "", convID.String(), userID.String())
 
 	return &chatpb.MarkReadResponse{Success: true}, nil
