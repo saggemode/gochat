@@ -250,8 +250,13 @@ data class Message(
         const val VIDEO_NOTE_MARKER = "video_note"
 
         fun fromJson(json: JsonObject, currentUserId: String = ""): Message {
-            val id = (json["id"] ?: json["Id"] ?: json["message_id"] ?: json["messageId"])
-                ?.jsonPrimitive?.contentOrNull ?: "msg_${System.currentTimeMillis()}"
+            // Include msg_id/msgId: real-time WS events carry the server id under
+            // "msg_id", not "id". Missing it previously caused the time-based fallback
+            // below to mint a NEW id per delivery → the same message duplicated.
+            val id = (json["id"] ?: json["Id"] ?: json["message_id"] ?: json["messageId"]
+                ?: json["msg_id"] ?: json["msgId"])
+                ?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+                ?: "msg_${System.currentTimeMillis()}"
 
             val conversationId = (json["conversation_id"] ?: json["conversationId"] ?: json["ConversationId"] ?: json["conv_id"])
                 ?.jsonPrimitive?.contentOrNull.orEmpty()

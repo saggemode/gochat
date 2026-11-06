@@ -9,6 +9,22 @@
     android:paddingHorizontal="10dp"
     android:paddingVertical="3dp">
 
+    <!-- WhatsApp-style date separator (shown only on the first message of a day) -->
+    <TextView
+        android:id="@+id/tvDateHeader"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="6dp"
+        android:background="@drawable/bg_date_chip"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="4dp"
+        android:textColor="?android:attr/textColorSecondary"
+        android:textSize="12sp"
+        android:visibility="gone"
+        tools:text="Today"
+        tools:visibility="visible" />
+
     <!-- Incoming Bubble Container -->
     <LinearLayout
         android:id="@+id/layoutBubbleContainer"

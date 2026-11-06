@@ -311,7 +311,10 @@ class ChatRepository @Inject constructor(
                     } else if (hasGoodLocalText) {
                         localExisting!!.content
                     } else if (msg.isMe) {
-                        msg.content
+                        // We can't decrypt our own outgoing 1:1 ciphertext (it's encrypted
+                        // to the recipient). Without a local plaintext copy it's unrecoverable,
+                        // so show blank rather than gibberish.
+                        if (isBase64Ciphertext(msg.content.trim())) "" else msg.content
                     } else {
                         decrypted.content
                     }
@@ -404,7 +407,7 @@ class ChatRepository @Inject constructor(
         // unchanged when it can't establish a Signal session; we detect that and
         // fail the message (status FAILED, retryable) rather than leak cleartext.
         if (conv != null && conv.isDirect && type == 0 &&
-            com.example.gochat.core.crypto.E2EESettings.isEnabled(context, conversationId)
+            com.example.gochat.core.crypto.E2EESettings.isAvailable(context)
         ) {
             val targetUserId = conv.memberIds.find { it != currentUserId }
             if (!targetUserId.isNullOrBlank()) {
@@ -426,7 +429,7 @@ class ChatRepository @Inject constructor(
         // sender key is distributed to all members, then encrypt with the group
         // cipher. No plaintext fallback (fail instead of leaking).
         if (conv != null && !conv.isDirect && type == 0 &&
-            com.example.gochat.core.crypto.E2EESettings.isEnabled(context, conversationId)
+            com.example.gochat.core.crypto.E2EESettings.isAvailable(context)
         ) {
             ensureGroupSenderKeyDistributed(conv, currentUserId)
             val enc = encryptionManager.encryptGroupMessage(conversationId, content)
@@ -503,7 +506,7 @@ class ChatRepository @Inject constructor(
             // 3. Upload media using the pre-cached bytes (no second read needed)
             // Is this an E2EE direct conversation? (drives media encryption below)
             val e2eeDirect = conv != null && conv.isDirect &&
-                com.example.gochat.core.crypto.E2EESettings.isEnabled(context, conversationId)
+                com.example.gochat.core.crypto.E2EESettings.isAvailable(context)
             val e2eeTarget = if (e2eeDirect) conv!!.memberIds.find { it != currentUserId } else null
             var e2eeMediaKeyB64: String? = null
 
@@ -831,14 +834,19 @@ class ChatRepository @Inject constructor(
                 // Received message with local plaintext — preserve content
                 msg = msg.copy(content = localExisting.content)
             } else if (msg.isMe) {
-                // Own message echo with no local plaintext — keep as-is
+                // Own message echo with no local plaintext. A 1:1 message is encrypted
+                // TO THE RECIPIENT, so we can never decrypt our own outgoing ciphertext —
+                // storing it would show the sender gibberish forever. Drop the echo; the
+                // optimistic/HTTP-response copy holds our plaintext.
+                if (isBase64Ciphertext(msg.content.trim())) {
+                    return localExisting
+                }
+                // else: plaintext own echo — keep as-is
             } else {
                 // Received message — attempt decryption (text), then media.
                 // Groups use sender-key (group) decryption; 1:1 uses pairwise.
                 val incomingConv = dao.getConversationById(msg.conversationId)
-                msg = if (incomingConv != null && !incomingConv.isDirect &&
-                    com.example.gochat.core.crypto.E2EESettings.isEnabled(context, msg.conversationId)
-                ) {
+                msg = if (incomingConv != null && !incomingConv.isDirect) {
                     tryDecryptGroupMessage(msg)
                 } else {
                     tryDecryptMessage(msg)
@@ -859,6 +867,14 @@ class ChatRepository @Inject constructor(
                 if (localPri >= incomingPri) {
                     msg = msg.copy(status = localExisting.status)
                 }
+            }
+
+            // Ignore content-less signalling stubs (e.g. thin `new_message` WS events
+            // that carry only ids, or events whose body we couldn't resolve). They'd
+            // otherwise insert empty/duplicate bubbles. Real content arrives embedded
+            // in the event or via HTTP sync, both keyed by the real message id.
+            if (msg.type == MessageType.TEXT && msg.content.isBlank() && msg.mediaUrl.isNullOrBlank()) {
+                return localExisting
             }
 
             if (msg.conversationId.isNotEmpty()) {

@@ -1145,6 +1145,47 @@ class MessageAdapter(
             is MessageMeViewHolder -> holder.bind(message)
             is MessageOtherViewHolder -> holder.bind(message)
         }
+        bindDateHeader(holder.itemView, position, message)
+    }
+
+    // ── WhatsApp-style date separators ──────────────────────────────────────────
+    // The list is reverseLayout (newest at position 0), so position+1 is the message
+    // visually ABOVE (older). A day's separator is shown on the OLDEST message of that
+    // day — i.e. when the message above it is a different day, or there is none.
+    private fun bindDateHeader(itemView: android.view.View, position: Int, message: Message) {
+        val tv = itemView.findViewById<android.widget.TextView>(R.id.tvDateHeader) ?: return
+        val older = if (position + 1 < itemCount) getItem(position + 1) else null
+        if (older == null || !isSameDay(message.createdAt, older.createdAt)) {
+            tv.text = formatDayLabel(message.createdAt)
+            tv.visibility = android.view.View.VISIBLE
+        } else {
+            tv.visibility = android.view.View.GONE
+        }
+    }
+
+    private fun isSameDay(a: Long, b: Long): Boolean {
+        val ca = java.util.Calendar.getInstance().apply { timeInMillis = a }
+        val cb = java.util.Calendar.getInstance().apply { timeInMillis = b }
+        return ca.get(java.util.Calendar.YEAR) == cb.get(java.util.Calendar.YEAR) &&
+                ca.get(java.util.Calendar.DAY_OF_YEAR) == cb.get(java.util.Calendar.DAY_OF_YEAR)
+    }
+
+    private fun formatDayLabel(timeMs: Long): String {
+        val now = java.util.Calendar.getInstance()
+        val then = java.util.Calendar.getInstance().apply { timeInMillis = timeMs }
+        val today = now.clone() as java.util.Calendar
+        val yesterday = (now.clone() as java.util.Calendar).apply { add(java.util.Calendar.DAY_OF_YEAR, -1) }
+        fun sameDay(x: java.util.Calendar, y: java.util.Calendar) =
+            x.get(java.util.Calendar.YEAR) == y.get(java.util.Calendar.YEAR) &&
+                x.get(java.util.Calendar.DAY_OF_YEAR) == y.get(java.util.Calendar.DAY_OF_YEAR)
+        return when {
+            sameDay(then, today) -> "Today"
+            sameDay(then, yesterday) -> "Yesterday"
+            then.get(java.util.Calendar.YEAR) == now.get(java.util.Calendar.YEAR) ->
+                java.text.SimpleDateFormat("EEEE, d MMM", java.util.Locale.getDefault()).format(java.util.Date(timeMs))
+            else ->
+                java.text.SimpleDateFormat("d MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(timeMs))
+        }
     }
 
     inner class MessageSystemViewHolder(private val binding: ItemMessageSystemBinding) :

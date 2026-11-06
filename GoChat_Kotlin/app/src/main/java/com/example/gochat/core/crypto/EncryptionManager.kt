@@ -35,24 +35,40 @@ class EncryptionManager @Inject constructor(
         withContext(Dispatchers.IO) {
             val identityKeyPair = signalStore.identityKeyPair
             val registrationId = signalStore.localRegistrationId
-            
-            // Generate Signed PreKey
+
+            // CRITICAL: generate the signed prekey and one-time prekeys ONCE and keep
+            // them. This runs on every app launch; regenerating here (the old behavior)
+            // rotated the PRIVATE keys each launch, so any X3DH handshake another device
+            // built against the previously-published bundle could no longer complete —
+            // the recipient saw permanent "encrypted message" ciphertext. We reuse the
+            // stored keys when present and only generate the first time; we still
+            // re-publish the SAME public keys each launch so the server stays in sync.
             val signedPreKeyId = 1
-            val signedPreKey = KeyHelper.generateSignedPreKey(identityKeyPair, signedPreKeyId)
-            signalStore.storeSignedPreKey(signedPreKeyId, signedPreKey)
+            val signedPreKey = if (signalStore.containsSignedPreKey(signedPreKeyId)) {
+                signalStore.loadSignedPreKey(signedPreKeyId)
+            } else {
+                KeyHelper.generateSignedPreKey(identityKeyPair, signedPreKeyId).also {
+                    signalStore.storeSignedPreKey(signedPreKeyId, it)
+                }
+            }
 
-            // Generate One-Time PreKeys
-            val oneTimePreKeys = KeyHelper.generatePreKeys(1, 20)
-            oneTimePreKeys.forEach { signalStore.storePreKey(it.id, it) }
+            val existingOtkIds = (1..20).filter { signalStore.containsPreKey(it) }
+            val oneTimePreKeys = if (existingOtkIds.isNotEmpty()) {
+                existingOtkIds.map { signalStore.loadPreKey(it) }
+            } else {
+                KeyHelper.generatePreKeys(1, 20).also { keys ->
+                    keys.forEach { signalStore.storePreKey(it.id, it) }
+                }
+            }
 
-            // Upload to server
-            val otks = oneTimePreKeys.map { 
+            // (Re)publish the current PUBLIC keys so the server can hand them out.
+            val otks = oneTimePreKeys.map {
                 buildJsonObject {
                     put("key_id", it.id)
                     put("public_key", Base64.encodeToString(it.keyPair.publicKey.serialize(), Base64.DEFAULT))
                 }
             }
-            
+
             authRepo.uploadE2EEKeys(
                 registrationId = registrationId,
                 identityKey = Base64.encodeToString(identityKeyPair.publicKey.serialize(), Base64.DEFAULT),
