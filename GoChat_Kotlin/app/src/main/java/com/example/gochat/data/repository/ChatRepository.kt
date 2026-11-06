@@ -1198,22 +1198,56 @@ class ChatRepository @Inject constructor(
     }
 
     suspend fun insertWebSocketMessage(message: Message) {
-        val decrypted = tryDecryptMessage(message)
-        val isMe = decrypted.senderId == (tokenManager.userId ?: "")
-        if (!isMe && dao.isUserBlocked(decrypted.senderId)) {
-            Log.d("ChatRepository", "insertWebSocketMessage: sender ${decrypted.senderId} is blocked, dropping.")
+        val isMe = message.senderId == (tokenManager.userId ?: "")
+        if (!isMe && dao.isUserBlocked(message.senderId)) {
+            Log.d("ChatRepository", "insertWebSocketMessage: sender ${message.senderId} is blocked, dropping.")
             return
         }
 
-        val localExisting = dao.getMessageById(decrypted.id)
-        val conv = if (decrypted.conversationId.isNotEmpty()) dao.getConversationById(decrypted.conversationId) else null
+        // Group sender-key distribution control message: process + never display.
+        if (message.content.startsWith(groupSkdMarker)) {
+            if (!isMe) handleGroupKeyDistribution(message)
+            return
+        }
+
+        val localExisting = dao.getMessageById(message.id)
+        val hasGoodLocalText = localExisting != null &&
+                localExisting.content.isNotBlank() && !isBase64Ciphertext(localExisting.content)
+
+        // Decrypt received text + media. NEVER our own: a 1:1 message is encrypted to
+        // the recipient, so the sender cannot decrypt its own outgoing ciphertext —
+        // it only ever displays via the locally-kept plaintext.
+        val conv = if (message.conversationId.isNotEmpty()) dao.getConversationById(message.conversationId) else null
+        var decrypted = message
+        if (!isMe) {
+            decrypted = if (conv != null && !conv.isDirect) tryDecryptGroupMessage(message) else tryDecryptMessage(message)
+            decrypted = decryptIncomingMedia(decrypted)
+        }
+
         val clearedAt = conv?.clearedAt ?: 0L
         val isDeleted = (localExisting?.isDeleted == true) || decrypted.isDeleted
         val isStarred = if (isDeleted) false else (localExisting?.isStarred ?: decrypted.isStarred)
         val isPinned = if (isDeleted) false else (localExisting?.isPinned ?: decrypted.isPinned)
-        val isDeletedForMe = (localExisting?.deletedForMe == true) || decrypted.deletedForMe || 
+        val isDeletedForMe = (localExisting?.deletedForMe == true) || decrypted.deletedForMe ||
                 (clearedAt > 0L && decrypted.createdAt <= clearedAt && !isStarred)
-        val contentToUse = if (isDeleted) "This message was deleted" else decrypted.content
+
+        val contentToUse = when {
+            isDeleted -> "This message was deleted"
+            // Preserve our own plaintext / an already-decrypted received message.
+            hasGoodLocalText -> localExisting!!.content
+            // Own outgoing ciphertext echo — we can't decrypt it; drop and keep the
+            // local plaintext copy rather than overwrite it with gibberish.
+            isMe && isBase64Ciphertext(message.content.trim()) -> return
+            else -> decrypted.content
+        }
+
+        // Drop content-less TEXT stubs (thin signalling events) so they don't insert
+        // empty/duplicate bubbles.
+        if (decrypted.type == MessageType.TEXT && contentToUse.isBlank() && decrypted.mediaUrl.isNullOrBlank()) return
+
+        val localMediaGood = localExisting?.mediaUrl?.let { it.isNotBlank() && !it.startsWith("http") } == true
+        val mediaToUse = if (isDeleted) null else if (localMediaGood) localExisting!!.mediaUrl else decrypted.mediaUrl
+
         val mergedStatus = if (localExisting != null) {
             val priority = mapOf(
                 MessageStatus.SENDING to 0,
@@ -1229,17 +1263,21 @@ class ChatRepository @Inject constructor(
             decrypted.status
         }
         val finalMsg = decrypted.copy(
-            isMe = decrypted.senderId == (tokenManager.userId ?: ""),
+            isMe = isMe,
             content = contentToUse,
             status = mergedStatus,
             isDeleted = isDeleted,
-            mediaUrl = if (isDeleted) null else decrypted.mediaUrl,
+            mediaUrl = mediaToUse,
             mediaThumbnail = if (isDeleted) null else decrypted.mediaThumbnail,
             deletedForMe = isDeletedForMe,
             isStarred = isStarred,
             isPinned = isPinned
         )
         dao.insertMessage(finalMsg)
+
+        if (!isMe && finalMsg.conversationId.isNotEmpty()) {
+            ackDeliveryBestEffort(finalMsg.conversationId, listOf(finalMsg.id))
+        }
 
         // If the message is from another user and the recipient is not currently looking at this conversation,
         // show the notification banner in the notification bar
