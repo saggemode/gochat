@@ -11,7 +11,23 @@ import org.whispersystems.libsignal.groups.state.SenderKeyStore
 
 class SignalStore(context: Context) : SignalProtocolStore, SenderKeyStore {
 
-    private val prefs = context.getSharedPreferences("signal_store", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    companion object {
+        private const val PREFS = "signal_store"
+
+        /**
+         * Wipe ALL Signal key material (identity key, registration id, pre/signed
+         * keys, 1:1 sessions, group sender keys). Call on logout / account deletion
+         * so a subsequent re-register starts from a fresh cryptographic identity with
+         * no stale sessions (which otherwise cause undecryptable messages).
+         */
+        fun clear(context: Context) {
+            try {
+                context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+            } catch (_: Exception) {}
+        }
+    }
 
     // ── SenderKeyStore (group messaging) ─────────────────────────
     private fun senderKeyId(name: SenderKeyName): String =

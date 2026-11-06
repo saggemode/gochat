@@ -36,4 +36,14 @@ object E2EESettings {
     fun setEnabled(context: Context, conversationId: String, enabled: Boolean) {
         try { prefs(context).edit().putBoolean(KEY_CONV_PREFIX + conversationId, enabled).apply() } catch (_: Exception) {}
     }
+
+    /**
+     * Clear all E2EE state: per-conversation opt-in flags + the group sender-key
+     * distribution tracking. Call on logout / account deletion so a re-register
+     * doesn't inherit the previous account's conversation flags or re-key markers.
+     */
+    fun clearAll(context: Context) {
+        try { prefs(context).edit().clear().apply() } catch (_: Exception) {}
+        try { context.getSharedPreferences("gochat_group_e2ee", Context.MODE_PRIVATE).edit().clear().apply() } catch (_: Exception) {}
+    }
 }

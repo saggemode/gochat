@@ -402,18 +402,55 @@ func (r *UserRepository) SaveContacts(ctx context.Context, ownerID uuid.UUID, co
 	return nil
 }
 
-// DeleteUser removes the user record and its auth tokens.
+// DeleteUser performs a WhatsApp-style account deletion: instead of hard-deleting
+// the row (which would cascade-delete shared conversations/messages and leave the
+// person's contacts with a dangling reference), it TOMBSTONES the account. The row
+// is kept but stripped of all identity and credentials, and marked
+// account_status='deleted', so the person's contacts see "Deleted Account" wherever
+// the profile is shown, the account can no longer log in or be messaged (keys gone),
+// and the same phone number is freed for a fresh re-registration.
 func (r *UserRepository) DeleteUser(ctx context.Context, id uuid.UUID) error {
-	_, err := r.db.Exec(ctx, `DELETE FROM refresh_tokens WHERE user_id = $1`, id)
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("deleting refresh tokens: %w", err)
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Revoke sessions and remove all key material / push tokens so the account is
+	// immediately unusable and un-messageable (no prekeys → no new E2EE session).
+	for _, q := range []string{
+		`DELETE FROM refresh_tokens   WHERE user_id = $1`,
+		`DELETE FROM user_prekeys     WHERE user_id = $1`,
+		`DELETE FROM user_push_tokens WHERE user_id = $1`,
+	} {
+		if _, err := tx.Exec(ctx, q, id); err != nil {
+			return fmt.Errorf("deleting account credentials: %w", err)
+		}
 	}
 
-	_, err = r.db.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
-	if err != nil {
-		return fmt.Errorf("deleting user: %w", err)
+	// Tombstone the profile. phone is nulled so the number can be re-registered as a
+	// brand-new account, and so the tombstone can't be looked up / messaged by number.
+	if _, err := tx.Exec(ctx, `
+		UPDATE users SET
+			account_status         = 'deleted',
+			display_name           = 'Deleted Account',
+			avatar_url             = '',
+			status_text            = '',
+			phone                  = NULL,
+			phone_verified         = FALSE,
+			pin                    = '',
+			prekey_identity        = NULL,
+			prekey_signed          = NULL,
+			prekey_signature       = NULL,
+			prekey_registration_id = 0,
+			is_online              = FALSE,
+			updated_at             = NOW()
+		WHERE id = $1
+	`, id); err != nil {
+		return fmt.Errorf("tombstoning user: %w", err)
 	}
-	return nil
+
+	return tx.Commit(ctx)
 }
 
 // SetPresence updates a user's online status and last_seen.

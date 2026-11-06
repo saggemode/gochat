@@ -602,6 +602,12 @@ class AuthRepository @Inject constructor(
         try {
             backupManager.clearBackupInfo()
         } catch (_: Exception) {}
+
+        // Wipe E2EE key material + settings so a re-register on this device starts
+        // from a fresh Signal identity with no stale sessions (stale sessions would
+        // otherwise produce undecryptable messages with previous contacts).
+        try { com.example.gochat.core.crypto.SignalStore.clear(context) } catch (_: Exception) {}
+        try { com.example.gochat.core.crypto.E2EESettings.clearAll(context) } catch (_: Exception) {}
     }
 
     private val tokenRefreshMutex = Mutex()
