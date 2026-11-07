@@ -44,7 +44,8 @@ class EncryptionManager @Inject constructor(
             // stored keys when present and only generate the first time; we still
             // re-publish the SAME public keys each launch so the server stays in sync.
             val signedPreKeyId = 1
-            val signedPreKey = if (signalStore.containsSignedPreKey(signedPreKeyId)) {
+            val signedPreKeyExisted = signalStore.containsSignedPreKey(signedPreKeyId)
+            val signedPreKey = if (signedPreKeyExisted) {
                 signalStore.loadSignedPreKey(signedPreKeyId)
             } else {
                 KeyHelper.generateSignedPreKey(identityKeyPair, signedPreKeyId).also {
@@ -53,7 +54,8 @@ class EncryptionManager @Inject constructor(
             }
 
             val existingOtkIds = (1..20).filter { signalStore.containsPreKey(it) }
-            val oneTimePreKeys = if (existingOtkIds.isNotEmpty()) {
+            val otksExisted = existingOtkIds.isNotEmpty()
+            val oneTimePreKeys = if (otksExisted) {
                 existingOtkIds.map { signalStore.loadPreKey(it) }
             } else {
                 KeyHelper.generatePreKeys(1, 20).also { keys ->
@@ -61,21 +63,30 @@ class EncryptionManager @Inject constructor(
                 }
             }
 
-            // (Re)publish the current PUBLIC keys so the server can hand them out.
-            val otks = oneTimePreKeys.map {
-                buildJsonObject {
-                    put("key_id", it.id)
-                    put("public_key", Base64.encodeToString(it.keyPair.publicKey.serialize(), Base64.DEFAULT))
+            // CRITICAL: publish to the server ONLY when we just created keys (first init,
+            // or a full regeneration once all one-time prekeys are used up). The server's
+            // upload is DELETE-all-then-insert, so re-publishing the SAME set on every
+            // launch RESTORES one-time prekeys the server already handed out (consumed) —
+            // the next sender then grabs a "fresh" prekey the recipient no longer holds,
+            // and decryption dies with "no such prekey". Skipping re-upload lets the
+            // server's prekey set only ever shrink (via consumption), so every offered
+            // prekey still has a matching private key on this device. Identity + signed
+            // prekey are stable and already on the server from the first upload.
+            if (!signedPreKeyExisted || !otksExisted) {
+                val otks = oneTimePreKeys.map {
+                    buildJsonObject {
+                        put("key_id", it.id)
+                        put("public_key", Base64.encodeToString(it.keyPair.publicKey.serialize(), Base64.DEFAULT))
+                    }
                 }
+                authRepo.uploadE2EEKeys(
+                    registrationId = registrationId,
+                    identityKey = Base64.encodeToString(identityKeyPair.publicKey.serialize(), Base64.DEFAULT),
+                    signedPreKey = Base64.encodeToString(signedPreKey.keyPair.publicKey.serialize(), Base64.DEFAULT),
+                    signedPreKeySignature = Base64.encodeToString(signedPreKey.signature, Base64.DEFAULT),
+                    oneTimeKeys = otks
+                )
             }
-
-            authRepo.uploadE2EEKeys(
-                registrationId = registrationId,
-                identityKey = Base64.encodeToString(identityKeyPair.publicKey.serialize(), Base64.DEFAULT),
-                signedPreKey = Base64.encodeToString(signedPreKey.keyPair.publicKey.serialize(), Base64.DEFAULT),
-                signedPreKeySignature = Base64.encodeToString(signedPreKey.signature, Base64.DEFAULT),
-                oneTimeKeys = otks
-            )
         }
     }
 
@@ -113,13 +124,52 @@ class EncryptionManager @Inject constructor(
         signalStore.containsSession(SignalProtocolAddress(userId, 1))
     } catch (_: Exception) { false }
 
+    // Idempotency cache: ciphertext → plaintext. A Signal message can only be run
+    // through the ratchet ONCE; a second attempt throws DuplicateMessageException
+    // ("received message with old counter"). The same ciphertext can legitimately
+    // reach us more than once (duplicate WS/FCM/refresh delivery, the same message
+    // arriving under different local ids, OR — critically — after the app is killed
+    // and reopened, when a sync re-feeds an already-decrypted message). Returning the
+    // cached plaintext without touching the ratchet makes decryption idempotent.
+    //
+    // PERSISTED to SharedPreferences (keyed by a hash of the ciphertext) so it
+    // SURVIVES process death — otherwise force-closing the app and reopening would
+    // re-decrypt and desync the ratchet. The in-memory map is a fast front for it.
+    private val decryptCache = object : LinkedHashMap<String, String>(128, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean = size > 500
+    }
+    private val dedupPrefs by lazy { context.getSharedPreferences("e2ee_decrypt_dedup", Context.MODE_PRIVATE) }
+
+    private fun dedupKey(ciphertext: String): String = try {
+        val d = java.security.MessageDigest.getInstance("SHA-256").digest(ciphertext.toByteArray(Charsets.UTF_8))
+        Base64.encodeToString(d, Base64.NO_WRAP or Base64.URL_SAFE)
+    } catch (_: Exception) { ciphertext.take(64) }
+
+    private fun cacheGet(ciphertext: String): String? {
+        val k = dedupKey(ciphertext)
+        synchronized(decryptCache) { decryptCache[k] }?.let { return it }
+        return try { dedupPrefs.getString(k, null)?.also { p -> synchronized(decryptCache) { decryptCache[k] = p } } } catch (_: Exception) { null }
+    }
+
+    private fun cachePut(ciphertext: String, plaintext: String) {
+        val k = dedupKey(ciphertext)
+        synchronized(decryptCache) { decryptCache[k] = plaintext }
+        try { dedupPrefs.edit().putString(k, plaintext).apply() } catch (_: Exception) {}
+    }
+
     fun decryptMessage(senderUserId: String, base64Ciphertext: String): String {
         if (base64Ciphertext.isBlank() || senderUserId.isBlank()) return base64Ciphertext
+
+        val cacheKey = base64Ciphertext.trim()
+        cacheGet(cacheKey)?.let {
+            lastDecryptDiagnostic = ""
+            return it
+        }
 
         val address = SignalProtocolAddress(senderUserId, 1)
         val decodedBytes = try {
             // Try both DEFAULT and NO_WRAP implicitly via DEFAULT
-            Base64.decode(base64Ciphertext.trim(), Base64.DEFAULT)
+            Base64.decode(cacheKey, Base64.DEFAULT)
         } catch (e: Exception) {
             lastDecryptDiagnostic = "base64 decode failed"
             Log.w("EncryptionManager", "Base64 decode failed for message from $senderUserId")
@@ -133,24 +183,17 @@ class EncryptionManager @Inject constructor(
                 val sessionCipher = SessionCipher(signalStore, address)
                 val out = String(sessionCipher.decrypt(preKeyMsg), Charsets.UTF_8)
                 lastDecryptDiagnostic = ""
+                cachePut(cacheKey, out)
                 return out
             } catch (e: Exception) {
-                // A PreKey message is self-contained and should always be able to build
-                // a session. A failure here almost always means a STALE/conflicting local
-                // session for this sender (e.g. the peer reinstalled and re-keyed). Drop
-                // the old session and rebuild straight from the message.
-                Log.w("EncryptionManager", "PreKey decrypt failed for $senderUserId (${e.message}); resetting session + retrying")
-                try {
-                    signalStore.deleteSession(address)
-                    val fresh = SessionCipher(signalStore, address)
-                    val out = String(fresh.decrypt(PreKeySignalMessage(decodedBytes)), Charsets.UTF_8)
-                    lastDecryptDiagnostic = ""
-                    return out
-                } catch (e2: Exception) {
-                    lastDecryptDiagnostic = "prekey(handshake) decrypt failed: ${e2.message}"
-                    Log.e("EncryptionManager", "PreKey decrypt retry failed for $senderUserId: ${e2.message}")
-                    return base64Ciphertext
-                }
+                // Do NOT delete the session and rebuild here: that needs the one-time
+                // prekey again, which is already consumed → "no such prekey", and it
+                // would also destroy a perfectly good established session. Just report;
+                // the message is retried on the next sync and succeeds once the session
+                // is in place.
+                lastDecryptDiagnostic = "prekey(handshake) decrypt failed: ${e.message}"
+                Log.e("EncryptionManager", "PreKey decrypt failed for $senderUserId: ${e.message}")
+                return base64Ciphertext
             }
         }
 
@@ -161,7 +204,9 @@ class EncryptionManager @Inject constructor(
                 val ciphertext = SignalMessage(decodedBytes)
                 val decrypted = sessionCipher.decrypt(ciphertext)
                 lastDecryptDiagnostic = ""
-                return String(decrypted, Charsets.UTF_8)
+                val out = String(decrypted, Charsets.UTF_8)
+                cachePut(cacheKey, out)
+                return out
             } else {
                 lastDecryptDiagnostic = "no session with sender (handshake never completed — sender used a stale/mismatched session, or this isn't a first-contact message)"
                 Log.w("EncryptionManager", "No session for $senderUserId to decrypt standard message")

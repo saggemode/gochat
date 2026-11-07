@@ -1055,6 +1055,19 @@ class ChatRepository @Inject constructor(
         mediaUrl: String? = null,
         type: Int = 0,
         createdAt: Long = System.currentTimeMillis()
+    ): Message = messageIngestMutex.withLock {
+        ingestIncomingPushMessageLocked(messageId, conversationId, senderId, senderName, content, mediaUrl, type, createdAt)
+    }
+
+    private suspend fun ingestIncomingPushMessageLocked(
+        messageId: String,
+        conversationId: String,
+        senderId: String,
+        senderName: String,
+        content: String,
+        mediaUrl: String? = null,
+        type: Int = 0,
+        createdAt: Long = System.currentTimeMillis()
     ): Message {
         val currentUserId = tokenManager.userId ?: ""
         val isMe = senderId.isNotEmpty() && senderId == currentUserId

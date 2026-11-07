@@ -1096,7 +1096,10 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 						}
 					} else if eventType == "new_message" {
 						// Recipient is offline — send a real FCM push so their device wakes.
-						go func(recipient, convID, msgID, senderID string) {
+						// Use the preview the chat service provided (e.g. order details)
+						// when present; otherwise a generic message (text may be E2EE).
+						pushBody := payload["push_body"]
+						go func(recipient, convID, msgID, senderID, preview string) {
 							pushCtx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 							defer cancel()
 							data := map[string]string{
@@ -1106,11 +1109,17 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 								"message_id":      msgID,
 								"sender_id":       senderID,
 							}
-							if err := fcm.SendToUser(pushCtx, recipient, "GoChat", "You received a new message", data); err != nil {
+							pushTitle := "GoChat"
+							body := "You received a new message"
+							if preview != "" {
+								pushTitle = "New order"
+								body = preview
+							}
+							if err := fcm.SendToUser(pushCtx, recipient, pushTitle, body, data); err != nil {
 								log.Debug("push notification send failed",
 									zap.String("recipient_id", recipient), zap.Error(err))
 							}
-						}(memberID, convIDStr, msgIDStr, actorIDStr)
+						}(memberID, convIDStr, msgIDStr, actorIDStr, pushBody)
 					}
 				}
 			}

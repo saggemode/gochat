@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -265,10 +266,51 @@ func (s *ChatServer) SendMessage(ctx context.Context, req *chatpb.SendMessageReq
 		return nil, status.Error(codes.Internal, "failed to send message")
 	}
 
-	// Publish to Redis for fan-out
-	s.publishEvent(ctx, "new_message", saved.ID.String(), convID.String(), senderID.String())
+	// Publish to Redis for fan-out. Include an order preview (orders are not E2EE)
+	// so the offline FCM push can show order details instead of a generic message.
+	s.publishEventWithPreview(ctx, "new_message", saved.ID.String(), convID.String(), senderID.String(), orderPushPreview(saved.Content))
 
 	return &chatpb.SendMessageResponse{Message: msgToProto(saved)}, nil
+}
+
+// orderPushPreview returns a notification-friendly summary ("📦 New order #… : …")
+// for a marketplace-order message, or "" for anything else (plain text may be
+// E2EE ciphertext, so we never preview it). Order messages carry a plaintext JSON
+// body { "order": { order_number, items_summary, total_amount, ... } }.
+func orderPushPreview(content string) string {
+	c := strings.TrimSpace(content)
+	if !strings.HasPrefix(c, "{") || !strings.Contains(c, "order_number") {
+		return ""
+	}
+	var root struct {
+		Order struct {
+			OrderNumber  string `json:"order_number"`
+			ItemsSummary string `json:"items_summary"`
+		} `json:"order"`
+		OrderNumber  string `json:"order_number"`
+		ItemsSummary string `json:"items_summary"`
+	}
+	if err := json.Unmarshal([]byte(c), &root); err != nil {
+		return ""
+	}
+	num := root.Order.OrderNumber
+	if num == "" {
+		num = root.OrderNumber
+	}
+	summary := root.Order.ItemsSummary
+	if summary == "" {
+		summary = root.ItemsSummary
+	}
+	if num == "" && summary == "" {
+		return ""
+	}
+	if summary == "" {
+		summary = "Marketplace order"
+	}
+	if num != "" {
+		return "📦 New order #" + num + ": " + summary
+	}
+	return "📦 New order: " + summary
 }
 
 func (s *ChatServer) ScheduleMessage(ctx context.Context, req *chatpb.ScheduleMessageRequest) (*chatpb.ScheduleMessageResponse, error) {
@@ -902,6 +944,33 @@ func (s *ChatServer) publishEvent(ctx context.Context, eventType, msgID, convID,
 	payload := `{"event":"` + eventType + `","msg_id":"` + msgID +
 		`","conv_id":"` + convID + `","actor_id":"` + actorID + `"}`
 	if err := s.redis.Publish(ctx, channel, payload).Err(); err != nil {
+		s.log.Warn("redis publish failed", zap.Error(err), zap.String("channel", channel))
+	}
+}
+
+// publishEventWithPreview is publishEvent plus an optional notification preview
+// (pushBody) carried to the gateway for a richer FCM push (e.g. order details).
+// Marshaled with encoding/json so the preview can safely contain quotes/commas.
+func (s *ChatServer) publishEventWithPreview(ctx context.Context, eventType, msgID, convID, actorID, pushBody string) {
+	if s.redis == nil {
+		return
+	}
+	channel := "chat:" + convID
+	m := map[string]string{
+		"event":    eventType,
+		"msg_id":   msgID,
+		"conv_id":  convID,
+		"actor_id": actorID,
+	}
+	if pushBody != "" {
+		m["push_body"] = pushBody
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		s.publishEvent(ctx, eventType, msgID, convID, actorID)
+		return
+	}
+	if err := s.redis.Publish(ctx, channel, string(b)).Err(); err != nil {
 		s.log.Warn("redis publish failed", zap.Error(err), zap.String("channel", channel))
 	}
 }

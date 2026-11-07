@@ -45,5 +45,6 @@ object E2EESettings {
     fun clearAll(context: Context) {
         try { prefs(context).edit().clear().apply() } catch (_: Exception) {}
         try { context.getSharedPreferences("gochat_group_e2ee", Context.MODE_PRIVATE).edit().clear().apply() } catch (_: Exception) {}
+        try { context.getSharedPreferences("e2ee_decrypt_dedup", Context.MODE_PRIVATE).edit().clear().apply() } catch (_: Exception) {}
     }
 }
