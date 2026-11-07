@@ -92,6 +92,9 @@ class EncryptionManager @Inject constructor(
                 // Use NO_WRAP to ensure the entire ciphertext is a single string without newlines
                 return@withContext Base64.encodeToString(ciphertext.serialize(), Base64.NO_WRAP)
             }
+            // No session could be established (recipient keys unavailable). Caller
+            // treats unchanged plaintext as "encryption failed" and fails the message.
+            Log.w("EncryptionManager", "No Signal session for $targetUserId; could not encrypt")
             plainText
         } catch (e: Exception) {
             Log.e("EncryptionManager", "Encryption failed for $targetUserId: ${e.message}")
@@ -99,25 +102,57 @@ class EncryptionManager @Inject constructor(
         }
     }
 
+    /** Human-readable reason the LAST decryptMessage() attempt failed ("" on success).
+     *  Surfaced on-screen for diagnosis. */
+    @Volatile
+    var lastDecryptDiagnostic: String = ""
+        private set
+
+    /** Whether a Signal session already exists with this user (handshake completed). */
+    fun hasSession(userId: String): Boolean = try {
+        signalStore.containsSession(SignalProtocolAddress(userId, 1))
+    } catch (_: Exception) { false }
+
     fun decryptMessage(senderUserId: String, base64Ciphertext: String): String {
         if (base64Ciphertext.isBlank() || senderUserId.isBlank()) return base64Ciphertext
-        
+
         val address = SignalProtocolAddress(senderUserId, 1)
         val decodedBytes = try {
             // Try both DEFAULT and NO_WRAP implicitly via DEFAULT
             Base64.decode(base64Ciphertext.trim(), Base64.DEFAULT)
         } catch (e: Exception) {
+            lastDecryptDiagnostic = "base64 decode failed"
             Log.w("EncryptionManager", "Base64 decode failed for message from $senderUserId")
             return base64Ciphertext
         }
 
-        // 1. Try PreKeySignalMessage (initial session setup)
-        try {
-            val sessionCipher = SessionCipher(signalStore, address)
-            val ciphertext = PreKeySignalMessage(decodedBytes)
-            val decrypted = sessionCipher.decrypt(ciphertext)
-            return String(decrypted, Charsets.UTF_8)
-        } catch (_: Exception) { }
+        // 1. Try PreKeySignalMessage (initial session setup / first contact).
+        val preKeyMsg = try { PreKeySignalMessage(decodedBytes) } catch (_: Exception) { null }
+        if (preKeyMsg != null) {
+            try {
+                val sessionCipher = SessionCipher(signalStore, address)
+                val out = String(sessionCipher.decrypt(preKeyMsg), Charsets.UTF_8)
+                lastDecryptDiagnostic = ""
+                return out
+            } catch (e: Exception) {
+                // A PreKey message is self-contained and should always be able to build
+                // a session. A failure here almost always means a STALE/conflicting local
+                // session for this sender (e.g. the peer reinstalled and re-keyed). Drop
+                // the old session and rebuild straight from the message.
+                Log.w("EncryptionManager", "PreKey decrypt failed for $senderUserId (${e.message}); resetting session + retrying")
+                try {
+                    signalStore.deleteSession(address)
+                    val fresh = SessionCipher(signalStore, address)
+                    val out = String(fresh.decrypt(PreKeySignalMessage(decodedBytes)), Charsets.UTF_8)
+                    lastDecryptDiagnostic = ""
+                    return out
+                } catch (e2: Exception) {
+                    lastDecryptDiagnostic = "prekey(handshake) decrypt failed: ${e2.message}"
+                    Log.e("EncryptionManager", "PreKey decrypt retry failed for $senderUserId: ${e2.message}")
+                    return base64Ciphertext
+                }
+            }
+        }
 
         // 2. Try standard SignalMessage
         try {
@@ -125,11 +160,14 @@ class EncryptionManager @Inject constructor(
                 val sessionCipher = SessionCipher(signalStore, address)
                 val ciphertext = SignalMessage(decodedBytes)
                 val decrypted = sessionCipher.decrypt(ciphertext)
+                lastDecryptDiagnostic = ""
                 return String(decrypted, Charsets.UTF_8)
             } else {
+                lastDecryptDiagnostic = "no session with sender (handshake never completed — sender used a stale/mismatched session, or this isn't a first-contact message)"
                 Log.w("EncryptionManager", "No session for $senderUserId to decrypt standard message")
             }
         } catch (e: Exception) {
+            lastDecryptDiagnostic = "session decrypt failed (ratchet desync / wrong key): ${e.message}"
             Log.e("EncryptionManager", "Decryption failed for $senderUserId: ${e.message}")
         }
 

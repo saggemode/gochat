@@ -1956,6 +1956,17 @@ class ChatRoomActivity : AppCompatActivity() {
                     }
                 }
 
+                // E2EE diagnostics — show WHY a message failed to encrypt/decrypt,
+                // as a dismissible banner that can be screenshotted.
+                launch {
+                    viewModel.cryptoDiag.collect { reason ->
+                        Snackbar.make(binding.root, "🔐 $reason", Snackbar.LENGTH_INDEFINITE)
+                            .setAction("Dismiss") {}
+                            .also { it.view.findViewById<android.widget.TextView>(com.google.android.material.R.id.snackbar_text)?.maxLines = 6 }
+                            .show()
+                    }
+                }
+
                 launch {
                     viewModel.safetyNumberChanged.collect { changed ->
                         if (changed) {

@@ -123,6 +123,9 @@ class ChatRoomViewModel @Inject constructor(
         }
         .cachedIn(viewModelScope)
 
+    /** On-screen E2EE diagnostics (reason encrypt/decrypt failed). */
+    val cryptoDiag = chatRepository.cryptoDiag
+
     private val _replyingTo = MutableStateFlow<Message?>(null)
     val replyingTo: StateFlow<Message?> = _replyingTo.asStateFlow()
 

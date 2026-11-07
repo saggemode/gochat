@@ -26,6 +26,8 @@ import com.example.gochat.core.utils.BlurHashUtil
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -280,13 +282,17 @@ class ChatRepository @Inject constructor(
                 val messages = mutableListOf<Message>()
                 for (element in rawList) {
                     if (element !is JsonObject) continue
+                    // Serialize decrypt+store with the live WS paths so each message is
+                    // decrypted exactly once on the shared Signal ratchet. withLock is
+                    // inline, so return@withLock just skips this element.
+                    messageIngestMutex.withLock {
                     val msg = Message.fromJson(element, currentUserId)
 
                     // Group sender-key distribution control messages are never displayed;
                     // process any addressed to us so a missed live SKD still lands on sync.
                     if (msg.content.startsWith(groupSkdMarker)) {
                         if (!msg.isMe) handleGroupKeyDistribution(msg)
-                        continue
+                        return@withLock
                     }
 
                     val localExisting = dao.getMessageById(msg.id)
@@ -296,19 +302,32 @@ class ChatRepository @Inject constructor(
                     val isStarred = if (isDeleted) false else (localExisting?.isStarred ?: msg.isStarred)
                     val isPinned = if (isDeleted) false else (localExisting?.isPinned ?: msg.isPinned)
 
-                    // Decrypt received text + media heuristically (not gated on the local
-                    // E2EESettings flag — the recipient often didn't create the chat).
-                    var decrypted = msg
-                    if (!isDeleted && !msg.isMe) {
-                        decrypted = if (conv != null && !conv.isDirect) tryDecryptGroupMessage(msg) else tryDecryptMessage(msg)
-                        decrypted = decryptIncomingMedia(decrypted)
-                    }
-
                     val hasGoodLocalText = localExisting != null &&
                             localExisting.content.isNotBlank() && !isBase64Ciphertext(localExisting.content)
+                    val localMediaGood = localExisting?.mediaUrl?.let { it.isNotBlank() && !it.startsWith("http") } == true
+
+                    // Decrypt received text + media — but ONLY if we don't already hold the
+                    // decrypted copy. A Signal session is a stateful ratchet; decrypting the
+                    // SAME ciphertext again (on every sync) desyncs it and breaks all later
+                    // messages ("first message shows, rest encrypted"). Decrypt exactly once.
+                    var decrypted = msg
+                    if (!isDeleted && !msg.isMe) {
+                        if (!hasGoodLocalText) {
+                            decrypted = if (conv != null && !conv.isDirect) tryDecryptGroupMessage(msg) else tryDecryptMessage(msg)
+                        }
+                        if (!localMediaGood) {
+                            decrypted = decryptIncomingMedia(decrypted)
+                        }
+                    }
+
                     val contentToUse = if (isDeleted) {
                         "This message was deleted"
                     } else if (hasGoodLocalText) {
+                        localExisting!!.content
+                    } else if (localMediaGood) {
+                        // Already-decrypted media: its stored content is "" (the key was
+                        // consumed). Keep that — do NOT fall through and re-show the key
+                        // ciphertext as "[Encrypted Message]".
                         localExisting!!.content
                     } else if (msg.isMe) {
                         // We can't decrypt our own outgoing 1:1 ciphertext (it's encrypted
@@ -319,9 +338,7 @@ class ChatRepository @Inject constructor(
                         decrypted.content
                     }
 
-                    // Prefer an already-decrypted local media file (a non-http path) over
-                    // re-downloading; else use the freshly decrypted media path.
-                    val localMediaGood = localExisting?.mediaUrl?.let { it.isNotBlank() && !it.startsWith("http") } == true
+                    // Prefer an already-decrypted local media file (a non-http path).
                     val mediaToUse = if (isDeleted) null
                         else if (localMediaGood) localExisting!!.mediaUrl
                         else decrypted.mediaUrl
@@ -356,6 +373,7 @@ class ChatRepository @Inject constructor(
                             isPinned = isPinned
                         )
                     )
+                    }
                 }
                 dao.insertMessages(messages)
                 Result.success(messages)
@@ -414,6 +432,7 @@ class ChatRepository @Inject constructor(
                 encryptedContent = encryptionManager.encryptMessage(targetUserId, content)
                 if (encryptedContent == content) {
                     // Encryption did not produce ciphertext → do not send in the clear.
+                    diag("Could NOT encrypt to …${targetUserId.takeLast(6)} — no Signal session could be established (recipient's keys missing on the server, or not fetched). Message marked FAILED.")
                     val failed = createOptimisticMessage(
                         conversationId, content, type, mediaUrl,
                         replyToId, replyToText, replyToSenderName,
@@ -746,7 +765,10 @@ class ChatRepository @Inject constructor(
         }
     }
 
-    suspend fun handleIncomingWebSocketEvent(event: JsonObject): Message? {
+    suspend fun handleIncomingWebSocketEvent(event: JsonObject): Message? =
+        messageIngestMutex.withLock { handleIncomingWebSocketEventLocked(event) }
+
+    private suspend fun handleIncomingWebSocketEventLocked(event: JsonObject): Message? {
         val eventType = (event["type"] ?: event["event_type"] ?: event["eventType"] ?: event["event"])
             ?.jsonPrimitive?.contentOrNull.orEmpty().lowercase()
 
@@ -1197,7 +1219,10 @@ class ChatRepository @Inject constructor(
         }
     }
 
-    suspend fun insertWebSocketMessage(message: Message) {
+    suspend fun insertWebSocketMessage(message: Message) =
+        messageIngestMutex.withLock { insertWebSocketMessageLocked(message) }
+
+    private suspend fun insertWebSocketMessageLocked(message: Message) {
         val isMe = message.senderId == (tokenManager.userId ?: "")
         if (!isMe && dao.isUserBlocked(message.senderId)) {
             Log.d("ChatRepository", "insertWebSocketMessage: sender ${message.senderId} is blocked, dropping.")
@@ -1213,15 +1238,21 @@ class ChatRepository @Inject constructor(
         val localExisting = dao.getMessageById(message.id)
         val hasGoodLocalText = localExisting != null &&
                 localExisting.content.isNotBlank() && !isBase64Ciphertext(localExisting.content)
+        val localMediaGood = localExisting?.mediaUrl?.let { it.isNotBlank() && !it.startsWith("http") } == true
 
-        // Decrypt received text + media. NEVER our own: a 1:1 message is encrypted to
-        // the recipient, so the sender cannot decrypt its own outgoing ciphertext —
-        // it only ever displays via the locally-kept plaintext.
+        // Decrypt received text + media, but ONLY if we don't already hold the decrypted
+        // copy. A Signal session is a stateful ratchet — re-decrypting the SAME ciphertext
+        // (e.g. a duplicate WS delivery) desyncs it and breaks every later message. Decrypt
+        // each message exactly once. NEVER our own (encrypted to the recipient, not us).
         val conv = if (message.conversationId.isNotEmpty()) dao.getConversationById(message.conversationId) else null
         var decrypted = message
         if (!isMe) {
-            decrypted = if (conv != null && !conv.isDirect) tryDecryptGroupMessage(message) else tryDecryptMessage(message)
-            decrypted = decryptIncomingMedia(decrypted)
+            if (!hasGoodLocalText) {
+                decrypted = if (conv != null && !conv.isDirect) tryDecryptGroupMessage(message) else tryDecryptMessage(message)
+            }
+            if (!localMediaGood) {
+                decrypted = decryptIncomingMedia(decrypted)
+            }
         }
 
         val clearedAt = conv?.clearedAt ?: 0L
@@ -1233,8 +1264,11 @@ class ChatRepository @Inject constructor(
 
         val contentToUse = when {
             isDeleted -> "This message was deleted"
-            // Preserve our own plaintext / an already-decrypted received message.
+            // Preserve our own plaintext / an already-decrypted received text message.
             hasGoodLocalText -> localExisting!!.content
+            // Already-decrypted media: stored content is "" (key consumed) — keep it,
+            // don't re-show the key ciphertext as "[Encrypted Message]".
+            localMediaGood -> localExisting!!.content
             // Own outgoing ciphertext echo — we can't decrypt it; drop and keep the
             // local plaintext copy rather than overwrite it with gibberish.
             isMe && isBase64Ciphertext(message.content.trim()) -> return
@@ -1245,7 +1279,6 @@ class ChatRepository @Inject constructor(
         // empty/duplicate bubbles.
         if (decrypted.type == MessageType.TEXT && contentToUse.isBlank() && decrypted.mediaUrl.isNullOrBlank()) return
 
-        val localMediaGood = localExisting?.mediaUrl?.let { it.isNotBlank() && !it.startsWith("http") } == true
         val mediaToUse = if (isDeleted) null else if (localMediaGood) localExisting!!.mediaUrl else decrypted.mediaUrl
 
         val mergedStatus = if (localExisting != null) {
@@ -1312,6 +1345,23 @@ class ChatRepository @Inject constructor(
     // Each member's SKDM is wrapped with that member's pairwise 1:1 session so
     // only they can read it. Receivers intercept the marker, decrypt their own
     // entry, process it, and never display the control message.
+    // Serializes incoming-message ingestion. Two live WS consumers (ChatListViewModel
+    // via handleIncomingWebSocketEvent, ChatRoomViewModel via insertWebSocketMessage)
+    // can process the SAME message concurrently; without this both would run the Signal
+    // decrypt on the same ciphertext and desync the ratchet ("first msg ok, rest
+    // encrypted"). The lock makes the "already have plaintext? → skip decrypt" check
+    // atomic with the store, so each message is decrypted exactly once.
+    private val messageIngestMutex = kotlinx.coroutines.sync.Mutex()
+
+    // On-screen E2EE diagnostics: a human-readable reason whenever encrypt/decrypt
+    // fails, surfaced as a dismissible banner in the chat so failures can be
+    // diagnosed from a screenshot (no logcat needed).
+    val cryptoDiag = MutableSharedFlow<String>(replay = 1, extraBufferCapacity = 16)
+    private fun diag(msg: String) {
+        cryptoDiag.tryEmit(msg)
+        Log.w("E2EEDiag", msg)
+    }
+
     private val groupSkdMarker = "\u0001GKD1:"
     private fun groupSkdPrefs() =
         context.getSharedPreferences("gochat_group_e2ee", Context.MODE_PRIVATE)
@@ -1422,7 +1472,7 @@ class ChatRepository @Inject constructor(
             // Decryption failed — return the message unchanged so we don't permanently
             // mask content that could be decrypted later when the session is established.
             // The raw ciphertext will be re-attempted on next fetch.
-            Log.w("ChatRepository", "Decryption failed for msg ${message.id} from ${message.senderId}")
+            diag("Text from …${message.senderId.takeLast(6)} stays encrypted — ${encryptionManager.lastDecryptDiagnostic}")
             return message
         }
         return message
@@ -1449,7 +1499,10 @@ class ChatRepository @Inject constructor(
         if (!isBase64Ciphertext(keyCipher)) return@withContext message
 
         val decryptedPayload = encryptionManager.decryptMessage(message.senderId, keyCipher)
-        if (decryptedPayload.isBlank() || decryptedPayload == keyCipher) return@withContext message // can't decrypt yet
+        if (decryptedPayload.isBlank() || decryptedPayload == keyCipher) {
+            diag("Image key from …${message.senderId.takeLast(6)} won't decrypt — ${encryptionManager.lastDecryptDiagnostic}")
+            return@withContext message // can't decrypt yet
+        }
 
         // Payload is `base64(iv||key)` optionally followed by `\u0001<original filename>`.
         val sep = decryptedPayload.indexOf('\u0001')
