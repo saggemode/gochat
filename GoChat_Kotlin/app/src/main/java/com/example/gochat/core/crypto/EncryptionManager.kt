@@ -311,10 +311,90 @@ class EncryptionManager @Inject constructor(
             context.getSharedPreferences("e2ee_prefs", Context.MODE_PRIVATE)
                 .edit().putInt("e2ee_device_number", n).apply()
         } catch (_: Exception) {}
+        // A device_number > 1 means we're a companion → the account is multi-device.
+        if (n > 1) markAccountMultiDevice()
+    }
+
+    /**
+     * Whether THIS ACCOUNT is known to have more than one device. Sticky once set.
+     * This is the go-live gate for the fan-out: while it's false (every account today),
+     * sends take the stable 1:1 path with NO network fetch and NO one-time-prekey
+     * consumption. It flips true when this device is a companion (device_number > 1)
+     * or when the "Encryption devices" screen observes more than one registered device.
+     * Using an account-level signal (not just the recipient) is what closes the
+     * sender-multi-device ratchet-collision gap: a multi-device sender ALWAYS uses the
+     * envelope, so the sender device (`sd`) is carried and the receiver builds the
+     * session against the correct (senderId, sd) address.
+     */
+    fun isAccountMultiDevice(): Boolean = try {
+        localDeviceNumber() > 1 ||
+            context.getSharedPreferences("e2ee_prefs", Context.MODE_PRIVATE)
+                .getBoolean("e2ee_account_multidevice", false)
+    } catch (_: Exception) { false }
+
+    /** Mark the account multi-device (sticky). Called from the linked-devices screen. */
+    fun markAccountMultiDevice() {
+        try {
+            context.getSharedPreferences("e2ee_prefs", Context.MODE_PRIVATE)
+                .edit().putBoolean("e2ee_account_multidevice", true).apply()
+        } catch (_: Exception) {}
+    }
+
+    /** Record that a companion device (by device_id) was paired and trusted, storing
+     *  its identity key for later change-detection. Also flips the account to
+     *  multi-device so sends fan out. Idempotent. */
+    fun recordPairedDevice(deviceId: String, identityKeyB64: String) {
+        if (deviceId.isBlank()) return
+        try {
+            context.getSharedPreferences("e2ee_paired_devices", Context.MODE_PRIVATE)
+                .edit().putString(deviceId, identityKeyB64).apply()
+        } catch (_: Exception) {}
+        markAccountMultiDevice()
     }
 
     /** True if [content] is a multi-device envelope rather than a raw ciphertext. */
     fun isEnvelope(content: String): Boolean = content.startsWith(mdEnvelopeMarker)
+
+    // ── Device pairing (Phase 3 QR) ─────────────────────────────────────────
+
+    /** This device's Signal identity public key (base64), the stable per-install
+     *  identity a companion presents for trust verification during QR pairing. */
+    fun localDeviceIdentityB64(): String = try {
+        Base64.encodeToString(signalStore.identityKeyPair.publicKey.serialize(), Base64.NO_WRAP)
+    } catch (_: Exception) { "" }
+
+    /** A short, human-comparable fingerprint of an identity public key (base64 in):
+     *  16 uppercase hex chars grouped in 4s, e.g. "A1B2 C3D4 E5F6 7890". Returns "" on
+     *  bad input. Two devices showing the SAME fingerprint hold the same identity key. */
+    fun identityFingerprint(identityB64: String): String {
+        if (identityB64.isBlank()) return ""
+        return try {
+            val raw = Base64.decode(identityB64.trim(), Base64.DEFAULT)
+            val hex = java.security.MessageDigest.getInstance("SHA-256").digest(raw)
+                .joinToString("") { "%02X".format(it) }.take(16)
+            hex.chunked(4).joinToString(" ")
+        } catch (_: Exception) { "" }
+    }
+
+    /** Fetch (from the server) the identity public key this account has on record for
+     *  the device numbered [deviceNumber], so a scanned companion fingerprint can be
+     *  checked against what the server actually stores (MITM / key-swap detection).
+     *  Returns "" if unavailable. */
+    suspend fun serverIdentityForOwnDevice(deviceNumber: Int): String = withContext(Dispatchers.IO) {
+        val myId = tokenManager.userId ?: return@withContext ""
+        var found = ""
+        authRepo.getE2EEKeys(myId).onSuccess { json ->
+            val bundles = json["bundles"]?.jsonArray ?: return@onSuccess
+            for (b in bundles) {
+                val o = b.jsonObject
+                if ((o["device_number"]?.jsonPrimitive?.intOrNull ?: 0) == deviceNumber) {
+                    found = o["prekey_identity"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                    break
+                }
+            }
+        }
+        found
+    }
 
     /** Fetch all of [targetUserId]'s per-device bundles (Phase 2 `bundles` list).
      *  Returns null when the server supplies no list (older server, or a single-device
@@ -328,17 +408,25 @@ class EncryptionManager @Inject constructor(
     }
 
     /**
-     * Encrypt [plainText] to EVERY device of [targetUserId] (plus the sender's own
-     * other devices, for self-sync). N=1-SAFE: a recipient with at most one device
-     * takes the `encryptMessage()` branch and returns a RAW ciphertext — the exact
-     * legacy path, so stable single-device crypto cannot regress. Only a genuinely
-     * multi-device recipient (impossible until Phase 3 linking) yields a marked envelope.
+     * Encrypt [plainText] for [targetUserId]. SINGLE-DEVICE FAST PATH: while the
+     * account is not multi-device (every account today), this delegates straight to
+     * `encryptMessage()` — the exact legacy path, with NO device-bundle fetch, so it
+     * neither changes behavior nor consumes one-time prekeys on each send. Only once
+     * the account is known multi-device do we fan out to every device (recipient's
+     * devices + the sender's own other devices, for self-sync) as a marked envelope.
      */
     suspend fun encryptForUser(targetUserId: String, plainText: String): String = withContext(Dispatchers.IO) {
         if (targetUserId.isBlank()) return@withContext plainText
+        // Gate: no fan-out (and no key fetch) unless this account is multi-device.
+        if (!isAccountMultiDevice()) {
+            return@withContext encryptMessage(targetUserId, plainText)
+        }
         val bundles = fetchDeviceBundles(targetUserId)
-        // Single-device (the only case today): keep the stable raw-ciphertext path.
-        if (bundles == null || bundles.size <= 1) {
+        // Recipient still single-device: a raw ciphertext reaches their one device,
+        // but we must self-sync to our OWN other devices — so fall through to the
+        // envelope below whenever self-sync targets exist; if the recipient has one
+        // device and we somehow have none to self-sync, the legacy path is fine.
+        if (bundles == null) {
             return@withContext encryptMessage(targetUserId, plainText)
         }
         try {

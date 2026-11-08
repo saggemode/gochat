@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.gochat.core.ui.applyEdgeToEdge
 import com.example.gochat.core.ui.applyStatusBarInset
 import com.example.gochat.core.ui.applySystemBarInsets
+import com.example.gochat.core.crypto.EncryptionManager
 import com.example.gochat.data.model.E2EEDevice
 import com.example.gochat.data.repository.AuthRepository
 import com.example.gochat.databinding.ActivityE2eeDevicesBinding
@@ -35,6 +36,9 @@ class E2EEDevicesActivity : AppCompatActivity() {
     @Inject
     lateinit var authRepo: AuthRepository
 
+    @Inject
+    lateinit var encryptionManager: EncryptionManager
+
     private val devicesAdapter = DevicesAdapter()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,7 +53,15 @@ class E2EEDevicesActivity : AppCompatActivity() {
         binding.toolbarE2EEDevices.setNavigationOnClickListener { finish() }
         binding.rvDevices.layoutManager = LinearLayoutManager(this)
         binding.rvDevices.adapter = devicesAdapter
+        binding.btnLinkDevice.setOnClickListener {
+            startActivity(android.content.Intent(this, DevicePairingActivity::class.java))
+        }
+    }
 
+    override fun onResume() {
+        super.onResume()
+        // Loads on first show and refreshes after returning from pairing so a newly
+        // linked device appears.
         loadDevices()
     }
 
@@ -61,6 +73,9 @@ class E2EEDevicesActivity : AppCompatActivity() {
             result.onSuccess { devices ->
                 devicesAdapter.submitList(devices)
                 binding.tvNoDevices.visibility = if (devices.isEmpty()) View.VISIBLE else View.GONE
+                // Observing >1 registered device flips the send path to multi-device
+                // fan-out (the go-live gate). Sticky; see EncryptionManager.
+                if (devices.size > 1) encryptionManager.markAccountMultiDevice()
             }.onFailure { err ->
                 Toast.makeText(this@E2EEDevicesActivity, err.message ?: "Failed to load devices", Toast.LENGTH_SHORT).show()
                 binding.tvNoDevices.visibility = View.VISIBLE

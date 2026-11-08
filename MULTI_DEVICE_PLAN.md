@@ -161,24 +161,42 @@ two devices can't both think they're device 1.
   management feature (GetActiveSessions/TerminateSession, web login sessions: ip/browser/is_current).
   That is a DIFFERENT subsystem from this Signal-key device registry; do not conflate them. Gin
   would panic on the duplicate route — hence the separate path.
-- TODO: Android "E2EE devices" screen hitting `/auth/e2ee/devices` (list + unlink). The existing
-  `AuthRepository.getLinkedDevices()/unlinkDevice()` point at the SESSION routes, not these.
+- Android "E2EE devices" screen — DONE (2026-11-08, `:app:compileDebugKotlin` + manifest merge OK):
+  `ui/devices/E2EEDevicesActivity` (+ `activity_e2ee_devices.xml`, `item_e2ee_device.xml`), model
+  `data/model/E2EEDevice`, `AuthRepository.getE2EEDevices()`/`removeE2EEDevice()`, API
+  `GET/DELETE api/v1/auth/e2ee/devices`. Entry point: Settings → "Encryption devices" tile
+  (`tileE2EEDevices`), separate from the existing "Linked Devices" (session) tile. Marks our own
+  install ("This device" via X-Device-Id match); primary (device_number 1) shows no Unlink.
+  Kept fully separate from `getLinkedDevices()/unlinkDevice()` (those hit the SESSION routes).
 
-**Step 3 — QR pairing UX (TODO):** primary shows a QR (reuse `SecurityVerificationActivity` QR
-  infra); companion (already logged into the account) scans to authorize + exchange identity
-  fingerprint. There's also a pre-existing `linkDeviceWithQr()` + `POST /auth/qr/link` in the
-  codebase for *web session* linking — evaluate whether to reuse it or keep separate.
+**Step 3 — QR pairing UX — DONE (2026-11-08, `:app:compileDebugKotlin` + manifest OK; UNTESTED):**
+both devices are logged into the same account and a companion already publishes its keys at startup,
+so pairing is the human-verified TRUST step (not the key transport).
+- `ui/devices/DevicePairingActivity` (+ `activity_device_pairing.xml`): shows THIS device's QR
+  (`gochat-e2ee-device://pair?uid&dev&did&ikf&ik`, built by `core/crypto/DevicePairingPayload`) with
+  its identity fingerprint, and a "Scan the other device" button (ZXing `BarcodeEncoder` to render,
+  `ScanContract` to scan — same infra as `SecurityVerificationActivity`/`ContactQrActivity`).
+- On scan: rejects a different account / self; then **verifies the scanned fingerprint against the
+  server's stored identity for that device** via `EncryptionManager.serverIdentityForOwnDevice()`
+  (reads `GetE2EEKeys.bundles`) — a real MITM/key-swap check — and the fingerprint's self-consistency.
+  Clean verify → "Link device"; any mismatch → warning + "Link anyway".
+- Confirm → `EncryptionManager.recordPairedDevice(deviceId, identityB64)` (stores trust in
+  `e2ee_paired_devices`, flips the account multi-device). Entry: "Link a device" button on the
+  E2EE devices screen; that screen refreshes in `onResume`.
 - **Auth:** linking is authenticated as the same account (the new device is already logged in).
+- Distinct from the pre-existing `linkDeviceWithQr()` + `POST /auth/qr/link` (web *session* linking).
 
-**🚩 CRITICAL GO-LIVE GATE for N>1 (must fix before enabling multi-device, can't test until then):**
-Today `encryptForUser` chooses the envelope only when the *recipient* has >1 device. But if the
-*sender's own account* has >1 device, a device-2 sender sending to a single-device peer still takes
-the RAW path, and the peer stores that session under `(senderId, 1)` — colliding with device-1's
-raw messages to the same peer (both map to deviceId 1) → ratchet break. Fix when linking lands:
-use the envelope whenever **either** side is multi-device (cheap signal: `localDeviceNumber() > 1`,
-or the account's own `ListDevices` count > 1), so the sender device (`sd`) is always carried and the
-receiver builds the session against the correct `(senderId, sd)` address. Cannot trigger today (every
-account is N=1), so single-device stays correct; but this MUST be in place the moment a 2nd device exists.
+**🚩 GO-LIVE GATE for N>1 — WIRED (2026-11-08):** `encryptForUser` now gates on
+`EncryptionManager.isAccountMultiDevice()` (sticky: true when `localDeviceNumber() > 1`, or the
+"Encryption devices" screen saw >1 device, or a device was paired). While false (every account today)
+it delegates to `encryptMessage()` with **no device-bundle fetch** — which also fixed a latent Phase-2
+cost bug (the old code fetched bundles on every send, consuming a one-time prekey each time). Once the
+account is multi-device the SENDER always uses the envelope, so `sd` is carried and the receiver builds
+the session against the correct `(senderId, sd)` address — closing the ratchet-collision gap.
+- **Remaining refinement:** recipient-is-multi-device-but-sender-isn't still sends raw to the
+  recipient's device 1 only (a delivery gap, not corruption); and the envelope path still fetches
+  recipient bundles per send (OTK cost). Both are dormant-path items to optimize when multi-device
+  is actually exercised.
 
 ### Phase 4 — History onboarding for a new device
 Server stores no plaintext, so a freshly linked device is empty. Pick per Phase 0 #3:

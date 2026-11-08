@@ -64,6 +64,21 @@
                     android:textColor="@color/gochat_text_secondary"
                     android:textSize="13.5sp"
                     android:lineSpacingExtra="2dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnLinkDevice"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="20dp"
+                    android:backgroundTint="@color/gochat_emerald"
+                    android:text="Link a device"
+                    android:textColor="@color/white"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="25dp"
+                    app:icon="@drawable/ic_qr_code"
+                    app:iconGravity="textStart"
+                    app:iconTint="@color/white" />
             </LinearLayout>
 
             <View
