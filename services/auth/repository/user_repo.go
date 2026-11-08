@@ -568,7 +568,10 @@ type EphemeralPreKey struct {
 	PublicKey string
 }
 
-func (r *UserRepository) SavePreKeyBundle(ctx context.Context, userID uuid.UUID, identity, signedKey, signature string, oneTimeKeys []*EphemeralPreKey, deviceID string, registrationID int32) error {
+// SavePreKeyBundle persists the device's keys and returns the server-assigned
+// device_number (1 for the first/primary device of the user). The client stores
+// this as its Signal deviceId so every device has a distinct identity.
+func (r *UserRepository) SavePreKeyBundle(ctx context.Context, userID uuid.UUID, identity, signedKey, signature string, oneTimeKeys []*EphemeralPreKey, deviceID string, registrationID int32) (int32, error) {
 	if deviceID == "" {
 		deviceID = "1"
 	}
@@ -576,21 +579,21 @@ func (r *UserRepository) SavePreKeyBundle(ctx context.Context, userID uuid.UUID,
 		var err error
 		identity, err = r.encryptor.Encrypt(identity)
 		if err != nil {
-			return fmt.Errorf("encrypting identity key: %w", err)
+			return 0, fmt.Errorf("encrypting identity key: %w", err)
 		}
 		signedKey, err = r.encryptor.Encrypt(signedKey)
 		if err != nil {
-			return fmt.Errorf("encrypting signed prekey: %w", err)
+			return 0, fmt.Errorf("encrypting signed prekey: %w", err)
 		}
 		signature, err = r.encryptor.Encrypt(signature)
 		if err != nil {
-			return fmt.Errorf("encrypting signature: %w", err)
+			return 0, fmt.Errorf("encrypting signature: %w", err)
 		}
 	}
 
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer tx.Rollback(ctx)
 
@@ -602,12 +605,12 @@ func (r *UserRepository) SavePreKeyBundle(ctx context.Context, userID uuid.UUID,
 		WHERE id = $1
 	`, userID, identity, signedKey, signature)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	_, err = tx.Exec(ctx, `DELETE FROM user_prekeys WHERE user_id = $1`, userID)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	for _, k := range oneTimeKeys {
@@ -615,7 +618,7 @@ func (r *UserRepository) SavePreKeyBundle(ctx context.Context, userID uuid.UUID,
 		if r.encryptor != nil {
 			pkEnc, err = r.encryptor.Encrypt(pkEnc)
 			if err != nil {
-				return fmt.Errorf("encrypting one-time key %d: %w", k.KeyID, err)
+				return 0, fmt.Errorf("encrypting one-time key %d: %w", k.KeyID, err)
 			}
 		}
 		_, err = tx.Exec(ctx, `
@@ -623,31 +626,43 @@ func (r *UserRepository) SavePreKeyBundle(ctx context.Context, userID uuid.UUID,
 			VALUES ($1, $2, $3)
 		`, userID, k.KeyID, pkEnc)
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
 
 	// ── Multi-device (Phase 1): also record this device's bundle. Additive and
 	// append-only (consumed one-time prekeys are removed on fetch, never on upload),
 	// so a device's offered prekeys only ever shrink — no "no such prekey" revival.
-	if _, err = tx.Exec(ctx, `
-		INSERT INTO user_devices (user_id, device_id, identity_key, signed_prekey, signed_prekey_signature, registration_id, last_seen)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW())
+	// device_number: reuse this device's existing number, else assign the next one
+	// for the user (1 for the first device → single-device keeps Signal deviceId 1).
+	// RETURNING hands back the resolved number so the client can persist its deviceId.
+	var deviceNumber int32
+	if err = tx.QueryRow(ctx, `
+		INSERT INTO user_devices (user_id, device_id, device_number, identity_key, signed_prekey, signed_prekey_signature, registration_id, last_seen)
+		VALUES (
+			$1, $2,
+			COALESCE(
+				(SELECT device_number FROM user_devices WHERE user_id = $1 AND device_id = $2),
+				(SELECT COALESCE(MAX(device_number), 0) + 1 FROM user_devices WHERE user_id = $1)
+			),
+			$3, $4, $5, $6, NOW()
+		)
 		ON CONFLICT (user_id, device_id) DO UPDATE SET
 			identity_key = EXCLUDED.identity_key,
 			signed_prekey = EXCLUDED.signed_prekey,
 			signed_prekey_signature = EXCLUDED.signed_prekey_signature,
 			registration_id = EXCLUDED.registration_id,
 			last_seen = NOW()
-	`, userID, deviceID, identity, signedKey, signature, registrationID); err != nil {
-		return fmt.Errorf("saving device bundle: %w", err)
+		RETURNING device_number
+	`, userID, deviceID, identity, signedKey, signature, registrationID).Scan(&deviceNumber); err != nil {
+		return 0, fmt.Errorf("saving device bundle: %w", err)
 	}
 	for _, k := range oneTimeKeys {
 		pkEnc := k.PublicKey
 		if r.encryptor != nil {
 			pkEnc, err = r.encryptor.Encrypt(pkEnc)
 			if err != nil {
-				return fmt.Errorf("encrypting device one-time key %d: %w", k.KeyID, err)
+				return 0, fmt.Errorf("encrypting device one-time key %d: %w", k.KeyID, err)
 			}
 		}
 		if _, err = tx.Exec(ctx, `
@@ -655,11 +670,14 @@ func (r *UserRepository) SavePreKeyBundle(ctx context.Context, userID uuid.UUID,
 			VALUES ($1, $2, $3, $4)
 			ON CONFLICT (user_id, device_id, key_id) DO NOTHING
 		`, userID, deviceID, k.KeyID, pkEnc); err != nil {
-			return fmt.Errorf("saving device one-time key: %w", err)
+			return 0, fmt.Errorf("saving device one-time key: %w", err)
 		}
 	}
 
-	return tx.Commit(ctx)
+	if err = tx.Commit(ctx); err != nil {
+		return 0, err
+	}
+	return deviceNumber, nil
 }
 
 func (r *UserRepository) ConsumePreKeyBundle(ctx context.Context, targetUserID uuid.UUID) (identity, signedKey, signature string, oneTimeKey *EphemeralPreKey, err error) {
@@ -729,6 +747,163 @@ func (r *UserRepository) ConsumePreKeyBundle(ctx context.Context, targetUserID u
 
 	err = tx.Commit(ctx)
 	return identity, signedKey, signature, oneTimeKey, err
+}
+
+// DeviceBundleData is one device's prekey bundle (multi-device fan-out).
+type DeviceBundleData struct {
+	DeviceID       string
+	DeviceNumber   int32
+	RegistrationID int32
+	Identity       string
+	SignedKey      string
+	Signature      string
+	OneTimeKey     *EphemeralPreKey
+}
+
+// ConsumeDeviceBundles returns a prekey bundle for EVERY registered device of
+// targetUserID, consuming one one-time prekey per device (OneTimeKey may be nil
+// once a device's one-time prekeys are exhausted — the bundle is still usable).
+func (r *UserRepository) ConsumeDeviceBundles(ctx context.Context, targetUserID uuid.UUID) ([]*DeviceBundleData, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	rows, err := tx.Query(ctx, `
+		SELECT device_id, device_number, registration_id, identity_key, signed_prekey, signed_prekey_signature
+		FROM user_devices WHERE user_id = $1 ORDER BY device_number
+	`, targetUserID)
+	if err != nil {
+		return nil, err
+	}
+	type drow struct {
+		id                  string
+		num, reg            int32
+		ident, signed, sig  string
+	}
+	var drows []drow
+	for rows.Next() {
+		var d drow
+		if err := rows.Scan(&d.id, &d.num, &d.reg, &d.ident, &d.signed, &d.sig); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		drows = append(drows, d)
+	}
+	rows.Close()
+
+	out := make([]*DeviceBundleData, 0, len(drows))
+	for _, d := range drows {
+		ident, signed, sig := d.ident, d.signed, d.sig
+		if r.encryptor != nil {
+			if ident, err = r.encryptor.Decrypt(ident); err != nil {
+				return nil, fmt.Errorf("decrypting device identity: %w", err)
+			}
+			if signed, err = r.encryptor.Decrypt(signed); err != nil {
+				return nil, fmt.Errorf("decrypting device signed prekey: %w", err)
+			}
+			if sig, err = r.encryptor.Decrypt(sig); err != nil {
+				return nil, fmt.Errorf("decrypting device signature: %w", err)
+			}
+		}
+
+		var otk *EphemeralPreKey
+		var kid int32
+		var pub string
+		e := tx.QueryRow(ctx, `
+			SELECT key_id, public_key FROM device_prekeys WHERE user_id = $1 AND device_id = $2 LIMIT 1
+		`, targetUserID, d.id).Scan(&kid, &pub)
+		if e == nil {
+			if _, err = tx.Exec(ctx, `DELETE FROM device_prekeys WHERE user_id = $1 AND device_id = $2 AND key_id = $3`, targetUserID, d.id, kid); err != nil {
+				return nil, err
+			}
+			if r.encryptor != nil {
+				if pub, err = r.encryptor.Decrypt(pub); err != nil {
+					return nil, fmt.Errorf("decrypting device one-time key: %w", err)
+				}
+			}
+			otk = &EphemeralPreKey{KeyID: kid, PublicKey: pub}
+		} else if !errors.Is(e, pgx.ErrNoRows) {
+			return nil, e
+		}
+
+		out = append(out, &DeviceBundleData{
+			DeviceID: d.id, DeviceNumber: d.num, RegistrationID: d.reg,
+			Identity: ident, SignedKey: signed, Signature: sig, OneTimeKey: otk,
+		})
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// DeviceRow is one registered device of a user (for the "Linked devices" screen).
+type DeviceRow struct {
+	DeviceID       string
+	DeviceNumber   int32
+	RegistrationID int32
+	CreatedAt      string
+	LastSeen       string
+}
+
+// ListDevices returns all devices registered for userID, newest-numbered last.
+func (r *UserRepository) ListDevices(ctx context.Context, userID uuid.UUID) ([]*DeviceRow, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT device_id, device_number, COALESCE(registration_id, 0),
+		       COALESCE(created_at::text, ''), COALESCE(last_seen::text, '')
+		FROM user_devices WHERE user_id = $1 ORDER BY device_number
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []*DeviceRow
+	for rows.Next() {
+		d := &DeviceRow{}
+		if err := rows.Scan(&d.DeviceID, &d.DeviceNumber, &d.RegistrationID, &d.CreatedAt, &d.LastSeen); err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
+// RemoveDevice unlinks a device: deletes its bundle + one-time prekeys so senders
+// stop fanning out to it. The primary device (device_number 1) cannot be removed
+// this way — unlinking it would orphan the account's main session.
+func (r *UserRepository) RemoveDevice(ctx context.Context, userID uuid.UUID, deviceID string) error {
+	if deviceID == "" {
+		return fmt.Errorf("device_id required")
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	var num int32
+	err = tx.QueryRow(ctx, `SELECT device_number FROM user_devices WHERE user_id = $1 AND device_id = $2`, userID, deviceID).Scan(&num)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil // already gone — idempotent
+	}
+	if err != nil {
+		return err
+	}
+	if num == 1 {
+		return fmt.Errorf("cannot unlink the primary device")
+	}
+
+	if _, err = tx.Exec(ctx, `DELETE FROM device_prekeys WHERE user_id = $1 AND device_id = $2`, userID, deviceID); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM user_devices WHERE user_id = $1 AND device_id = $2`, userID, deviceID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 // ── Contact Blocking ──────────────────────────────────────────────────────────

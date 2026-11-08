@@ -1885,7 +1885,8 @@ type DeviceBundle struct {
 	PrekeyIdentity  string                 `protobuf:"bytes,3,opt,name=prekey_identity,json=prekeyIdentity,proto3" json:"prekey_identity,omitempty"`
 	PrekeySigned    string                 `protobuf:"bytes,4,opt,name=prekey_signed,json=prekeySigned,proto3" json:"prekey_signed,omitempty"`
 	PrekeySignature string                 `protobuf:"bytes,5,opt,name=prekey_signature,json=prekeySignature,proto3" json:"prekey_signature,omitempty"`
-	OneTimeKey      *EphemeralPreKey       `protobuf:"bytes,6,opt,name=one_time_key,json=oneTimeKey,proto3" json:"one_time_key,omitempty"` // one consumed per device
+	OneTimeKey      *EphemeralPreKey       `protobuf:"bytes,6,opt,name=one_time_key,json=oneTimeKey,proto3" json:"one_time_key,omitempty"`      // one consumed per device
+	DeviceNumber    int32                  `protobuf:"varint,7,opt,name=device_number,json=deviceNumber,proto3" json:"device_number,omitempty"` // small int used as the Signal deviceId
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1962,9 +1963,17 @@ func (x *DeviceBundle) GetOneTimeKey() *EphemeralPreKey {
 	return nil
 }
 
+func (x *DeviceBundle) GetDeviceNumber() int32 {
+	if x != nil {
+		return x.DeviceNumber
+	}
+	return 0
+}
+
 type UploadE2EEKeysResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	DeviceNumber  int32                  `protobuf:"varint,2,opt,name=device_number,json=deviceNumber,proto3" json:"device_number,omitempty"` // this device's assigned Signal deviceId (1 = first/primary)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2006,6 +2015,274 @@ func (x *UploadE2EEKeysResponse) GetSuccess() bool {
 	return false
 }
 
+func (x *UploadE2EEKeysResponse) GetDeviceNumber() int32 {
+	if x != nil {
+		return x.DeviceNumber
+	}
+	return 0
+}
+
+// ── Multi-device management (Phase 3) ───────────────────────────────────────
+type DeviceInfo struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	DeviceId       string                 `protobuf:"bytes,1,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
+	DeviceNumber   int32                  `protobuf:"varint,2,opt,name=device_number,json=deviceNumber,proto3" json:"device_number,omitempty"`
+	RegistrationId int32                  `protobuf:"varint,3,opt,name=registration_id,json=registrationId,proto3" json:"registration_id,omitempty"`
+	CreatedAt      string                 `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	LastSeen       string                 `protobuf:"bytes,5,opt,name=last_seen,json=lastSeen,proto3" json:"last_seen,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *DeviceInfo) Reset() {
+	*x = DeviceInfo{}
+	mi := &file_proto_auth_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeviceInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeviceInfo) ProtoMessage() {}
+
+func (x *DeviceInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_auth_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeviceInfo.ProtoReflect.Descriptor instead.
+func (*DeviceInfo) Descriptor() ([]byte, []int) {
+	return file_proto_auth_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *DeviceInfo) GetDeviceId() string {
+	if x != nil {
+		return x.DeviceId
+	}
+	return ""
+}
+
+func (x *DeviceInfo) GetDeviceNumber() int32 {
+	if x != nil {
+		return x.DeviceNumber
+	}
+	return 0
+}
+
+func (x *DeviceInfo) GetRegistrationId() int32 {
+	if x != nil {
+		return x.RegistrationId
+	}
+	return 0
+}
+
+func (x *DeviceInfo) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *DeviceInfo) GetLastSeen() string {
+	if x != nil {
+		return x.LastSeen
+	}
+	return ""
+}
+
+type ListDevicesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListDevicesRequest) Reset() {
+	*x = ListDevicesRequest{}
+	mi := &file_proto_auth_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListDevicesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListDevicesRequest) ProtoMessage() {}
+
+func (x *ListDevicesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_auth_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListDevicesRequest.ProtoReflect.Descriptor instead.
+func (*ListDevicesRequest) Descriptor() ([]byte, []int) {
+	return file_proto_auth_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *ListDevicesRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type ListDevicesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Devices       []*DeviceInfo          `protobuf:"bytes,1,rep,name=devices,proto3" json:"devices,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListDevicesResponse) Reset() {
+	*x = ListDevicesResponse{}
+	mi := &file_proto_auth_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListDevicesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListDevicesResponse) ProtoMessage() {}
+
+func (x *ListDevicesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_auth_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListDevicesResponse.ProtoReflect.Descriptor instead.
+func (*ListDevicesResponse) Descriptor() ([]byte, []int) {
+	return file_proto_auth_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *ListDevicesResponse) GetDevices() []*DeviceInfo {
+	if x != nil {
+		return x.Devices
+	}
+	return nil
+}
+
+type RemoveDeviceRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	DeviceId      string                 `protobuf:"bytes,2,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"` // the device to unlink (stop fanning out to it)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveDeviceRequest) Reset() {
+	*x = RemoveDeviceRequest{}
+	mi := &file_proto_auth_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveDeviceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveDeviceRequest) ProtoMessage() {}
+
+func (x *RemoveDeviceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_auth_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveDeviceRequest.ProtoReflect.Descriptor instead.
+func (*RemoveDeviceRequest) Descriptor() ([]byte, []int) {
+	return file_proto_auth_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *RemoveDeviceRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *RemoveDeviceRequest) GetDeviceId() string {
+	if x != nil {
+		return x.DeviceId
+	}
+	return ""
+}
+
+type RemoveDeviceResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveDeviceResponse) Reset() {
+	*x = RemoveDeviceResponse{}
+	mi := &file_proto_auth_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveDeviceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveDeviceResponse) ProtoMessage() {}
+
+func (x *RemoveDeviceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_auth_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveDeviceResponse.ProtoReflect.Descriptor instead.
+func (*RemoveDeviceResponse) Descriptor() ([]byte, []int) {
+	return file_proto_auth_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *RemoveDeviceResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
 type GetE2EEKeysRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RequesterId   string                 `protobuf:"bytes,1,opt,name=requester_id,json=requesterId,proto3" json:"requester_id,omitempty"`
@@ -2016,7 +2293,7 @@ type GetE2EEKeysRequest struct {
 
 func (x *GetE2EEKeysRequest) Reset() {
 	*x = GetE2EEKeysRequest{}
-	mi := &file_proto_auth_proto_msgTypes[36]
+	mi := &file_proto_auth_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2028,7 +2305,7 @@ func (x *GetE2EEKeysRequest) String() string {
 func (*GetE2EEKeysRequest) ProtoMessage() {}
 
 func (x *GetE2EEKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_proto_msgTypes[36]
+	mi := &file_proto_auth_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2041,7 +2318,7 @@ func (x *GetE2EEKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetE2EEKeysRequest.ProtoReflect.Descriptor instead.
 func (*GetE2EEKeysRequest) Descriptor() ([]byte, []int) {
-	return file_proto_auth_proto_rawDescGZIP(), []int{36}
+	return file_proto_auth_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *GetE2EEKeysRequest) GetRequesterId() string {
@@ -2072,7 +2349,7 @@ type GetE2EEKeysResponse struct {
 
 func (x *GetE2EEKeysResponse) Reset() {
 	*x = GetE2EEKeysResponse{}
-	mi := &file_proto_auth_proto_msgTypes[37]
+	mi := &file_proto_auth_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2084,7 +2361,7 @@ func (x *GetE2EEKeysResponse) String() string {
 func (*GetE2EEKeysResponse) ProtoMessage() {}
 
 func (x *GetE2EEKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_proto_msgTypes[37]
+	mi := &file_proto_auth_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2097,7 +2374,7 @@ func (x *GetE2EEKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetE2EEKeysResponse.ProtoReflect.Descriptor instead.
 func (*GetE2EEKeysResponse) Descriptor() ([]byte, []int) {
-	return file_proto_auth_proto_rawDescGZIP(), []int{37}
+	return file_proto_auth_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *GetE2EEKeysResponse) GetUserId() string {
@@ -2152,7 +2429,7 @@ type BlockUserRequest struct {
 
 func (x *BlockUserRequest) Reset() {
 	*x = BlockUserRequest{}
-	mi := &file_proto_auth_proto_msgTypes[38]
+	mi := &file_proto_auth_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2164,7 +2441,7 @@ func (x *BlockUserRequest) String() string {
 func (*BlockUserRequest) ProtoMessage() {}
 
 func (x *BlockUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_proto_msgTypes[38]
+	mi := &file_proto_auth_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2177,7 +2454,7 @@ func (x *BlockUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BlockUserRequest.ProtoReflect.Descriptor instead.
 func (*BlockUserRequest) Descriptor() ([]byte, []int) {
-	return file_proto_auth_proto_rawDescGZIP(), []int{38}
+	return file_proto_auth_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *BlockUserRequest) GetUserId() string {
@@ -2203,7 +2480,7 @@ type BlockUserResponse struct {
 
 func (x *BlockUserResponse) Reset() {
 	*x = BlockUserResponse{}
-	mi := &file_proto_auth_proto_msgTypes[39]
+	mi := &file_proto_auth_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2215,7 +2492,7 @@ func (x *BlockUserResponse) String() string {
 func (*BlockUserResponse) ProtoMessage() {}
 
 func (x *BlockUserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_proto_msgTypes[39]
+	mi := &file_proto_auth_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2228,7 +2505,7 @@ func (x *BlockUserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BlockUserResponse.ProtoReflect.Descriptor instead.
 func (*BlockUserResponse) Descriptor() ([]byte, []int) {
-	return file_proto_auth_proto_rawDescGZIP(), []int{39}
+	return file_proto_auth_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *BlockUserResponse) GetSuccess() bool {
@@ -2248,7 +2525,7 @@ type UnblockUserRequest struct {
 
 func (x *UnblockUserRequest) Reset() {
 	*x = UnblockUserRequest{}
-	mi := &file_proto_auth_proto_msgTypes[40]
+	mi := &file_proto_auth_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2260,7 +2537,7 @@ func (x *UnblockUserRequest) String() string {
 func (*UnblockUserRequest) ProtoMessage() {}
 
 func (x *UnblockUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_proto_msgTypes[40]
+	mi := &file_proto_auth_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2273,7 +2550,7 @@ func (x *UnblockUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnblockUserRequest.ProtoReflect.Descriptor instead.
 func (*UnblockUserRequest) Descriptor() ([]byte, []int) {
-	return file_proto_auth_proto_rawDescGZIP(), []int{40}
+	return file_proto_auth_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *UnblockUserRequest) GetUserId() string {
@@ -2299,7 +2576,7 @@ type UnblockUserResponse struct {
 
 func (x *UnblockUserResponse) Reset() {
 	*x = UnblockUserResponse{}
-	mi := &file_proto_auth_proto_msgTypes[41]
+	mi := &file_proto_auth_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2311,7 +2588,7 @@ func (x *UnblockUserResponse) String() string {
 func (*UnblockUserResponse) ProtoMessage() {}
 
 func (x *UnblockUserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_proto_msgTypes[41]
+	mi := &file_proto_auth_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2324,7 +2601,7 @@ func (x *UnblockUserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnblockUserResponse.ProtoReflect.Descriptor instead.
 func (*UnblockUserResponse) Descriptor() ([]byte, []int) {
-	return file_proto_auth_proto_rawDescGZIP(), []int{41}
+	return file_proto_auth_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *UnblockUserResponse) GetSuccess() bool {
@@ -2343,7 +2620,7 @@ type GetBlockedUsersRequest struct {
 
 func (x *GetBlockedUsersRequest) Reset() {
 	*x = GetBlockedUsersRequest{}
-	mi := &file_proto_auth_proto_msgTypes[42]
+	mi := &file_proto_auth_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2355,7 +2632,7 @@ func (x *GetBlockedUsersRequest) String() string {
 func (*GetBlockedUsersRequest) ProtoMessage() {}
 
 func (x *GetBlockedUsersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_proto_msgTypes[42]
+	mi := &file_proto_auth_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2368,7 +2645,7 @@ func (x *GetBlockedUsersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBlockedUsersRequest.ProtoReflect.Descriptor instead.
 func (*GetBlockedUsersRequest) Descriptor() ([]byte, []int) {
-	return file_proto_auth_proto_rawDescGZIP(), []int{42}
+	return file_proto_auth_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *GetBlockedUsersRequest) GetUserId() string {
@@ -2387,7 +2664,7 @@ type GetBlockedUsersResponse struct {
 
 func (x *GetBlockedUsersResponse) Reset() {
 	*x = GetBlockedUsersResponse{}
-	mi := &file_proto_auth_proto_msgTypes[43]
+	mi := &file_proto_auth_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2399,7 +2676,7 @@ func (x *GetBlockedUsersResponse) String() string {
 func (*GetBlockedUsersResponse) ProtoMessage() {}
 
 func (x *GetBlockedUsersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_proto_msgTypes[43]
+	mi := &file_proto_auth_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2412,7 +2689,7 @@ func (x *GetBlockedUsersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBlockedUsersResponse.ProtoReflect.Descriptor instead.
 func (*GetBlockedUsersResponse) Descriptor() ([]byte, []int) {
-	return file_proto_auth_proto_rawDescGZIP(), []int{43}
+	return file_proto_auth_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *GetBlockedUsersResponse) GetBlockedUserIds() []string {
@@ -2432,7 +2709,7 @@ type RegisterPhoneRequest struct {
 
 func (x *RegisterPhoneRequest) Reset() {
 	*x = RegisterPhoneRequest{}
-	mi := &file_proto_auth_proto_msgTypes[44]
+	mi := &file_proto_auth_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2444,7 +2721,7 @@ func (x *RegisterPhoneRequest) String() string {
 func (*RegisterPhoneRequest) ProtoMessage() {}
 
 func (x *RegisterPhoneRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_proto_msgTypes[44]
+	mi := &file_proto_auth_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2457,7 +2734,7 @@ func (x *RegisterPhoneRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterPhoneRequest.ProtoReflect.Descriptor instead.
 func (*RegisterPhoneRequest) Descriptor() ([]byte, []int) {
-	return file_proto_auth_proto_rawDescGZIP(), []int{44}
+	return file_proto_auth_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *RegisterPhoneRequest) GetUserId() string {
@@ -2483,7 +2760,7 @@ type RegisterPhoneResponse struct {
 
 func (x *RegisterPhoneResponse) Reset() {
 	*x = RegisterPhoneResponse{}
-	mi := &file_proto_auth_proto_msgTypes[45]
+	mi := &file_proto_auth_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2495,7 +2772,7 @@ func (x *RegisterPhoneResponse) String() string {
 func (*RegisterPhoneResponse) ProtoMessage() {}
 
 func (x *RegisterPhoneResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_proto_msgTypes[45]
+	mi := &file_proto_auth_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2508,7 +2785,7 @@ func (x *RegisterPhoneResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterPhoneResponse.ProtoReflect.Descriptor instead.
 func (*RegisterPhoneResponse) Descriptor() ([]byte, []int) {
-	return file_proto_auth_proto_rawDescGZIP(), []int{45}
+	return file_proto_auth_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *RegisterPhoneResponse) GetSuccess() bool {
@@ -2529,7 +2806,7 @@ type VerifyPhoneOTPRequest struct {
 
 func (x *VerifyPhoneOTPRequest) Reset() {
 	*x = VerifyPhoneOTPRequest{}
-	mi := &file_proto_auth_proto_msgTypes[46]
+	mi := &file_proto_auth_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2541,7 +2818,7 @@ func (x *VerifyPhoneOTPRequest) String() string {
 func (*VerifyPhoneOTPRequest) ProtoMessage() {}
 
 func (x *VerifyPhoneOTPRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_proto_msgTypes[46]
+	mi := &file_proto_auth_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2554,7 +2831,7 @@ func (x *VerifyPhoneOTPRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyPhoneOTPRequest.ProtoReflect.Descriptor instead.
 func (*VerifyPhoneOTPRequest) Descriptor() ([]byte, []int) {
-	return file_proto_auth_proto_rawDescGZIP(), []int{46}
+	return file_proto_auth_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *VerifyPhoneOTPRequest) GetUserId() string {
@@ -2587,7 +2864,7 @@ type VerifyPhoneOTPResponse struct {
 
 func (x *VerifyPhoneOTPResponse) Reset() {
 	*x = VerifyPhoneOTPResponse{}
-	mi := &file_proto_auth_proto_msgTypes[47]
+	mi := &file_proto_auth_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2599,7 +2876,7 @@ func (x *VerifyPhoneOTPResponse) String() string {
 func (*VerifyPhoneOTPResponse) ProtoMessage() {}
 
 func (x *VerifyPhoneOTPResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_proto_msgTypes[47]
+	mi := &file_proto_auth_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2612,7 +2889,7 @@ func (x *VerifyPhoneOTPResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyPhoneOTPResponse.ProtoReflect.Descriptor instead.
 func (*VerifyPhoneOTPResponse) Descriptor() ([]byte, []int) {
-	return file_proto_auth_proto_rawDescGZIP(), []int{47}
+	return file_proto_auth_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *VerifyPhoneOTPResponse) GetValid() bool {
@@ -2633,7 +2910,7 @@ type SubscribePushRequest struct {
 
 func (x *SubscribePushRequest) Reset() {
 	*x = SubscribePushRequest{}
-	mi := &file_proto_auth_proto_msgTypes[48]
+	mi := &file_proto_auth_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2645,7 +2922,7 @@ func (x *SubscribePushRequest) String() string {
 func (*SubscribePushRequest) ProtoMessage() {}
 
 func (x *SubscribePushRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_proto_msgTypes[48]
+	mi := &file_proto_auth_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2658,7 +2935,7 @@ func (x *SubscribePushRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribePushRequest.ProtoReflect.Descriptor instead.
 func (*SubscribePushRequest) Descriptor() ([]byte, []int) {
-	return file_proto_auth_proto_rawDescGZIP(), []int{48}
+	return file_proto_auth_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *SubscribePushRequest) GetUserId() string {
@@ -2691,7 +2968,7 @@ type SubscribePushResponse struct {
 
 func (x *SubscribePushResponse) Reset() {
 	*x = SubscribePushResponse{}
-	mi := &file_proto_auth_proto_msgTypes[49]
+	mi := &file_proto_auth_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2703,7 +2980,7 @@ func (x *SubscribePushResponse) String() string {
 func (*SubscribePushResponse) ProtoMessage() {}
 
 func (x *SubscribePushResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_proto_msgTypes[49]
+	mi := &file_proto_auth_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2716,7 +2993,7 @@ func (x *SubscribePushResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribePushResponse.ProtoReflect.Descriptor instead.
 func (*SubscribePushResponse) Descriptor() ([]byte, []int) {
-	return file_proto_auth_proto_rawDescGZIP(), []int{49}
+	return file_proto_auth_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *SubscribePushResponse) GetSuccess() bool {
@@ -2735,7 +3012,7 @@ type RequestAccountRecoveryRequest struct {
 
 func (x *RequestAccountRecoveryRequest) Reset() {
 	*x = RequestAccountRecoveryRequest{}
-	mi := &file_proto_auth_proto_msgTypes[50]
+	mi := &file_proto_auth_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2747,7 +3024,7 @@ func (x *RequestAccountRecoveryRequest) String() string {
 func (*RequestAccountRecoveryRequest) ProtoMessage() {}
 
 func (x *RequestAccountRecoveryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_proto_msgTypes[50]
+	mi := &file_proto_auth_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2760,7 +3037,7 @@ func (x *RequestAccountRecoveryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequestAccountRecoveryRequest.ProtoReflect.Descriptor instead.
 func (*RequestAccountRecoveryRequest) Descriptor() ([]byte, []int) {
-	return file_proto_auth_proto_rawDescGZIP(), []int{50}
+	return file_proto_auth_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *RequestAccountRecoveryRequest) GetIdentifier() string {
@@ -2783,7 +3060,7 @@ type RequestAccountRecoveryResponse struct {
 
 func (x *RequestAccountRecoveryResponse) Reset() {
 	*x = RequestAccountRecoveryResponse{}
-	mi := &file_proto_auth_proto_msgTypes[51]
+	mi := &file_proto_auth_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2795,7 +3072,7 @@ func (x *RequestAccountRecoveryResponse) String() string {
 func (*RequestAccountRecoveryResponse) ProtoMessage() {}
 
 func (x *RequestAccountRecoveryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_proto_msgTypes[51]
+	mi := &file_proto_auth_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2808,7 +3085,7 @@ func (x *RequestAccountRecoveryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequestAccountRecoveryResponse.ProtoReflect.Descriptor instead.
 func (*RequestAccountRecoveryResponse) Descriptor() ([]byte, []int) {
-	return file_proto_auth_proto_rawDescGZIP(), []int{51}
+	return file_proto_auth_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *RequestAccountRecoveryResponse) GetSuccess() bool {
@@ -2857,7 +3134,7 @@ type VerifyAccountRecoveryRequest struct {
 
 func (x *VerifyAccountRecoveryRequest) Reset() {
 	*x = VerifyAccountRecoveryRequest{}
-	mi := &file_proto_auth_proto_msgTypes[52]
+	mi := &file_proto_auth_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2869,7 +3146,7 @@ func (x *VerifyAccountRecoveryRequest) String() string {
 func (*VerifyAccountRecoveryRequest) ProtoMessage() {}
 
 func (x *VerifyAccountRecoveryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_proto_msgTypes[52]
+	mi := &file_proto_auth_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2882,7 +3159,7 @@ func (x *VerifyAccountRecoveryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyAccountRecoveryRequest.ProtoReflect.Descriptor instead.
 func (*VerifyAccountRecoveryRequest) Descriptor() ([]byte, []int) {
-	return file_proto_auth_proto_rawDescGZIP(), []int{52}
+	return file_proto_auth_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *VerifyAccountRecoveryRequest) GetIdentifier() string {
@@ -2916,7 +3193,7 @@ type VerifyAccountRecoveryResponse struct {
 
 func (x *VerifyAccountRecoveryResponse) Reset() {
 	*x = VerifyAccountRecoveryResponse{}
-	mi := &file_proto_auth_proto_msgTypes[53]
+	mi := &file_proto_auth_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2928,7 +3205,7 @@ func (x *VerifyAccountRecoveryResponse) String() string {
 func (*VerifyAccountRecoveryResponse) ProtoMessage() {}
 
 func (x *VerifyAccountRecoveryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_proto_msgTypes[53]
+	mi := &file_proto_auth_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2941,7 +3218,7 @@ func (x *VerifyAccountRecoveryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VerifyAccountRecoveryResponse.ProtoReflect.Descriptor instead.
 func (*VerifyAccountRecoveryResponse) Descriptor() ([]byte, []int) {
-	return file_proto_auth_proto_rawDescGZIP(), []int{53}
+	return file_proto_auth_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *VerifyAccountRecoveryResponse) GetSuccess() bool {
@@ -3087,7 +3364,7 @@ const file_proto_auth_proto_rawDesc = "" +
 	"\x10prekey_signature\x18\x04 \x01(\tR\x0fprekeySignature\x129\n" +
 	"\rone_time_keys\x18\x05 \x03(\v2\x15.auth.EphemeralPreKeyR\voneTimeKeys\x12\x1b\n" +
 	"\tdevice_id\x18\x06 \x01(\tR\bdeviceId\x12'\n" +
-	"\x0fregistration_id\x18\a \x01(\x05R\x0eregistrationId\"\x86\x02\n" +
+	"\x0fregistration_id\x18\a \x01(\x05R\x0eregistrationId\"\xab\x02\n" +
 	"\fDeviceBundle\x12\x1b\n" +
 	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12'\n" +
 	"\x0fregistration_id\x18\x02 \x01(\x05R\x0eregistrationId\x12'\n" +
@@ -3095,8 +3372,27 @@ const file_proto_auth_proto_rawDesc = "" +
 	"\rprekey_signed\x18\x04 \x01(\tR\fprekeySigned\x12)\n" +
 	"\x10prekey_signature\x18\x05 \x01(\tR\x0fprekeySignature\x127\n" +
 	"\fone_time_key\x18\x06 \x01(\v2\x15.auth.EphemeralPreKeyR\n" +
-	"oneTimeKey\"2\n" +
+	"oneTimeKey\x12#\n" +
+	"\rdevice_number\x18\a \x01(\x05R\fdeviceNumber\"W\n" +
 	"\x16UploadE2EEKeysResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
+	"\rdevice_number\x18\x02 \x01(\x05R\fdeviceNumber\"\xb3\x01\n" +
+	"\n" +
+	"DeviceInfo\x12\x1b\n" +
+	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12#\n" +
+	"\rdevice_number\x18\x02 \x01(\x05R\fdeviceNumber\x12'\n" +
+	"\x0fregistration_id\x18\x03 \x01(\x05R\x0eregistrationId\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x04 \x01(\tR\tcreatedAt\x12\x1b\n" +
+	"\tlast_seen\x18\x05 \x01(\tR\blastSeen\"-\n" +
+	"\x12ListDevicesRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"A\n" +
+	"\x13ListDevicesResponse\x12*\n" +
+	"\adevices\x18\x01 \x03(\v2\x10.auth.DeviceInfoR\adevices\"K\n" +
+	"\x13RemoveDeviceRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1b\n" +
+	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId\"0\n" +
+	"\x14RemoveDeviceResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\"]\n" +
 	"\x12GetE2EEKeysRequest\x12!\n" +
 	"\frequester_id\x18\x01 \x01(\tR\vrequesterId\x12$\n" +
@@ -3160,7 +3456,7 @@ const file_proto_auth_proto_rawDesc = "" +
 	"\anew_pin\x18\x03 \x01(\tR\x06newPin\"S\n" +
 	"\x1dVerifyAccountRecoveryResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage2\xa3\x0e\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage2\xae\x0f\n" +
 	"\vAuthService\x129\n" +
 	"\bRegister\x12\x15.auth.RegisterRequest\x1a\x16.auth.RegisterResponse\x120\n" +
 	"\x05Login\x12\x12.auth.LoginRequest\x1a\x13.auth.LoginResponse\x12E\n" +
@@ -3178,7 +3474,9 @@ const file_proto_auth_proto_rawDesc = "" +
 	"\rSetTwoStepPIN\x12\x1a.auth.SetTwoStepPINRequest\x1a\x1b.auth.SetTwoStepPINResponse\x12Q\n" +
 	"\x10VerifyTwoStepPIN\x12\x1d.auth.VerifyTwoStepPINRequest\x1a\x1e.auth.VerifyTwoStepPINResponse\x12K\n" +
 	"\x0eUploadE2EEKeys\x12\x1b.auth.UploadE2EEKeysRequest\x1a\x1c.auth.UploadE2EEKeysResponse\x12B\n" +
-	"\vGetE2EEKeys\x12\x18.auth.GetE2EEKeysRequest\x1a\x19.auth.GetE2EEKeysResponse\x12<\n" +
+	"\vGetE2EEKeys\x12\x18.auth.GetE2EEKeysRequest\x1a\x19.auth.GetE2EEKeysResponse\x12B\n" +
+	"\vListDevices\x12\x18.auth.ListDevicesRequest\x1a\x19.auth.ListDevicesResponse\x12E\n" +
+	"\fRemoveDevice\x12\x19.auth.RemoveDeviceRequest\x1a\x1a.auth.RemoveDeviceResponse\x12<\n" +
 	"\tBlockUser\x12\x16.auth.BlockUserRequest\x1a\x17.auth.BlockUserResponse\x12B\n" +
 	"\vUnblockUser\x12\x18.auth.UnblockUserRequest\x1a\x19.auth.UnblockUserResponse\x12N\n" +
 	"\x0fGetBlockedUsers\x12\x1c.auth.GetBlockedUsersRequest\x1a\x1d.auth.GetBlockedUsersResponse\x12H\n" +
@@ -3202,7 +3500,7 @@ func file_proto_auth_proto_rawDescGZIP() []byte {
 	return file_proto_auth_proto_rawDescData
 }
 
-var file_proto_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 54)
+var file_proto_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 59)
 var file_proto_auth_proto_goTypes = []any{
 	(*User)(nil),                           // 0: auth.User
 	(*PrivacySettings)(nil),                // 1: auth.PrivacySettings
@@ -3240,24 +3538,29 @@ var file_proto_auth_proto_goTypes = []any{
 	(*UploadE2EEKeysRequest)(nil),          // 33: auth.UploadE2EEKeysRequest
 	(*DeviceBundle)(nil),                   // 34: auth.DeviceBundle
 	(*UploadE2EEKeysResponse)(nil),         // 35: auth.UploadE2EEKeysResponse
-	(*GetE2EEKeysRequest)(nil),             // 36: auth.GetE2EEKeysRequest
-	(*GetE2EEKeysResponse)(nil),            // 37: auth.GetE2EEKeysResponse
-	(*BlockUserRequest)(nil),               // 38: auth.BlockUserRequest
-	(*BlockUserResponse)(nil),              // 39: auth.BlockUserResponse
-	(*UnblockUserRequest)(nil),             // 40: auth.UnblockUserRequest
-	(*UnblockUserResponse)(nil),            // 41: auth.UnblockUserResponse
-	(*GetBlockedUsersRequest)(nil),         // 42: auth.GetBlockedUsersRequest
-	(*GetBlockedUsersResponse)(nil),        // 43: auth.GetBlockedUsersResponse
-	(*RegisterPhoneRequest)(nil),           // 44: auth.RegisterPhoneRequest
-	(*RegisterPhoneResponse)(nil),          // 45: auth.RegisterPhoneResponse
-	(*VerifyPhoneOTPRequest)(nil),          // 46: auth.VerifyPhoneOTPRequest
-	(*VerifyPhoneOTPResponse)(nil),         // 47: auth.VerifyPhoneOTPResponse
-	(*SubscribePushRequest)(nil),           // 48: auth.SubscribePushRequest
-	(*SubscribePushResponse)(nil),          // 49: auth.SubscribePushResponse
-	(*RequestAccountRecoveryRequest)(nil),  // 50: auth.RequestAccountRecoveryRequest
-	(*RequestAccountRecoveryResponse)(nil), // 51: auth.RequestAccountRecoveryResponse
-	(*VerifyAccountRecoveryRequest)(nil),   // 52: auth.VerifyAccountRecoveryRequest
-	(*VerifyAccountRecoveryResponse)(nil),  // 53: auth.VerifyAccountRecoveryResponse
+	(*DeviceInfo)(nil),                     // 36: auth.DeviceInfo
+	(*ListDevicesRequest)(nil),             // 37: auth.ListDevicesRequest
+	(*ListDevicesResponse)(nil),            // 38: auth.ListDevicesResponse
+	(*RemoveDeviceRequest)(nil),            // 39: auth.RemoveDeviceRequest
+	(*RemoveDeviceResponse)(nil),           // 40: auth.RemoveDeviceResponse
+	(*GetE2EEKeysRequest)(nil),             // 41: auth.GetE2EEKeysRequest
+	(*GetE2EEKeysResponse)(nil),            // 42: auth.GetE2EEKeysResponse
+	(*BlockUserRequest)(nil),               // 43: auth.BlockUserRequest
+	(*BlockUserResponse)(nil),              // 44: auth.BlockUserResponse
+	(*UnblockUserRequest)(nil),             // 45: auth.UnblockUserRequest
+	(*UnblockUserResponse)(nil),            // 46: auth.UnblockUserResponse
+	(*GetBlockedUsersRequest)(nil),         // 47: auth.GetBlockedUsersRequest
+	(*GetBlockedUsersResponse)(nil),        // 48: auth.GetBlockedUsersResponse
+	(*RegisterPhoneRequest)(nil),           // 49: auth.RegisterPhoneRequest
+	(*RegisterPhoneResponse)(nil),          // 50: auth.RegisterPhoneResponse
+	(*VerifyPhoneOTPRequest)(nil),          // 51: auth.VerifyPhoneOTPRequest
+	(*VerifyPhoneOTPResponse)(nil),         // 52: auth.VerifyPhoneOTPResponse
+	(*SubscribePushRequest)(nil),           // 53: auth.SubscribePushRequest
+	(*SubscribePushResponse)(nil),          // 54: auth.SubscribePushResponse
+	(*RequestAccountRecoveryRequest)(nil),  // 55: auth.RequestAccountRecoveryRequest
+	(*RequestAccountRecoveryResponse)(nil), // 56: auth.RequestAccountRecoveryResponse
+	(*VerifyAccountRecoveryRequest)(nil),   // 57: auth.VerifyAccountRecoveryRequest
+	(*VerifyAccountRecoveryResponse)(nil),  // 58: auth.VerifyAccountRecoveryResponse
 }
 var file_proto_auth_proto_depIdxs = []int32{
 	1,  // 0: auth.UpdatePrivacySettingsRequest.settings:type_name -> auth.PrivacySettings
@@ -3269,63 +3572,68 @@ var file_proto_auth_proto_depIdxs = []int32{
 	0,  // 6: auth.UpdateUserResponse.user:type_name -> auth.User
 	32, // 7: auth.UploadE2EEKeysRequest.one_time_keys:type_name -> auth.EphemeralPreKey
 	32, // 8: auth.DeviceBundle.one_time_key:type_name -> auth.EphemeralPreKey
-	32, // 9: auth.GetE2EEKeysResponse.one_time_key:type_name -> auth.EphemeralPreKey
-	34, // 10: auth.GetE2EEKeysResponse.bundles:type_name -> auth.DeviceBundle
-	6,  // 11: auth.AuthService.Register:input_type -> auth.RegisterRequest
-	8,  // 12: auth.AuthService.Login:input_type -> auth.LoginRequest
-	10, // 13: auth.AuthService.RefreshToken:input_type -> auth.RefreshTokenRequest
-	12, // 14: auth.AuthService.ValidateToken:input_type -> auth.ValidateTokenRequest
-	14, // 15: auth.AuthService.GetUser:input_type -> auth.GetUserRequest
-	20, // 16: auth.AuthService.UpdateUser:input_type -> auth.UpdateUserRequest
-	22, // 17: auth.AuthService.DeleteUser:input_type -> auth.DeleteUserRequest
-	24, // 18: auth.AuthService.Logout:input_type -> auth.LogoutRequest
-	16, // 19: auth.AuthService.GetUsers:input_type -> auth.GetUsersRequest
-	18, // 20: auth.AuthService.SaveContacts:input_type -> auth.SaveContactsRequest
-	26, // 21: auth.AuthService.SetPresence:input_type -> auth.SetPresenceRequest
-	28, // 22: auth.AuthService.SetTwoStepPIN:input_type -> auth.SetTwoStepPINRequest
-	30, // 23: auth.AuthService.VerifyTwoStepPIN:input_type -> auth.VerifyTwoStepPINRequest
-	33, // 24: auth.AuthService.UploadE2EEKeys:input_type -> auth.UploadE2EEKeysRequest
-	36, // 25: auth.AuthService.GetE2EEKeys:input_type -> auth.GetE2EEKeysRequest
-	38, // 26: auth.AuthService.BlockUser:input_type -> auth.BlockUserRequest
-	40, // 27: auth.AuthService.UnblockUser:input_type -> auth.UnblockUserRequest
-	42, // 28: auth.AuthService.GetBlockedUsers:input_type -> auth.GetBlockedUsersRequest
-	44, // 29: auth.AuthService.RegisterPhone:input_type -> auth.RegisterPhoneRequest
-	46, // 30: auth.AuthService.VerifyPhoneOTP:input_type -> auth.VerifyPhoneOTPRequest
-	48, // 31: auth.AuthService.SubscribePush:input_type -> auth.SubscribePushRequest
-	2,  // 32: auth.AuthService.UpdatePrivacySettings:input_type -> auth.UpdatePrivacySettingsRequest
-	4,  // 33: auth.AuthService.GetPrivacySettings:input_type -> auth.GetPrivacySettingsRequest
-	50, // 34: auth.AuthService.RequestAccountRecovery:input_type -> auth.RequestAccountRecoveryRequest
-	52, // 35: auth.AuthService.VerifyAccountRecovery:input_type -> auth.VerifyAccountRecoveryRequest
-	7,  // 36: auth.AuthService.Register:output_type -> auth.RegisterResponse
-	9,  // 37: auth.AuthService.Login:output_type -> auth.LoginResponse
-	11, // 38: auth.AuthService.RefreshToken:output_type -> auth.RefreshTokenResponse
-	13, // 39: auth.AuthService.ValidateToken:output_type -> auth.ValidateTokenResponse
-	15, // 40: auth.AuthService.GetUser:output_type -> auth.GetUserResponse
-	21, // 41: auth.AuthService.UpdateUser:output_type -> auth.UpdateUserResponse
-	23, // 42: auth.AuthService.DeleteUser:output_type -> auth.DeleteUserResponse
-	25, // 43: auth.AuthService.Logout:output_type -> auth.LogoutResponse
-	17, // 44: auth.AuthService.GetUsers:output_type -> auth.GetUsersResponse
-	19, // 45: auth.AuthService.SaveContacts:output_type -> auth.SaveContactsResponse
-	27, // 46: auth.AuthService.SetPresence:output_type -> auth.SetPresenceResponse
-	29, // 47: auth.AuthService.SetTwoStepPIN:output_type -> auth.SetTwoStepPINResponse
-	31, // 48: auth.AuthService.VerifyTwoStepPIN:output_type -> auth.VerifyTwoStepPINResponse
-	35, // 49: auth.AuthService.UploadE2EEKeys:output_type -> auth.UploadE2EEKeysResponse
-	37, // 50: auth.AuthService.GetE2EEKeys:output_type -> auth.GetE2EEKeysResponse
-	39, // 51: auth.AuthService.BlockUser:output_type -> auth.BlockUserResponse
-	41, // 52: auth.AuthService.UnblockUser:output_type -> auth.UnblockUserResponse
-	43, // 53: auth.AuthService.GetBlockedUsers:output_type -> auth.GetBlockedUsersResponse
-	45, // 54: auth.AuthService.RegisterPhone:output_type -> auth.RegisterPhoneResponse
-	47, // 55: auth.AuthService.VerifyPhoneOTP:output_type -> auth.VerifyPhoneOTPResponse
-	49, // 56: auth.AuthService.SubscribePush:output_type -> auth.SubscribePushResponse
-	3,  // 57: auth.AuthService.UpdatePrivacySettings:output_type -> auth.UpdatePrivacySettingsResponse
-	5,  // 58: auth.AuthService.GetPrivacySettings:output_type -> auth.GetPrivacySettingsResponse
-	51, // 59: auth.AuthService.RequestAccountRecovery:output_type -> auth.RequestAccountRecoveryResponse
-	53, // 60: auth.AuthService.VerifyAccountRecovery:output_type -> auth.VerifyAccountRecoveryResponse
-	36, // [36:61] is the sub-list for method output_type
-	11, // [11:36] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	36, // 9: auth.ListDevicesResponse.devices:type_name -> auth.DeviceInfo
+	32, // 10: auth.GetE2EEKeysResponse.one_time_key:type_name -> auth.EphemeralPreKey
+	34, // 11: auth.GetE2EEKeysResponse.bundles:type_name -> auth.DeviceBundle
+	6,  // 12: auth.AuthService.Register:input_type -> auth.RegisterRequest
+	8,  // 13: auth.AuthService.Login:input_type -> auth.LoginRequest
+	10, // 14: auth.AuthService.RefreshToken:input_type -> auth.RefreshTokenRequest
+	12, // 15: auth.AuthService.ValidateToken:input_type -> auth.ValidateTokenRequest
+	14, // 16: auth.AuthService.GetUser:input_type -> auth.GetUserRequest
+	20, // 17: auth.AuthService.UpdateUser:input_type -> auth.UpdateUserRequest
+	22, // 18: auth.AuthService.DeleteUser:input_type -> auth.DeleteUserRequest
+	24, // 19: auth.AuthService.Logout:input_type -> auth.LogoutRequest
+	16, // 20: auth.AuthService.GetUsers:input_type -> auth.GetUsersRequest
+	18, // 21: auth.AuthService.SaveContacts:input_type -> auth.SaveContactsRequest
+	26, // 22: auth.AuthService.SetPresence:input_type -> auth.SetPresenceRequest
+	28, // 23: auth.AuthService.SetTwoStepPIN:input_type -> auth.SetTwoStepPINRequest
+	30, // 24: auth.AuthService.VerifyTwoStepPIN:input_type -> auth.VerifyTwoStepPINRequest
+	33, // 25: auth.AuthService.UploadE2EEKeys:input_type -> auth.UploadE2EEKeysRequest
+	41, // 26: auth.AuthService.GetE2EEKeys:input_type -> auth.GetE2EEKeysRequest
+	37, // 27: auth.AuthService.ListDevices:input_type -> auth.ListDevicesRequest
+	39, // 28: auth.AuthService.RemoveDevice:input_type -> auth.RemoveDeviceRequest
+	43, // 29: auth.AuthService.BlockUser:input_type -> auth.BlockUserRequest
+	45, // 30: auth.AuthService.UnblockUser:input_type -> auth.UnblockUserRequest
+	47, // 31: auth.AuthService.GetBlockedUsers:input_type -> auth.GetBlockedUsersRequest
+	49, // 32: auth.AuthService.RegisterPhone:input_type -> auth.RegisterPhoneRequest
+	51, // 33: auth.AuthService.VerifyPhoneOTP:input_type -> auth.VerifyPhoneOTPRequest
+	53, // 34: auth.AuthService.SubscribePush:input_type -> auth.SubscribePushRequest
+	2,  // 35: auth.AuthService.UpdatePrivacySettings:input_type -> auth.UpdatePrivacySettingsRequest
+	4,  // 36: auth.AuthService.GetPrivacySettings:input_type -> auth.GetPrivacySettingsRequest
+	55, // 37: auth.AuthService.RequestAccountRecovery:input_type -> auth.RequestAccountRecoveryRequest
+	57, // 38: auth.AuthService.VerifyAccountRecovery:input_type -> auth.VerifyAccountRecoveryRequest
+	7,  // 39: auth.AuthService.Register:output_type -> auth.RegisterResponse
+	9,  // 40: auth.AuthService.Login:output_type -> auth.LoginResponse
+	11, // 41: auth.AuthService.RefreshToken:output_type -> auth.RefreshTokenResponse
+	13, // 42: auth.AuthService.ValidateToken:output_type -> auth.ValidateTokenResponse
+	15, // 43: auth.AuthService.GetUser:output_type -> auth.GetUserResponse
+	21, // 44: auth.AuthService.UpdateUser:output_type -> auth.UpdateUserResponse
+	23, // 45: auth.AuthService.DeleteUser:output_type -> auth.DeleteUserResponse
+	25, // 46: auth.AuthService.Logout:output_type -> auth.LogoutResponse
+	17, // 47: auth.AuthService.GetUsers:output_type -> auth.GetUsersResponse
+	19, // 48: auth.AuthService.SaveContacts:output_type -> auth.SaveContactsResponse
+	27, // 49: auth.AuthService.SetPresence:output_type -> auth.SetPresenceResponse
+	29, // 50: auth.AuthService.SetTwoStepPIN:output_type -> auth.SetTwoStepPINResponse
+	31, // 51: auth.AuthService.VerifyTwoStepPIN:output_type -> auth.VerifyTwoStepPINResponse
+	35, // 52: auth.AuthService.UploadE2EEKeys:output_type -> auth.UploadE2EEKeysResponse
+	42, // 53: auth.AuthService.GetE2EEKeys:output_type -> auth.GetE2EEKeysResponse
+	38, // 54: auth.AuthService.ListDevices:output_type -> auth.ListDevicesResponse
+	40, // 55: auth.AuthService.RemoveDevice:output_type -> auth.RemoveDeviceResponse
+	44, // 56: auth.AuthService.BlockUser:output_type -> auth.BlockUserResponse
+	46, // 57: auth.AuthService.UnblockUser:output_type -> auth.UnblockUserResponse
+	48, // 58: auth.AuthService.GetBlockedUsers:output_type -> auth.GetBlockedUsersResponse
+	50, // 59: auth.AuthService.RegisterPhone:output_type -> auth.RegisterPhoneResponse
+	52, // 60: auth.AuthService.VerifyPhoneOTP:output_type -> auth.VerifyPhoneOTPResponse
+	54, // 61: auth.AuthService.SubscribePush:output_type -> auth.SubscribePushResponse
+	3,  // 62: auth.AuthService.UpdatePrivacySettings:output_type -> auth.UpdatePrivacySettingsResponse
+	5,  // 63: auth.AuthService.GetPrivacySettings:output_type -> auth.GetPrivacySettingsResponse
+	56, // 64: auth.AuthService.RequestAccountRecovery:output_type -> auth.RequestAccountRecoveryResponse
+	58, // 65: auth.AuthService.VerifyAccountRecovery:output_type -> auth.VerifyAccountRecoveryResponse
+	39, // [39:66] is the sub-list for method output_type
+	12, // [12:39] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_proto_auth_proto_init() }
@@ -3339,7 +3647,7 @@ func file_proto_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_auth_proto_rawDesc), len(file_proto_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   54,
+			NumMessages:   59,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

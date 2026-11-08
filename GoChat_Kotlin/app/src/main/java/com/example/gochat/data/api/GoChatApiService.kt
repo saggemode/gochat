@@ -85,6 +85,16 @@ interface GoChatApiService {
         @Path("user_id") userId: String
     ): Response<JsonObject>
 
+    // ── E2EE device registry (multi-device Signal-key devices; distinct from the
+    //    session-based linked devices below) ───────────────────────────────────
+    @GET("api/v1/auth/e2ee/devices")
+    suspend fun getE2EEDevices(): Response<JsonObject>
+
+    @DELETE("api/v1/auth/e2ee/devices/{device_id}")
+    suspend fun removeE2EEDevice(
+        @Path("device_id") deviceId: String
+    ): Response<JsonObject>
+
     // ── Linked Devices ───────────────────────────────────────────
     @GET("api/v1/auth/devices")
     suspend fun getLinkedDevices(): Response<JsonObject>

@@ -450,7 +450,11 @@ class ChatRepository @Inject constructor(
         ) {
             val targetUserId = conv.memberIds.find { it != currentUserId }
             if (!targetUserId.isNullOrBlank()) {
-                encryptedContent = encryptionManager.encryptMessage(targetUserId, content)
+                // encryptForUser is N=1-safe: with one recipient device it returns the
+                // same raw ciphertext encryptMessage() would (legacy path); only a
+                // multi-device recipient yields a marked envelope. Either way, a return
+                // equal to the plaintext means "could not encrypt" → fail, don't leak.
+                encryptedContent = encryptionManager.encryptForUser(targetUserId, content)
                 if (encryptedContent == content) {
                     // Encryption did not produce ciphertext → do not send in the clear.
                     diag("Could NOT encrypt to …${targetUserId.takeLast(6)} — no Signal session could be established (recipient's keys missing on the server, or not fetched). Message marked FAILED.")
@@ -1630,7 +1634,18 @@ class ChatRepository @Inject constructor(
         }
         
         val trimmed = message.content.trim()
-        // Standard text messages usually have spaces or common punctuation. 
+        // Multi-device envelope (Phase 2): the sender fanned this message out to
+        // several of our devices. Pick our device's ciphertext and decrypt that.
+        // Dormant today (recipients have one device), but handle it if it arrives.
+        if (encryptionManager.isEnvelope(trimmed)) {
+            val decrypted = encryptionManager.decryptEnvelope(message.senderId, trimmed)
+            if (decrypted.isNotBlank() && decrypted != trimmed) {
+                return message.copy(content = decrypted)
+            }
+            diag("Text from …${message.senderId.takeLast(6)} stays encrypted — ${encryptionManager.lastDecryptDiagnostic}")
+            return message
+        }
+        // Standard text messages usually have spaces or common punctuation.
         // Ciphertext is a dense block of alphanumeric chars.
         if (isBase64Ciphertext(trimmed)) {
             val decrypted = encryptionManager.decryptMessage(message.senderId, trimmed)

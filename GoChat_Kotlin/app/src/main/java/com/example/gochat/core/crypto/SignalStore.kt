@@ -64,35 +64,47 @@ class SignalStore(context: Context) : SignalProtocolStore, SenderKeyStore {
         }
     }
 
+    // Multi-device: sessions/identities are keyed per (user, device). The LEGACY
+    // key (no device suffix) is read as a fallback for device 1 so existing
+    // single-device sessions never orphan; new writes always use the device key.
+    private fun sessionKey(a: SignalProtocolAddress) = "session_${a.name}_${a.deviceId}"
+    private fun legacySessionKey(a: SignalProtocolAddress) = "session_${a.name}"
+    private fun identityKey(a: SignalProtocolAddress) = "identity_${a.name}_${a.deviceId}"
+    private fun legacyIdentityKey(a: SignalProtocolAddress) = "identity_${a.name}"
+
     override fun saveIdentity(address: SignalProtocolAddress, identityKey: IdentityKey?): Boolean {
-        prefs.edit().putString("identity_${address.name}", Base64.encodeToString(identityKey?.serialize(), Base64.DEFAULT)).apply()
+        prefs.edit().putString(identityKey(address), Base64.encodeToString(identityKey?.serialize(), Base64.DEFAULT)).apply()
         return true
     }
 
     override fun isTrustedIdentity(address: SignalProtocolAddress, identityKey: IdentityKey?, direction: IdentityKeyStore.Direction?): Boolean = true
 
     override fun getIdentity(address: SignalProtocolAddress): IdentityKey? {
-        val encoded = prefs.getString("identity_${address.name}", null) ?: return null
+        val encoded = prefs.getString(identityKey(address), null)
+            ?: (if (address.deviceId == 1) prefs.getString(legacyIdentityKey(address), null) else null)
+            ?: return null
         return IdentityKey(Base64.decode(encoded, Base64.DEFAULT), 0)
     }
 
     // ── SessionStore ─────────────────────────────────────────────
 
     override fun loadSession(address: SignalProtocolAddress): SessionRecord {
-        val encoded = prefs.getString("session_${address.name}", null)
+        val encoded = prefs.getString(sessionKey(address), null)
+            ?: (if (address.deviceId == 1) prefs.getString(legacySessionKey(address), null) else null)
         return if (encoded != null) SessionRecord(Base64.decode(encoded, Base64.DEFAULT)) else SessionRecord()
     }
 
     override fun getSubDeviceSessions(name: String): List<Int> = emptyList()
 
     override fun storeSession(address: SignalProtocolAddress, record: SessionRecord) {
-        prefs.edit().putString("session_${address.name}", Base64.encodeToString(record.serialize(), Base64.DEFAULT)).apply()
+        prefs.edit().putString(sessionKey(address), Base64.encodeToString(record.serialize(), Base64.DEFAULT)).apply()
     }
 
-    override fun containsSession(address: SignalProtocolAddress): Boolean = prefs.contains("session_${address.name}")
+    override fun containsSession(address: SignalProtocolAddress): Boolean =
+        prefs.contains(sessionKey(address)) || (address.deviceId == 1 && prefs.contains(legacySessionKey(address)))
 
     override fun deleteSession(address: SignalProtocolAddress) {
-        prefs.edit().remove("session_${address.name}").apply()
+        prefs.edit().remove(sessionKey(address)).also { if (address.deviceId == 1) it.remove(legacySessionKey(address)) }.apply()
     }
 
     override fun deleteAllSessions(name: String) {}

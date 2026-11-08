@@ -46,6 +46,10 @@ service AuthService {
   rpc UploadE2EEKeys(UploadE2EEKeysRequest) returns (UploadE2EEKeysResponse);
   rpc GetE2EEKeys(GetE2EEKeysRequest) returns (GetE2EEKeysResponse);
 
+  // Multi-device management (Phase 3: linked devices)
+  rpc ListDevices(ListDevicesRequest) returns (ListDevicesResponse);
+  rpc RemoveDevice(RemoveDeviceRequest) returns (RemoveDeviceResponse);
+
   // Contact Blocking
   rpc BlockUser(BlockUserRequest) returns (BlockUserResponse);
   rpc UnblockUser(UnblockUserRequest) returns (UnblockUserResponse);
@@ -258,11 +262,31 @@ message DeviceBundle {
   string prekey_signed    = 4;
   string prekey_signature = 5;
   EphemeralPreKey one_time_key = 6; // one consumed per device
+  int32  device_number    = 7; // small int used as the Signal deviceId
 }
 
 message UploadE2EEKeysResponse {
   bool success = 1;
+  int32 device_number = 2; // this device's assigned Signal deviceId (1 = first/primary)
 }
+
+// ── Multi-device management (Phase 3) ───────────────────────────────────────
+message DeviceInfo {
+  string device_id       = 1;
+  int32  device_number   = 2;
+  int32  registration_id = 3;
+  string created_at      = 4;
+  string last_seen       = 5;
+}
+
+message ListDevicesRequest { string user_id = 1; }
+message ListDevicesResponse { repeated DeviceInfo devices = 1; }
+
+message RemoveDeviceRequest {
+  string user_id   = 1;
+  string device_id = 2; // the device to unlink (stop fanning out to it)
+}
+message RemoveDeviceResponse { bool success = 1; }
 
 message GetE2EEKeysRequest {
   string requester_id   = 1;

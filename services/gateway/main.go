@@ -545,6 +545,12 @@ func main() {
 		authRequired.POST("/auth/e2ee/keys", authHandler.UploadE2EEKeys)
 		authRequired.GET("/auth/e2ee/keys/:user_id", authHandler.GetE2EEKeys)
 
+		// Multi-device E2EE crypto-device registry (Phase 3). Namespaced under
+		// /auth/e2ee/ to avoid colliding with the /auth/devices session-management
+		// routes above (those track login sessions, not Signal key devices).
+		authRequired.GET("/auth/e2ee/devices", authHandler.ListDevices)
+		authRequired.DELETE("/auth/e2ee/devices/:device_id", authHandler.RemoveDevice)
+
 		// Blocks & Privacy
 		authRequired.POST("/privacy/blocks/:user_id", authHandler.BlockUser)
 		authRequired.DELETE("/privacy/blocks/:user_id", authHandler.UnblockUser)

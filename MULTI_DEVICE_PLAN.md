@@ -87,6 +87,43 @@ device in practice).
 **Ship/test:** existing 1:1 chats keep working; the schema is now device-capable.
 
 ### Phase 2 — Fan-out encryption (encrypt to all of a recipient's devices)
+
+**Server side DONE (2026-11-08, builds, needs redeploy):** migration `011` adds
+`device_number INT` to `core.user_devices` (1 = first device → single-device keeps Signal
+deviceId 1, so nothing breaks). `SavePreKeyBundle` assigns the next device_number per user.
+`ConsumeDeviceBundles` + `GetE2EEKeysResponse.bundles` now return a bundle per device
+(device_number as the Signal deviceId, one one-time key consumed each). Legacy single bundle
+still served for current clients.
+
+**Client side — CODE-COMPLETE BUT DORMANT (2026-11-08, compiles; UNTESTED):** the
+fan-out path is written and N=1-safe, so it cannot activate (or regress the 1:1 path)
+until a user actually has >1 device, which needs Phase 3 linking.
+- `EncryptionManager`: `localDeviceNumber()` (prefs `e2ee_prefs`/`e2ee_device_number`,
+  default 1), `fetchDeviceBundles()` (reads the `bundles` list), `encryptForUser()`
+  (N=1 → delegates to `encryptMessage()` = legacy raw ciphertext; N>1 → marked envelope
+  `\u0001E2EEMD1:{v,sd,to:{"<userId>:<devNum>":ct}}`, including self-sync to the
+  sender's own other devices), `encryptForDevice()`/`establishSessionForDevice()`,
+  `isEnvelope()`, `decryptEnvelope()`.
+- `SignalStore`: device-aware session/identity keys with a legacy fallback for device 1
+  (done — see §Phase 2 CAVEAT below).
+- `decryptMessage(senderUserId, ct, senderDeviceNumber=1)` is device-aware (default 1
+  keeps every existing caller unchanged).
+- `ChatRepository`: direct-text send routes through `encryptForUser`; `tryDecryptMessage`
+  intercepts the envelope marker before the base64 check and routes to `decryptEnvelope`.
+- STILL TODO when linking lands: learn + persist this device's own device_number from the
+  upload response (today always 1); extend group SKDM to member×device; media envelope.
+
+**Original client notes (the risky part; needs device testing before it truly lands):**
+- **Signal deviceId = `device_number`** (not the `X-Device-Id` string — Signal needs an int).
+  The device learns its own device_number from the upload/response and uses it for its local
+  identity, replacing the hardcoded `1`. First device = 1, so existing installs are unchanged.
+- **CAVEAT (session orphaning):** `SignalStore` keys today are `session_<user>` (no device
+  suffix). Moving to `session_<user>_<deviceNumber>` must either migrate existing keys
+  (`session_<user>` → `session_<user>_1`) or have `loadSession`/`containsSession` fall back to
+  the unsuffixed key. Get this wrong and every working session breaks.
+- **Keep single-device on the EXISTING path:** only use the multi-device envelope when the
+  recipient actually has >1 device; for N=1 keep today's raw-ciphertext-in-content path so the
+  stable crypto is untouched until linking (Phase 3) exists.
 - `EncryptionManager.encryptMessage(targetUserId, text)` → `encryptForUser(targetUserId)`:
   fetch all of B's device bundles (Phase 1 list), establish a session per device, produce a
   **map `{deviceId: ciphertext}`**.
@@ -103,15 +140,45 @@ device in practice).
 **per-device ciphertext**, not the whole envelope.
 
 ### Phase 3 — Device linking (QR pairing)
-- New-device flow: primary device shows a QR (reuse the `SecurityVerificationActivity` QR
-  infra). QR carries a short-lived linking token + the primary's identity fingerprint.
-- New device scans → registers its `device_id` + uploads its own key bundle (Phase 1 upload) →
-  server marks it an authorized device of the user → appears in other users' fan-out sets.
-- **Auth:** linking must be authenticated as the same account (the new device is already
-  logged in as the user; the QR just authorizes the E2EE device registration + optionally
-  triggers history transfer).
-- Add a "Linked devices" screen (list `user_devices`, allow unlink → server removes the device
-  so senders stop encrypting to it; client wipes that device's session state).
+
+**Step 1 — device_number learning/persistence — DONE (2026-11-08, all 4 targets build):**
+the hard prerequisite for N>1. A device now learns and stores its own Signal deviceId so
+two devices can't both think they're device 1.
+- Server: `SavePreKeyBundle` now `RETURNING device_number`; `UploadE2EEKeys` returns it
+  (`UploadE2EEKeysResponse.device_number`); gateway `POST /auth/e2ee/keys` returns it as JSON.
+- Client: `AuthRepository.uploadE2EEKeys` returns `Result<Int>`; `EncryptionManager`
+  `persistDeviceNumber()` stores it in `e2ee_prefs`/`e2ee_device_number`, so `localDeviceNumber()`
+  is now real (first/primary device = 1 → single-device unchanged). Persisted only on first-create
+  upload (we don't re-upload each launch — see the OTK-revival lesson), which is correct because
+  the number is assigned once.
+
+**Step 2 — Linked-devices registry (server DONE; Android UI TODO):**
+- proto: new RPCs `ListDevices`/`RemoveDevice` + `DeviceInfo` message. Regenerated.
+- Server: `UserRepository.ListDevices` / `RemoveDevice` (RemoveDevice refuses device_number 1 —
+  can't unlink the primary; deletes `device_prekeys`+`user_devices` so senders stop fanning out).
+- Gateway: `GET /auth/e2ee/devices`, `DELETE /auth/e2ee/devices/:device_id`. **NOTE: namespaced
+  under `/auth/e2ee/` on purpose** — `/auth/devices` is ALREADY the pre-existing *session*
+  management feature (GetActiveSessions/TerminateSession, web login sessions: ip/browser/is_current).
+  That is a DIFFERENT subsystem from this Signal-key device registry; do not conflate them. Gin
+  would panic on the duplicate route — hence the separate path.
+- TODO: Android "E2EE devices" screen hitting `/auth/e2ee/devices` (list + unlink). The existing
+  `AuthRepository.getLinkedDevices()/unlinkDevice()` point at the SESSION routes, not these.
+
+**Step 3 — QR pairing UX (TODO):** primary shows a QR (reuse `SecurityVerificationActivity` QR
+  infra); companion (already logged into the account) scans to authorize + exchange identity
+  fingerprint. There's also a pre-existing `linkDeviceWithQr()` + `POST /auth/qr/link` in the
+  codebase for *web session* linking — evaluate whether to reuse it or keep separate.
+- **Auth:** linking is authenticated as the same account (the new device is already logged in).
+
+**🚩 CRITICAL GO-LIVE GATE for N>1 (must fix before enabling multi-device, can't test until then):**
+Today `encryptForUser` chooses the envelope only when the *recipient* has >1 device. But if the
+*sender's own account* has >1 device, a device-2 sender sending to a single-device peer still takes
+the RAW path, and the peer stores that session under `(senderId, 1)` — colliding with device-1's
+raw messages to the same peer (both map to deviceId 1) → ratchet break. Fix when linking lands:
+use the envelope whenever **either** side is multi-device (cheap signal: `localDeviceNumber() > 1`,
+or the account's own `ListDevices` count > 1), so the sender device (`sd`) is always carried and the
+receiver builds the session against the correct `(senderId, sd)` address. Cannot trigger today (every
+account is N=1), so single-device stays correct; but this MUST be in place the moment a 2nd device exists.
 
 ### Phase 4 — History onboarding for a new device
 Server stores no plaintext, so a freshly linked device is empty. Pick per Phase 0 #3:

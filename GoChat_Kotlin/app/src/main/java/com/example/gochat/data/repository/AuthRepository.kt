@@ -9,6 +9,7 @@ import com.example.gochat.data.api.TokenManager
 import com.example.gochat.data.db.AppDatabase
 import com.example.gochat.data.model.User
 import com.example.gochat.data.model.LinkedDevice
+import com.example.gochat.data.model.E2EEDevice
 import com.example.gochat.data.websocket.GoChatWebSocket
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -285,13 +286,15 @@ class AuthRepository @Inject constructor(
 
     // ── E2EE ──────────────────────────────────────────────────────
 
+    /** Uploads this device's key bundle; returns the server-assigned device_number
+     *  (this device's Signal deviceId; 1 = first/primary). Defaults to 1 if absent. */
     suspend fun uploadE2EEKeys(
         registrationId: Int,
         identityKey: String,
         signedPreKey: String,
         signedPreKeySignature: String,
         oneTimeKeys: List<JsonObject>
-    ): Result<Unit> {
+    ): Result<Int> {
         return try {
             val body = buildJsonObject {
                 put("registration_id", registrationId)
@@ -301,8 +304,10 @@ class AuthRepository @Inject constructor(
                 put("one_time_keys", JsonArray(oneTimeKeys))
             }
             val response = api.uploadE2EEKeys(body)
-            if (response.isSuccessful) Result.success(Unit)
-            else Result.failure(Exception("Failed to upload E2EE keys (${response.code()})"))
+            if (response.isSuccessful) {
+                val devNum = response.body()?.get("device_number")?.jsonPrimitive?.intOrNull ?: 1
+                Result.success(if (devNum > 0) devNum else 1)
+            } else Result.failure(Exception("Failed to upload E2EE keys (${response.code()})"))
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -316,6 +321,49 @@ class AuthRepository @Inject constructor(
             } else {
                 Result.failure(Exception("Failed to get E2EE keys (${response.code()})"))
             }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // ── E2EE device registry (multi-device Signal-key devices) ───────────────
+
+    /** List the account's E2EE (Signal-key) devices — the installs that receive a
+     *  copy of every message via multi-device fan-out. Marks our own install current. */
+    suspend fun getE2EEDevices(): Result<List<E2EEDevice>> {
+        return try {
+            val response = api.getE2EEDevices()
+            if (!response.isSuccessful) {
+                return Result.failure(Exception("Failed to load encryption devices (${response.code()})"))
+            }
+            val myDeviceId = tokenManager.getDeviceId()
+            val arr = response.body()?.get("devices")?.jsonArray ?: JsonArray(emptyList())
+            val devices = arr.mapNotNull { el ->
+                val o = el as? JsonObject ?: return@mapNotNull null
+                val deviceId = o["device_id"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                if (deviceId.isBlank()) return@mapNotNull null
+                E2EEDevice(
+                    deviceId = deviceId,
+                    deviceNumber = o["device_number"]?.jsonPrimitive?.intOrNull ?: 1,
+                    registrationId = o["registration_id"]?.jsonPrimitive?.intOrNull ?: 0,
+                    createdAt = o["created_at"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                    lastSeen = o["last_seen"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                    isCurrent = deviceId == myDeviceId
+                )
+            }.sortedBy { it.deviceNumber }
+            Result.success(devices)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** Unlink an E2EE device so senders stop fanning out to it. The server refuses
+     *  to remove the primary (device_number 1). */
+    suspend fun removeE2EEDevice(deviceId: String): Result<Unit> {
+        return try {
+            val response = api.removeE2EEDevice(deviceId)
+            if (response.isSuccessful) Result.success(Unit)
+            else Result.failure(Exception(parseError(response.errorBody()?.string().orEmpty(), response.code())))
         } catch (e: Exception) {
             Result.failure(e)
         }

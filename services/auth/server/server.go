@@ -523,12 +523,45 @@ func (s *AuthServer) UploadE2EEKeys(ctx context.Context, req *authpb.UploadE2EEK
 		}
 	}
 
-	err = s.repo.SavePreKeyBundle(ctx, uid, req.PrekeyIdentity, req.PrekeySigned, req.PrekeySignature, keys, req.DeviceId, req.RegistrationId)
+	deviceNumber, err := s.repo.SavePreKeyBundle(ctx, uid, req.PrekeyIdentity, req.PrekeySigned, req.PrekeySignature, keys, req.DeviceId, req.RegistrationId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to save prekey bundle: %v", err)
 	}
 
-	return &authpb.UploadE2EEKeysResponse{Success: true}, nil
+	return &authpb.UploadE2EEKeysResponse{Success: true, DeviceNumber: deviceNumber}, nil
+}
+
+func (s *AuthServer) ListDevices(ctx context.Context, req *authpb.ListDevicesRequest) (*authpb.ListDevicesResponse, error) {
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user ID")
+	}
+	devices, err := s.repo.ListDevices(ctx, uid)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list devices: %v", err)
+	}
+	resp := &authpb.ListDevicesResponse{}
+	for _, d := range devices {
+		resp.Devices = append(resp.Devices, &authpb.DeviceInfo{
+			DeviceId:       d.DeviceID,
+			DeviceNumber:   d.DeviceNumber,
+			RegistrationId: d.RegistrationID,
+			CreatedAt:      d.CreatedAt,
+			LastSeen:       d.LastSeen,
+		})
+	}
+	return resp, nil
+}
+
+func (s *AuthServer) RemoveDevice(ctx context.Context, req *authpb.RemoveDeviceRequest) (*authpb.RemoveDeviceResponse, error) {
+	uid, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user ID")
+	}
+	if err := s.repo.RemoveDevice(ctx, uid, req.DeviceId); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to remove device: %v", err)
+	}
+	return &authpb.RemoveDeviceResponse{Success: true}, nil
 }
 
 func (s *AuthServer) GetE2EEKeys(ctx context.Context, req *authpb.GetE2EEKeysRequest) (*authpb.GetE2EEKeysResponse, error) {
@@ -550,13 +583,34 @@ func (s *AuthServer) GetE2EEKeys(ctx context.Context, req *authpb.GetE2EEKeysReq
 		}
 	}
 
-	return &authpb.GetE2EEKeysResponse{
+	resp := &authpb.GetE2EEKeysResponse{
 		UserId:          req.TargetUserId,
 		PrekeyIdentity:  identity,
 		PrekeySigned:    signedKey,
 		PrekeySignature: signature,
 		OneTimeKey:      pbKey,
-	}, nil
+	}
+
+	// Multi-device: also return a bundle per registered device (fan-out). Best
+	// effort — the legacy single bundle above still serves single-device clients.
+	if devBundles, derr := s.repo.ConsumeDeviceBundles(ctx, targetUID); derr == nil {
+		for _, b := range devBundles {
+			db := &authpb.DeviceBundle{
+				DeviceId:        b.DeviceID,
+				DeviceNumber:    b.DeviceNumber,
+				RegistrationId:  b.RegistrationID,
+				PrekeyIdentity:  b.Identity,
+				PrekeySigned:    b.SignedKey,
+				PrekeySignature: b.Signature,
+			}
+			if b.OneTimeKey != nil {
+				db.OneTimeKey = &authpb.EphemeralPreKey{KeyId: b.OneTimeKey.KeyID, PublicKey: b.OneTimeKey.PublicKey}
+			}
+			resp.Bundles = append(resp.Bundles, db)
+		}
+	}
+
+	return resp, nil
 }
 
 func (s *AuthServer) BlockUser(ctx context.Context, req *authpb.BlockUserRequest) (*authpb.BlockUserResponse, error) {

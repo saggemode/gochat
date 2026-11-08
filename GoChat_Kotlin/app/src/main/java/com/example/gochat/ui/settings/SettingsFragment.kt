@@ -178,6 +178,11 @@ class SettingsFragment : Fragment() {
                 startActivity(Intent(requireContext(), LinkedDevicesActivity::class.java))
             }
 
+            // Encryption (E2EE) Devices
+            tileE2EEDevices.setOnClickListener {
+                startActivity(Intent(requireContext(), com.example.gochat.ui.devices.E2EEDevicesActivity::class.java))
+            }
+
             // Chat Backup
             tileChatBackup.setOnClickListener {
                 startActivity(Intent(requireContext(), ChatBackupActivity::class.java))

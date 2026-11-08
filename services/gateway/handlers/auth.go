@@ -1196,6 +1196,40 @@ func (h *AuthHandler) UploadE2EEKeys(c *gin.Context) {
 		return
 	}
 
+	// Return the server-assigned device_number so the client can persist it as its
+	// Signal deviceId (1 = first/primary device → single-device unchanged).
+	c.JSON(http.StatusOK, gin.H{"success": resp.Success, "device_number": resp.DeviceNumber})
+}
+
+// ListDevices returns the caller's registered devices (for the "Linked devices" screen).
+func (h *AuthHandler) ListDevices(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	resp, err := h.client.ListDevices(c.Request.Context(), &authpb.ListDevicesRequest{UserId: userID})
+	if err != nil {
+		h.handleGrpcError(c, err, "failed to list devices")
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// RemoveDevice unlinks one of the caller's devices (cannot remove the primary).
+func (h *AuthHandler) RemoveDevice(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	deviceID := c.Param("device_id")
+	resp, err := h.client.RemoveDevice(c.Request.Context(), &authpb.RemoveDeviceRequest{
+		UserId:   userID,
+		DeviceId: deviceID,
+	})
+	if err != nil {
+		h.handleGrpcError(c, err, "failed to remove device")
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"success": resp.Success})
 }
 

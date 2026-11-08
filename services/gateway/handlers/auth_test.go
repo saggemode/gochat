@@ -98,6 +98,12 @@ func (s *stubAuthServiceClient) UploadE2EEKeys(context.Context, *authpb.UploadE2
 func (s *stubAuthServiceClient) GetE2EEKeys(context.Context, *authpb.GetE2EEKeysRequest, ...grpc.CallOption) (*authpb.GetE2EEKeysResponse, error) {
 	panic("not implemented")
 }
+func (s *stubAuthServiceClient) ListDevices(context.Context, *authpb.ListDevicesRequest, ...grpc.CallOption) (*authpb.ListDevicesResponse, error) {
+	panic("not implemented")
+}
+func (s *stubAuthServiceClient) RemoveDevice(context.Context, *authpb.RemoveDeviceRequest, ...grpc.CallOption) (*authpb.RemoveDeviceResponse, error) {
+	panic("not implemented")
+}
 func (s *stubAuthServiceClient) BlockUser(context.Context, *authpb.BlockUserRequest, ...grpc.CallOption) (*authpb.BlockUserResponse, error) {
 	panic("not implemented")
 }

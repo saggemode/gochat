@@ -171,6 +171,12 @@ func (m *mockAuthClient) UploadE2EEKeys(_ context.Context, _ *authpb.UploadE2EEK
 func (m *mockAuthClient) GetE2EEKeys(_ context.Context, _ *authpb.GetE2EEKeysRequest, _ ...grpc.CallOption) (*authpb.GetE2EEKeysResponse, error) {
 	panic("not used in middleware tests")
 }
+func (m *mockAuthClient) ListDevices(_ context.Context, _ *authpb.ListDevicesRequest, _ ...grpc.CallOption) (*authpb.ListDevicesResponse, error) {
+	panic("not used in middleware tests")
+}
+func (m *mockAuthClient) RemoveDevice(_ context.Context, _ *authpb.RemoveDeviceRequest, _ ...grpc.CallOption) (*authpb.RemoveDeviceResponse, error) {
+	panic("not used in middleware tests")
+}
 func (m *mockAuthClient) BlockUser(_ context.Context, _ *authpb.BlockUserRequest, _ ...grpc.CallOption) (*authpb.BlockUserResponse, error) {
 	panic("not used in middleware tests")
 }

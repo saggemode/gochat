@@ -85,7 +85,13 @@ class EncryptionManager @Inject constructor(
                     signedPreKey = Base64.encodeToString(signedPreKey.keyPair.publicKey.serialize(), Base64.DEFAULT),
                     signedPreKeySignature = Base64.encodeToString(signedPreKey.signature, Base64.DEFAULT),
                     oneTimeKeys = otks
-                )
+                ).onSuccess { assignedDeviceNumber ->
+                    // Persist the server-assigned device_number as our Signal deviceId.
+                    // First/primary device = 1 → single-device installs are unchanged;
+                    // a second linked device gets 2+, so its envelope entries never
+                    // collide with the primary's. This makes localDeviceNumber() real.
+                    persistDeviceNumber(assignedDeviceNumber)
+                }
             }
         }
     }
@@ -173,7 +179,7 @@ class EncryptionManager @Inject constructor(
         try { dedupPrefs.edit().putString(k, plaintext).apply() } catch (_: Exception) {}
     }
 
-    fun decryptMessage(senderUserId: String, base64Ciphertext: String): String {
+    fun decryptMessage(senderUserId: String, base64Ciphertext: String, senderDeviceNumber: Int = 1): String {
         if (base64Ciphertext.isBlank() || senderUserId.isBlank()) return base64Ciphertext
 
         val cacheKey = base64Ciphertext.trim()
@@ -182,7 +188,7 @@ class EncryptionManager @Inject constructor(
             return it
         }
 
-        val address = SignalProtocolAddress(senderUserId, 1)
+        val address = SignalProtocolAddress(senderUserId, if (senderDeviceNumber > 0) senderDeviceNumber else 1)
         val decodedBytes = try {
             // Try both DEFAULT and NO_WRAP implicitly via DEFAULT
             Base64.decode(cacheKey, Base64.DEFAULT)
@@ -276,6 +282,172 @@ class EncryptionManager @Inject constructor(
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+    }
+
+    // ── Multi-device fan-out (Phase 2) ──────────────────────────────────────
+    // DORMANT until device-linking (Phase 3) exists: today every recipient has
+    // exactly ONE device, so encryptForUser() takes the single-device branch and
+    // returns a raw ciphertext byte-for-byte identical to encryptMessage() — the
+    // stable 1:1 path is untouched. The envelope branch only activates once a
+    // recipient genuinely has >1 device. See MULTI_DEVICE_PLAN.md §Phase 2.
+
+    /** Marker prefixing a multi-device envelope so receivers can tell it apart from
+     *  a raw single-device ciphertext (which is bare base64, never starts with this). */
+    private val mdEnvelopeMarker = "\u0001E2EEMD1:"
+
+    /** This device's server-assigned device_number (used as the Signal deviceId).
+     *  First device = 1, so existing single-device installs keep deviceId 1 and the
+     *  stored sessions/identities never move. */
+    fun localDeviceNumber(): Int = try {
+        context.getSharedPreferences("e2ee_prefs", Context.MODE_PRIVATE)
+            .getInt("e2ee_device_number", 1).let { if (it > 0) it else 1 }
+    } catch (_: Exception) { 1 }
+
+    /** Persist the server-assigned device_number (this device's Signal deviceId). */
+    private fun persistDeviceNumber(n: Int) {
+        if (n <= 0) return
+        try {
+            context.getSharedPreferences("e2ee_prefs", Context.MODE_PRIVATE)
+                .edit().putInt("e2ee_device_number", n).apply()
+        } catch (_: Exception) {}
+    }
+
+    /** True if [content] is a multi-device envelope rather than a raw ciphertext. */
+    fun isEnvelope(content: String): Boolean = content.startsWith(mdEnvelopeMarker)
+
+    /** Fetch all of [targetUserId]'s per-device bundles (Phase 2 `bundles` list).
+     *  Returns null when the server supplies no list (older server, or a single-device
+     *  response) so callers fall back cleanly to the legacy 1:1 path. */
+    private suspend fun fetchDeviceBundles(targetUserId: String): JsonArray? = withContext(Dispatchers.IO) {
+        var result: JsonArray? = null
+        authRepo.getE2EEKeys(targetUserId).onSuccess { json ->
+            result = json["bundles"]?.jsonArray?.takeIf { it.isNotEmpty() }
+        }
+        result
+    }
+
+    /**
+     * Encrypt [plainText] to EVERY device of [targetUserId] (plus the sender's own
+     * other devices, for self-sync). N=1-SAFE: a recipient with at most one device
+     * takes the `encryptMessage()` branch and returns a RAW ciphertext — the exact
+     * legacy path, so stable single-device crypto cannot regress. Only a genuinely
+     * multi-device recipient (impossible until Phase 3 linking) yields a marked envelope.
+     */
+    suspend fun encryptForUser(targetUserId: String, plainText: String): String = withContext(Dispatchers.IO) {
+        if (targetUserId.isBlank()) return@withContext plainText
+        val bundles = fetchDeviceBundles(targetUserId)
+        // Single-device (the only case today): keep the stable raw-ciphertext path.
+        if (bundles == null || bundles.size <= 1) {
+            return@withContext encryptMessage(targetUserId, plainText)
+        }
+        try {
+            val myId = tokenManager.userId
+            val myDev = localDeviceNumber()
+            val perDevice = buildJsonObject {
+                // recipient's devices
+                for (b in bundles) {
+                    val obj = b.jsonObject
+                    val devNum = obj["device_number"]?.jsonPrimitive?.intOrNull ?: continue
+                    val ct = encryptForDevice(targetUserId, devNum, obj, plainText) ?: continue
+                    put("$targetUserId:$devNum", ct)
+                }
+                // sender's own OTHER devices (self-sync) — best effort
+                if (!myId.isNullOrBlank()) {
+                    fetchDeviceBundles(myId)?.forEach { sb ->
+                        val obj = sb.jsonObject
+                        val devNum = obj["device_number"]?.jsonPrimitive?.intOrNull ?: return@forEach
+                        if (devNum == myDev) return@forEach  // never encrypt to ourselves
+                        val ct = encryptForDevice(myId, devNum, obj, plainText) ?: return@forEach
+                        put("$myId:$devNum", ct)
+                    }
+                }
+            }
+            if (perDevice.isEmpty()) return@withContext encryptMessage(targetUserId, plainText)
+            val envelope = buildJsonObject {
+                put("v", 1)
+                put("sd", myDev)          // sender's device number (Signal deviceId)
+                put("to", perDevice)      // "<userId>:<deviceNumber>" → ciphertext
+            }
+            mdEnvelopeMarker + envelope.toString()
+        } catch (e: Exception) {
+            Log.e("EncryptionManager", "encryptForUser fan-out failed, falling back to 1:1: ${e.message}")
+            encryptMessage(targetUserId, plainText)
+        }
+    }
+
+    /** Encrypt [plainText] to a single (userId, deviceNumber), establishing the
+     *  per-device session from [bundleObj] on first contact. Null on any failure. */
+    private fun encryptForDevice(userId: String, deviceNumber: Int, bundleObj: JsonObject, plainText: String): String? {
+        return try {
+            val address = SignalProtocolAddress(userId, if (deviceNumber > 0) deviceNumber else 1)
+            if (!signalStore.containsSession(address)) {
+                establishSessionForDevice(address, bundleObj) ?: return null
+            }
+            if (!signalStore.containsSession(address)) return null
+            val cipher = SessionCipher(signalStore, address)
+            val ct = cipher.encrypt(plainText.toByteArray(Charsets.UTF_8))
+            Base64.encodeToString(ct.serialize(), Base64.NO_WRAP)
+        } catch (e: Exception) {
+            Log.w("EncryptionManager", "encryptForDevice($userId:$deviceNumber) failed: ${e.message}")
+            null
+        }
+    }
+
+    /** Build a Signal session for ONE device from its per-device bundle JSON. */
+    private fun establishSessionForDevice(address: SignalProtocolAddress, obj: JsonObject): Unit? {
+        return try {
+            val prekeySignedB64 = obj["prekey_signed"]?.jsonPrimitive?.contentOrNull
+            val prekeySigB64 = obj["prekey_signature"]?.jsonPrimitive?.contentOrNull
+            val prekeyIdentB64 = obj["prekey_identity"]?.jsonPrimitive?.contentOrNull
+            if (prekeySignedB64.isNullOrBlank() || prekeySigB64.isNullOrBlank() || prekeyIdentB64.isNullOrBlank()) return null
+
+            val otk = obj["one_time_key"]?.jsonObject
+            val otkId = otk?.get("key_id")?.jsonPrimitive?.intOrNull ?: 0
+            val otkPublicB64 = otk?.get("public_key")?.jsonPrimitive?.contentOrNull
+            val otkKey = if (!otkPublicB64.isNullOrBlank()) Curve.decodePoint(Base64.decode(otkPublicB64, Base64.DEFAULT), 0) else null
+
+            val registrationId = obj["registration_id"]?.jsonPrimitive?.intOrNull ?: 1
+            val signedPreKeyId = obj["signed_prekey_id"]?.jsonPrimitive?.intOrNull ?: 1
+
+            val bundle = PreKeyBundle(
+                registrationId,
+                address.deviceId,
+                otkId,
+                otkKey,
+                signedPreKeyId,
+                Curve.decodePoint(Base64.decode(prekeySignedB64, Base64.DEFAULT), 0),
+                Base64.decode(prekeySigB64, Base64.DEFAULT),
+                IdentityKey(Base64.decode(prekeyIdentB64, Base64.DEFAULT), 0)
+            )
+            SessionBuilder(signalStore, address).process(bundle)
+            Unit
+        } catch (e: Exception) {
+            Log.w("EncryptionManager", "establishSessionForDevice(${address.name}:${address.deviceId}) failed: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Decrypt a multi-device envelope: pick THIS device's ciphertext (by my userId +
+     * device_number) and run it through the normal decrypt path (dedup/ratchet/mutex
+     * guards all still apply, keyed on the per-device ciphertext). Returns the content
+     * unchanged if our entry isn't present or parsing fails.
+     */
+    fun decryptEnvelope(senderUserId: String, envelope: String): String {
+        if (!envelope.startsWith(mdEnvelopeMarker)) return envelope
+        val myId = tokenManager.userId ?: return envelope
+        return try {
+            val json = Json.parseToJsonElement(envelope.substring(mdEnvelopeMarker.length)).jsonObject
+            val senderDev = json["sd"]?.jsonPrimitive?.intOrNull ?: 1
+            val to = json["to"]?.jsonObject ?: return envelope
+            val ct = to["$myId:${localDeviceNumber()}"]?.jsonPrimitive?.contentOrNull
+                ?: to["$myId:1"]?.jsonPrimitive?.contentOrNull   // fallback: device 1
+                ?: return envelope
+            decryptMessage(senderUserId, ct, senderDev)
+        } catch (e: Exception) {
+            Log.w("EncryptionManager", "decryptEnvelope failed: ${e.message}")
+            envelope
         }
     }
 

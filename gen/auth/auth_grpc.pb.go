@@ -34,6 +34,8 @@ const (
 	AuthService_VerifyTwoStepPIN_FullMethodName       = "/auth.AuthService/VerifyTwoStepPIN"
 	AuthService_UploadE2EEKeys_FullMethodName         = "/auth.AuthService/UploadE2EEKeys"
 	AuthService_GetE2EEKeys_FullMethodName            = "/auth.AuthService/GetE2EEKeys"
+	AuthService_ListDevices_FullMethodName            = "/auth.AuthService/ListDevices"
+	AuthService_RemoveDevice_FullMethodName           = "/auth.AuthService/RemoveDevice"
 	AuthService_BlockUser_FullMethodName              = "/auth.AuthService/BlockUser"
 	AuthService_UnblockUser_FullMethodName            = "/auth.AuthService/UnblockUser"
 	AuthService_GetBlockedUsers_FullMethodName        = "/auth.AuthService/GetBlockedUsers"
@@ -77,6 +79,9 @@ type AuthServiceClient interface {
 	// E2EE Key Exchange
 	UploadE2EEKeys(ctx context.Context, in *UploadE2EEKeysRequest, opts ...grpc.CallOption) (*UploadE2EEKeysResponse, error)
 	GetE2EEKeys(ctx context.Context, in *GetE2EEKeysRequest, opts ...grpc.CallOption) (*GetE2EEKeysResponse, error)
+	// Multi-device management (Phase 3: linked devices)
+	ListDevices(ctx context.Context, in *ListDevicesRequest, opts ...grpc.CallOption) (*ListDevicesResponse, error)
+	RemoveDevice(ctx context.Context, in *RemoveDeviceRequest, opts ...grpc.CallOption) (*RemoveDeviceResponse, error)
 	// Contact Blocking
 	BlockUser(ctx context.Context, in *BlockUserRequest, opts ...grpc.CallOption) (*BlockUserResponse, error)
 	UnblockUser(ctx context.Context, in *UnblockUserRequest, opts ...grpc.CallOption) (*UnblockUserResponse, error)
@@ -252,6 +257,26 @@ func (c *authServiceClient) GetE2EEKeys(ctx context.Context, in *GetE2EEKeysRequ
 	return out, nil
 }
 
+func (c *authServiceClient) ListDevices(ctx context.Context, in *ListDevicesRequest, opts ...grpc.CallOption) (*ListDevicesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListDevicesResponse)
+	err := c.cc.Invoke(ctx, AuthService_ListDevices_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) RemoveDevice(ctx context.Context, in *RemoveDeviceRequest, opts ...grpc.CallOption) (*RemoveDeviceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveDeviceResponse)
+	err := c.cc.Invoke(ctx, AuthService_RemoveDevice_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *authServiceClient) BlockUser(ctx context.Context, in *BlockUserRequest, opts ...grpc.CallOption) (*BlockUserResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(BlockUserResponse)
@@ -383,6 +408,9 @@ type AuthServiceServer interface {
 	// E2EE Key Exchange
 	UploadE2EEKeys(context.Context, *UploadE2EEKeysRequest) (*UploadE2EEKeysResponse, error)
 	GetE2EEKeys(context.Context, *GetE2EEKeysRequest) (*GetE2EEKeysResponse, error)
+	// Multi-device management (Phase 3: linked devices)
+	ListDevices(context.Context, *ListDevicesRequest) (*ListDevicesResponse, error)
+	RemoveDevice(context.Context, *RemoveDeviceRequest) (*RemoveDeviceResponse, error)
 	// Contact Blocking
 	BlockUser(context.Context, *BlockUserRequest) (*BlockUserResponse, error)
 	UnblockUser(context.Context, *UnblockUserRequest) (*UnblockUserResponse, error)
@@ -452,6 +480,12 @@ func (UnimplementedAuthServiceServer) UploadE2EEKeys(context.Context, *UploadE2E
 }
 func (UnimplementedAuthServiceServer) GetE2EEKeys(context.Context, *GetE2EEKeysRequest) (*GetE2EEKeysResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetE2EEKeys not implemented")
+}
+func (UnimplementedAuthServiceServer) ListDevices(context.Context, *ListDevicesRequest) (*ListDevicesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListDevices not implemented")
+}
+func (UnimplementedAuthServiceServer) RemoveDevice(context.Context, *RemoveDeviceRequest) (*RemoveDeviceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveDevice not implemented")
 }
 func (UnimplementedAuthServiceServer) BlockUser(context.Context, *BlockUserRequest) (*BlockUserResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BlockUser not implemented")
@@ -774,6 +808,42 @@ func _AuthService_GetE2EEKeys_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_ListDevices_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListDevicesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).ListDevices(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_ListDevices_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).ListDevices(ctx, req.(*ListDevicesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_RemoveDevice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveDeviceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).RemoveDevice(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_RemoveDevice_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).RemoveDevice(ctx, req.(*RemoveDeviceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AuthService_BlockUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(BlockUserRequest)
 	if err := dec(in); err != nil {
@@ -1020,6 +1090,14 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetE2EEKeys",
 			Handler:    _AuthService_GetE2EEKeys_Handler,
+		},
+		{
+			MethodName: "ListDevices",
+			Handler:    _AuthService_ListDevices_Handler,
+		},
+		{
+			MethodName: "RemoveDevice",
+			Handler:    _AuthService_RemoveDevice_Handler,
 		},
 		{
 			MethodName: "BlockUser",

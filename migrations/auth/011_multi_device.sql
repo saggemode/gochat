@@ -9,6 +9,7 @@ SET search_path TO core, public;
 CREATE TABLE IF NOT EXISTS core.user_devices (
     user_id                 UUID        NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
     device_id               TEXT        NOT NULL,
+    device_number           INT         NOT NULL DEFAULT 1, -- small int Signal uses as deviceId (1 = first device)
     identity_key            TEXT        NOT NULL DEFAULT '',
     signed_prekey           TEXT        NOT NULL DEFAULT '',
     signed_prekey_signature TEXT        NOT NULL DEFAULT '',
