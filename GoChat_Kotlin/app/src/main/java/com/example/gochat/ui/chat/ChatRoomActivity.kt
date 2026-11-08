@@ -2542,6 +2542,25 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     }
 
+    private fun showDisappearingTimerDialog(convId: String) {
+        if (convId.isBlank()) return
+        val labels = arrayOf("Off", "24 hours", "7 days", "90 days")
+        val values = intArrayOf(0, 86400, 604800, 7776000)
+        AlertDialog.Builder(this)
+            .setTitle("Disappearing messages")
+            .setItems(labels) { _, which ->
+                lifecycleScope.launch { viewModel.setDisappearingTimer(values[which]) }
+                Toast.makeText(
+                    this,
+                    if (values[which] == 0) "Disappearing messages turned off"
+                    else "New messages will disappear after ${labels[which]}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
     private fun showMoreMenu() {
         val convId = viewModel.conversationId.value.ifBlank { intent.getStringExtra(EXTRA_CONVERSATION_ID).orEmpty() }
         val isLocked = com.example.gochat.core.security.ChatLockManager.isLocked(this, convId)
@@ -2594,6 +2613,19 @@ class ChatRoomActivity : AppCompatActivity() {
                     Toast.LENGTH_LONG
                 ).show()
             }
+
+            // View / verify the encryption safety number (compare digits or scan QR).
+            menuItems.add("Verify security code")
+            actions.add {
+                val vIntent = Intent(this@ChatRoomActivity, com.example.gochat.ui.security.SecurityVerificationActivity::class.java).apply {
+                    putExtra(com.example.gochat.ui.security.SecurityVerificationActivity.EXTRA_CONVERSATION_ID, convId)
+                    putExtra(com.example.gochat.ui.security.SecurityVerificationActivity.EXTRA_PEER_USER_ID, resolvedPartnerId)
+                    putExtra(com.example.gochat.ui.security.SecurityVerificationActivity.EXTRA_PEER_PIN, viewModel.partnerPin)
+                    putExtra(com.example.gochat.ui.security.SecurityVerificationActivity.EXTRA_PEER_NAME, title)
+                    putExtra(com.example.gochat.ui.security.SecurityVerificationActivity.EXTRA_PEER_AVATAR, avatarUrl)
+                }
+                startActivity(vIntent)
+            }
         } else {
             menuItems.add("Group info")
             actions.add {
@@ -2612,6 +2644,9 @@ class ChatRoomActivity : AppCompatActivity() {
 
         menuItems.add("Search")
         actions.add { openInChatSearch() }
+
+        menuItems.add("Disappearing messages")
+        actions.add { showDisappearingTimerDialog(convId) }
 
         menuItems.add("Media, links, and docs")
         actions.add {

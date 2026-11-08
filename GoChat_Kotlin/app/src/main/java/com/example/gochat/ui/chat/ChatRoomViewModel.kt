@@ -126,6 +126,13 @@ class ChatRoomViewModel @Inject constructor(
     /** On-screen E2EE diagnostics (reason encrypt/decrypt failed). */
     val cryptoDiag = chatRepository.cryptoDiag
 
+    /** Set the per-chat disappearing-messages timer (seconds; 0 = off). */
+    fun setDisappearingTimer(seconds: Int) {
+        val id = _conversationId.value
+        if (id.isBlank()) return
+        viewModelScope.launch { chatRepository.setDisappearingTimer(id, seconds) }
+    }
+
     private val _replyingTo = MutableStateFlow<Message?>(null)
     val replyingTo: StateFlow<Message?> = _replyingTo.asStateFlow()
 

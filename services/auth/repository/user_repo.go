@@ -568,7 +568,10 @@ type EphemeralPreKey struct {
 	PublicKey string
 }
 
-func (r *UserRepository) SavePreKeyBundle(ctx context.Context, userID uuid.UUID, identity, signedKey, signature string, oneTimeKeys []*EphemeralPreKey) error {
+func (r *UserRepository) SavePreKeyBundle(ctx context.Context, userID uuid.UUID, identity, signedKey, signature string, oneTimeKeys []*EphemeralPreKey, deviceID string, registrationID int32) error {
+	if deviceID == "" {
+		deviceID = "1"
+	}
 	if r.encryptor != nil {
 		var err error
 		identity, err = r.encryptor.Encrypt(identity)
@@ -621,6 +624,38 @@ func (r *UserRepository) SavePreKeyBundle(ctx context.Context, userID uuid.UUID,
 		`, userID, k.KeyID, pkEnc)
 		if err != nil {
 			return err
+		}
+	}
+
+	// ── Multi-device (Phase 1): also record this device's bundle. Additive and
+	// append-only (consumed one-time prekeys are removed on fetch, never on upload),
+	// so a device's offered prekeys only ever shrink — no "no such prekey" revival.
+	if _, err = tx.Exec(ctx, `
+		INSERT INTO user_devices (user_id, device_id, identity_key, signed_prekey, signed_prekey_signature, registration_id, last_seen)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW())
+		ON CONFLICT (user_id, device_id) DO UPDATE SET
+			identity_key = EXCLUDED.identity_key,
+			signed_prekey = EXCLUDED.signed_prekey,
+			signed_prekey_signature = EXCLUDED.signed_prekey_signature,
+			registration_id = EXCLUDED.registration_id,
+			last_seen = NOW()
+	`, userID, deviceID, identity, signedKey, signature, registrationID); err != nil {
+		return fmt.Errorf("saving device bundle: %w", err)
+	}
+	for _, k := range oneTimeKeys {
+		pkEnc := k.PublicKey
+		if r.encryptor != nil {
+			pkEnc, err = r.encryptor.Encrypt(pkEnc)
+			if err != nil {
+				return fmt.Errorf("encrypting device one-time key %d: %w", k.KeyID, err)
+			}
+		}
+		if _, err = tx.Exec(ctx, `
+			INSERT INTO device_prekeys (user_id, device_id, key_id, public_key)
+			VALUES ($1, $2, $3, $4)
+			ON CONFLICT (user_id, device_id, key_id) DO NOTHING
+		`, userID, deviceID, k.KeyID, pkEnc); err != nil {
+			return fmt.Errorf("saving device one-time key: %w", err)
 		}
 	}
 

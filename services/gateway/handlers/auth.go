@@ -1159,6 +1159,7 @@ func (h *AuthHandler) UploadE2EEKeys(c *gin.Context) {
 		PrekeyIdentity  string `json:"prekey_identity" binding:"required"`
 		PrekeySigned    string `json:"prekey_signed" binding:"required"`
 		PrekeySignature string `json:"prekey_signature" binding:"required"`
+		RegistrationId  int32  `json:"registration_id"`
 		OneTimeKeys     []struct {
 			KeyId     int32  `json:"key_id"`
 			PublicKey string `json:"public_key"`
@@ -1178,12 +1179,17 @@ func (h *AuthHandler) UploadE2EEKeys(c *gin.Context) {
 		}
 	}
 
+	// Multi-device: the device these keys belong to (the client sends it on every request).
+	deviceID := c.GetHeader("X-Device-Id")
+
 	resp, err := h.client.UploadE2EEKeys(c.Request.Context(), &authpb.UploadE2EEKeysRequest{
 		UserId:          userID,
 		PrekeyIdentity:  req.PrekeyIdentity,
 		PrekeySigned:    req.PrekeySigned,
 		PrekeySignature: req.PrekeySignature,
 		OneTimeKeys:     pbKeys,
+		DeviceId:        deviceID,
+		RegistrationId:  req.RegistrationId,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to upload E2EE key bundle")

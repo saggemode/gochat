@@ -280,6 +280,7 @@ class ChatRepository @Inject constructor(
                 // way the live WebSocket path does — otherwise anything received while the
                 // app was closed stays encrypted / shows a placeholder until re-received.
                 val messages = mutableListOf<Message>()
+                val healTargets = mutableSetOf<Pair<String, String>>() // (convId, senderId) that stayed encrypted
                 for (element in rawList) {
                     if (element !is JsonObject) continue
                     // Serialize decrypt+store with the live WS paths so each message is
@@ -292,6 +293,16 @@ class ChatRepository @Inject constructor(
                     // process any addressed to us so a missed live SKD still lands on sync.
                     if (msg.content.startsWith(groupSkdMarker)) {
                         if (!msg.isMe) handleGroupKeyDistribution(msg)
+                        return@withLock
+                    }
+                    // Session-reset request (self-heal), never displayed.
+                    if (msg.content.startsWith(sessionResetMarker)) {
+                        if (!msg.isMe) handleSessionReset(msg.senderId)
+                        return@withLock
+                    }
+                    // Disappearing-messages timer change, never displayed as a bubble.
+                    if (msg.content.startsWith(dmTimerMarker)) {
+                        if (!msg.isMe) handleDisappearingTimerChange(msg.conversationId, msg.content.removePrefix(dmTimerMarker).trim().toIntOrNull() ?: 0)
                         return@withLock
                     }
 
@@ -373,9 +384,19 @@ class ChatRepository @Inject constructor(
                             isPinned = isPinned
                         )
                     )
+                    // Flag received 1:1 messages that stayed encrypted for self-heal.
+                    if (!msg.isMe && conv?.isDirect == true && msg.type == MessageType.TEXT &&
+                        isBase64Ciphertext(contentToUse.trim())) {
+                        healTargets.add(msg.conversationId to msg.senderId)
+                    }
                     }
                 }
                 dao.insertMessages(messages)
+                // Ask senders of still-encrypted 1:1 messages to re-establish (throttled),
+                // outside the ingest lock so we don't hold it during the network call.
+                for ((convIdH, senderIdH) in healTargets) {
+                    requestSessionReset(convIdH, senderIdH)
+                }
                 Result.success(messages)
             } else {
                 Result.failure(Exception("Failed to fetch messages (${response.code()})"))
@@ -833,6 +854,16 @@ class ChatRepository @Inject constructor(
                 if (!msg.isMe) handleGroupKeyDistribution(msg)
                 return null
             }
+            // Session-reset request from a peer who couldn't decrypt us.
+            if (msg.content.startsWith(sessionResetMarker)) {
+                if (!msg.isMe) handleSessionReset(msg.senderId)
+                return null
+            }
+            // Disappearing-messages timer change announced by the peer.
+            if (msg.content.startsWith(dmTimerMarker)) {
+                if (!msg.isMe) handleDisappearingTimerChange(msg.conversationId, msg.content.removePrefix(dmTimerMarker).trim().toIntOrNull() ?: 0)
+                return null
+            }
 
             // Guard: preserve locally-stored plaintext to prevent WS echo from
             // overwriting our decrypted/original content with server ciphertext.
@@ -908,6 +939,9 @@ class ChatRepository @Inject constructor(
                 if (!msg.isMe) {
                     ackDeliveryBestEffort(msg.conversationId, listOf(msg.id))
                 }
+                // Self-heal: if a 1:1 message couldn't be decrypted, ask the sender to
+                // re-establish the session.
+                maybeHealSession(msg, msg.content)
 
                 val isViewing = activeConversationId == msg.conversationId
                 if (isViewing) {
@@ -1247,6 +1281,16 @@ class ChatRepository @Inject constructor(
             if (!isMe) handleGroupKeyDistribution(message)
             return
         }
+        // Session-reset request: a peer couldn't decrypt us → drop our session.
+        if (message.content.startsWith(sessionResetMarker)) {
+            if (!isMe) handleSessionReset(message.senderId)
+            return
+        }
+        // Disappearing-messages timer change announced by the peer.
+        if (message.content.startsWith(dmTimerMarker)) {
+            if (!isMe) handleDisappearingTimerChange(message.conversationId, message.content.removePrefix(dmTimerMarker).trim().toIntOrNull() ?: 0)
+            return
+        }
 
         val localExisting = dao.getMessageById(message.id)
         val hasGoodLocalText = localExisting != null &&
@@ -1324,6 +1368,9 @@ class ChatRepository @Inject constructor(
         if (!isMe && finalMsg.conversationId.isNotEmpty()) {
             ackDeliveryBestEffort(finalMsg.conversationId, listOf(finalMsg.id))
         }
+        // Self-heal: if this 1:1 message couldn't be decrypted, ask the sender to
+        // re-establish the session (throttled).
+        maybeHealSession(message, contentToUse)
 
         // If the message is from another user and the recipient is not currently looking at this conversation,
         // show the notification banner in the notification bar
@@ -1376,6 +1423,114 @@ class ChatRepository @Inject constructor(
     }
 
     private val groupSkdMarker = "\u0001GKD1:"
+
+    // ── Session self-heal ───────────────────────────────────────────────────────
+    // When we receive an undecryptable 1:1 message (the sender's session diverged
+    // from ours — e.g. they reinstalled/re-keyed), we send this control message back
+    // asking them to reset their session; their next message is then a fresh X3DH
+    // handshake we CAN decrypt. Sent unencrypted (the point is the session is broken)
+    // and never displayed. Throttled so we don't spam.
+    private val sessionResetMarker = "\u0001E2EERST1:"
+    private val resetThrottlePrefs by lazy { context.getSharedPreferences("e2ee_reset_req", Context.MODE_PRIVATE) }
+
+    /** Ask [peerId] to reset their Signal session with us (throttled: once/min/peer). */
+    private suspend fun requestSessionReset(conversationId: String, peerId: String) {
+        if (conversationId.isBlank() || peerId.isBlank()) return
+        val now = System.currentTimeMillis()
+        val last = try { resetThrottlePrefs.getLong("req_$peerId", 0L) } catch (_: Exception) { 0L }
+        if (now - last < 60_000L) return
+        try { resetThrottlePrefs.edit().putLong("req_$peerId", now).apply() } catch (_: Exception) {}
+        try {
+            val body = buildJsonObject {
+                put("content", sessionResetMarker)
+                put("type", 0)
+            }
+            api.sendMessage(conversationId, body)
+            diag("Couldn't decrypt a message from …${peerId.takeLast(6)} — asked them to re-establish the secure session.")
+        } catch (e: Exception) {
+            Log.w("ChatRepository", "requestSessionReset failed: ${e.message}")
+        }
+    }
+
+    // ── Disappearing messages (per-chat timer) ─────────────────────────────────
+    // Setting the timer updates it locally AND announces it to the other party via
+    // this control message so both sides apply the same auto-delete duration (like
+    // WhatsApp). A visible system message records the change.
+    private val dmTimerMarker = "\u0001DMT1:"
+
+    /** Set the per-conversation disappearing-messages timer (seconds; 0 = off). */
+    suspend fun setDisappearingTimer(conversationId: String, seconds: Int) {
+        if (conversationId.isBlank()) return
+        dao.updateDisappearingMessagesDuration(conversationId, seconds.coerceAtLeast(0))
+        try {
+            val body = buildJsonObject {
+                put("content", dmTimerMarker + seconds.coerceAtLeast(0).toString())
+                put("type", 0)
+            }
+            api.sendMessage(conversationId, body)
+        } catch (e: Exception) {
+            Log.w("ChatRepository", "announce disappearing timer failed: ${e.message}")
+        }
+        insertTimerSystemMessage(conversationId, seconds, byMe = true)
+    }
+
+    private suspend fun handleDisappearingTimerChange(conversationId: String, seconds: Int) {
+        if (conversationId.isBlank()) return
+        dao.updateDisappearingMessagesDuration(conversationId, seconds.coerceAtLeast(0))
+        insertTimerSystemMessage(conversationId, seconds, byMe = false)
+    }
+
+    private fun disappearingLabel(seconds: Int): String = when {
+        seconds <= 0 -> "off"
+        seconds >= 7776000 -> "90 days"
+        seconds >= 604800 -> "7 days"
+        seconds >= 86400 -> "24 hours"
+        seconds >= 3600 -> "${seconds / 3600} hours"
+        else -> "${seconds / 60} minutes"
+    }
+
+    private suspend fun insertTimerSystemMessage(conversationId: String, seconds: Int, byMe: Boolean) {
+        val who = if (byMe) "You" else "Your contact"
+        val text = if (seconds <= 0) {
+            "SYSTEM:$who turned off disappearing messages"
+        } else {
+            "SYSTEM:$who set disappearing messages to ${disappearingLabel(seconds)}"
+        }
+        try {
+            dao.insertMessage(
+                Message(
+                    id = java.util.UUID.randomUUID().toString(),
+                    conversationId = conversationId,
+                    senderId = "system",
+                    content = text,
+                    type = MessageType.SYSTEM,
+                    status = MessageStatus.SENT,
+                    isMe = byMe,
+                    createdAt = System.currentTimeMillis()
+                )
+            )
+        } catch (e: Exception) {
+            Log.w("ChatRepository", "insert timer system msg failed: ${e.message}")
+        }
+    }
+
+    /** A peer couldn't decrypt our messages and asked us to reset; drop our session
+     *  with them so our next message re-handshakes. */
+    private suspend fun handleSessionReset(fromUserId: String) {
+        encryptionManager.resetSession(fromUserId)
+        diag("Peer …${fromUserId.takeLast(6)} asked to re-establish the secure session; will re-handshake on next message.")
+    }
+
+    /** After a received 1:1 message, if it stayed encrypted (decrypt failed) ask the
+     *  sender to re-establish. No-op for groups / own / successfully-decrypted msgs. */
+    private suspend fun maybeHealSession(message: Message, resolvedContent: String) {
+        if (message.isMe) return
+        if (message.type != MessageType.TEXT) return
+        if (resolvedContent.isBlank() || !isBase64Ciphertext(resolvedContent.trim())) return
+        val conv = if (message.conversationId.isNotEmpty()) dao.getConversationById(message.conversationId) else null
+        if (conv == null || !conv.isDirect) return // group recovery is a separate mechanism
+        requestSessionReset(message.conversationId, message.senderId)
+    }
     private fun groupSkdPrefs() =
         context.getSharedPreferences("gochat_group_e2ee", Context.MODE_PRIVATE)
 

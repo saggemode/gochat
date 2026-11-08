@@ -124,6 +124,22 @@ class EncryptionManager @Inject constructor(
         signalStore.containsSession(SignalProtocolAddress(userId, 1))
     } catch (_: Exception) { false }
 
+    /**
+     * Tear down the Signal session with [userId] so the NEXT outgoing message starts a
+     * fresh X3DH handshake (a PreKeySignalMessage the peer can always process). Used by
+     * session self-heal: when a peer can't decrypt our messages (their session diverged
+     * — e.g. we reinstalled and re-keyed), they ask us to reset and we rebuild cleanly.
+     */
+    suspend fun resetSession(userId: String) = withContext(Dispatchers.IO) {
+        if (userId.isBlank()) return@withContext
+        try {
+            signalStore.deleteSession(SignalProtocolAddress(userId, 1))
+            Log.i("EncryptionManager", "Session with $userId reset; next message will re-handshake")
+        } catch (e: Exception) {
+            Log.w("EncryptionManager", "resetSession failed for $userId: ${e.message}")
+        }
+    }
+
     // Idempotency cache: ciphertext → plaintext. A Signal message can only be run
     // through the ratchet ONCE; a second attempt throws DuplicateMessageException
     // ("received message with old counter"). The same ciphertext can legitimately

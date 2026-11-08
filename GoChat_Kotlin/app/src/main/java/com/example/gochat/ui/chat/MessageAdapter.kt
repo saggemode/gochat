@@ -1327,7 +1327,7 @@ class MessageAdapter(
                         binding.root.context.startActivity(intent)
                     }
                 } else if (isBase64Ciphertext(message.content)) {
-                    tvMessageContent.text = "🔒 [Encrypted Message]"
+                    tvMessageContent.text = "⏳ Waiting for this message…"
                     tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_text_secondary))
                     tvMessageContent.setTypeface(null, Typeface.ITALIC)
                     tvMessageContent.setOnClickListener(null)
@@ -1869,7 +1869,7 @@ class MessageAdapter(
                         binding.root.context.startActivity(intent)
                     }
                 } else if (isBase64Ciphertext(message.content)) {
-                    tvMessageContent.text = "🔒 [Encrypted Message]"
+                    tvMessageContent.text = "⏳ Waiting for this message…"
                     tvMessageContent.setTextColor(binding.root.context.getColor(R.color.gochat_text_secondary))
                     tvMessageContent.setTypeface(null, Typeface.ITALIC)
                     tvMessageContent.setOnClickListener(null)

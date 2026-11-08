@@ -523,7 +523,7 @@ func (s *AuthServer) UploadE2EEKeys(ctx context.Context, req *authpb.UploadE2EEK
 		}
 	}
 
-	err = s.repo.SavePreKeyBundle(ctx, uid, req.PrekeyIdentity, req.PrekeySigned, req.PrekeySignature, keys)
+	err = s.repo.SavePreKeyBundle(ctx, uid, req.PrekeyIdentity, req.PrekeySigned, req.PrekeySignature, keys, req.DeviceId, req.RegistrationId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to save prekey bundle: %v", err)
 	}

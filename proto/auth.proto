@@ -246,6 +246,18 @@ message UploadE2EEKeysRequest {
   string prekey_signed           = 3;
   string prekey_signature        = 4;
   repeated EphemeralPreKey one_time_keys = 5;
+  string device_id               = 6; // multi-device: which device these keys belong to ("" = legacy device 1)
+  int32  registration_id         = 7;
+}
+
+// A single device's prekey bundle (multi-device fan-out).
+message DeviceBundle {
+  string device_id        = 1;
+  int32  registration_id  = 2;
+  string prekey_identity  = 3;
+  string prekey_signed    = 4;
+  string prekey_signature = 5;
+  EphemeralPreKey one_time_key = 6; // one consumed per device
 }
 
 message UploadE2EEKeysResponse {
@@ -262,7 +274,8 @@ message GetE2EEKeysResponse {
   string prekey_identity  = 2;
   string prekey_signed    = 3;
   string prekey_signature = 4;
-  EphemeralPreKey one_time_key = 5; // one prekey is consumed and returned
+  EphemeralPreKey one_time_key = 5; // legacy single bundle (device 1) — kept for back-compat
+  repeated DeviceBundle bundles = 6; // multi-device: one per registered device
 }
 
 message BlockUserRequest {
