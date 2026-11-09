@@ -10,7 +10,6 @@ import com.example.gochat.data.api.GoChatApiService
 
 import com.example.gochat.data.api.NetworkModule
 import com.example.gochat.data.api.TokenManager
-import com.example.gochat.data.db.AppDatabase
 import com.example.gochat.data.db.ChatDao
 import com.example.gochat.data.model.*
 import com.example.gochat.core.contacts.ContactSyncManager

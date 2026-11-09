@@ -163,16 +163,46 @@ class GroupCallActivity : AppCompatActivity() {
 
     private fun newTile(): SurfaceViewRenderer {
         val c = client ?: return SurfaceViewRenderer(this)
-        val side = (resources.displayMetrics.widthPixels / 2) - (24 * resources.displayMetrics.density).toInt()
         return SurfaceViewRenderer(this).apply {
             init(c.eglContext(), null)
             setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
             setEnableHardwareScaler(true)
-            layoutParams = GridLayout.LayoutParams().apply {
-                width = side
-                height = (side * 1.3f).toInt()
-                setMargins(6, 6, 6, 6)
-            }
+            // Actual size is assigned by relayoutGrid() once the tile is attached, so
+            // the grid reflows as participants join and leave.
+            layoutParams = GridLayout.LayoutParams()
+        }
+    }
+
+    /**
+     * Adaptive grid: pick a column count from the number of tiles (1 full-width,
+     * 2–4 → two columns, more → three) and resize every tile to fill the available
+     * width evenly. Called whenever a tile is added or removed so the layout reflows
+     * like a real group call instead of a fixed 2-column grid with static tiles.
+     */
+    private fun relayoutGrid() {
+        val count = videoGrid.childCount
+        if (count == 0) return
+        val columns = when {
+            count <= 1 -> 1
+            count <= 4 -> 2
+            else -> 3
+        }
+        videoGrid.columnCount = columns
+
+        val density = resources.displayMetrics.density
+        val marginPx = (6 * density).toInt()
+        val gridWidth = if (videoGrid.width > 0) videoGrid.width else resources.displayMetrics.widthPixels
+        val tileW = (gridWidth / columns) - marginPx * 2
+        // One tile → tall portrait; a grid of several → roughly square tiles.
+        val tileH = if (columns == 1) (tileW * 1.25f).toInt() else tileW
+
+        for (i in 0 until videoGrid.childCount) {
+            val v = videoGrid.getChildAt(i)
+            val lp = (v.layoutParams as? GridLayout.LayoutParams) ?: GridLayout.LayoutParams()
+            lp.width = tileW
+            lp.height = tileH
+            lp.setMargins(marginPx, marginPx, marginPx, marginPx)
+            v.layoutParams = lp
         }
     }
 
@@ -211,6 +241,7 @@ class GroupCallActivity : AppCompatActivity() {
         localRenderer = tile
         track.addSink(tile)
         videoGrid.addView(tile, 0)
+        relayoutGrid()
     }
 
     private fun addRemoteTile(track: VideoTrack) {
@@ -218,6 +249,7 @@ class GroupCallActivity : AppCompatActivity() {
         remoteRenderers.add(tile)
         track.addSink(tile)
         videoGrid.addView(tile)
+        relayoutGrid()
     }
 
     private fun clearRemoteTiles() {
@@ -225,6 +257,7 @@ class GroupCallActivity : AppCompatActivity() {
             try { videoGrid.removeView(it); it.release() } catch (_: Exception) {}
         }
         remoteRenderers.clear()
+        relayoutGrid()
     }
 
     private fun resubscribe(remoteCount: Int) {

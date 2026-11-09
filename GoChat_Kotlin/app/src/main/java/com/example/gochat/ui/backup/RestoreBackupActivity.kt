@@ -10,7 +10,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.gochat.MainActivity
 import com.example.gochat.R
-import com.example.gochat.core.backup.BackupMetadata
 import com.example.gochat.core.backup.ChatBackupManager
 import com.example.gochat.core.backup.GoogleDriveBackupInfo
 import com.example.gochat.core.backup.GoogleDriveBackupManager
@@ -21,9 +20,7 @@ import com.example.gochat.core.ui.applySystemBarInsets
 import com.example.gochat.data.api.TokenManager
 import com.example.gochat.databinding.ActivityRestoreBackupBinding
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
