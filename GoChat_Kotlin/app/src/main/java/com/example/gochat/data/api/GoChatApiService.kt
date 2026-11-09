@@ -42,6 +42,17 @@ interface GoChatApiService {
         @Body body: JsonObject
     ): Response<JsonObject>
 
+    // Change phone number (keeps the same account; OTP-verifies the new number)
+    @POST("api/v1/auth/phone/change")
+    suspend fun requestNumberChange(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
+    @POST("api/v1/auth/phone/change/verify")
+    suspend fun confirmNumberChange(
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
     @POST(ApiConstants.RECOVERY_REQUEST)
     suspend fun requestAccountRecovery(
         @Body body: JsonObject

@@ -538,6 +538,10 @@ func main() {
 		authRequired.POST("/auth/phone", authHandler.RegisterPhone)
 		authRequired.POST("/auth/phone/verify", authHandler.VerifyPhoneOTP)
 
+		// Change phone number (keeps the same account; OTP-verifies the new number)
+		authRequired.POST("/auth/phone/change", authHandler.RequestNumberChange)
+		authRequired.POST("/auth/phone/change/verify", authHandler.ConfirmNumberChange)
+
 		// Push Notifications Subscription
 		authRequired.POST("/auth/push/subscribe", authHandler.SubscribePush)
 

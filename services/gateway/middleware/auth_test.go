@@ -177,6 +177,12 @@ func (m *mockAuthClient) ListDevices(_ context.Context, _ *authpb.ListDevicesReq
 func (m *mockAuthClient) RemoveDevice(_ context.Context, _ *authpb.RemoveDeviceRequest, _ ...grpc.CallOption) (*authpb.RemoveDeviceResponse, error) {
 	panic("not used in middleware tests")
 }
+func (m *mockAuthClient) RequestNumberChange(_ context.Context, _ *authpb.RequestNumberChangeRequest, _ ...grpc.CallOption) (*authpb.RequestNumberChangeResponse, error) {
+	panic("not used in middleware tests")
+}
+func (m *mockAuthClient) ConfirmNumberChange(_ context.Context, _ *authpb.ConfirmNumberChangeRequest, _ ...grpc.CallOption) (*authpb.ConfirmNumberChangeResponse, error) {
+	panic("not used in middleware tests")
+}
 func (m *mockAuthClient) BlockUser(_ context.Context, _ *authpb.BlockUserRequest, _ ...grpc.CallOption) (*authpb.BlockUserResponse, error) {
 	panic("not used in middleware tests")
 }

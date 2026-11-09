@@ -214,24 +214,40 @@ Server stores no plaintext, so a freshly linked device is empty. Chose **A (encr
 - **Note:** restore MERGES into Room (insert/REPLACE by id), so it's safe to run on a device that
   already has some live post-link messages.
 
-### Phase 5 — Delete-after-delivery across devices
-- The server currently purges a message once every intended **recipient** has it. With
-  multi-device, "delivered" must mean **every recipient device** acked (extend
-  `chat.message_deliveries` to `(message_id, user_id, device_id)` and the purge query to
-  require all devices of all members).
-- Undelivered-TTL unchanged.
-- **⚠️ RECOMMEND DEFERRING until multi-device is device-tested.** This touches the irreversible
-  purge path. Every current delivery hook (gateway WS fan-out, `GetMessages` pull, `MarkRead`,
-  client `AckDelivery`) is per-**user**, which is correct and safe for single-device (today).
-  Making purge per-device blind — while multi-device is dormant/untested — risks either purging a
-  message before a real 2nd device got it (data loss) or never purging (storage leak), on a path
-  that can't be validated from the dev machine. Do it only alongside real two-device testing.
+### Phase 5 — Delete-after-delivery across devices — DONE (2026-11-09, builds+vet; UNTESTED)
+Built the SAFE, backward-compatible way (user chose to proceed despite the defer rec):
+- Migration `chat/006_per_device_delivery.sql`: adds `device_id TEXT NOT NULL DEFAULT ''` to
+  `chat.message_deliveries` ('' = user-level/device-unknown ack, legacy case) and repoints the PK
+  to `(message_id, user_id, device_id)`.
+- `RecordDeliveries(userID, deviceID, msgIDs)` now takes a device id. `AckDelivery` records the
+  **real** device (gateway forwards `X-Device-Id` → `AckDeliveryRequest.device_id`); `GetMessages`
+  and `MarkRead` stay user-level (`""`).
+- `PurgeFullyDelivered` is device-aware but **single-device-safe**: a recipient with 0–1 registered
+  devices (everyone today) is satisfied by ANY delivery row — IDENTICAL to the old query, so current
+  purge behavior is unchanged. Only a recipient with **2+** devices (registered with `created_at <=`
+  the message) requires **every** such device to have its own row. A device linked AFTER a message
+  was sent never blocks that message's purge (it gets old history via restore, not live delivery) —
+  prevents a storage leak.
+- Cross-schema read of `core.user_devices` from the chat service is fine (chat already queries
+  `core.users`; its search_path includes `core`).
+- Undelivered-TTL (`PurgeStale`) unchanged.
+- **Still the real risk:** correctness of the 2+-device branch is UNVERIFIED on devices. The
+  single-device path is provably unchanged, but device-test before trusting multi-device purge.
 
-### Phase 6 — Verification & trust across devices
-- Safety numbers become per-device (or an aggregate of all the peer's device identities).
-- "Safety number changed" must distinguish **a new linked device** (expected) from a **key
-  change on an existing device** (suspicious) — show "X added a new device" vs the existing
-  change banner.
+### Phase 6 — Verification & trust across devices — DONE (own-account devices) (2026-11-09, builds; UNTESTED)
+Per-device trust state on the Encryption-devices screen, distinguishing a NEW device from a CHANGED key:
+- Server: `DeviceInfo.identity_key` added; `ListDevices` now **decrypts** and returns each device's
+  public identity key (read-only, no one-time-prekey consumption — unlike `GetE2EEKeys`).
+- Client: `E2EEDevice.identityKey` + `Verification { CURRENT, PRIMARY, VERIFIED, CHANGED, UNVERIFIED }`.
+  `EncryptionManager.pairedIdentityFor(deviceId)` reads the identity stored at pairing. Each row shows
+  a badge — **✓ Verified** (stored == server), **⚠️ Changed** (stored != server — suspicious, key
+  changed on a known device), **Unverified** (never paired), **Primary**, **This device**. Tapping a
+  device opens a detail dialog with its fingerprint + "Mark verified" (records current identity) +
+  "Unlink".
+- **Still TODO (peer side):** this covers the user's OWN account devices. Distinguishing "contact X
+  added a new device" vs "contact X's key changed" for OTHER users reuses the existing per-conversation
+  safety-number change detection (`SecurityVerificationManager.recordAndDetectChange`) extended to be
+  device-aware — deferred until multi-device is exercised.
 
 ---
 

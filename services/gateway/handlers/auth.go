@@ -1372,6 +1372,64 @@ func (h *AuthHandler) VerifyPhoneOTP(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"valid": resp.Valid})
 }
 
+// RequestNumberChange sends an OTP to the caller's NEW phone number.
+func (h *AuthHandler) RequestNumberChange(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	var req struct {
+		NewPhone string `json:"new_phone" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := h.client.RequestNumberChange(c.Request.Context(), &authpb.RequestNumberChangeRequest{
+		UserId:   userID,
+		NewPhone: req.NewPhone,
+	})
+	if err != nil {
+		h.handleGrpcError(c, err, "failed to start number change")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": resp.Success})
+}
+
+// ConfirmNumberChange verifies the OTP and moves the account to the new number.
+func (h *AuthHandler) ConfirmNumberChange(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	var req struct {
+		NewPhone string `json:"new_phone" binding:"required"`
+		Otp      string `json:"otp" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := h.client.ConfirmNumberChange(c.Request.Context(), &authpb.ConfirmNumberChangeRequest{
+		UserId:   userID,
+		NewPhone: req.NewPhone,
+		Otp:      req.Otp,
+	})
+	if err != nil {
+		h.handleGrpcError(c, err, "failed to change number")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":   resp.Success,
+		"old_phone": resp.OldPhone,
+		"new_phone": resp.NewPhone,
+	})
+}
+
 // SubscribePush registers a user's push token.
 func (h *AuthHandler) SubscribePush(c *gin.Context) {
 	userID := getUserID(c)

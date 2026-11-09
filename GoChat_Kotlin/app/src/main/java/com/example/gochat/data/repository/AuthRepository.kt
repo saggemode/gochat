@@ -284,6 +284,41 @@ class AuthRepository @Inject constructor(
         }
     }
 
+    // ── Change phone number ───────────────────────────────────────
+
+    /** Step 1: send a verification code to [newPhone]. Does not change the account
+     *  number yet. Fails if the number is already used by another account. */
+    suspend fun requestNumberChange(newPhone: String): Result<Unit> {
+        return try {
+            val body = buildJsonObject { put("new_phone", newPhone.trim()) }
+            val response = api.requestNumberChange(body)
+            if (response.isSuccessful) Result.success(Unit)
+            else Result.failure(Exception(parseError(response.errorBody()?.string().orEmpty(), response.code())))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** Step 2: verify the code and move the account to [newPhone]. On success the
+     *  locally cached number is updated too (same account, so chats/keys persist). */
+    suspend fun confirmNumberChange(newPhone: String, otp: String): Result<Unit> {
+        return try {
+            val body = buildJsonObject {
+                put("new_phone", newPhone.trim())
+                put("otp", otp.trim())
+            }
+            val response = api.confirmNumberChange(body)
+            if (response.isSuccessful) {
+                tokenManager.userPhone = newPhone.trim()
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(parseError(response.errorBody()?.string().orEmpty(), response.code())))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     // ── E2EE ──────────────────────────────────────────────────────
 
     /** Uploads this device's key bundle; returns the server-assigned device_number

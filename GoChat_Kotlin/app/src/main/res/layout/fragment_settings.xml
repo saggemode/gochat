@@ -499,6 +499,57 @@
                     app:tint="@color/gochat_text_muted" />
             </LinearLayout>
 
+            <!-- Change Number Row -->
+            <LinearLayout
+                android:id="@+id/tileChangeNumber"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="20dp"
+                android:paddingVertical="16dp">
+
+                <ImageView
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:contentDescription="Change number"
+                    android:src="@drawable/ic_account"
+                    app:tint="@color/gochat_text_secondary" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Change number"
+                        android:textColor="@color/gochat_text_primary"
+                        android:textSize="15.5sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Move your account to a new phone number"
+                        android:textColor="@color/gochat_text_muted"
+                        android:textSize="12.5sp" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="Go to change number"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/gochat_text_muted" />
+            </LinearLayout>
+
             <!-- Privacy Row -->
             <LinearLayout
                 android:id="@+id/tilePrivacy"

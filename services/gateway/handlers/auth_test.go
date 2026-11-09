@@ -104,6 +104,12 @@ func (s *stubAuthServiceClient) ListDevices(context.Context, *authpb.ListDevices
 func (s *stubAuthServiceClient) RemoveDevice(context.Context, *authpb.RemoveDeviceRequest, ...grpc.CallOption) (*authpb.RemoveDeviceResponse, error) {
 	panic("not implemented")
 }
+func (s *stubAuthServiceClient) RequestNumberChange(context.Context, *authpb.RequestNumberChangeRequest, ...grpc.CallOption) (*authpb.RequestNumberChangeResponse, error) {
+	panic("not implemented")
+}
+func (s *stubAuthServiceClient) ConfirmNumberChange(context.Context, *authpb.ConfirmNumberChangeRequest, ...grpc.CallOption) (*authpb.ConfirmNumberChangeResponse, error) {
+	panic("not implemented")
+}
 func (s *stubAuthServiceClient) BlockUser(context.Context, *authpb.BlockUserRequest, ...grpc.CallOption) (*authpb.BlockUserResponse, error) {
 	panic("not implemented")
 }

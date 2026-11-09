@@ -978,6 +978,67 @@ func (r *UserRepository) VerifyPhone(ctx context.Context, userID uuid.UUID, phon
 	return err
 }
 
+// IsPhoneTakenByOther reports whether some OTHER (non-deleted) account already uses
+// the given phone number. Comparison is on digits only (format-insensitive), the
+// same normalization contact discovery uses. Numbers shorter than 7 digits are
+// treated as not-a-real-number and never "taken".
+func (r *UserRepository) IsPhoneTakenByOther(ctx context.Context, userID uuid.UUID, phone string) (bool, error) {
+	var taken bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM users u
+			WHERE u.id <> $1
+			  AND COALESCE(u.account_status, 'active') <> 'deleted'
+			  AND LENGTH(REGEXP_REPLACE($2, '\D', '', 'g')) >= 7
+			  AND REGEXP_REPLACE(COALESCE(u.phone, ''), '\D', '', 'g')
+			    = REGEXP_REPLACE($2, '\D', '', 'g')
+		)
+	`, userID, phone).Scan(&taken)
+	return taken, err
+}
+
+// ChangePhone atomically moves userID's number to newPhone (verified), keeping the
+// SAME user_id so all chats, contacts and E2EE keys are preserved. It refuses the
+// change (0 rows → ErrPhoneTaken) if another account holds that number, re-checked
+// inside the UPDATE to close the request→confirm race. Returns the previous number.
+func (r *UserRepository) ChangePhone(ctx context.Context, userID uuid.UUID, newPhone string) (oldPhone string, err error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return "", err
+	}
+	defer tx.Rollback(ctx)
+
+	var old sql.NullString
+	if err = tx.QueryRow(ctx, `SELECT phone FROM users WHERE id = $1`, userID).Scan(&old); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", ErrUserNotFound
+		}
+		return "", err
+	}
+
+	tag, err := tx.Exec(ctx, `
+		UPDATE users SET phone = $2, phone_verified = TRUE
+		WHERE id = $1
+		  AND NOT EXISTS (
+		      SELECT 1 FROM users u2
+		      WHERE u2.id <> $1
+		        AND COALESCE(u2.account_status, 'active') <> 'deleted'
+		        AND REGEXP_REPLACE(COALESCE(u2.phone, ''), '\D', '', 'g')
+		          = REGEXP_REPLACE($2, '\D', '', 'g')
+		  )
+	`, userID, newPhone)
+	if err != nil {
+		return "", err
+	}
+	if tag.RowsAffected() == 0 {
+		return "", ErrPhoneAlreadyTaken
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return "", err
+	}
+	return old.String, nil
+}
+
 func (r *UserRepository) SubscribePushToken(ctx context.Context, userID uuid.UUID, pushToken, platform string) error {
 	_, err := r.db.Exec(ctx, `
 		INSERT INTO user_push_tokens (user_id, push_token, platform)

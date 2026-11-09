@@ -242,6 +242,13 @@
             android:theme="@style/Theme.GoChat"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- Change Phone Number Activity -->
+        <activity
+            android:name=".ui.settings.ChangeNumberActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- Chat Backup & Restore Activities -->
         <activity
             android:name=".ui.backup.ChatBackupActivity"

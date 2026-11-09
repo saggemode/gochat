@@ -183,6 +183,11 @@ class SettingsFragment : Fragment() {
                 startActivity(Intent(requireContext(), com.example.gochat.ui.devices.E2EEDevicesActivity::class.java))
             }
 
+            // Change phone number
+            tileChangeNumber.setOnClickListener {
+                startActivity(Intent(requireContext(), ChangeNumberActivity::class.java))
+            }
+
             // Chat Backup
             tileChatBackup.setOnClickListener {
                 startActivity(Intent(requireContext(), ChatBackupActivity::class.java))

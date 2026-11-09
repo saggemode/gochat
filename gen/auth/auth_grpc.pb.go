@@ -41,6 +41,8 @@ const (
 	AuthService_GetBlockedUsers_FullMethodName        = "/auth.AuthService/GetBlockedUsers"
 	AuthService_RegisterPhone_FullMethodName          = "/auth.AuthService/RegisterPhone"
 	AuthService_VerifyPhoneOTP_FullMethodName         = "/auth.AuthService/VerifyPhoneOTP"
+	AuthService_RequestNumberChange_FullMethodName    = "/auth.AuthService/RequestNumberChange"
+	AuthService_ConfirmNumberChange_FullMethodName    = "/auth.AuthService/ConfirmNumberChange"
 	AuthService_SubscribePush_FullMethodName          = "/auth.AuthService/SubscribePush"
 	AuthService_UpdatePrivacySettings_FullMethodName  = "/auth.AuthService/UpdatePrivacySettings"
 	AuthService_GetPrivacySettings_FullMethodName     = "/auth.AuthService/GetPrivacySettings"
@@ -89,6 +91,9 @@ type AuthServiceClient interface {
 	// Phone OTP Verification
 	RegisterPhone(ctx context.Context, in *RegisterPhoneRequest, opts ...grpc.CallOption) (*RegisterPhoneResponse, error)
 	VerifyPhoneOTP(ctx context.Context, in *VerifyPhoneOTPRequest, opts ...grpc.CallOption) (*VerifyPhoneOTPResponse, error)
+	// Change phone number (keeps the same account/user_id; OTP-verifies the new number)
+	RequestNumberChange(ctx context.Context, in *RequestNumberChangeRequest, opts ...grpc.CallOption) (*RequestNumberChangeResponse, error)
+	ConfirmNumberChange(ctx context.Context, in *ConfirmNumberChangeRequest, opts ...grpc.CallOption) (*ConfirmNumberChangeResponse, error)
 	// Push Notifications Subscription
 	SubscribePush(ctx context.Context, in *SubscribePushRequest, opts ...grpc.CallOption) (*SubscribePushResponse, error)
 	// Granular Privacy Settings
@@ -327,6 +332,26 @@ func (c *authServiceClient) VerifyPhoneOTP(ctx context.Context, in *VerifyPhoneO
 	return out, nil
 }
 
+func (c *authServiceClient) RequestNumberChange(ctx context.Context, in *RequestNumberChangeRequest, opts ...grpc.CallOption) (*RequestNumberChangeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RequestNumberChangeResponse)
+	err := c.cc.Invoke(ctx, AuthService_RequestNumberChange_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) ConfirmNumberChange(ctx context.Context, in *ConfirmNumberChangeRequest, opts ...grpc.CallOption) (*ConfirmNumberChangeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ConfirmNumberChangeResponse)
+	err := c.cc.Invoke(ctx, AuthService_ConfirmNumberChange_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *authServiceClient) SubscribePush(ctx context.Context, in *SubscribePushRequest, opts ...grpc.CallOption) (*SubscribePushResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SubscribePushResponse)
@@ -418,6 +443,9 @@ type AuthServiceServer interface {
 	// Phone OTP Verification
 	RegisterPhone(context.Context, *RegisterPhoneRequest) (*RegisterPhoneResponse, error)
 	VerifyPhoneOTP(context.Context, *VerifyPhoneOTPRequest) (*VerifyPhoneOTPResponse, error)
+	// Change phone number (keeps the same account/user_id; OTP-verifies the new number)
+	RequestNumberChange(context.Context, *RequestNumberChangeRequest) (*RequestNumberChangeResponse, error)
+	ConfirmNumberChange(context.Context, *ConfirmNumberChangeRequest) (*ConfirmNumberChangeResponse, error)
 	// Push Notifications Subscription
 	SubscribePush(context.Context, *SubscribePushRequest) (*SubscribePushResponse, error)
 	// Granular Privacy Settings
@@ -501,6 +529,12 @@ func (UnimplementedAuthServiceServer) RegisterPhone(context.Context, *RegisterPh
 }
 func (UnimplementedAuthServiceServer) VerifyPhoneOTP(context.Context, *VerifyPhoneOTPRequest) (*VerifyPhoneOTPResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method VerifyPhoneOTP not implemented")
+}
+func (UnimplementedAuthServiceServer) RequestNumberChange(context.Context, *RequestNumberChangeRequest) (*RequestNumberChangeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RequestNumberChange not implemented")
+}
+func (UnimplementedAuthServiceServer) ConfirmNumberChange(context.Context, *ConfirmNumberChangeRequest) (*ConfirmNumberChangeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ConfirmNumberChange not implemented")
 }
 func (UnimplementedAuthServiceServer) SubscribePush(context.Context, *SubscribePushRequest) (*SubscribePushResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SubscribePush not implemented")
@@ -934,6 +968,42 @@ func _AuthService_VerifyPhoneOTP_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_RequestNumberChange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestNumberChangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).RequestNumberChange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_RequestNumberChange_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).RequestNumberChange(ctx, req.(*RequestNumberChangeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_ConfirmNumberChange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConfirmNumberChangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).ConfirmNumberChange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_ConfirmNumberChange_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).ConfirmNumberChange(ctx, req.(*ConfirmNumberChangeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AuthService_SubscribePush_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SubscribePushRequest)
 	if err := dec(in); err != nil {
@@ -1118,6 +1188,14 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "VerifyPhoneOTP",
 			Handler:    _AuthService_VerifyPhoneOTP_Handler,
+		},
+		{
+			MethodName: "RequestNumberChange",
+			Handler:    _AuthService_RequestNumberChange_Handler,
+		},
+		{
+			MethodName: "ConfirmNumberChange",
+			Handler:    _AuthService_ConfirmNumberChange_Handler,
 		},
 		{
 			MethodName: "SubscribePush",

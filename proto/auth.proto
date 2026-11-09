@@ -59,6 +59,10 @@ service AuthService {
   rpc RegisterPhone(RegisterPhoneRequest) returns (RegisterPhoneResponse);
   rpc VerifyPhoneOTP(VerifyPhoneOTPRequest) returns (VerifyPhoneOTPResponse);
 
+  // Change phone number (keeps the same account/user_id; OTP-verifies the new number)
+  rpc RequestNumberChange(RequestNumberChangeRequest) returns (RequestNumberChangeResponse);
+  rpc ConfirmNumberChange(ConfirmNumberChangeRequest) returns (ConfirmNumberChangeResponse);
+
   // Push Notifications Subscription
   rpc SubscribePush(SubscribePushRequest) returns (SubscribePushResponse);
 
@@ -346,6 +350,25 @@ message VerifyPhoneOTPRequest {
 
 message VerifyPhoneOTPResponse {
   bool valid = 1;
+}
+
+message RequestNumberChangeRequest {
+  string user_id   = 1;
+  string new_phone = 2;
+}
+message RequestNumberChangeResponse {
+  bool success = 1;
+}
+
+message ConfirmNumberChangeRequest {
+  string user_id   = 1;
+  string new_phone = 2;
+  string otp       = 3;
+}
+message ConfirmNumberChangeResponse {
+  bool   success   = 1;
+  string old_phone = 2;
+  string new_phone = 3;
 }
 
 message SubscribePushRequest {
