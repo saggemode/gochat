@@ -79,6 +79,35 @@
                     app:icon="@drawable/ic_qr_code"
                     app:iconGravity="textStart"
                     app:iconTint="@color/white" />
+
+                <TextView
+                    android:id="@+id/tvCompanionHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:gravity="center"
+                    android:text="This is a linked device. Restore your chat history to see conversations from before it was linked."
+                    android:textColor="@color/gochat_text_secondary"
+                    android:textSize="13sp"
+                    android:lineSpacingExtra="2dp"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRestoreHistory"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="10dp"
+                    android:text="Restore chat history"
+                    android:textColor="@color/gochat_emerald"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="25dp"
+                    app:icon="@drawable/ic_cloud_backup"
+                    app:iconGravity="textStart"
+                    app:iconTint="@color/gochat_emerald"
+                    app:strokeColor="@color/gochat_emerald" />
             </LinearLayout>
 
             <View

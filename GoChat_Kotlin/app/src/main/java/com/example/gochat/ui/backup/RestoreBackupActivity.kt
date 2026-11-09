@@ -43,10 +43,26 @@ class RestoreBackupActivity : AppCompatActivity() {
     private var selectedCloudBackup: GoogleDriveBackupInfo? = null
     private var isCloudSource = false
 
+    /** When true, this screen was opened mid-session to onboard history onto a device
+     *  that's already set up (e.g. a newly LINKED companion, Phase 4). It then returns
+     *  to the caller on finish instead of resetting the task into MainActivity. */
+    private val linkedDeviceMode: Boolean by lazy { intent.getBooleanExtra(EXTRA_LINKED_DEVICE, false) }
+
     companion object {
+        const val EXTRA_LINKED_DEVICE = "linked_device_mode"
+
         fun start(context: Context) {
             val intent = Intent(context, RestoreBackupActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            context.startActivity(intent)
+        }
+
+        /** Launch history onboarding for a device that's already signed in and set up
+         *  (a linked companion). Non-destructive: returns to the caller when done. */
+        fun startForLinkedDevice(context: Context) {
+            val intent = Intent(context, RestoreBackupActivity::class.java).apply {
+                putExtra(EXTRA_LINKED_DEVICE, true)
             }
             context.startActivity(intent)
         }
@@ -60,6 +76,13 @@ class RestoreBackupActivity : AppCompatActivity() {
 
         binding.toolbarRestore.applyStatusBarInset()
         binding.root.applySystemBarInsets(applyTop = false, applyBottom = true)
+
+        if (linkedDeviceMode) {
+            binding.toolbarRestore.title = "Restore chat history"
+            // Let the user back out of mid-session onboarding without a forced skip flow.
+            binding.toolbarRestore.setNavigationIcon(R.drawable.ic_back)
+            binding.toolbarRestore.setNavigationOnClickListener { finish() }
+        }
 
         setupListeners()
         scanForAvailableBackups()
@@ -180,7 +203,7 @@ class RestoreBackupActivity : AppCompatActivity() {
         binding.tilRestorePassword.visibility = View.GONE
         binding.tvPasswordDisclaimer.visibility = View.GONE
 
-        binding.btnRestoreNow.text = "Continue to GoChat"
+        binding.btnRestoreNow.text = if (linkedDeviceMode) "Done" else "Continue to GoChat"
         binding.btnRestoreNow.isEnabled = true
         binding.btnSkipRestore.visibility = View.GONE
     }
@@ -275,6 +298,12 @@ class RestoreBackupActivity : AppCompatActivity() {
     }
 
     private fun finishAndGoToMain() {
+        // Linked-device onboarding runs mid-session: just return to the caller so we
+        // don't wipe the back stack or re-run the first-launch migration gate.
+        if (linkedDeviceMode) {
+            finish()
+            return
+        }
         tokenManager.hasCompletedMigrationCheck = true
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

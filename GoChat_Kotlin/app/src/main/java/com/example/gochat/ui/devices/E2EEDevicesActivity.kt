@@ -56,6 +56,12 @@ class E2EEDevicesActivity : AppCompatActivity() {
         binding.btnLinkDevice.setOnClickListener {
             startActivity(android.content.Intent(this, DevicePairingActivity::class.java))
         }
+        binding.btnRestoreHistory.setOnClickListener {
+            com.example.gochat.ui.backup.RestoreBackupActivity.startForLinkedDevice(this)
+        }
+        // A companion (device_number > 1) is the case that most needs history onboarding.
+        binding.tvCompanionHint.visibility =
+            if (encryptionManager.localDeviceNumber() > 1) View.VISIBLE else View.GONE
     }
 
     override fun onResume() {
