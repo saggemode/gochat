@@ -2515,6 +2515,7 @@ type AckDeliveryRequest struct {
 	UserId         string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`                         // the recipient acknowledging delivery
 	ConversationId string                 `protobuf:"bytes,2,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"` // optional; for scoping / logging
 	MessageIds     []string               `protobuf:"bytes,3,rep,name=message_ids,json=messageIds,proto3" json:"message_ids,omitempty"`
+	DeviceId       string                 `protobuf:"bytes,4,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"` // multi-device: which device acked ("" = user-level/unknown)
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -2568,6 +2569,13 @@ func (x *AckDeliveryRequest) GetMessageIds() []string {
 		return x.MessageIds
 	}
 	return nil
+}
+
+func (x *AckDeliveryRequest) GetDeviceId() string {
+	if x != nil {
+		return x.DeviceId
+	}
+	return ""
 }
 
 type AckDeliveryResponse struct {
@@ -6053,12 +6061,13 @@ const file_proto_chat_proto_rawDesc = "" +
 	"\vmessage_ids\x18\x03 \x03(\tR\n" +
 	"messageIds\",\n" +
 	"\x10MarkReadResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"w\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"\x94\x01\n" +
 	"\x12AckDeliveryRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12'\n" +
 	"\x0fconversation_id\x18\x02 \x01(\tR\x0econversationId\x12\x1f\n" +
 	"\vmessage_ids\x18\x03 \x03(\tR\n" +
-	"messageIds\"/\n" +
+	"messageIds\x12\x1b\n" +
+	"\tdevice_id\x18\x04 \x01(\tR\bdeviceId\"/\n" +
 	"\x13AckDeliveryResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\"t\n" +
 	"\x11PinMessageRequest\x12\x1d\n" +

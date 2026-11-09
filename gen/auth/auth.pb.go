@@ -2030,6 +2030,7 @@ type DeviceInfo struct {
 	RegistrationId int32                  `protobuf:"varint,3,opt,name=registration_id,json=registrationId,proto3" json:"registration_id,omitempty"`
 	CreatedAt      string                 `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	LastSeen       string                 `protobuf:"bytes,5,opt,name=last_seen,json=lastSeen,proto3" json:"last_seen,omitempty"`
+	IdentityKey    string                 `protobuf:"bytes,6,opt,name=identity_key,json=identityKey,proto3" json:"identity_key,omitempty"` // device's public identity key (for per-device verification)
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -2095,6 +2096,13 @@ func (x *DeviceInfo) GetCreatedAt() string {
 func (x *DeviceInfo) GetLastSeen() string {
 	if x != nil {
 		return x.LastSeen
+	}
+	return ""
+}
+
+func (x *DeviceInfo) GetIdentityKey() string {
+	if x != nil {
+		return x.IdentityKey
 	}
 	return ""
 }
@@ -3376,7 +3384,7 @@ const file_proto_auth_proto_rawDesc = "" +
 	"\rdevice_number\x18\a \x01(\x05R\fdeviceNumber\"W\n" +
 	"\x16UploadE2EEKeysResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
-	"\rdevice_number\x18\x02 \x01(\x05R\fdeviceNumber\"\xb3\x01\n" +
+	"\rdevice_number\x18\x02 \x01(\x05R\fdeviceNumber\"\xd6\x01\n" +
 	"\n" +
 	"DeviceInfo\x12\x1b\n" +
 	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12#\n" +
@@ -3384,7 +3392,8 @@ const file_proto_auth_proto_rawDesc = "" +
 	"\x0fregistration_id\x18\x03 \x01(\x05R\x0eregistrationId\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\x04 \x01(\tR\tcreatedAt\x12\x1b\n" +
-	"\tlast_seen\x18\x05 \x01(\tR\blastSeen\"-\n" +
+	"\tlast_seen\x18\x05 \x01(\tR\blastSeen\x12!\n" +
+	"\fidentity_key\x18\x06 \x01(\tR\videntityKey\"-\n" +
 	"\x12ListDevicesRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"A\n" +
 	"\x13ListDevicesResponse\x12*\n" +

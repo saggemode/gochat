@@ -352,6 +352,13 @@ class EncryptionManager @Inject constructor(
         markAccountMultiDevice()
     }
 
+    /** The identity key (base64) we recorded when [deviceId] was paired/trusted, or
+     *  null if we've never verified it. Used to detect a changed key on a known device. */
+    fun pairedIdentityFor(deviceId: String): String? = try {
+        context.getSharedPreferences("e2ee_paired_devices", Context.MODE_PRIVATE)
+            .getString(deviceId, null)
+    } catch (_: Exception) { null }
+
     /** True if [content] is a multi-device envelope rather than a raw ciphertext. */
     fun isEnvelope(content: String): Boolean = content.startsWith(mdEnvelopeMarker)
 

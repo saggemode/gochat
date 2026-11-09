@@ -388,7 +388,10 @@ func (s *ChatServer) GetMessages(ctx context.Context, req *chatpb.GetMessagesReq
 		for i, m := range msgs {
 			ids[i] = m.ID
 		}
-		if derr := s.msgRepo.RecordDeliveries(ctx, userID, ids); derr != nil {
+		// User-level ack ("" device): a pull confirms the user received them. For a
+		// single-device user this fully satisfies them; for a multi-device user it's
+		// device-unknown and only the per-device AckDelivery tightens purge.
+		if derr := s.msgRepo.RecordDeliveries(ctx, userID, "", ids); derr != nil {
 			s.log.Warn("record deliveries (GetMessages)", zap.Error(derr))
 		}
 	}
@@ -413,7 +416,10 @@ func (s *ChatServer) AckDelivery(ctx context.Context, req *chatpb.AckDeliveryReq
 			msgIDs = append(msgIDs, id)
 		}
 	}
-	if err := s.msgRepo.RecordDeliveries(ctx, userID, msgIDs); err != nil {
+	// Per-device ack: the client passes its own device_id (from the X-Device-Id
+	// header the gateway forwards). This is the signal that lets purge wait for
+	// every device of a multi-device recipient.
+	if err := s.msgRepo.RecordDeliveries(ctx, userID, req.DeviceId, msgIDs); err != nil {
 		s.log.Error("ack delivery", zap.Error(err))
 		return nil, status.Error(codes.Internal, "failed to record delivery")
 	}
@@ -696,7 +702,7 @@ func (s *ChatServer) MarkRead(ctx context.Context, req *chatpb.MarkReadRequest) 
 
 	// A read implies delivery — record it so delete-after-delivery can purge.
 	if len(msgIDs) > 0 {
-		if derr := s.msgRepo.RecordDeliveries(ctx, userID, msgIDs); derr != nil {
+		if derr := s.msgRepo.RecordDeliveries(ctx, userID, "", msgIDs); derr != nil {
 			s.log.Warn("record deliveries (MarkRead)", zap.Error(derr))
 		}
 	}

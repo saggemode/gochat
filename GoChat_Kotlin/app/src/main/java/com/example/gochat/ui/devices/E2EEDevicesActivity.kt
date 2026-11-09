@@ -7,7 +7,9 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.example.gochat.R
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.gochat.core.ui.applyEdgeToEdge
@@ -89,6 +91,58 @@ class E2EEDevicesActivity : AppCompatActivity() {
         }
     }
 
+    /** Per-device trust state (Phase 6): compare the server's current identity for
+     *  the device against what we recorded when we paired/verified it. */
+    private fun verificationOf(d: E2EEDevice): E2EEDevice.Verification {
+        if (d.isCurrent) return E2EEDevice.Verification.CURRENT
+        val paired = encryptionManager.pairedIdentityFor(d.deviceId)
+        return when {
+            paired == null -> if (d.isPrimary) E2EEDevice.Verification.PRIMARY else E2EEDevice.Verification.UNVERIFIED
+            d.identityKey.isNotBlank() && paired != d.identityKey -> E2EEDevice.Verification.CHANGED
+            else -> E2EEDevice.Verification.VERIFIED
+        }
+    }
+
+    /** Detail dialog: fingerprint + trust state, with Verify / Unlink actions. */
+    private fun showDeviceDetail(device: E2EEDevice) {
+        val fp = encryptionManager.identityFingerprint(device.identityKey)
+        val state = verificationOf(device)
+        val stateLine = when (state) {
+            E2EEDevice.Verification.VERIFIED -> "✓ Verified"
+            E2EEDevice.Verification.CHANGED -> "⚠️ Security code CHANGED since you last verified this device. Only keep it if you added it yourself."
+            E2EEDevice.Verification.UNVERIFIED -> "Not verified yet"
+            E2EEDevice.Verification.PRIMARY -> "Primary device"
+            E2EEDevice.Verification.CURRENT -> "This device"
+        }
+        val msg = buildString {
+            append("Device: ${device.displayName}\n")
+            append("ID: …${device.shortId}\n")
+            if (fp.isNotBlank()) append("Security code: $fp\n")
+            if (device.lastSeen.isNotBlank()) append("Last seen: ${device.lastSeen.take(19)}\n")
+            append("\n$stateLine")
+        }
+        val builder = AlertDialog.Builder(this)
+            .setTitle(device.displayName)
+            .setMessage(msg)
+            .setNegativeButton("Close", null)
+
+        // Offer "Verify" (record current identity as trusted) when not yet verified
+        // or when the code changed (user re-confirms after adding the device).
+        if (device.identityKey.isNotBlank() &&
+            (state == E2EEDevice.Verification.UNVERIFIED || state == E2EEDevice.Verification.CHANGED)
+        ) {
+            builder.setNeutralButton("Mark verified") { _, _ ->
+                encryptionManager.recordPairedDevice(device.deviceId, device.identityKey)
+                Toast.makeText(this, "Device marked verified", Toast.LENGTH_SHORT).show()
+                loadDevices()
+            }
+        }
+        if (!device.isPrimary) {
+            builder.setPositiveButton("Unlink") { _, _ -> confirmUnlink(device) }
+        }
+        builder.show()
+    }
+
     private fun confirmUnlink(device: E2EEDevice) {
         AlertDialog.Builder(this)
             .setTitle("Unlink ${device.displayName}?")
@@ -139,7 +193,19 @@ class E2EEDevicesActivity : AppCompatActivity() {
         inner class ViewHolder(private val b: ItemE2eeDeviceBinding) : RecyclerView.ViewHolder(b.root) {
             fun bind(device: E2EEDevice) {
                 b.tvDeviceName.text = device.displayName
-                b.tvBadgeCurrent.visibility = if (device.isCurrent) View.VISIBLE else View.GONE
+
+                // Status badge reflects per-device trust (Phase 6).
+                val state = verificationOf(device)
+                val (label, colorRes) = when (state) {
+                    E2EEDevice.Verification.CURRENT -> "This device" to R.color.gochat_emerald
+                    E2EEDevice.Verification.PRIMARY -> "Primary" to R.color.gochat_text_muted
+                    E2EEDevice.Verification.VERIFIED -> "✓ Verified" to R.color.gochat_emerald
+                    E2EEDevice.Verification.CHANGED -> "⚠️ Changed" to R.color.gochat_accent
+                    E2EEDevice.Verification.UNVERIFIED -> "Unverified" to R.color.gochat_text_muted
+                }
+                b.tvBadgeCurrent.visibility = View.VISIBLE
+                b.tvBadgeCurrent.text = label
+                b.tvBadgeCurrent.setTextColor(ContextCompat.getColor(b.root.context, colorRes))
 
                 val status = buildString {
                     append("ID …${device.shortId}")
@@ -148,14 +214,19 @@ class E2EEDevicesActivity : AppCompatActivity() {
                 }
                 b.tvDeviceStatus.text = status
 
-                // The primary device can't be unlinked (server refuses too).
-                if (device.isPrimary) {
+                // Tap any non-current device for details (verify / unlink). The
+                // current device just shows its badge. Primary can't be unlinked.
+                if (device.isCurrent) {
                     b.btnUnlinkDevice.visibility = View.GONE
                     b.root.setOnClickListener(null)
                 } else {
-                    b.btnUnlinkDevice.visibility = View.VISIBLE
-                    b.btnUnlinkDevice.setOnClickListener { confirmUnlink(device) }
-                    b.root.setOnClickListener { confirmUnlink(device) }
+                    b.root.setOnClickListener { showDeviceDetail(device) }
+                    if (device.isPrimary) {
+                        b.btnUnlinkDevice.visibility = View.GONE
+                    } else {
+                        b.btnUnlinkDevice.visibility = View.VISIBLE
+                        b.btnUnlinkDevice.setOnClickListener { confirmUnlink(device) }
+                    }
                 }
             }
         }

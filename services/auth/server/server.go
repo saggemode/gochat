@@ -548,6 +548,7 @@ func (s *AuthServer) ListDevices(ctx context.Context, req *authpb.ListDevicesReq
 			RegistrationId: d.RegistrationID,
 			CreatedAt:      d.CreatedAt,
 			LastSeen:       d.LastSeen,
+			IdentityKey:    d.IdentityKey,
 		})
 	}
 	return resp, nil

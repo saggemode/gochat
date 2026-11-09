@@ -1183,6 +1183,7 @@ func (h *ChatHandler) AckDelivery(c *gin.Context) {
 		UserId:         userID,
 		ConversationId: convID,
 		MessageIds:     req.MessageIds,
+		DeviceId:       c.GetHeader("X-Device-Id"), // which device acked (multi-device purge)
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to acknowledge delivery")

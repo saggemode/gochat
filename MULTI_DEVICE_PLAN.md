@@ -198,13 +198,21 @@ the session against the correct `(senderId, sd)` address — closing the ratchet
   recipient bundles per send (OTK cost). Both are dormant-path items to optimize when multi-device
   is actually exercised.
 
-### Phase 4 — History onboarding for a new device
-Server stores no plaintext, so a freshly linked device is empty. Pick per Phase 0 #3:
-- **A — Encrypted backup restore:** reuse `ChatBackupManager` (AES-256-GCM + PBKDF2). The new
-  device restores from the user's backup with the passphrase/recovery code. Already mostly
-  built; wire it into the link flow.
-- **B — Device-to-device transfer:** stream history over the pairwise session (or a local
-  channel) from an existing device. No server copy. Larger effort; defer.
+### Phase 4 — History onboarding for a new device — DONE (2026-11-09, `:app:compileDebugKotlin` OK; UNTESTED)
+Server stores no plaintext, so a freshly linked device is empty. Chose **A (encrypted backup restore)**.
+- **What already covered a FRESH install:** `LoginActivity.navigateToMain()` routes a first login
+  (`!hasCompletedMigrationCheck`) to `RestoreBackupActivity`, which scans **Google Drive** + local,
+  downloads, decrypts (passphrase), and restores into Room. So a brand-new companion install already
+  onboards history from Drive.
+- **What was added (the real gap):** a device LINKED AFTER setup, or one that SKIPPED restore, had no
+  way to re-trigger onboarding, and the first-login path does a destructive `CLEAR_TASK` relaunch that's
+  wrong mid-session. Added `RestoreBackupActivity.startForLinkedDevice()` + `EXTRA_LINKED_DEVICE` mode:
+  companion-aware copy, a back button, and a non-destructive finish (returns to caller, doesn't reset
+  the task or re-run the migration gate). Surfaced on the Encryption-devices screen as a "Restore chat
+  history" button + a companion hint shown when `localDeviceNumber() > 1`.
+- **B — Device-to-device transfer:** stream history over the pairwise session. No server copy. Deferred.
+- **Note:** restore MERGES into Room (insert/REPLACE by id), so it's safe to run on a device that
+  already has some live post-link messages.
 
 ### Phase 5 — Delete-after-delivery across devices
 - The server currently purges a message once every intended **recipient** has it. With
@@ -212,6 +220,12 @@ Server stores no plaintext, so a freshly linked device is empty. Pick per Phase 
   `chat.message_deliveries` to `(message_id, user_id, device_id)` and the purge query to
   require all devices of all members).
 - Undelivered-TTL unchanged.
+- **⚠️ RECOMMEND DEFERRING until multi-device is device-tested.** This touches the irreversible
+  purge path. Every current delivery hook (gateway WS fan-out, `GetMessages` pull, `MarkRead`,
+  client `AckDelivery`) is per-**user**, which is correct and safe for single-device (today).
+  Making purge per-device blind — while multi-device is dormant/untested — risks either purging a
+  message before a real 2nd device got it (data loss) or never purging (storage leak), on a path
+  that can't be validated from the dev machine. Do it only alongside real two-device testing.
 
 ### Phase 6 — Verification & trust across devices
 - Safety numbers become per-device (or an aggregate of all the peer's device identities).

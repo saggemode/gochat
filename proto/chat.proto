@@ -401,6 +401,7 @@ message AckDeliveryRequest {
   string          user_id         = 1;  // the recipient acknowledging delivery
   string          conversation_id = 2;  // optional; for scoping / logging
   repeated string message_ids     = 3;
+  string          device_id       = 4;  // multi-device: which device acked ("" = user-level/unknown)
 }
 
 message AckDeliveryResponse {

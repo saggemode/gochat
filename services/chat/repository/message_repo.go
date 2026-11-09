@@ -955,18 +955,19 @@ func (r *MessageRepository) GetExpiredMessages(ctx context.Context) ([]*Message,
 
 // RecordDeliveries marks the given messages as delivered to userID (idempotent).
 // A recipient never "delivers" their own message, so the sender is skipped.
-// Returns nil on an empty set.
-func (r *MessageRepository) RecordDeliveries(ctx context.Context, userID uuid.UUID, msgIDs []uuid.UUID) error {
+// deviceID identifies WHICH of the recipient's devices acked ("" = user-level /
+// device-unknown, the legacy/single-device case). Returns nil on an empty set.
+func (r *MessageRepository) RecordDeliveries(ctx context.Context, userID uuid.UUID, deviceID string, msgIDs []uuid.UUID) error {
 	if len(msgIDs) == 0 {
 		return nil
 	}
 	_, err := r.db.Exec(ctx, `
-		INSERT INTO message_deliveries (message_id, user_id)
-		SELECT m.id, $2
+		INSERT INTO message_deliveries (message_id, user_id, device_id)
+		SELECT m.id, $2, $3
 		FROM messages m
 		WHERE m.id = ANY($1) AND m.sender_id <> $2
-		ON CONFLICT (message_id, user_id) DO NOTHING
-	`, msgIDs, userID)
+		ON CONFLICT (message_id, user_id, device_id) DO NOTHING
+	`, msgIDs, userID, deviceID)
 	return err
 }
 
@@ -976,6 +977,15 @@ func (r *MessageRepository) RecordDeliveries(ctx context.Context, userID uuid.UU
 // message only until it has reached everyone. Returns the number purged.
 // message_deliveries rows cascade away with the message.
 func (r *MessageRepository) PurgeFullyDelivered(ctx context.Context) (int64, error) {
+	// Device-aware (Phase 5) but single-device-safe. A recipient cm is "satisfied"
+	// when:
+	//   • they have 0 or 1 device registered at the time the message was sent →
+	//     ANY delivery row for (msg, cm) satisfies them (EXACTLY the old behavior,
+	//     so today's single-device accounts purge identically); OR
+	//   • they have 2+ such devices → EVERY one of those devices must have its own
+	//     delivery row. (Only devices with created_at <= the message's created_at
+	//     are required, so a device linked AFTER a message was sent never blocks
+	//     that message's purge — it gets old history via restore, not live delivery.)
 	tag, err := r.db.Exec(ctx, `
 		DELETE FROM messages m
 		WHERE m.status <> 'scheduled'
@@ -986,14 +996,37 @@ func (r *MessageRepository) PurgeFullyDelivered(ctx context.Context) (int64, err
 		      WHERE cm.conversation_id = m.conversation_id
 		        AND cm.user_id <> m.sender_id
 		  )
-		  -- … and no such recipient is still missing a delivery.
+		  -- … and no such recipient is still unsatisfied.
 		  AND NOT EXISTS (
 		      SELECT 1 FROM conversation_members cm
 		      WHERE cm.conversation_id = m.conversation_id
 		        AND cm.user_id <> m.sender_id
-		        AND NOT EXISTS (
-		            SELECT 1 FROM message_deliveries d
-		            WHERE d.message_id = m.id AND d.user_id = cm.user_id
+		        AND NOT (
+		            CASE
+		              WHEN (
+		                  SELECT count(*) FROM core.user_devices ud
+		                  WHERE ud.user_id = cm.user_id AND ud.created_at <= m.created_at
+		              ) >= 2 THEN
+		                  -- multi-device recipient: every device that existed at send
+		                  -- time must have its own delivery row.
+		                  NOT EXISTS (
+		                      SELECT 1 FROM core.user_devices ud
+		                      WHERE ud.user_id = cm.user_id
+		                        AND ud.created_at <= m.created_at
+		                        AND NOT EXISTS (
+		                            SELECT 1 FROM message_deliveries d
+		                            WHERE d.message_id = m.id
+		                              AND d.user_id = cm.user_id
+		                              AND d.device_id = ud.device_id
+		                        )
+		                  )
+		              ELSE
+		                  -- single / zero-device recipient (today): any row satisfies.
+		                  EXISTS (
+		                      SELECT 1 FROM message_deliveries d
+		                      WHERE d.message_id = m.id AND d.user_id = cm.user_id
+		                  )
+		            END
 		        )
 		  )
 	`)

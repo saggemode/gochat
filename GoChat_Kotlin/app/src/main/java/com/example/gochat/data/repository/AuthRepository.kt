@@ -348,6 +348,7 @@ class AuthRepository @Inject constructor(
                     registrationId = o["registration_id"]?.jsonPrimitive?.intOrNull ?: 0,
                     createdAt = o["created_at"]?.jsonPrimitive?.contentOrNull.orEmpty(),
                     lastSeen = o["last_seen"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                    identityKey = o["identity_key"]?.jsonPrimitive?.contentOrNull.orEmpty(),
                     isCurrent = deviceId == myDeviceId
                 )
             }.sortedBy { it.deviceNumber }

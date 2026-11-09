@@ -12,9 +12,13 @@ data class E2EEDevice(
     val registrationId: Int = 0,
     val createdAt: String = "",
     val lastSeen: String = "",
+    /** Device's public identity key (base64), for per-device verification. */
+    val identityKey: String = "",
     /** True for the install we're running on (matches our own X-Device-Id). */
     val isCurrent: Boolean = false
 ) {
+    /** Per-device trust state (Phase 6), computed against locally stored pairing. */
+    enum class Verification { CURRENT, PRIMARY, VERIFIED, CHANGED, UNVERIFIED }
     /** device_number 1 is the primary device and cannot be unlinked. */
     val isPrimary: Boolean get() = deviceNumber == 1
 

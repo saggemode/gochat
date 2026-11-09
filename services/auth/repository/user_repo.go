@@ -847,13 +847,15 @@ type DeviceRow struct {
 	RegistrationID int32
 	CreatedAt      string
 	LastSeen       string
+	IdentityKey    string // decrypted public identity key (for per-device verification)
 }
 
 // ListDevices returns all devices registered for userID, newest-numbered last.
 func (r *UserRepository) ListDevices(ctx context.Context, userID uuid.UUID) ([]*DeviceRow, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT device_id, device_number, COALESCE(registration_id, 0),
-		       COALESCE(created_at::text, ''), COALESCE(last_seen::text, '')
+		       COALESCE(created_at::text, ''), COALESCE(last_seen::text, ''),
+		       COALESCE(identity_key, '')
 		FROM user_devices WHERE user_id = $1 ORDER BY device_number
 	`, userID)
 	if err != nil {
@@ -864,8 +866,16 @@ func (r *UserRepository) ListDevices(ctx context.Context, userID uuid.UUID) ([]*
 	var out []*DeviceRow
 	for rows.Next() {
 		d := &DeviceRow{}
-		if err := rows.Scan(&d.DeviceID, &d.DeviceNumber, &d.RegistrationID, &d.CreatedAt, &d.LastSeen); err != nil {
+		if err := rows.Scan(&d.DeviceID, &d.DeviceNumber, &d.RegistrationID, &d.CreatedAt, &d.LastSeen, &d.IdentityKey); err != nil {
 			return nil, err
+		}
+		// Stored encrypted at rest; decrypt so the client can fingerprint it.
+		if r.encryptor != nil && d.IdentityKey != "" {
+			if dec, derr := r.encryptor.Decrypt(d.IdentityKey); derr == nil {
+				d.IdentityKey = dec
+			} else {
+				d.IdentityKey = "" // undecryptable → omit rather than return ciphertext
+			}
 		}
 		out = append(out, d)
 	}
