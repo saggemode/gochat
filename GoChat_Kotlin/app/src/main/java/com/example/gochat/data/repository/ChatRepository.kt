@@ -1627,11 +1627,24 @@ class ChatRepository @Inject constructor(
         }
     }
 
+    // Message ids we've already surfaced a "stays encrypted" warning for. A force
+    // refresh re-attempts EVERY still-encrypted message, which previously re-fired the
+    // diagnostic banner each time. We keep retrying the decrypt (so an out-of-order
+    // message still recovers once its handshake arrives), but warn at most once per
+    // message per app session. Cleared when a message finally decrypts.
+    private val warnedStuckMsgIds = java.util.Collections.synchronizedSet(HashSet<String>())
+
+    private fun warnStuckOnce(message: Message) {
+        if (warnedStuckMsgIds.add(message.id)) {
+            diag("Text from …${message.senderId.takeLast(6)} stays encrypted — ${encryptionManager.lastDecryptDiagnostic}")
+        }
+    }
+
     private fun tryDecryptMessage(message: Message): Message {
         if (message.type != MessageType.TEXT || message.isMe || message.content.isBlank()) {
             return message
         }
-        
+
         val trimmed = message.content.trim()
         // Multi-device envelope (Phase 2): the sender fanned this message out to
         // several of our devices. Pick our device's ciphertext and decrypt that.
@@ -1639,9 +1652,10 @@ class ChatRepository @Inject constructor(
         if (encryptionManager.isEnvelope(trimmed)) {
             val decrypted = encryptionManager.decryptEnvelope(message.senderId, trimmed)
             if (decrypted.isNotBlank() && decrypted != trimmed) {
+                warnedStuckMsgIds.remove(message.id)
                 return message.copy(content = decrypted)
             }
-            diag("Text from …${message.senderId.takeLast(6)} stays encrypted — ${encryptionManager.lastDecryptDiagnostic}")
+            warnStuckOnce(message)
             return message
         }
         // Standard text messages usually have spaces or common punctuation.
@@ -1649,12 +1663,14 @@ class ChatRepository @Inject constructor(
         if (isBase64Ciphertext(trimmed)) {
             val decrypted = encryptionManager.decryptMessage(message.senderId, trimmed)
             if (decrypted.isNotBlank() && decrypted != trimmed) {
+                warnedStuckMsgIds.remove(message.id)
                 return message.copy(content = decrypted)
             }
             // Decryption failed — return the message unchanged so we don't permanently
             // mask content that could be decrypted later when the session is established.
-            // The raw ciphertext will be re-attempted on next fetch.
-            diag("Text from …${message.senderId.takeLast(6)} stays encrypted — ${encryptionManager.lastDecryptDiagnostic}")
+            // The raw ciphertext will be re-attempted on next fetch; the banner is shown
+            // only once per message so a force-refresh doesn't re-spam it.
+            warnStuckOnce(message)
             return message
         }
         return message
