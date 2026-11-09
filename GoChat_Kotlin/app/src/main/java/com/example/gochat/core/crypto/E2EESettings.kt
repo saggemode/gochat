@@ -49,5 +49,6 @@ object E2EESettings {
         // Multi-device: device_number + multi-device flag, and paired-device trust.
         try { context.getSharedPreferences("e2ee_prefs", Context.MODE_PRIVATE).edit().clear().apply() } catch (_: Exception) {}
         try { context.getSharedPreferences("e2ee_paired_devices", Context.MODE_PRIVATE).edit().clear().apply() } catch (_: Exception) {}
+        try { context.getSharedPreferences("e2ee_control_processed", Context.MODE_PRIVATE).edit().clear().apply() } catch (_: Exception) {}
     }
 }

@@ -294,14 +294,16 @@ class ChatRepository @Inject constructor(
                         if (!msg.isMe) handleGroupKeyDistribution(msg)
                         return@withLock
                     }
-                    // Session-reset request (self-heal), never displayed.
+                    // Session-reset request (self-heal), never displayed. Process once —
+                    // re-running it on every refresh would re-delete the session.
                     if (msg.content.startsWith(sessionResetMarker)) {
-                        if (!msg.isMe) handleSessionReset(msg.senderId)
+                        if (!msg.isMe && claimControlMessage(msg.id)) handleSessionReset(msg.senderId)
                         return@withLock
                     }
                     // Disappearing-messages timer change, never displayed as a bubble.
+                    // Process once so a refresh doesn't re-insert the timer system message.
                     if (msg.content.startsWith(dmTimerMarker)) {
-                        if (!msg.isMe) handleDisappearingTimerChange(msg.conversationId, msg.content.removePrefix(dmTimerMarker).trim().toIntOrNull() ?: 0)
+                        if (!msg.isMe && claimControlMessage(msg.id)) handleDisappearingTimerChange(msg.conversationId, msg.content.removePrefix(dmTimerMarker).trim().toIntOrNull() ?: 0)
                         return@withLock
                     }
 
@@ -857,14 +859,14 @@ class ChatRepository @Inject constructor(
                 if (!msg.isMe) handleGroupKeyDistribution(msg)
                 return null
             }
-            // Session-reset request from a peer who couldn't decrypt us.
+            // Session-reset request from a peer who couldn't decrypt us. Process once.
             if (msg.content.startsWith(sessionResetMarker)) {
-                if (!msg.isMe) handleSessionReset(msg.senderId)
+                if (!msg.isMe && claimControlMessage(msg.id)) handleSessionReset(msg.senderId)
                 return null
             }
-            // Disappearing-messages timer change announced by the peer.
+            // Disappearing-messages timer change announced by the peer. Process once.
             if (msg.content.startsWith(dmTimerMarker)) {
-                if (!msg.isMe) handleDisappearingTimerChange(msg.conversationId, msg.content.removePrefix(dmTimerMarker).trim().toIntOrNull() ?: 0)
+                if (!msg.isMe && claimControlMessage(msg.id)) handleDisappearingTimerChange(msg.conversationId, msg.content.removePrefix(dmTimerMarker).trim().toIntOrNull() ?: 0)
                 return null
             }
 
@@ -1284,14 +1286,14 @@ class ChatRepository @Inject constructor(
             if (!isMe) handleGroupKeyDistribution(message)
             return
         }
-        // Session-reset request: a peer couldn't decrypt us → drop our session.
+        // Session-reset request: a peer couldn't decrypt us → drop our session. Once.
         if (message.content.startsWith(sessionResetMarker)) {
-            if (!isMe) handleSessionReset(message.senderId)
+            if (!isMe && claimControlMessage(message.id)) handleSessionReset(message.senderId)
             return
         }
-        // Disappearing-messages timer change announced by the peer.
+        // Disappearing-messages timer change announced by the peer. Process once.
         if (message.content.startsWith(dmTimerMarker)) {
-            if (!isMe) handleDisappearingTimerChange(message.conversationId, message.content.removePrefix(dmTimerMarker).trim().toIntOrNull() ?: 0)
+            if (!isMe && claimControlMessage(message.id)) handleDisappearingTimerChange(message.conversationId, message.content.removePrefix(dmTimerMarker).trim().toIntOrNull() ?: 0)
             return
         }
 
@@ -1515,6 +1517,30 @@ class ChatRepository @Inject constructor(
         } catch (e: Exception) {
             Log.w("ChatRepository", "insert timer system msg failed: ${e.message}")
         }
+    }
+
+    // Control messages (session-reset, timer change) must be processed EXACTLY ONCE.
+    // The server re-delivers them until delete-after-delivery purges them, so without
+    // this a force-refresh re-runs the handler every time — and for the reset marker
+    // that means re-deleting the Signal session on every refresh, destroying a freshly
+    // re-handshaked session and causing "no valid session" on later messages. Keyed by
+    // message id and persisted so it survives refreshes and process restarts.
+    private val controlProcessedPrefs by lazy {
+        context.getSharedPreferences("e2ee_control_processed", Context.MODE_PRIVATE)
+    }
+
+    /** True the FIRST time this control-message id is claimed; false if already done.
+     *  A blank id can't be deduped, so it's processed (best effort). */
+    private fun claimControlMessage(id: String): Boolean {
+        if (id.isBlank()) return true
+        return try {
+            if (controlProcessedPrefs.getBoolean(id, false)) {
+                false
+            } else {
+                controlProcessedPrefs.edit().putBoolean(id, true).apply()
+                true
+            }
+        } catch (_: Exception) { true }
     }
 
     /** A peer couldn't decrypt our messages and asked us to reset; drop our session
