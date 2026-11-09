@@ -353,6 +353,63 @@ func (r *MessageRepository) Create(ctx context.Context, msg *Message) (*Message,
 	return msg, nil
 }
 
+// PostNumberChangeNotice inserts a "changed their phone number" SYSTEM message into
+// every DIRECT (1:1) AND GROUP conversation the user belongs to, so each contact and
+// group is notified. Content is plaintext (not E2EE — it's a system notice; the client
+// renders any message whose content starts with "SYSTEM:" as a centered notice).
+// Returns the created messages so the caller can publish them for live fan-out.
+func (r *MessageRepository) PostNumberChangeNotice(ctx context.Context, userID uuid.UUID) ([]*Message, error) {
+	// Display name for the notice (plaintext in core.users). Fall back gracefully.
+	var name string
+	_ = r.db.QueryRow(ctx, `SELECT COALESCE(NULLIF(display_name, ''), 'A contact') FROM core.users WHERE id = $1`, userID).Scan(&name)
+	if name == "" {
+		name = "A contact"
+	}
+	content := fmt.Sprintf("SYSTEM: %s changed their phone number", name)
+
+	rows, err := r.db.Query(ctx, `
+		SELECT c.id
+		FROM conversations c
+		JOIN conversation_members cm ON cm.conversation_id = c.id
+		WHERE cm.user_id = $1 AND c.type IN ('direct', 'group')
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	var convIDs []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		convIDs = append(convIDs, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	out := make([]*Message, 0, len(convIDs))
+	for _, cid := range convIDs {
+		msg := &Message{
+			ConversationID: cid,
+			SenderID:       userID,
+			Content:        content,
+			Type:           MessageTypeText,
+			Status:         MessageStatusSent,
+			SendAt:         time.Now(),
+		}
+		saved, cerr := r.Create(ctx, msg)
+		if cerr != nil {
+			// Best effort per chat — don't fail the whole batch on one bad conv.
+			continue
+		}
+		out = append(out, saved)
+	}
+	return out, nil
+}
+
 func (r *MessageRepository) GetByID(ctx context.Context, id uuid.UUID) (*Message, error) {
 	msg := &Message{}
 	err := r.db.QueryRow(ctx, `

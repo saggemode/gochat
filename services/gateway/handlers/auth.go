@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -19,6 +20,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	authpb "gochat/gen/auth"
+	chatpb "gochat/gen/chat"
 	"gochat/services/gateway/ws"
 )
 
@@ -79,15 +81,22 @@ func extractTokenFromRequest(c *gin.Context) string {
 
 // AuthHandler wraps the Auth Service gRPC client.
 type AuthHandler struct {
-	client authpb.AuthServiceClient
-	redis  *redis.Client
-	hub    *ws.Hub
-	log    *zap.Logger
+	client     authpb.AuthServiceClient
+	chatClient chatpb.ChatServiceClient
+	redis      *redis.Client
+	hub        *ws.Hub
+	log        *zap.Logger
 }
 
 // NewAuthHandler constructs the AuthHandler.
 func NewAuthHandler(client authpb.AuthServiceClient, log *zap.Logger) *AuthHandler {
 	return &AuthHandler{client: client, log: log}
+}
+
+// WithChatClient sets the chat client (used to post the "changed number" notice).
+func (h *AuthHandler) WithChatClient(c chatpb.ChatServiceClient) *AuthHandler {
+	h.chatClient = c
+	return h
 }
 
 // WithRedis sets the Redis client for device/session tracking.
@@ -1421,6 +1430,18 @@ func (h *AuthHandler) ConfirmNumberChange(c *gin.Context) {
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to change number")
 		return
+	}
+
+	// Notify the user's contacts with a "changed their number" system message in each
+	// of their direct chats. Best effort — never fail the change on notice failure.
+	if resp.Success && h.chatClient != nil {
+		go func(uid string) {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if _, nerr := h.chatClient.NotifyNumberChange(ctx, &chatpb.NotifyNumberChangeRequest{UserId: uid}); nerr != nil {
+				h.log.Warn("notify number change failed", zap.String("user_id", uid), zap.Error(nerr))
+			}
+		}(userID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{

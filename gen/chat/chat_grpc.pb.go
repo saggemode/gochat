@@ -36,6 +36,7 @@ const (
 	ChatService_RemoveReaction_FullMethodName          = "/chat.ChatService/RemoveReaction"
 	ChatService_MarkRead_FullMethodName                = "/chat.ChatService/MarkRead"
 	ChatService_AckDelivery_FullMethodName             = "/chat.ChatService/AckDelivery"
+	ChatService_NotifyNumberChange_FullMethodName      = "/chat.ChatService/NotifyNumberChange"
 	ChatService_PinMessage_FullMethodName              = "/chat.ChatService/PinMessage"
 	ChatService_UnpinMessage_FullMethodName            = "/chat.ChatService/UnpinMessage"
 	ChatService_SearchMessages_FullMethodName          = "/chat.ChatService/SearchMessages"
@@ -98,6 +99,8 @@ type ChatServiceClient interface {
 	MarkRead(ctx context.Context, in *MarkReadRequest, opts ...grpc.CallOption) (*MarkReadResponse, error)
 	// Acknowledge delivery of messages to a recipient (delete-after-delivery).
 	AckDelivery(ctx context.Context, in *AckDeliveryRequest, opts ...grpc.CallOption) (*AckDeliveryResponse, error)
+	// Post a "changed their phone number" system notice into the user's direct chats.
+	NotifyNumberChange(ctx context.Context, in *NotifyNumberChangeRequest, opts ...grpc.CallOption) (*NotifyNumberChangeResponse, error)
 	// Pin a message in a conversation
 	PinMessage(ctx context.Context, in *PinMessageRequest, opts ...grpc.CallOption) (*PinMessageResponse, error)
 	// Unpin a message
@@ -306,6 +309,16 @@ func (c *chatServiceClient) AckDelivery(ctx context.Context, in *AckDeliveryRequ
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AckDeliveryResponse)
 	err := c.cc.Invoke(ctx, ChatService_AckDelivery_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) NotifyNumberChange(ctx context.Context, in *NotifyNumberChangeRequest, opts ...grpc.CallOption) (*NotifyNumberChangeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(NotifyNumberChangeResponse)
+	err := c.cc.Invoke(ctx, ChatService_NotifyNumberChange_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -579,6 +592,8 @@ type ChatServiceServer interface {
 	MarkRead(context.Context, *MarkReadRequest) (*MarkReadResponse, error)
 	// Acknowledge delivery of messages to a recipient (delete-after-delivery).
 	AckDelivery(context.Context, *AckDeliveryRequest) (*AckDeliveryResponse, error)
+	// Post a "changed their phone number" system notice into the user's direct chats.
+	NotifyNumberChange(context.Context, *NotifyNumberChangeRequest) (*NotifyNumberChangeResponse, error)
 	// Pin a message in a conversation
 	PinMessage(context.Context, *PinMessageRequest) (*PinMessageResponse, error)
 	// Unpin a message
@@ -673,6 +688,9 @@ func (UnimplementedChatServiceServer) MarkRead(context.Context, *MarkReadRequest
 }
 func (UnimplementedChatServiceServer) AckDelivery(context.Context, *AckDeliveryRequest) (*AckDeliveryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AckDelivery not implemented")
+}
+func (UnimplementedChatServiceServer) NotifyNumberChange(context.Context, *NotifyNumberChangeRequest) (*NotifyNumberChangeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method NotifyNumberChange not implemented")
 }
 func (UnimplementedChatServiceServer) PinMessage(context.Context, *PinMessageRequest) (*PinMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method PinMessage not implemented")
@@ -1063,6 +1081,24 @@ func _ChatService_AckDelivery_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ChatServiceServer).AckDelivery(ctx, req.(*AckDeliveryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_NotifyNumberChange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NotifyNumberChangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).NotifyNumberChange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_NotifyNumberChange_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).NotifyNumberChange(ctx, req.(*NotifyNumberChangeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1530,6 +1566,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AckDelivery",
 			Handler:    _ChatService_AckDelivery_Handler,
+		},
+		{
+			MethodName: "NotifyNumberChange",
+			Handler:    _ChatService_NotifyNumberChange_Handler,
 		},
 		{
 			MethodName: "PinMessage",

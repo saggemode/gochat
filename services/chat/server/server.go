@@ -426,6 +426,24 @@ func (s *ChatServer) AckDelivery(ctx context.Context, req *chatpb.AckDeliveryReq
 	return &chatpb.AckDeliveryResponse{Success: true}, nil
 }
 
+// NotifyNumberChange posts a "changed their phone number" system notice into each of
+// the user's direct chats and publishes them so contacts see it live.
+func (s *ChatServer) NotifyNumberChange(ctx context.Context, req *chatpb.NotifyNumberChangeRequest) (*chatpb.NotifyNumberChangeResponse, error) {
+	userID, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+	notices, err := s.msgRepo.PostNumberChangeNotice(ctx, userID)
+	if err != nil {
+		s.log.Error("post number-change notice", zap.Error(err))
+		return nil, status.Error(codes.Internal, "failed to post notice")
+	}
+	for _, m := range notices {
+		s.publishEvent(ctx, "new_message", m.ID.String(), m.ConversationID.String(), userID.String())
+	}
+	return &chatpb.NotifyNumberChangeResponse{Notified: int32(len(notices))}, nil
+}
+
 func (s *ChatServer) GetThread(ctx context.Context, req *chatpb.GetThreadRequest) (*chatpb.GetThreadResponse, error) {
 	parentID, err := uuid.Parse(req.ParentMessageId)
 	if err != nil {

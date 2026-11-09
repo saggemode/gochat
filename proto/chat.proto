@@ -58,6 +58,9 @@ service ChatService {
   // Acknowledge delivery of messages to a recipient (delete-after-delivery).
   rpc AckDelivery(AckDeliveryRequest) returns (AckDeliveryResponse);
 
+  // Post a "changed their phone number" system notice into the user's direct chats.
+  rpc NotifyNumberChange(NotifyNumberChangeRequest) returns (NotifyNumberChangeResponse);
+
   // Pin a message in a conversation
   rpc PinMessage(PinMessageRequest) returns (PinMessageResponse);
 
@@ -406,6 +409,13 @@ message AckDeliveryRequest {
 
 message AckDeliveryResponse {
   bool success = 1;
+}
+
+message NotifyNumberChangeRequest {
+  string user_id = 1; // the user whose number changed
+}
+message NotifyNumberChangeResponse {
+  int32 notified = 1; // number of chats a notice was posted to
 }
 
 message PinMessageRequest {

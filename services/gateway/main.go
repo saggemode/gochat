@@ -273,7 +273,7 @@ func main() {
 	_ = bus // available for async publishing in handlers
 
 	// Handlers
-	authHandler := handlers.NewAuthHandler(authClient, log).WithRedis(redisClient).WithHub(hub)
+	authHandler := handlers.NewAuthHandler(authClient, log).WithRedis(redisClient).WithHub(hub).WithChatClient(chatClient)
 	chatHandler := handlers.NewChatHandler(chatClient, authClient, hub, log).WithBusinessClient(businessClient).WithRedis(redisClient)
 	aiHandler := handlers.NewAIHandler(aiClient, log)
 	mediaHandler := handlers.NewMediaHandler(mediaClient, cfg.TelegramBotToken, log)
