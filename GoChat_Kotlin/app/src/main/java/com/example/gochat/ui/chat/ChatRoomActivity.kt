@@ -1003,6 +1003,17 @@ class ChatRoomActivity : AppCompatActivity() {
                 }
             }
 
+            // Long-press the send button to schedule the typed message for later.
+            btnSendOrVoice.setOnLongClickListener {
+                val text = etMessageInput.text?.toString().orEmpty()
+                if (text.isNotBlank()) {
+                    showScheduleMessagePicker(text)
+                    true
+                } else {
+                    false
+                }
+            }
+
             btnAttachment.setOnClickListener {
                 showAttachmentPickerBottomSheet()
             }
@@ -2226,6 +2237,50 @@ class ChatRoomActivity : AppCompatActivity() {
     }
 
     private var currentPinnedIndex: Int = 0
+
+    /** Date + time picker → schedule [text] for future delivery (Telegram-style). */
+    private fun showScheduleMessagePicker(text: String) {
+        val cal = java.util.Calendar.getInstance()
+        android.app.DatePickerDialog(
+            this,
+            { _, year, month, day ->
+                cal.set(java.util.Calendar.YEAR, year)
+                cal.set(java.util.Calendar.MONTH, month)
+                cal.set(java.util.Calendar.DAY_OF_MONTH, day)
+                val nowCal = java.util.Calendar.getInstance()
+                android.app.TimePickerDialog(
+                    this,
+                    { _, hour, minute ->
+                        cal.set(java.util.Calendar.HOUR_OF_DAY, hour)
+                        cal.set(java.util.Calendar.MINUTE, minute)
+                        cal.set(java.util.Calendar.SECOND, 0)
+                        val sendAt = cal.timeInMillis
+                        if (sendAt <= System.currentTimeMillis()) {
+                            android.widget.Toast.makeText(this, "Pick a time in the future", android.widget.Toast.LENGTH_SHORT).show()
+                            return@TimePickerDialog
+                        }
+                        viewModel.scheduleMessage(text, sendAt) { ok, err ->
+                            runOnUiThread {
+                                if (ok) {
+                                    binding.etMessageInput.setText("")
+                                    val label = java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.getDefault()).format(java.util.Date(sendAt))
+                                    android.widget.Toast.makeText(this, "Message scheduled for $label", android.widget.Toast.LENGTH_LONG).show()
+                                } else {
+                                    android.widget.Toast.makeText(this, err.ifBlank { "Could not schedule message" }, android.widget.Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }
+                    },
+                    nowCal.get(java.util.Calendar.HOUR_OF_DAY),
+                    nowCal.get(java.util.Calendar.MINUTE),
+                    false
+                ).show()
+            },
+            cal.get(java.util.Calendar.YEAR),
+            cal.get(java.util.Calendar.MONTH),
+            cal.get(java.util.Calendar.DAY_OF_MONTH)
+        ).apply { datePicker.minDate = System.currentTimeMillis() }.show()
+    }
 
     private fun updatePinnedMessageHeader(pinnedList: List<Message>) {
         if (pinnedList.isEmpty()) {

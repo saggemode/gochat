@@ -96,6 +96,14 @@ interface ChatDao {
     @Query("SELECT * FROM messages WHERE status = 'SENDING' ORDER BY createdAt ASC")
     suspend fun getPendingMessages(): List<Message>
 
+    /** Outgoing messages that gave up (for auto-retry when the network returns). */
+    @Query("SELECT * FROM messages WHERE status = 'FAILED' AND isMe = 1 ORDER BY createdAt ASC")
+    suspend fun getFailedOutgoingMessages(): List<Message>
+
+    /** Re-queue ALL failed outgoing messages for another send attempt. Returns the count. */
+    @Query("UPDATE messages SET status = 'SENDING' WHERE status = 'FAILED' AND isMe = 1")
+    suspend fun requeueAllFailedMessages(): Int
+
     @Query("""
         UPDATE messages SET status = :status
         WHERE id = :messageId

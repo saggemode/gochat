@@ -191,6 +191,13 @@ interface GoChatApiService {
         @Body body: JsonObject
     ): Response<JsonObject>
 
+    // Schedule a message for future delivery (body: content, type, send_at unix seconds)
+    @POST("api/v1/chat/conversations/{id}/messages/schedule")
+    suspend fun scheduleMessage(
+        @Path("id") conversationId: String,
+        @Body body: JsonObject
+    ): Response<JsonObject>
+
     @POST("api/v1/chat/messages/{id}/pin")
     suspend fun pinMessage(
         @Path("id") messageId: String,

@@ -112,6 +112,19 @@ class ChatRoomViewModel @Inject constructor(
 
     val isDeviceOnline: Flow<Boolean> = networkMonitor.isOnline
 
+    /** Schedule [content] for future delivery at [sendAtMillis]; result via [onDone]. */
+    fun scheduleMessage(content: String, sendAtMillis: Long, onDone: (Boolean, String) -> Unit) {
+        val trimmed = content.trim()
+        val convId = _conversationId.value
+        if (trimmed.isEmpty() || convId.isEmpty()) { onDone(false, "Nothing to schedule"); return }
+        if (sendAtMillis <= System.currentTimeMillis()) { onDone(false, "Pick a time in the future"); return }
+        viewModelScope.launch {
+            chatRepository.scheduleTextMessage(convId, trimmed, sendAtMillis)
+                .onSuccess { onDone(true, "") }
+                .onFailure { onDone(false, it.message ?: "Could not schedule message") }
+        }
+    }
+
     private val _conversationId = MutableStateFlow("")
     val conversationId: StateFlow<String> = _conversationId.asStateFlow()
 

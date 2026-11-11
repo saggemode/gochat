@@ -750,6 +750,26 @@ class ChatRepository @Inject constructor(
         if (requeued > 0) enqueueSyncWorker(messageId)
     }
 
+    /**
+     * Outbox auto-flush: re-queue every FAILED outgoing message and kick the sync
+     * worker so the whole outbox (re-queued + anything already SENDING) is resent.
+     * Safe to call repeatedly — call it when the network reconnects and at app start,
+     * so messages composed offline send themselves once connectivity returns instead
+     * of needing a manual tap. No-op when there's nothing to send.
+     */
+    suspend fun flushOutbox() {
+        try {
+            val requeued = dao.requeueAllFailedMessages()
+            val pending = dao.getPendingMessages().size
+            if (requeued > 0 || pending > 0) {
+                enqueueSyncWorker("outbox_flush")
+                Log.d("ChatRepository", "flushOutbox: re-queued $requeued failed, $pending pending")
+            }
+        } catch (e: Exception) {
+            Log.w("ChatRepository", "flushOutbox failed: ${e.message}")
+        }
+    }
+
     private fun enqueueSyncWorker(messageId: String) {
         try {
             val syncRequest = OneTimeWorkRequestBuilder<MessageSyncWorker>()
@@ -1840,6 +1860,31 @@ class ChatRepository @Inject constructor(
     fun getPinnedMessages(conversationId: String): Flow<List<Message>> {
         return dao.getPinnedMessagesForConversation(conversationId)
     }
+
+    /**
+     * Schedule a text message for future delivery. The server's scheduler delivers it
+     * at [sendAtMillis]; nothing is stored locally until the backend sends it back to
+     * us at that time (so it also appears on the recipient's side). [sendAtMillis] must
+     * be in the future.
+     */
+    suspend fun scheduleTextMessage(conversationId: String, content: String, sendAtMillis: Long): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            if (conversationId.isBlank() || content.isBlank()) {
+                return@withContext Result.failure(Exception("Nothing to schedule"))
+            }
+            try {
+                val body = buildJsonObject {
+                    put("content", content)
+                    put("type", 0)
+                    put("send_at", sendAtMillis / 1000L) // backend expects unix seconds
+                }
+                val resp = api.scheduleMessage(conversationId, body)
+                if (resp.isSuccessful) Result.success(Unit)
+                else Result.failure(Exception("Could not schedule message (${resp.code()})"))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
 
     suspend fun clearChat(convId: String, deleteStarred: Boolean): Result<Unit> = withContext(Dispatchers.IO) {
         try {

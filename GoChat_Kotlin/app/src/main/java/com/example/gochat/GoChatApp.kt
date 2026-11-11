@@ -83,6 +83,22 @@ class GoChatApp : Application(), Configuration.Provider, ImageLoaderFactory {
             }
         }
 
+        // 5c. Outbox auto-retry: flush any failed/pending outgoing messages now, and
+        //     again whenever connectivity returns — so messages composed offline send
+        //     themselves on reconnect instead of needing a manual tap.
+        appScope.launch {
+            try { if (tokenManager.isLoggedIn) chatRepository.flushOutbox() } catch (_: Exception) {}
+            try {
+                var wasOnline = true
+                networkMonitor.isOnline.collect { online ->
+                    if (online && !wasOnline && tokenManager.isLoggedIn) {
+                        try { chatRepository.flushOutbox() } catch (_: Exception) {}
+                    }
+                    wasOnline = online
+                }
+            } catch (_: Exception) {}
+        }
+
         // 6. Schedule Disappearing Messages Cleanup
         scheduleCleanupWorker()
 
@@ -172,6 +188,8 @@ class GoChatApp : Application(), Configuration.Provider, ImageLoaderFactory {
     @Inject lateinit var authRepository: AuthRepository
     @Inject lateinit var tokenManager: TokenManager
     @Inject lateinit var encryptionManager: com.example.gochat.core.crypto.EncryptionManager
+    @Inject lateinit var chatRepository: com.example.gochat.data.repository.ChatRepository
+    @Inject lateinit var networkMonitor: com.example.gochat.core.network.NetworkMonitor
 
     @Suppress("DEPRECATION") // FirebaseMessaging.token Task API; still the supported retrieval path
     private fun initFcm() {

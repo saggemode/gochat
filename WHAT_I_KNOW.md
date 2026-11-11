@@ -143,13 +143,14 @@ HTTP ports from `.env`: auth 4001, chat 4002, business 4004, authz 4005, group 4
 
 ## 6. Roadmap status (from `FEATURE_ROADMAP.md`)
 - **Done:** in-chat + global search, media viewer + shared media, voice note speed/scrubbing, biometric chat lock, storage manager, disappearing-message presets, call history tab.
-- **Open:**
-  - In-chat payment request cards (`PAYMENT_REQUEST` exists in the enum, but the card viewholder and gateway `/marketplace/orders/pay` are not built)
-  - Seller catalog in contact profile
-  - Pinned messages UI (the backend pin/unpin endpoints already exist)
-  - Offline outbox queue + auto-retry
-  - Voice note transcription
-  - Group AI catch-up summary (`/chat/conversations/:id/summary`)
+- **Verified built (2026-11-11):** view-once media, chat export (WhatsApp-style transcript + media), typing indicators, per-chat mute/notification settings, story/status reactions, pinned-messages UI, payment-request cards (full escrow flow), offline outbox. **Message scheduling UI ADDED 2026-11-11** (long-press the send button → date/time picker → `scheduleTextMessage` → backend `/chat/conversations/:id/messages/schedule`). Only Tier-3 item still genuinely missing: **voice-note transcription** (needs a speech-to-text engine).
+- **Open (⚠️ this list is largely STALE as of 2026-11-11 — most items are built; verify before quoting):**
+  - ~~In-chat payment request cards~~ **DONE** — full escrow flow in `MessageAdapter` + `ChatRoomActivity` (Pay Now → Mark Shipped → Confirm Receipt → release escrow; `onPayInvoiceClicked`/`onMarkShippedClicked`/`onConfirmReceiptClicked`, `showEscrowCheckoutBottomSheet`).
+  - ~~Pinned messages UI~~ **DONE** — sticky `layoutPinnedMessage` bar in `ChatRoomActivity.updatePinnedMessageHeader()` (cycle through pins, tap-to-jump, long-press list dialog).
+  - ~~Offline outbox queue + auto-retry~~ **DONE (2026-11-11)** — `MessageSyncWorker` (WorkManager, CONNECTED constraint, backoff) already flushed all `SENDING`; added auto-retry of `FAILED` outgoing on network reconnect: `ChatRepository.flushOutbox()` + `ChatDao.requeueAllFailedMessages()`, triggered from `GoChatApp` observing `NetworkMonitor.isOnline` (and once at app start).
+  - Seller catalog in contact profile — (unverified)
+  - Voice note transcription — (unverified)
+  - Group AI catch-up summary (`/chat/conversations/:id/summary`) — (unverified)
 
 ---
 
