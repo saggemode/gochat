@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"gochat/pkg/safego"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -51,6 +53,7 @@ func fetchUpstreamUsdRates() {
 	}
 
 	go func() {
+		defer safego.Recover(nil, "fx-fetch")
 		client := &http.Client{Timeout: 5 * time.Second}
 		resp, err := client.Get("https://api.frankfurter.dev/v2/rates?base=USD")
 		if err != nil {

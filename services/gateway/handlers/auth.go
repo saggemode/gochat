@@ -21,6 +21,7 @@ import (
 
 	authpb "gochat/gen/auth"
 	chatpb "gochat/gen/chat"
+	"gochat/pkg/safego"
 	"gochat/services/gateway/ws"
 )
 
@@ -1436,6 +1437,7 @@ func (h *AuthHandler) ConfirmNumberChange(c *gin.Context) {
 	// of their direct chats. Best effort — never fail the change on notice failure.
 	if resp.Success && h.chatClient != nil {
 		go func(uid string) {
+			defer safego.Recover(h.log, "notify-number-change")
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
 			if _, nerr := h.chatClient.NotifyNumberChange(ctx, &chatpb.NotifyNumberChangeRequest{UserId: uid}); nerr != nil {

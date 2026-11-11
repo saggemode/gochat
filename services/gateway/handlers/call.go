@@ -15,6 +15,7 @@ import (
 
 	callpb "gochat/gen/call"
 	"gochat/pkg/fcm"
+	"gochat/pkg/safego"
 )
 
 type CallHandler struct {
@@ -63,6 +64,7 @@ func (h *CallHandler) StartCall(c *gin.Context) {
 
 	// Dispatch high-priority incoming call notification to receiver
 	go func() {
+		defer safego.Recover(h.log, "call-incoming-push")
 		pushCtx, pCancel := context.WithTimeout(context.Background(), 8*time.Second)
 		defer pCancel()
 
@@ -113,6 +115,7 @@ func (h *CallHandler) RingGroup(c *gin.Context) {
 		title = "Group call"
 	}
 	go func() {
+		defer safego.Recover(h.log, "call-push-10s")
 		pushCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		for _, m := range req.MemberIDs {
@@ -206,6 +209,7 @@ func (h *CallHandler) EndCall(c *gin.Context) {
 		if other != "" && other != userID {
 			cid := resp.Call.Id
 			go func() {
+				defer safego.Recover(h.log, "call-push-8s")
 				pushCtx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 				defer cancel()
 				_ = fcm.SendToUser(pushCtx, other, "Call ended", "", map[string]string{

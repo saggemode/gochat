@@ -39,6 +39,7 @@ import (
 	"gochat/pkg/logger"
 	"gochat/pkg/metrics"
 	"gochat/pkg/notifier"
+	"gochat/pkg/safego"
 	"gochat/services/gateway/handlers"
 	"gochat/services/gateway/middleware"
 	"gochat/services/gateway/ws"
@@ -960,6 +961,9 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 
 	pubsub := redisClient.PSubscribe(ctx, "chat:*", "marketplace:*")
 	go func() {
+		// A panic while handling any pub/sub message must not crash the whole gateway
+		// (which would drop every connected user). Contain it to this worker.
+		defer safego.Recover(log, "push-worker")
 		defer pubsub.Close()
 		log.Info("Push Notification background worker started")
 
@@ -1104,6 +1108,7 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 							// received the message so the chat service can purge
 							// its stored copy once everyone has it. Fire-and-forget.
 							go func(recipient, msgID, convID string) {
+								defer safego.Recover(log, "ack-delivery")
 								ackCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 								defer cancel()
 								if _, err := chatClient.AckDelivery(ackCtx, &chatpb.AckDeliveryRequest{
@@ -1124,6 +1129,7 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 						// when present; otherwise a generic message (text may be E2EE).
 						pushBody := payload["push_body"]
 						go func(recipient, convID, msgID, senderID, preview string) {
+							defer safego.Recover(log, "push-new-message")
 							pushCtx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 							defer cancel()
 							data := map[string]string{

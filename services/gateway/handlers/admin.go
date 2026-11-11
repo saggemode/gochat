@@ -24,6 +24,7 @@ import (
 	businesspb "gochat/gen/business"
 	"gochat/pkg/fcm"
 	"gochat/pkg/notifier"
+	"gochat/pkg/safego"
 )
 
 // generateTempPassword returns a readable, reasonably strong temporary password
@@ -1089,7 +1090,10 @@ func (h *AdminHandler) sendTempPasswordEmail(ctx context.Context, to, name, temp
 	// Bound the wait so a blocked/slow SMTP port never hangs the request; the
 	// super admin still gets the temp password in the response as a fallback.
 	done := make(chan error, 1)
-	go func() { done <- h.notifier.SendEmail(context.Background(), to, subject, text, "") }()
+	go func() {
+		defer safego.Recover(h.log, "admin-email")
+		done <- h.notifier.SendEmail(context.Background(), to, subject, text, "")
+	}()
 	select {
 	case err := <-done:
 		if err != nil {

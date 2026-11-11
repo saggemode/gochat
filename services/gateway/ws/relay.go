@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"github.com/redis/go-redis/v9"
+	"gochat/pkg/safego"
+
 	"go.uber.org/zap"
 )
 
@@ -70,6 +72,7 @@ func (r *Relay) subscribeBroadcast() {
 
 	sub := r.rdb.Subscribe(subCtx, broadcastChannel)
 	go func() {
+		defer safego.Recover(r.log, "ws-relay")
 		defer sub.Close()
 		ch := sub.Channel()
 		for {
@@ -114,6 +117,7 @@ func (r *Relay) SubscribeUser(userID string) {
 	sub := r.rdb.Subscribe(subCtx, channel)
 
 	go func() {
+		defer safego.Recover(r.log, "ws-relay")
 		defer sub.Close()
 		ch := sub.Channel()
 		for {

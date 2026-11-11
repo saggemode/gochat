@@ -14,6 +14,7 @@ import (
 
 	authpb "gochat/gen/auth"
 	chatpb "gochat/gen/chat"
+	"gochat/pkg/safego"
 )
 
 const (
@@ -58,6 +59,7 @@ func (c *Client) readPump() {
 	// Set online in DB and broadcast presence event
 	if c.authClient != nil {
 		go func(uid string) {
+			defer safego.Recover(c.log, "ws-client-presence")
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			_, _ = c.authClient.SetPresence(ctx, &authpb.SetPresenceRequest{UserId: uid, IsOnline: true})
@@ -92,6 +94,7 @@ func (c *Client) readPump() {
 
 		// If user has no remaining open connections, mark offline in DB and broadcast
 		go func(uid string) {
+			defer safego.Recover(c.log, "ws-client-presence-delayed")
 			time.Sleep(150 * time.Millisecond)
 			if !c.hub.IsUserOnline(uid) {
 				now := time.Now().Unix()
@@ -190,6 +193,7 @@ func (c *Client) readPump() {
 					}
 					if msgID != "" {
 						go func(mID string) {
+							defer safego.Recover(c.log, "ws-client-ack")
 							ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 							defer cancel()
 							_, _ = c.chatClient.DeleteMessage(ctx, &chatpb.DeleteMessageRequest{
@@ -211,6 +215,7 @@ func (c *Client) readPump() {
 					content, _ := payload["content"].(string)
 					if msgID != "" && content != "" {
 						go func(mID, cnt string) {
+							defer safego.Recover(c.log, "ws-client-count")
 							ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 							defer cancel()
 							_, _ = c.chatClient.EditMessage(ctx, &chatpb.EditMessageRequest{

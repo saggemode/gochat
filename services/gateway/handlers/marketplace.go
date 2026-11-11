@@ -10,6 +10,7 @@ import (
 
 	pb "gochat/gen/business"
 	"gochat/pkg/fcm"
+	"gochat/pkg/safego"
 
 	"github.com/gin-gonic/gin"
 )
@@ -234,6 +235,7 @@ func (h *BusinessHandler) CreateMarketplaceProduct(c *gin.Context) {
 		}
 
 		go func() {
+			defer safego.Recover(h.log, "marketplace-push")
 			pushCtx, pCancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer pCancel()
 			_ = fcm.NotifyStoreFollowersNewProduct(pushCtx, storeID, storeName, prodID, prodName, primaryImage, prodPrice)
@@ -335,6 +337,7 @@ func (h *BusinessHandler) UpdateMarketplaceProduct(c *gin.Context) {
 		}
 
 		go func() {
+			defer safego.Recover(h.log, "marketplace-push")
 			pushCtx, pCancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer pCancel()
 			_ = fcm.NotifyStoreFollowersProductUpdated(pushCtx, storeID, storeName, prodID, prodName, primaryImage, prodPrice)

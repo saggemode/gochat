@@ -10,6 +10,7 @@ import (
 
 	pb "gochat/gen/business"
 	"gochat/pkg/fcm"
+	"gochat/pkg/safego"
 	"gochat/services/gateway/ws"
 
 	"github.com/gin-gonic/gin"
@@ -110,6 +111,7 @@ func (h *BusinessHandler) UpdateBusinessProfile(c *gin.Context) {
 
 	if resp != nil && resp.Profile != nil {
 		go func() {
+			defer safego.Recover(h.log, "business-push")
 			pushCtx, pCancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer pCancel()
 			name := resp.Profile.BusinessName

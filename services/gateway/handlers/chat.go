@@ -19,6 +19,7 @@ import (
 	businesspb "gochat/gen/business"
 	chatpb "gochat/gen/chat"
 	"gochat/pkg/fcm"
+	"gochat/pkg/safego"
 	"gochat/services/gateway/ws"
 
 	"github.com/redis/go-redis/v9"
@@ -143,6 +144,7 @@ func (h *ChatHandler) CreateConversation(c *gin.Context) {
 	// If it's a group conversation, notify all added members and post a system message
 	if convType == chatpb.ConversationType_GROUP && conv != nil {
 		go func(creatorID string, groupConv *chatpb.Conversation) {
+			defer safego.Recover(h.log, "chat-group-create-notify")
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
 
@@ -461,6 +463,7 @@ func (h *ChatHandler) AddMember(c *gin.Context) {
 
 	// ── Notify the newly added member and group conversation ───────────────
 	go func(adderID, newMemberID, conversationID string, initialMemberUser *authpb.User) {
+		defer safego.Recover(h.log, "chat-add-member-notify")
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
@@ -617,6 +620,7 @@ func (h *ChatHandler) RemoveMember(c *gin.Context) {
 
 	// ── Notify remaining group members and the removed member ───────────────
 	go func(removerID, removedID, conversationID string, prevConv *chatpb.GetConversationResponse) {
+		defer safego.Recover(h.log, "chat-remove-member-notify")
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
@@ -812,6 +816,7 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 	// Trigger automated Business Away / Auto-Reply if recipient is a business
 	if h.businessClient != nil {
 		go func(senderID, convID string) {
+			defer safego.Recover(h.log, "chat-send-bg")
 			bgCtx, bgCancel := context.WithTimeout(context.Background(), 8*time.Second)
 			defer bgCancel()
 
@@ -1766,6 +1771,7 @@ func (h *ChatHandler) fanOutEvent(eventType string, messageID string, convID str
 		return
 	}
 	go func() {
+		defer safego.Recover(h.log, "chat-bg-10s")
 		bgCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
@@ -1962,6 +1968,7 @@ func (h *ChatHandler) fanOutEvent(eventType string, messageID string, convID str
 				if memberID != userID && memberID != "" && memberID != skipUserID {
 					targetID := memberID
 					go func() {
+						defer safego.Recover(h.log, "chat-push")
 						pushCtx, pCancel := context.WithTimeout(context.Background(), 8*time.Second)
 						defer pCancel()
 

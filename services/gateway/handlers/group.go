@@ -16,6 +16,7 @@ import (
 	chatpb "gochat/gen/chat"
 	grouppb "gochat/gen/group"
 	"gochat/pkg/fcm"
+	"gochat/pkg/safego"
 	"gochat/services/gateway/ws"
 )
 
@@ -60,6 +61,7 @@ func (h *GroupHandler) notifyGroupEvent(actorID, convID, systemText, eventType s
 		return
 	}
 	go func() {
+		defer safego.Recover(h.log, "group-bg")
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
@@ -141,6 +143,7 @@ func (h *GroupHandler) notifyGroupEvent(actorID, convID, systemText, eventType s
 			if mID != "" && mID != actorID {
 				targetID := mID
 				go func() {
+					defer safego.Recover(h.log, "group-push")
 					pCtx, pCancel := context.WithTimeout(context.Background(), 8*time.Second)
 					defer pCancel()
 					_ = fcm.SendToUser(pCtx, targetID, pushTitle, pushBody, fcmData)
