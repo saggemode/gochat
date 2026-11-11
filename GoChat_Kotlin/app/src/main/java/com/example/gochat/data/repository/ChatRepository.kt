@@ -14,6 +14,7 @@ import com.example.gochat.data.db.ChatDao
 import com.example.gochat.data.model.*
 import com.example.gochat.core.contacts.ContactSyncManager
 import com.example.gochat.core.crypto.EncryptionManager
+import com.example.gochat.core.crypto.E2EESettings
 import com.example.gochat.core.notification.NotificationHelper
 import com.example.gochat.data.api.ApiConstants
 import androidx.work.*
@@ -1440,6 +1441,7 @@ class ChatRepository @Inject constructor(
 
     /** Ask [peerId] to reset their Signal session with us (throttled: once/min/peer). */
     private suspend fun requestSessionReset(conversationId: String, peerId: String) {
+        if (E2EESettings.DISABLED) return
         if (conversationId.isBlank() || peerId.isBlank()) return
         val now = System.currentTimeMillis()
         val last = try { resetThrottlePrefs.getLong("req_$peerId", 0L) } catch (_: Exception) { 0L }
@@ -1546,6 +1548,7 @@ class ChatRepository @Inject constructor(
     /** A peer couldn't decrypt our messages and asked us to reset; drop our session
      *  with them so our next message re-handshakes. */
     private suspend fun handleSessionReset(fromUserId: String) {
+        if (E2EESettings.DISABLED) return
         encryptionManager.resetSession(fromUserId)
         diag("Peer …${fromUserId.takeLast(6)} asked to re-establish the secure session; will re-handshake on next message.")
     }
@@ -1553,6 +1556,7 @@ class ChatRepository @Inject constructor(
     /** After a received 1:1 message, if it stayed encrypted (decrypt failed) ask the
      *  sender to re-establish. No-op for groups / own / successfully-decrypted msgs. */
     private suspend fun maybeHealSession(message: Message, resolvedContent: String) {
+        if (E2EESettings.DISABLED) return
         if (message.isMe) return
         if (message.type != MessageType.TEXT) return
         if (resolvedContent.isBlank() || !isBase64Ciphertext(resolvedContent.trim())) return
@@ -1631,6 +1635,7 @@ class ChatRepository @Inject constructor(
     /** Decrypt a received group text message with the sender's group cipher.
      *  Returns the message unchanged if we can't decrypt yet (SKDM not arrived). */
     private fun tryDecryptGroupMessage(message: Message): Message {
+        if (E2EESettings.DISABLED) return message
         if (message.type != MessageType.TEXT || message.isMe || message.content.isBlank()) {
             return message
         }
@@ -1667,6 +1672,7 @@ class ChatRepository @Inject constructor(
     }
 
     private fun tryDecryptMessage(message: Message): Message {
+        if (E2EESettings.DISABLED) return message
         if (message.type != MessageType.TEXT || message.isMe || message.content.isBlank()) {
             return message
         }
@@ -1709,6 +1715,7 @@ class ChatRepository @Inject constructor(
      * at that file so the UI renders it normally. No-op for non-E2EE / own / text.
      */
     private suspend fun decryptIncomingMedia(message: Message): Message = withContext(Dispatchers.IO) {
+        if (E2EESettings.DISABLED) return@withContext message
         if (message.isMe || message.type == MessageType.TEXT) return@withContext message
         val url = message.mediaUrl
         if (url.isNullOrBlank() || !url.startsWith("http")) return@withContext message

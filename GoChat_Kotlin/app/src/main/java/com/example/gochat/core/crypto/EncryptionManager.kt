@@ -30,6 +30,7 @@ class EncryptionManager @Inject constructor(
     private val signalStore = SignalStore(context)
 
     suspend fun initializeAndRegisterKeys() {
+        if (E2EESettings.DISABLED) return   // E2EE master-off: don't generate/upload keys
         if (tokenManager.userId == null) return
 
         withContext(Dispatchers.IO) {

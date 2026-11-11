@@ -16,12 +16,24 @@ object E2EESettings {
     private const val KEY_GLOBAL = "e2ee_global_enabled"
     private const val KEY_CONV_PREFIX = "e2ee_conv_"
 
+    /**
+     * MASTER OFF SWITCH. While true, end-to-end encryption is fully disabled:
+     *  - nothing is encrypted on send — messages go out as plaintext,
+     *  - nothing is decrypted on receive — no Signal calls, no "stays encrypted" banners,
+     *  - no sessions/keys are touched, no self-heal reset requests are sent.
+     * The entire E2EE codebase stays in place and dormant; set this back to `false`
+     * to re-enable it. This exists because the untested E2EE stack was producing
+     * unrecoverable decrypt errors.
+     */
+    const val DISABLED = true
+
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    /** Global kill-switch. Default true = feature available (but each chat is still opt-in). */
+    /** Global kill-switch. Returns false while [DISABLED]; otherwise the stored flag. */
     fun isAvailable(context: Context): Boolean =
-        try { prefs(context).getBoolean(KEY_GLOBAL, true) } catch (_: Exception) { true }
+        if (DISABLED) false
+        else try { prefs(context).getBoolean(KEY_GLOBAL, true) } catch (_: Exception) { true }
 
     fun setAvailable(context: Context, enabled: Boolean) {
         try { prefs(context).edit().putBoolean(KEY_GLOBAL, enabled).apply() } catch (_: Exception) {}
