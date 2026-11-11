@@ -80,3 +80,17 @@ minio_data/
 scripts-run-gateway.sh
 gateway-run.log
 bin/
+
+# ── Secrets (never commit) ───────────────────────────────────────────
+# Firebase service-account keys (full admin access to the Firebase project)
+**/firebase-service-account.json
+firebase-service-account*.json
+# Any service-account / credential JSON
+**/*service-account*.json
+*-credentials.json
+# K8s secret manifests (keep only templated/sealed versions in git)
+k8s/secrets.yaml
+# Private keys / certs
+*.pem
+*.key
+*.p12

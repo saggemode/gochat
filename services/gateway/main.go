@@ -885,17 +885,31 @@ func main() {
 	log.Info("API Gateway exited cleanly")
 }
 
-// corsMiddleware injects headers supporting CORS access.
+// corsMiddleware injects CORS headers, enforcing the configured origin allowlist.
+//
+// SECURITY: it only reflects an Origin that is on the CORS_ORIGINS allowlist, and
+// only then sets Allow-Credentials. Reflecting an arbitrary Origin together with
+// Allow-Credentials: true (the previous behavior) let ANY website make authenticated
+// cross-origin requests to the API — a credential-theft / CSRF hole. Set CORS_ORIGINS
+// to "*" to explicitly opt into allow-all (dev only).
 func corsMiddleware(origins string) gin.HandlerFunc {
+	allowed := make(map[string]bool)
+	allowAll := false
+	for _, o := range strings.Split(origins, ",") {
+		o = strings.TrimSpace(o)
+		if o == "*" {
+			allowAll = true
+		} else if o != "" {
+			allowed[o] = true
+		}
+	}
 	return func(c *gin.Context) {
 		reqOrigin := c.Request.Header.Get("Origin")
-		if reqOrigin != "" {
+		if reqOrigin != "" && (allowAll || allowed[reqOrigin]) {
 			c.Writer.Header().Set("Access-Control-Allow-Origin", reqOrigin)
-		} else {
-			c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+			c.Writer.Header().Set("Vary", "Origin")
+			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		}
-
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With, X-Country-Code, Range")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, PATCH, DELETE, HEAD")
 		c.Writer.Header().Set("Access-Control-Expose-Headers", "Content-Length, Authorization, Content-Range, Accept-Ranges")

@@ -308,8 +308,6 @@ func (c *Client) SendMulticast(ctx context.Context, pushTokens []string, title, 
 	return successCount
 }
 
-const defaultAuthDSN = "postgres://neondb_owner:npg_GfPRWH95xneU@ep-dark-forest-a2188hsu-pooler.eu-central-1.aws.neon.tech/auth-gochat-db?sslmode=require"
-
 var (
 	dbPoolInstance *pgxpool.Pool
 	dbPoolOnce     sync.Once
@@ -321,8 +319,11 @@ func getDBPool() *pgxpool.Pool {
 		if dsn == "" {
 			dsn = os.Getenv("POSTGRES_DSN")
 		}
-		if dsn == "" || strings.Contains(dsn, "localhost:5432") {
-			dsn = defaultAuthDSN
+		// No DB configured → push-token lookups no-op gracefully. NEVER fall back to a
+		// hardcoded credential: that leaks the secret into source/history and risks
+		// silently connecting to the wrong (e.g. production) database.
+		if dsn == "" {
+			return
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
