@@ -273,6 +273,6 @@ func (h *AIHandler) handleGrpcError(c *gin.Context, err error, fallbackMsg strin
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "AI service temporarily unavailable"})
 	default:
 		h.log.Error(fallbackMsg, zap.String("grpc_code", st.Code().String()), zap.String("grpc_msg", st.Message()))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": st.Message()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 	}
 }

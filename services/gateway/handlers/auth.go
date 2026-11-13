@@ -1023,7 +1023,12 @@ func (h *AuthHandler) UpdateUser(c *gin.Context) {
 		AvatarUrl:   req.AvatarURL,
 		StatusText:  req.StatusText,
 		Email:       req.Email,
-		Phone:       req.Phone,
+		// Phone is deliberately NOT changeable through the generic profile update: it
+		// has no OTP verification or uniqueness check here, so allowing it would let a
+		// user set an unverified or DUPLICATE number — e.g. a victim's — and impersonate
+		// them in contact discovery. Phone changes must go through the dedicated,
+		// OTP-verified change-number flow (RequestNumberChange / ConfirmNumberChange).
+		Phone: "",
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "update profile failed")
@@ -1100,7 +1105,10 @@ func (h *AuthHandler) handleGrpcError(c *gin.Context, err error, actionMsg strin
 	case codes.PermissionDenied:
 		c.JSON(http.StatusForbidden, gin.H{"error": st.Message()})
 	default:
-		c.JSON(http.StatusInternalServerError, gin.H{"error": st.Message()})
+		// Don't leak internal error detail (gRPC Internal messages embed raw
+		// DB/driver errors via %v). Log it server-side, return a generic message.
+		h.log.Error(actionMsg, zap.String("grpc_code", st.Code().String()), zap.String("grpc_msg", st.Message()))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 	}
 }
 

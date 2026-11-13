@@ -348,6 +348,7 @@ func (h *CallHandler) handleGrpcError(c *gin.Context, err error, actionMsg strin
 	case codes.PermissionDenied:
 		c.JSON(http.StatusForbidden, gin.H{"error": st.Message()})
 	default:
-		c.JSON(http.StatusInternalServerError, gin.H{"error": st.Message()})
+		// Generic message — don't leak internal error detail to the client.
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 	}
 }
