@@ -1776,6 +1776,7 @@ type GetThreadRequest struct {
 	ParentMessageId string                 `protobuf:"bytes,1,opt,name=parent_message_id,json=parentMessageId,proto3" json:"parent_message_id,omitempty"`
 	Cursor          string                 `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
 	Limit           int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	UserId          string                 `protobuf:"bytes,4,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // requester (JWT); must be a member of the thread's conversation
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1829,6 +1830,13 @@ func (x *GetThreadRequest) GetLimit() int32 {
 		return x.Limit
 	}
 	return 0
+}
+
+func (x *GetThreadRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
 }
 
 type GetThreadResponse struct {
@@ -6098,11 +6106,12 @@ const file_proto_chat_proto_rawDesc = "" +
 	"\bmessages\x18\x01 \x03(\v2\r.chat.MessageR\bmessages\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
 	"nextCursor\x12\x19\n" +
-	"\bhas_more\x18\x03 \x01(\bR\ahasMore\"l\n" +
+	"\bhas_more\x18\x03 \x01(\bR\ahasMore\"\x85\x01\n" +
 	"\x10GetThreadRequest\x12*\n" +
 	"\x11parent_message_id\x18\x01 \x01(\tR\x0fparentMessageId\x12\x16\n" +
 	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x05R\x05limit\"x\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x17\n" +
+	"\auser_id\x18\x04 \x01(\tR\x06userId\"x\n" +
 	"\x11GetThreadResponse\x12'\n" +
 	"\areplies\x18\x01 \x03(\v2\r.chat.MessageR\areplies\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +

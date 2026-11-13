@@ -959,6 +959,10 @@ func (h *ChatHandler) GetMessages(c *gin.Context) {
 
 // GetThread gets replies under a parent message.
 func (h *ChatHandler) GetThread(c *gin.Context) {
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
 	parentID := c.Param("parent_id")
 	cursor := c.Query("cursor")
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
@@ -967,6 +971,7 @@ func (h *ChatHandler) GetThread(c *gin.Context) {
 		ParentMessageId: parentID,
 		Cursor:          cursor,
 		Limit:           int32(limit),
+		UserId:          userID,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to fetch thread")

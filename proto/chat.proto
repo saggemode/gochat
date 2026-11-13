@@ -330,6 +330,7 @@ message GetThreadRequest {
   string parent_message_id = 1;
   string cursor            = 2;
   int32  limit             = 3;
+  string user_id           = 4; // requester (JWT); must be a member of the thread's conversation
 }
 
 message GetThreadResponse {

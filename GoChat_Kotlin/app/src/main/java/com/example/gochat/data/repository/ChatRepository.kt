@@ -2280,7 +2280,12 @@ class ChatRepository @Inject constructor(
             else -> MessageType.TEXT
         }
         return Message(
-            id = "msg_${System.currentTimeMillis()}",
+            // Globally-unique id. A millisecond timestamp ("msg_<now>") collided when
+            // two messages were sent in the same ms: Room's REPLACE then overwrote the
+            // first with the second, so one message vanished locally — and under a
+            // network delay the retry worker (which reads pending rows by id) only ever
+            // saw/sent the surviving one. A random UUID makes every optimistic id unique.
+            id = "msg_${java.util.UUID.randomUUID()}",
             conversationId = conversationId,
             senderId = tokenManager.userId ?: "u_me",
             senderName = tokenManager.userDisplayName ?: "Me",

@@ -164,8 +164,28 @@ func (s *ChatServer) GetConversation(ctx context.Context, req *chatpb.GetConvers
 }
 
 func (s *ChatServer) AddMember(ctx context.Context, req *chatpb.AddMemberRequest) (*chatpb.AddMemberResponse, error) {
-	convID, _ := uuid.Parse(req.ConversationId)
-	newMemberID, _ := uuid.Parse(req.NewMemberId)
+	convID, err := uuid.Parse(req.ConversationId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid conversation_id")
+	}
+	newMemberID, err := uuid.Parse(req.NewMemberId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid new_member_id")
+	}
+	requesterID, err := uuid.Parse(req.RequesterId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid requester_id")
+	}
+	// Authorization (IDOR fix): only an existing member may add participants.
+	// Without this, any user could add themselves to — and then read — any
+	// conversation by supplying its id.
+	isMember, merr := s.convRepo.IsMember(ctx, convID, requesterID)
+	if merr != nil {
+		return nil, status.Error(codes.Internal, "membership check failed")
+	}
+	if !isMember {
+		return nil, status.Error(codes.PermissionDenied, "only a member can add participants")
+	}
 
 	if err := s.convRepo.AddMember(ctx, convID, newMemberID); err != nil {
 		return nil, status.Error(codes.Internal, "failed to add member")
@@ -174,8 +194,27 @@ func (s *ChatServer) AddMember(ctx context.Context, req *chatpb.AddMemberRequest
 }
 
 func (s *ChatServer) RemoveMember(ctx context.Context, req *chatpb.RemoveMemberRequest) (*chatpb.RemoveMemberResponse, error) {
-	convID, _ := uuid.Parse(req.ConversationId)
-	memberID, _ := uuid.Parse(req.MemberId)
+	convID, err := uuid.Parse(req.ConversationId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid conversation_id")
+	}
+	memberID, err := uuid.Parse(req.MemberId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid member_id")
+	}
+	requesterID, err := uuid.Parse(req.RequesterId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid requester_id")
+	}
+	// Authorization (IDOR fix): only an existing member may remove participants
+	// (this also covers a member removing themselves to leave the conversation).
+	isMember, merr := s.convRepo.IsMember(ctx, convID, requesterID)
+	if merr != nil {
+		return nil, status.Error(codes.Internal, "membership check failed")
+	}
+	if !isMember {
+		return nil, status.Error(codes.PermissionDenied, "only a member can remove participants")
+	}
 
 	if err := s.convRepo.RemoveMember(ctx, convID, memberID); err != nil {
 		return nil, status.Error(codes.Internal, "failed to remove member")
@@ -357,6 +396,22 @@ func (s *ChatServer) GetMessages(ctx context.Context, req *chatpb.GetMessagesReq
 		return nil, status.Error(codes.InvalidArgument, "invalid conversation_id")
 	}
 
+	// Authorization (IDOR fix): only members of the conversation may read its
+	// messages. Without this, any authenticated user could fetch any conversation's
+	// messages by supplying its id. req.UserId is the JWT-authenticated requester
+	// (the gateway sets it; never client-controlled).
+	requesterID, rerr := uuid.Parse(req.UserId)
+	if rerr != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+	isMember, merr := s.convRepo.IsMember(ctx, convID, requesterID)
+	if merr != nil {
+		return nil, status.Error(codes.Internal, "membership check failed")
+	}
+	if !isMember {
+		return nil, status.Error(codes.PermissionDenied, "you are not a member of this conversation")
+	}
+
 	var cursor *uuid.UUID
 	if req.Cursor != "" {
 		id, err := uuid.Parse(req.Cursor)
@@ -448,6 +503,24 @@ func (s *ChatServer) GetThread(ctx context.Context, req *chatpb.GetThreadRequest
 	parentID, err := uuid.Parse(req.ParentMessageId)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid parent_message_id")
+	}
+
+	// Authorization (IDOR fix): a thread exposes message content, so the requester
+	// must be a member of the parent message's conversation.
+	requesterID, rerr := uuid.Parse(req.UserId)
+	if rerr != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+	parentMsg, perr := s.msgRepo.GetByID(ctx, parentID)
+	if perr != nil {
+		return nil, status.Error(codes.NotFound, "parent message not found")
+	}
+	isMember, merr := s.convRepo.IsMember(ctx, parentMsg.ConversationID, requesterID)
+	if merr != nil {
+		return nil, status.Error(codes.Internal, "membership check failed")
+	}
+	if !isMember {
+		return nil, status.Error(codes.PermissionDenied, "you are not a member of this conversation")
 	}
 
 	var cursor *uuid.UUID
