@@ -2228,7 +2228,9 @@ class ChatRepository @Inject constructor(
             }
 
             val noticeMsg = Message(
-                id = "notice_${System.currentTimeMillis()}",
+                // Unique id — a millisecond timestamp could collide with another notice
+                // created in the same ms and be overwritten by Room's REPLACE.
+                id = "notice_${java.util.UUID.randomUUID()}",
                 conversationId = convId,
                 senderId = tokenManager.userId ?: "u_me",
                 senderName = tokenManager.userDisplayName ?: "Me",

@@ -6,6 +6,8 @@ import (
 	"io"
 	"time"
 
+	"gochat/pkg/safego"
+
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -80,6 +82,7 @@ func (s *MediaServer) UploadMedia(stream mediapb.MediaService_UploadMediaServer)
 
 	errCh := make(chan error, 1)
 	go func() {
+		defer safego.Recover(s.log, "media-stream")
 		defer pw.Close()
 		for {
 			msg, err := stream.Recv()

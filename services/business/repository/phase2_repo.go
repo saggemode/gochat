@@ -11,6 +11,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
+
+	"gochat/pkg/safego"
 )
 
 type ProductVariant struct {
@@ -707,6 +709,7 @@ func (r *BusinessRepository) CreateOrders(ctx context.Context, input *CreateOrde
 	// Send price change notifications if any prices changed
 	if len(allPriceChanges) > 0 && r.notificationService != nil {
 		go func() {
+			defer safego.Recover(r.logger, "business-repo-bg")
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 			if err := r.notificationService.SendPriceChangeNotification(ctx, input.BuyerID, allPriceChanges); err != nil {

@@ -152,6 +152,23 @@ func (s *ChatServer) GetConversation(ctx context.Context, req *chatpb.GetConvers
 		return nil, status.Error(codes.InvalidArgument, "invalid conversation_id")
 	}
 
+	// Authorization (IDOR fix): a conversation's metadata (name, avatar, member list)
+	// is only for its members. Enforce whenever a requester id is supplied — the
+	// gateway ALWAYS sets it from the JWT, so every user-facing call is gated. Internal
+	// callers all pass a member's id (the viewer/adder/sender/actor), so they pass; a
+	// call with no user_id is left ungated for forward-compat.
+	if req.UserId != "" {
+		if requesterID, perr := uuid.Parse(req.UserId); perr == nil {
+			isMember, merr := s.convRepo.IsMember(ctx, convID, requesterID)
+			if merr != nil {
+				return nil, status.Error(codes.Internal, "membership check failed")
+			}
+			if !isMember {
+				return nil, status.Error(codes.PermissionDenied, "you are not a member of this conversation")
+			}
+		}
+	}
+
 	conv, err := s.convRepo.GetByID(ctx, convID)
 	if errors.Is(err, repository.ErrConversationNotFound) {
 		return nil, status.Error(codes.NotFound, "conversation not found")

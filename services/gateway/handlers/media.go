@@ -45,18 +45,31 @@ func NewMediaHandler(client mediapb.MediaServiceClient, botToken string, log *za
 }
 
 // Upload handles incoming multipart uploads and streams them to the Media gRPC service.
+// maxUploadBytes caps a single media upload to prevent storage/cost abuse and OOM
+// from an unbounded body. 100 MB comfortably covers photos, voice notes and videos.
+const maxUploadBytes = 100 << 20 // 100 MB
+
 func (h *MediaHandler) Upload(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == "" {
 		return
 	}
 
+	// Enforce the size cap while the body is read (a lying Content-Length can't bypass it).
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxUploadBytes)
+
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "file field is required in multipart form"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file field is required (and must be ≤ 100 MB)"})
 		return
 	}
 	defer file.Close()
+
+	// Fast reject on the declared size, too.
+	if header.Size > maxUploadBytes {
+		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "file exceeds the 100 MB upload limit"})
+		return
+	}
 
 	fileName := header.Filename
 	mimeType := header.Header.Get("Content-Type")

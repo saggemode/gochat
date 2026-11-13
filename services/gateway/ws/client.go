@@ -131,10 +131,10 @@ func (c *Client) readPump() {
 		if len(rawMessage) > 0 {
 			var payload map[string]interface{}
 			if err := json.Unmarshal(rawMessage, &payload); err == nil {
-				// Inject sender id if missing
-				if _, ok := payload["sender_id"]; !ok || payload["sender_id"] == "" {
-					payload["sender_id"] = c.userID
-				}
+				// Always bind sender_id to THIS connection's authenticated user.
+				// Never trust a client-supplied sender_id: doing so let a client
+				// impersonate another user by sending a frame with someone else's id.
+				payload["sender_id"] = c.userID
 
 				msgType, _ := payload["type"].(string)
 

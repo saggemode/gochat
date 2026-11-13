@@ -9,6 +9,7 @@ import (
 
 	pb "gochat/gen/business"
 	"gochat/pkg/moderator"
+	"gochat/pkg/safego"
 	"gochat/services/business/repository"
 
 	"go.uber.org/zap"
@@ -38,6 +39,7 @@ func (s *BusinessServer) StartBackgroundJobs(ctx context.Context) {
 		cooldown     = "72 hours"    // minimum gap between reminders to the same user+kind
 	)
 	go func() {
+		defer safego.Recover(s.log, "business-sweep")
 		// Small initial delay so startup isn't competing with the sweep.
 		timer := time.NewTimer(5 * time.Minute)
 		defer timer.Stop()
