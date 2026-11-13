@@ -8,7 +8,7 @@ SET search_path TO auth, core, public;
 
 -- ── Refresh Tokens ──────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS core.refresh_tokens (
-    id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id     UUID        NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
     jti         TEXT        NOT NULL UNIQUE,
     expires_at  TIMESTAMPTZ NOT NULL,

@@ -5,7 +5,7 @@
 SET search_path TO call, core, public;
 
 CREATE TABLE IF NOT EXISTS call.calls (
-    id           UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     caller_id    UUID        NOT NULL REFERENCES core.users(id),
     receiver_id  UUID        NOT NULL REFERENCES core.users(id),
     type         TEXT        NOT NULL DEFAULT 'voice',

@@ -121,8 +121,15 @@ func AutoMigrate(ctx context.Context, pool *pgxpool.Pool, serviceName string, lo
 
 		_, err = pool.Exec(ctx, sqlContent)
 		if err != nil {
-			// Expected for pre-existing tables/triggers
-			log.Debug("Migration execution note", zap.String("file", filepath.Base(file)), zap.Error(err))
+			// Everything uses IF NOT EXISTS / OR REPLACE, so a re-run should NOT error.
+			// An error here is therefore a REAL migration failure (e.g. a missing
+			// function/extension aborting the whole file's batch, which silently leaves
+			// its tables uncreated → "relation does not exist" 500s at runtime). Log it
+			// LOUDLY — it used to be a Debug line, which hid exactly this class of bug.
+			log.Warn("migration file failed to apply",
+				zap.String("service", serviceName),
+				zap.String("file", filepath.Base(file)),
+				zap.Error(err))
 		} else {
 			appliedCount++
 		}

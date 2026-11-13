@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS grp.group_metadata (
 
 -- ── Group Join Approvals ────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS grp.group_join_approvals (
-    id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id UUID        NOT NULL,
     user_id         UUID        NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
     status          TEXT        NOT NULL DEFAULT 'pending',
@@ -32,7 +32,7 @@ CREATE INDEX IF NOT EXISTS idx_group_join_approvals_conversation
 
 -- ── Communities ─────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS grp.communities (
-    id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     name        TEXT        NOT NULL,
     description TEXT        NOT NULL DEFAULT '',
     created_by  UUID        NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS grp.community_groups (
 
 -- ── Broadcast Lists ─────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS grp.broadcast_lists (
-    id         UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     owner_id   UUID        NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
     name       TEXT        NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

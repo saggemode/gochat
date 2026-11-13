@@ -5,7 +5,7 @@
 SET search_path TO channel, core, public;
 
 CREATE TABLE IF NOT EXISTS channel.channels (
-    id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     name        TEXT        NOT NULL,
     description TEXT        NOT NULL DEFAULT '',
     created_by  UUID        NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS channel.channel_subscribers (
 );
 
 CREATE TABLE IF NOT EXISTS channel.channel_messages (
-    id         UUID            PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id         UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
     channel_id UUID            NOT NULL REFERENCES channel.channels(id) ON DELETE CASCADE,
     sender_id  UUID            NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
     content    TEXT            NOT NULL DEFAULT '',

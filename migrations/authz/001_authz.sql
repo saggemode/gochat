@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS authz.user_roles (
 );
 
 CREATE TABLE IF NOT EXISTS authz.abac_policies (
-    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     action      TEXT NOT NULL,
     effect      TEXT NOT NULL CHECK (effect IN ('allow', 'deny')),
     condition   TEXT NOT NULL,

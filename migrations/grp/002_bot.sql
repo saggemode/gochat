@@ -19,7 +19,7 @@ CREATE INDEX IF NOT EXISTS idx_bot_configs_bot ON grp.bot_configs(bot_id);
 
 -- ── Audit Logs ──────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS grp.audit_logs (
-    id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id UUID        NOT NULL,
     actor_id        UUID        NOT NULL,
     action_type     TEXT        NOT NULL,

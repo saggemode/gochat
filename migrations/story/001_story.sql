@@ -7,7 +7,7 @@ SET search_path TO story, core, public;
 
 -- ── Stories ─────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS story.stories (
-    id               UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id          UUID        NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
     media_url        TEXT        NOT NULL DEFAULT '',
     media_type       TEXT        NOT NULL DEFAULT 'text',

@@ -9,7 +9,7 @@ SET search_path TO chat, core, public;
 
 -- ── Conversations ───────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS chat.conversations (
-    id              UUID                PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id              UUID                PRIMARY KEY DEFAULT gen_random_uuid(),
     type            conversation_type   NOT NULL DEFAULT 'direct',
     name            TEXT                NOT NULL DEFAULT '',
     avatar_url      TEXT                NOT NULL DEFAULT '',
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS chat.conversation_members (
 
 -- ── Messages ────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS chat.messages (
-    id               UUID            PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id               UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id  UUID            NOT NULL REFERENCES chat.conversations(id) ON DELETE CASCADE,
     sender_id        UUID            NOT NULL REFERENCES core.users(id),
     content          TEXT            NOT NULL DEFAULT '',
@@ -58,7 +58,7 @@ ALTER TABLE chat.messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 
 -- ── Message Edit History ────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS chat.message_edits (
-    id          UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     message_id  UUID        NOT NULL REFERENCES chat.messages(id) ON DELETE CASCADE,
     content     TEXT        NOT NULL,
     edited_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()

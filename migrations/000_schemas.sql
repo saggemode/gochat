@@ -21,7 +21,7 @@ BEGIN
         WHERE p.proname = 'uuid_generate_v4'
           AND n.nspname = 'public'
     ) THEN
-        CREATE OR REPLACE FUNCTION public.uuid_generate_v4()
+        CREATE OR REPLACE FUNCTION public.gen_random_uuid()
         RETURNS uuid
         LANGUAGE sql
         AS $func$ SELECT gen_random_uuid(); $func$;
@@ -64,7 +64,7 @@ END $$;
 -- ── Core Users Table ────────────────────────────────────────────────────────
 -- Owned by the auth service, but readable by all via search_path.
 CREATE TABLE IF NOT EXISTS core.users (
-    id              UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     email           TEXT        NOT NULL UNIQUE,
     password_hash   TEXT        NOT NULL,
     display_name    TEXT        NOT NULL,

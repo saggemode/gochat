@@ -5,7 +5,7 @@
 SET search_path TO media, core, public;
 
 CREATE TABLE IF NOT EXISTS media.media_files (
-    id           UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     object_key   TEXT        NOT NULL UNIQUE,
     url          TEXT        NOT NULL,
     mime_type    TEXT        NOT NULL,
