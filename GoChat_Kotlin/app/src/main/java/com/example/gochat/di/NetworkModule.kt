@@ -1,6 +1,7 @@
 package com.example.gochat.di
 
 import android.content.Context
+import com.example.gochat.BuildConfig
 import com.example.gochat.data.api.ApiConstants
 import com.example.gochat.data.api.AuthInterceptor
 import com.example.gochat.data.api.GoChatApiService
@@ -64,7 +65,12 @@ object NetworkModule {
     ): OkHttpClient {
         val authInterceptor = AuthInterceptor(tokenManager)
         val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            // SECURITY: debug-only, and never log the token or raw bodies. BODY level
+            // leaked the JWT + binary media into logcat. HEADERS in debug (no binary
+            // dump), NONE in release; Authorization redacted regardless.
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.HEADERS else HttpLoggingInterceptor.Level.NONE
+            redactHeader("Authorization")
+            redactHeader("Cookie")
         }
 
         return OkHttpClient.Builder()
@@ -106,7 +112,8 @@ object NetworkModule {
                 json(json)
             }
             install(Logging) {
-                level = LogLevel.BODY
+                // Never log bodies/headers (tokens, binary payloads) in production.
+                level = if (BuildConfig.DEBUG) LogLevel.HEADERS else LogLevel.NONE
             }
             defaultRequest {
                 val token = tokenManager.getToken()

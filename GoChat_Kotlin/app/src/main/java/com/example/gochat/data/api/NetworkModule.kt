@@ -1,6 +1,7 @@
 package com.example.gochat.data.api
 
 import android.content.Context
+import com.example.gochat.BuildConfig
 import com.example.gochat.data.websocket.GoChatWebSocket
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
@@ -114,7 +115,8 @@ object NetworkModule {
                 json(json)
             }
             install(Logging) {
-                level = LogLevel.BODY
+                // Never log bodies/headers (tokens, binary payloads) in production.
+                level = if (BuildConfig.DEBUG) LogLevel.HEADERS else LogLevel.NONE
             }
             // Manual injection for non-DI entry points
             defaultRequest {
@@ -131,7 +133,14 @@ object NetworkModule {
         val authInterceptor = AuthInterceptor(tokenManager)
 
         val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            // SECURITY: never log full bodies or the auth token in production. BODY level
+            // dumped the JWT (Authorization header) and raw binary media into logcat,
+            // readable via bug reports / other tooling / on rooted devices. Debug builds
+            // get HEADERS (no binary dump); release gets nothing. The token is redacted
+            // even in debug.
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.HEADERS else HttpLoggingInterceptor.Level.NONE
+            redactHeader("Authorization")
+            redactHeader("Cookie")
         }
 
         return OkHttpClient.Builder()
