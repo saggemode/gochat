@@ -49,6 +49,38 @@
         android:paddingTop="12dp"
         android:paddingBottom="24dp">
 
+        <!-- Status options: privacy (audience), mentions, music -->
+        <LinearLayout
+            android:id="@+id/layoutMediaStatusOptions"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/bg_view_count_pill"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="8dp">
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:contentDescription="Status options"
+                android:src="@drawable/ic_lock"
+                app:tint="@color/gochat_emerald_light" />
+
+            <TextView
+                android:id="@+id/tvMediaStatusOptionsText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="My contacts"
+                android:textColor="@color/white"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
         <!-- Reshare Permission Toggle Pill -->
         <LinearLayout
             android:id="@+id/layoutMediaReshareToggle"

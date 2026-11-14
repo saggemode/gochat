@@ -33,6 +33,15 @@ message Story {
   string original_author_id = 16;
   string original_author_name = 17;
   int32 viewer_count = 18;
+  // A — audience / privacy: "contacts" | "except" | "only"
+  string audience_type = 19;
+  // B — mentions (user ids mentioned in this status)
+  repeated string mentioned_user_ids = 20;
+  // C — music attached to the status
+  string music_url = 21;
+  string music_title = 22;
+  string music_artist = 23;
+  int32 music_start_ms = 24;
 }
 
 message PostStoryRequest {
@@ -43,6 +52,16 @@ message PostStoryRequest {
   string background_color = 5;
   string font_style = 6;
   bool allow_reshare = 7;
+  // A — audience / privacy
+  string audience_type = 8;            // "contacts" | "except" | "only"
+  repeated string audience_contact_ids = 9; // the except/only list
+  // B — mentions
+  repeated string mentioned_user_ids = 10;
+  // C — music
+  string music_url = 11;
+  string music_title = 12;
+  string music_artist = 13;
+  int32 music_start_ms = 14;
 }
 
 message ReshareStoryRequest {

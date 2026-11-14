@@ -691,6 +691,35 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     }
 
+    /** Places a 1:1 call (voice/video) to [targetId], then opens the call screen. */
+    private fun placeCall(targetId: String, type: String) {
+        if (targetId.isBlank()) {
+            Toast.makeText(this, "Cannot place call: recipient user not found", Toast.LENGTH_SHORT).show()
+            return
+        }
+        lifecycleScope.launch {
+            val result = callRepository.startCall(targetId, type)
+            if (result.isFailure) {
+                Toast.makeText(
+                    this@ChatRoomActivity,
+                    result.exceptionOrNull()?.message ?: "Unable to place call",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return@launch
+            }
+            val serverCallId = result.getOrNull()?.id
+            val effectiveCallId = if (!serverCallId.isNullOrBlank()) serverCallId else "call_${System.currentTimeMillis()}"
+            startActivity(Intent(this@ChatRoomActivity, CallActivity::class.java).apply {
+                putExtra(CallActivity.EXTRA_CALL_ID, effectiveCallId)
+                putExtra(CallActivity.EXTRA_TARGET_USER_ID, targetId)
+                putExtra(CallActivity.EXTRA_PEER_NAME, title)
+                putExtra(CallActivity.EXTRA_PEER_AVATAR, avatarUrl)
+                putExtra(CallActivity.EXTRA_IS_OUTGOING, true)
+                putExtra(CallActivity.EXTRA_CALL_TYPE, type)
+            })
+        }
+    }
+
     private fun setupMessagesRecyclerView() {
         messageAdapter = MessageAdapter(
             onReplyClicked = { message ->
@@ -717,6 +746,14 @@ class ChatRoomActivity : AppCompatActivity() {
             onRetryClicked = { msg ->
                 viewModel.retryFailedMessage(msg.id)
                 Toast.makeText(this@ChatRoomActivity, "Retrying…", Toast.LENGTH_SHORT).show()
+            }
+            onCallBackClicked = { peerId, type ->
+                placeCall(peerId.ifBlank { currentPartnerId.orEmpty() }, type)
+            }
+            onCallMessageClicked = {
+                binding.etMessageInput.requestFocus()
+                (getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
+                    ?.showSoftInput(binding.etMessageInput, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
             }
             onMediaClick = { message ->
                 message.mediaUrl?.let { url ->

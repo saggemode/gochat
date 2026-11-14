@@ -175,6 +175,7 @@ class StoriesViewModel @Inject constructor(
         text: String,
         backgroundColorHex: String,
         allowReshare: Boolean = true,
+        options: com.example.gochat.data.model.StatusComposerOptions = com.example.gochat.data.model.StatusComposerOptions(),
         onComplete: (Boolean, String?) -> Unit
     ) {
         val currentUserId = tokenManager.userId.orEmpty()
@@ -233,7 +234,8 @@ class StoriesViewModel @Inject constructor(
                     caption = text,
                     mediaType = "text",
                     backgroundColor = backgroundColorHex,
-                    allowReshare = allowReshare
+                    allowReshare = allowReshare,
+                    options = options
                 )
             }
 
@@ -253,6 +255,7 @@ class StoriesViewModel @Inject constructor(
         caption: String,
         mediaType: String = "image",
         allowReshare: Boolean = true,
+        options: com.example.gochat.data.model.StatusComposerOptions = com.example.gochat.data.model.StatusComposerOptions(),
         onComplete: (Boolean, String?) -> Unit
     ) {
         val currentUserId = tokenManager.userId.orEmpty()
@@ -323,7 +326,8 @@ class StoriesViewModel @Inject constructor(
                     mediaUrl = finalMediaUrl,
                     caption = caption,
                     mediaType = mediaType,
-                    allowReshare = allowReshare
+                    allowReshare = allowReshare,
+                    options = options
                 )
             }
 
@@ -335,6 +339,16 @@ class StoriesViewModel @Inject constructor(
             }
         }
     }
+
+    /** Uploads a picked audio file for a status's music track; returns the hosted URL (or null). */
+    suspend fun uploadStatusMusic(bytes: ByteArray, mimeType: String, fileName: String): String? =
+        withContext(Dispatchers.IO) {
+            repository.uploadMedia(
+                bytes = bytes,
+                mimeType = mimeType,
+                fileName = fileName.ifBlank { "status_music_${System.currentTimeMillis()}" }
+            )
+        }
 
     fun reshareStory(story: StoryItem, caption: String = "", onComplete: (Boolean, String?) -> Unit) {
         val currentUserId = tokenManager.userId.orEmpty()

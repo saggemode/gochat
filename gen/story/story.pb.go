@@ -41,8 +41,17 @@ type Story struct {
 	OriginalAuthorId    string                 `protobuf:"bytes,16,opt,name=original_author_id,json=originalAuthorId,proto3" json:"original_author_id,omitempty"`
 	OriginalAuthorName  string                 `protobuf:"bytes,17,opt,name=original_author_name,json=originalAuthorName,proto3" json:"original_author_name,omitempty"`
 	ViewerCount         int32                  `protobuf:"varint,18,opt,name=viewer_count,json=viewerCount,proto3" json:"viewer_count,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// A — audience / privacy: "contacts" | "except" | "only"
+	AudienceType string `protobuf:"bytes,19,opt,name=audience_type,json=audienceType,proto3" json:"audience_type,omitempty"`
+	// B — mentions (user ids mentioned in this status)
+	MentionedUserIds []string `protobuf:"bytes,20,rep,name=mentioned_user_ids,json=mentionedUserIds,proto3" json:"mentioned_user_ids,omitempty"`
+	// C — music attached to the status
+	MusicUrl      string `protobuf:"bytes,21,opt,name=music_url,json=musicUrl,proto3" json:"music_url,omitempty"`
+	MusicTitle    string `protobuf:"bytes,22,opt,name=music_title,json=musicTitle,proto3" json:"music_title,omitempty"`
+	MusicArtist   string `protobuf:"bytes,23,opt,name=music_artist,json=musicArtist,proto3" json:"music_artist,omitempty"`
+	MusicStartMs  int32  `protobuf:"varint,24,opt,name=music_start_ms,json=musicStartMs,proto3" json:"music_start_ms,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Story) Reset() {
@@ -201,6 +210,48 @@ func (x *Story) GetViewerCount() int32 {
 	return 0
 }
 
+func (x *Story) GetAudienceType() string {
+	if x != nil {
+		return x.AudienceType
+	}
+	return ""
+}
+
+func (x *Story) GetMentionedUserIds() []string {
+	if x != nil {
+		return x.MentionedUserIds
+	}
+	return nil
+}
+
+func (x *Story) GetMusicUrl() string {
+	if x != nil {
+		return x.MusicUrl
+	}
+	return ""
+}
+
+func (x *Story) GetMusicTitle() string {
+	if x != nil {
+		return x.MusicTitle
+	}
+	return ""
+}
+
+func (x *Story) GetMusicArtist() string {
+	if x != nil {
+		return x.MusicArtist
+	}
+	return ""
+}
+
+func (x *Story) GetMusicStartMs() int32 {
+	if x != nil {
+		return x.MusicStartMs
+	}
+	return 0
+}
+
 type PostStoryRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	UserId          string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -210,8 +261,18 @@ type PostStoryRequest struct {
 	BackgroundColor string                 `protobuf:"bytes,5,opt,name=background_color,json=backgroundColor,proto3" json:"background_color,omitempty"`
 	FontStyle       string                 `protobuf:"bytes,6,opt,name=font_style,json=fontStyle,proto3" json:"font_style,omitempty"`
 	AllowReshare    bool                   `protobuf:"varint,7,opt,name=allow_reshare,json=allowReshare,proto3" json:"allow_reshare,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// A — audience / privacy
+	AudienceType       string   `protobuf:"bytes,8,opt,name=audience_type,json=audienceType,proto3" json:"audience_type,omitempty"`                     // "contacts" | "except" | "only"
+	AudienceContactIds []string `protobuf:"bytes,9,rep,name=audience_contact_ids,json=audienceContactIds,proto3" json:"audience_contact_ids,omitempty"` // the except/only list
+	// B — mentions
+	MentionedUserIds []string `protobuf:"bytes,10,rep,name=mentioned_user_ids,json=mentionedUserIds,proto3" json:"mentioned_user_ids,omitempty"`
+	// C — music
+	MusicUrl      string `protobuf:"bytes,11,opt,name=music_url,json=musicUrl,proto3" json:"music_url,omitempty"`
+	MusicTitle    string `protobuf:"bytes,12,opt,name=music_title,json=musicTitle,proto3" json:"music_title,omitempty"`
+	MusicArtist   string `protobuf:"bytes,13,opt,name=music_artist,json=musicArtist,proto3" json:"music_artist,omitempty"`
+	MusicStartMs  int32  `protobuf:"varint,14,opt,name=music_start_ms,json=musicStartMs,proto3" json:"music_start_ms,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PostStoryRequest) Reset() {
@@ -291,6 +352,55 @@ func (x *PostStoryRequest) GetAllowReshare() bool {
 		return x.AllowReshare
 	}
 	return false
+}
+
+func (x *PostStoryRequest) GetAudienceType() string {
+	if x != nil {
+		return x.AudienceType
+	}
+	return ""
+}
+
+func (x *PostStoryRequest) GetAudienceContactIds() []string {
+	if x != nil {
+		return x.AudienceContactIds
+	}
+	return nil
+}
+
+func (x *PostStoryRequest) GetMentionedUserIds() []string {
+	if x != nil {
+		return x.MentionedUserIds
+	}
+	return nil
+}
+
+func (x *PostStoryRequest) GetMusicUrl() string {
+	if x != nil {
+		return x.MusicUrl
+	}
+	return ""
+}
+
+func (x *PostStoryRequest) GetMusicTitle() string {
+	if x != nil {
+		return x.MusicTitle
+	}
+	return ""
+}
+
+func (x *PostStoryRequest) GetMusicArtist() string {
+	if x != nil {
+		return x.MusicArtist
+	}
+	return ""
+}
+
+func (x *PostStoryRequest) GetMusicStartMs() int32 {
+	if x != nil {
+		return x.MusicStartMs
+	}
+	return 0
 }
 
 type ReshareStoryRequest struct {
@@ -1025,7 +1135,7 @@ var File_proto_story_proto protoreflect.FileDescriptor
 
 const file_proto_story_proto_rawDesc = "" +
 	"\n" +
-	"\x11proto/story.proto\x12\x05story\"\xf6\x04\n" +
+	"\x11proto/story.proto\x12\x05story\"\xd0\x06\n" +
 	"\x05Story\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12*\n" +
@@ -1050,7 +1160,14 @@ const file_proto_story_proto_rawDesc = "" +
 	"\x16reshared_from_story_id\x18\x0f \x01(\tR\x13resharedFromStoryId\x12,\n" +
 	"\x12original_author_id\x18\x10 \x01(\tR\x10originalAuthorId\x120\n" +
 	"\x14original_author_name\x18\x11 \x01(\tR\x12originalAuthorName\x12!\n" +
-	"\fviewer_count\x18\x12 \x01(\x05R\vviewerCount\"\xf0\x01\n" +
+	"\fviewer_count\x18\x12 \x01(\x05R\vviewerCount\x12#\n" +
+	"\raudience_type\x18\x13 \x01(\tR\faudienceType\x12,\n" +
+	"\x12mentioned_user_ids\x18\x14 \x03(\tR\x10mentionedUserIds\x12\x1b\n" +
+	"\tmusic_url\x18\x15 \x01(\tR\bmusicUrl\x12\x1f\n" +
+	"\vmusic_title\x18\x16 \x01(\tR\n" +
+	"musicTitle\x12!\n" +
+	"\fmusic_artist\x18\x17 \x01(\tR\vmusicArtist\x12$\n" +
+	"\x0emusic_start_ms\x18\x18 \x01(\x05R\fmusicStartMs\"\xfc\x03\n" +
 	"\x10PostStoryRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1b\n" +
 	"\tmedia_url\x18\x02 \x01(\tR\bmediaUrl\x12\x1d\n" +
@@ -1060,7 +1177,16 @@ const file_proto_story_proto_rawDesc = "" +
 	"\x10background_color\x18\x05 \x01(\tR\x0fbackgroundColor\x12\x1d\n" +
 	"\n" +
 	"font_style\x18\x06 \x01(\tR\tfontStyle\x12#\n" +
-	"\rallow_reshare\x18\a \x01(\bR\fallowReshare\"c\n" +
+	"\rallow_reshare\x18\a \x01(\bR\fallowReshare\x12#\n" +
+	"\raudience_type\x18\b \x01(\tR\faudienceType\x120\n" +
+	"\x14audience_contact_ids\x18\t \x03(\tR\x12audienceContactIds\x12,\n" +
+	"\x12mentioned_user_ids\x18\n" +
+	" \x03(\tR\x10mentionedUserIds\x12\x1b\n" +
+	"\tmusic_url\x18\v \x01(\tR\bmusicUrl\x12\x1f\n" +
+	"\vmusic_title\x18\f \x01(\tR\n" +
+	"musicTitle\x12!\n" +
+	"\fmusic_artist\x18\r \x01(\tR\vmusicArtist\x12$\n" +
+	"\x0emusic_start_ms\x18\x0e \x01(\x05R\fmusicStartMs\"c\n" +
 	"\x13ReshareStoryRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x19\n" +
 	"\bstory_id\x18\x02 \x01(\tR\astoryId\x12\x18\n" +

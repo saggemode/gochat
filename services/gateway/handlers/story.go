@@ -27,13 +27,20 @@ func (h *StoryHandler) PostStory(c *gin.Context) {
 	}
 
 	var req struct {
-		MediaUrl        string `json:"media_url"`
-		MediaType       string `json:"media_type"`       // "text", "image", "video"
-		Content         string `json:"content"`          // optional caption/text status content
-		Caption         string `json:"caption"`          // alternative key for caption
-		BackgroundColor string `json:"background_color"` // optional background hex code for text status
-		FontStyle       string `json:"font_style"`       // optional font name for text status
-		AllowReshare    *bool  `json:"allow_reshare"`    // optional allow reshare toggle, default true
+		MediaUrl           string   `json:"media_url"`
+		MediaType          string   `json:"media_type"`       // "text", "image", "video", "audio"
+		Content            string   `json:"content"`          // optional caption/text status content
+		Caption            string   `json:"caption"`          // alternative key for caption
+		BackgroundColor    string   `json:"background_color"` // optional background hex code for text status
+		FontStyle          string   `json:"font_style"`       // optional font name for text status
+		AllowReshare       *bool    `json:"allow_reshare"`    // optional allow reshare toggle, default true
+		AudienceType       string   `json:"audience_type"`    // "contacts" | "except" | "only"
+		AudienceContactIds []string `json:"audience_contact_ids"`
+		MentionedUserIds   []string `json:"mentioned_user_ids"`
+		MusicUrl           string   `json:"music_url"`
+		MusicTitle         string   `json:"music_title"`
+		MusicArtist        string   `json:"music_artist"`
+		MusicStartMs       int32    `json:"music_start_ms"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json payload"})
@@ -53,14 +60,26 @@ func (h *StoryHandler) PostStory(c *gin.Context) {
 		allowReshare = *req.AllowReshare
 	}
 
+	audienceType := req.AudienceType
+	if audienceType == "" {
+		audienceType = "contacts"
+	}
+
 	resp, err := h.client.PostStory(c.Request.Context(), &storypb.PostStoryRequest{
-		UserId:          userID,
-		MediaUrl:        req.MediaUrl,
-		MediaType:       req.MediaType,
-		Content:         content,
-		BackgroundColor: req.BackgroundColor,
-		FontStyle:       req.FontStyle,
-		AllowReshare:    allowReshare,
+		UserId:             userID,
+		MediaUrl:           req.MediaUrl,
+		MediaType:          req.MediaType,
+		Content:            content,
+		BackgroundColor:    req.BackgroundColor,
+		FontStyle:          req.FontStyle,
+		AllowReshare:       allowReshare,
+		AudienceType:       audienceType,
+		AudienceContactIds: req.AudienceContactIds,
+		MentionedUserIds:   req.MentionedUserIds,
+		MusicUrl:           req.MusicUrl,
+		MusicTitle:         req.MusicTitle,
+		MusicArtist:        req.MusicArtist,
+		MusicStartMs:       req.MusicStartMs,
 	})
 	if err != nil {
 		h.handleGrpcError(c, err, "failed to post status story")

@@ -249,6 +249,17 @@ class TokenManager private constructor(context: Context) {
         get() = prefs.getBoolean("allow_story_reshare", true)
         set(value) = prefs.edit().putBoolean("allow_story_reshare", value).apply()
 
+    // Remembered status-privacy default (WhatsApp-style): the last audience the user
+    // chose, so the composer pre-selects it instead of resetting to "My contacts".
+    var statusAudienceType: String
+        get() = prefs.getString("status_audience_type", "contacts") ?: "contacts"
+        set(value) = prefs.edit().putString("status_audience_type", value).apply()
+
+    // The except/only contact-id list that goes with statusAudienceType.
+    var statusAudienceIds: List<String>
+        get() = prefs.getString("status_audience_ids", "")?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+        set(value) = prefs.edit().putString("status_audience_ids", value.filter { it.isNotBlank() }.joinToString(",")).apply()
+
     var userCountryCode: String
         get() {
             val phone = userPhone.orEmpty()

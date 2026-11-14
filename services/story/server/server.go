@@ -32,6 +32,17 @@ func New(repo *repository.StoryRepository, redis *redis.Client, log *zap.Logger)
 	}
 }
 
+// parseUUIDs converts a list of id strings to uuid.UUID, skipping any that don't parse.
+func parseUUIDs(ids []string) []uuid.UUID {
+	out := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if u, err := uuid.Parse(id); err == nil {
+			out = append(out, u)
+		}
+	}
+	return out
+}
+
 func (s *StoryServer) PostStory(ctx context.Context, req *storypb.PostStoryRequest) (*storypb.PostStoryResponse, error) {
 	userID, err := uuid.Parse(req.UserId)
 	if err != nil {
@@ -42,14 +53,26 @@ func (s *StoryServer) PostStory(ctx context.Context, req *storypb.PostStoryReque
 		return nil, status.Error(codes.InvalidArgument, mod.Reason)
 	}
 
+	audienceType := req.AudienceType
+	if audienceType == "" {
+		audienceType = "contacts"
+	}
+
 	story := &repository.Story{
-		UserID:          userID,
-		MediaURL:        req.MediaUrl,
-		MediaType:       req.MediaType,
-		Content:         req.Content,
-		BackgroundColor: req.BackgroundColor,
-		FontStyle:       req.FontStyle,
-		AllowReshare:    req.AllowReshare,
+		UserID:             userID,
+		MediaURL:           req.MediaUrl,
+		MediaType:          req.MediaType,
+		Content:            req.Content,
+		BackgroundColor:    req.BackgroundColor,
+		FontStyle:          req.FontStyle,
+		AllowReshare:       req.AllowReshare,
+		AudienceType:       audienceType,
+		AudienceContactIDs: parseUUIDs(req.AudienceContactIds),
+		MentionUserIDs:     parseUUIDs(req.MentionedUserIds),
+		MusicURL:           req.MusicUrl,
+		MusicTitle:         req.MusicTitle,
+		MusicArtist:        req.MusicArtist,
+		MusicStartMs:       req.MusicStartMs,
 	}
 
 	err = s.repo.Create(ctx, story)
@@ -70,6 +93,11 @@ func (s *StoryServer) PostStory(ctx context.Context, req *storypb.PostStoryReque
 		AllowReshare:    story.AllowReshare,
 		IsReshare:       story.IsReshare,
 		ViewerCount:     0,
+		AudienceType:    story.AudienceType,
+		MusicUrl:        story.MusicURL,
+		MusicTitle:      story.MusicTitle,
+		MusicArtist:     story.MusicArtist,
+		MusicStartMs:    story.MusicStartMs,
 	}
 
 	// Fetch hydrated profile details (display name and avatar)
@@ -87,6 +115,12 @@ func (s *StoryServer) PostStory(ctx context.Context, req *storypb.PostStoryReque
 		}
 		pbStory.OriginalAuthorName = created.OriginalAuthorName
 		pbStory.ViewerCount = created.ViewerCount
+		pbStory.AudienceType = created.AudienceType
+		pbStory.MusicUrl = created.MusicURL
+		pbStory.MusicTitle = created.MusicTitle
+		pbStory.MusicArtist = created.MusicArtist
+		pbStory.MusicStartMs = created.MusicStartMs
+		pbStory.MentionedUserIds = created.MentionedUserIDs
 	}
 
 	// Publish real-time event to Redis under "chat:stories" so chat.StreamMessages relays it
@@ -138,9 +172,13 @@ func (s *StoryServer) ReshareStory(ctx context.Context, req *storypb.ReshareStor
 		return nil, status.Errorf(codes.NotFound, "story not found: %v", err)
 	}
 
-	// 2. Validate author allowed resharing
+	// 2. Validate author allowed resharing — unless the resharer was mentioned in the
+	//    status, in which case they may always reshare it (mention-reshare).
 	if !originalStory.AllowReshare {
-		return nil, status.Error(codes.PermissionDenied, "the creator has disabled resharing for this status")
+		mentioned, _ := s.repo.IsMentioned(ctx, storyID, userID)
+		if !mentioned {
+			return nil, status.Error(codes.PermissionDenied, "the creator has disabled resharing for this status")
+		}
 	}
 
 	// 3. Prevent reshares of already expired stories
@@ -303,6 +341,12 @@ func (s *StoryServer) GetStories(ctx context.Context, req *storypb.GetStoriesReq
 				IsReshare:          story.IsReshare,
 				OriginalAuthorName: story.OriginalAuthorName,
 				ViewerCount:        story.ViewerCount,
+				AudienceType:       story.AudienceType,
+				MusicUrl:           story.MusicURL,
+				MusicTitle:         story.MusicTitle,
+				MusicArtist:        story.MusicArtist,
+				MusicStartMs:       story.MusicStartMs,
+				MentionedUserIds:   story.MentionedUserIDs,
 			}
 			if story.ResharedFromStoryID != nil {
 				pbStoryItem.ResharedFromStoryId = story.ResharedFromStoryID.String()

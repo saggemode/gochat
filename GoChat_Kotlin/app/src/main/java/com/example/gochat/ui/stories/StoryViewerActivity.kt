@@ -50,6 +50,9 @@ class StoryViewerActivity : AppCompatActivity() {
     @Inject
     lateinit var chatRepository: ChatRepository
 
+    @Inject
+    lateinit var tokenManager: com.example.gochat.data.api.TokenManager
+
     private var userStories: UserStories? = null
     private val progressBars = mutableListOf<ProgressBar>()
 
@@ -350,7 +353,7 @@ class StoryViewerActivity : AppCompatActivity() {
                 Color.parseColor("#00A884")
             }
             binding.layoutTextStory.setBackgroundColor(color)
-            binding.tvTextStoryContent.text = story.displayCaption.ifBlank { story.mediaUrl }
+            binding.tvTextStoryContent.text = buildStoryLabel(story, story.displayCaption.ifBlank { story.mediaUrl })
         } else {
             binding.layoutTextStory.visibility = View.GONE
             binding.ivMediaStory.visibility = View.VISIBLE
@@ -363,12 +366,20 @@ class StoryViewerActivity : AppCompatActivity() {
                 errorRes = R.drawable.ic_tab_status
             )
 
-            if (story.displayCaption.isNotBlank()) {
+            val mediaLabel = buildStoryLabel(story, story.displayCaption)
+            if (mediaLabel.isNotBlank()) {
                 binding.tvImageStoryCaption.visibility = View.VISIBLE
-                binding.tvImageStoryCaption.text = story.displayCaption
+                binding.tvImageStoryCaption.text = mediaLabel
             } else {
                 binding.tvImageStoryCaption.visibility = View.GONE
             }
+        }
+
+        // C — play attached music on a (non-voice) status while it's shown.
+        if (!isAudioStory && story.hasMusic) {
+            try {
+                AudioPlayerManager.playOrPause(this, "story_music_${story.id}", story.musicUrl)
+            } catch (_: Exception) {}
         }
 
         // Floating product pill for product statuses
@@ -418,7 +429,13 @@ class StoryViewerActivity : AppCompatActivity() {
                 }
             }
         } else {
-            binding.btnReshareStory.visibility = if (story.allowReshare) View.VISIBLE else View.GONE
+            // Mentioned users may always reshare (mention-reshare), even if the author
+            // disabled resharing for everyone else.
+            val iWasMentioned = story.mentionedUserIds.contains(tokenManager.userId.orEmpty())
+            binding.btnReshareStory.visibility = if (story.allowReshare || iWasMentioned) View.VISIBLE else View.GONE
+            if (iWasMentioned) {
+                binding.tvStoryHeaderTime.text = "${story.createdAt.ifBlank { "Recently" }}  ·  mentioned you"
+            }
 
             lifecycleScope.launch(Dispatchers.IO) {
                 storyRepository.viewStory(story.id)
@@ -504,6 +521,15 @@ class StoryViewerActivity : AppCompatActivity() {
                 sheet.show(supportFragmentManager, "StoryViewersBottomSheet")
             }
         }
+    }
+
+    /** Appends music (♪) and mention indicators to a status caption. */
+    private fun buildStoryLabel(story: com.example.gochat.data.model.StoryItem, base: String): String {
+        val parts = mutableListOf<String>()
+        if (base.isNotBlank()) parts.add(base)
+        if (story.hasMusic) parts.add("♪ " + story.musicTitle.ifBlank { "Music" })
+        if (story.mentionedUserIds.isNotEmpty()) parts.add("@ ${story.mentionedUserIds.size} mentioned")
+        return parts.joinToString("\n")
     }
 
     private fun sendStoryReply() {

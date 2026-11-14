@@ -1501,6 +1501,53 @@ class ChatRepository @Inject constructor(
         insertTimerSystemMessage(conversationId, seconds, byMe = true)
     }
 
+    /**
+     * Logs a voice/video call into the 1:1 chat thread with [peerId], WhatsApp-style.
+     * Called from [CallActivity.endCall] on BOTH devices, so each side records the call
+     * in its own thread (caller sees "Outgoing…", receiver sees "Incoming…"/"Missed…").
+     * Encoded as a local-only message (never sent to the server), mirroring the
+     * disappearing-timer notice. The content format is parsed by MessageAdapter's call
+     * bubble: CALL:{dir}:{type}:{status}:{durationSec}:{peerId}.
+     */
+    suspend fun insertCallLogMessage(
+        peerId: String,
+        peerName: String,
+        callType: String,          // "voice" | "video"
+        isOutgoing: Boolean,
+        durationSeconds: Int
+    ) {
+        if (peerId.isBlank()) return
+        try {
+            val conv = getAllConversationsList().firstOrNull {
+                !it.isGroup && it.memberIds.contains(peerId)
+            } ?: createConversation(peerName, listOf(peerId)).getOrNull() ?: return
+
+            val status = when {
+                durationSeconds > 0 -> "answered"
+                isOutgoing -> "noanswer"      // we called, they never picked up
+                else -> "missed"              // they called, we never picked up
+            }
+            val dir = if (isOutgoing) "out" else "in"
+            val type = if (callType == "video") "video" else "voice"
+            val content = "CALL:$dir:$type:$status:$durationSeconds:$peerId"
+
+            dao.insertMessage(
+                Message(
+                    id = java.util.UUID.randomUUID().toString(),
+                    conversationId = conv.id,
+                    senderId = if (isOutgoing) (tokenManager.userId ?: "system") else peerId,
+                    content = content,
+                    type = MessageType.SYSTEM,
+                    status = MessageStatus.SENT,
+                    isMe = isOutgoing,
+                    createdAt = System.currentTimeMillis()
+                )
+            )
+        } catch (e: Exception) {
+            Log.w("ChatRepository", "insert call log failed: ${e.message}")
+        }
+    }
+
     private suspend fun handleDisappearingTimerChange(conversationId: String, seconds: Int) {
         if (conversationId.isBlank()) return
         dao.updateDisappearingMessagesDuration(conversationId, seconds.coerceAtLeast(0))

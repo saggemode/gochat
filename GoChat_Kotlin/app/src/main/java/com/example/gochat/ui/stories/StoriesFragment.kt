@@ -41,6 +41,20 @@ class StoriesFragment : Fragment() {
     @javax.inject.Inject
     lateinit var tokenManager: com.example.gochat.data.api.TokenManager
 
+    @javax.inject.Inject
+    lateinit var chatRepository: com.example.gochat.data.repository.ChatRepository
+
+    // Music picker (SAF) → the callback receives the uploaded URL + title.
+    private var pendingMusicCallback: ((url: String, title: String, artist: String) -> Unit)? = null
+    private val pickMusicLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        val cb = pendingMusicCallback
+        pendingMusicCallback = null
+        if (uri == null || cb == null) return@registerForActivityResult
+        applyPickedMusic(uri, cb)
+    }
+
     private val bgColors = listOf(
         "#00A884", // WhatsApp Emerald
         "#128C7E", // Dark Teal
@@ -254,6 +268,175 @@ class StoriesFragment : Fragment() {
         }
     }
 
+    // ── Status options: privacy (A), mentions (B), music (C) ────────────────────
+
+    /** A fresh composer options seeded with the user's remembered status-privacy default. */
+    private fun defaultComposerOptions() = com.example.gochat.data.model.StatusComposerOptions(
+        audienceType = tokenManager.statusAudienceType,
+        audienceContactIds = tokenManager.statusAudienceIds
+    )
+
+    private fun audienceLabel(o: com.example.gochat.data.model.StatusComposerOptions): String = when (o.audienceType) {
+        "except" -> "My contacts except ${o.audienceContactIds.size}"
+        "only" -> "Only share with ${o.audienceContactIds.size}"
+        else -> "My contacts"
+    }
+
+    /** Pill summary: audience + music/mention indicators. */
+    private fun statusOptionsSummary(o: com.example.gochat.data.model.StatusComposerOptions): String {
+        val sb = StringBuilder(audienceLabel(o))
+        if (o.musicUrl.isNotBlank()) sb.append(" · ♪")
+        if (o.mentionedUserIds.isNotEmpty()) sb.append(" · @${o.mentionedUserIds.size}")
+        return sb.toString()
+    }
+
+    private fun showStatusOptionsMenu(
+        current: com.example.gochat.data.model.StatusComposerOptions,
+        onUpdate: (com.example.gochat.data.model.StatusComposerOptions) -> Unit
+    ) {
+        val items = arrayOf(
+            "Privacy: ${audienceLabel(current)}",
+            if (current.mentionedUserIds.isEmpty()) "Mention contacts" else "Mentions (${current.mentionedUserIds.size})",
+            if (current.musicUrl.isBlank()) "Add music" else "Music: ${current.musicTitle.ifBlank { "Attached" }} (tap to change)"
+        )
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Status options")
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> showAudiencePicker(current, onUpdate)
+                    1 -> showContactMultiSelect("Mention contacts", current.mentionedUserIds) { ids ->
+                        onUpdate(current.copy(mentionedUserIds = ids))
+                    }
+                    2 -> {
+                        if (current.musicUrl.isNotBlank()) {
+                            // Offer to remove or replace
+                            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                                .setMessage("Music: ${current.musicTitle.ifBlank { "Attached" }}")
+                                .setPositiveButton("Replace") { _, _ -> pickMusic { u, t, a -> onUpdate(current.copy(musicUrl = u, musicTitle = t, musicArtist = a)) } }
+                                .setNegativeButton("Remove") { _, _ -> onUpdate(current.copy(musicUrl = "", musicTitle = "", musicArtist = "")) }
+                                .setNeutralButton(getString(R.string.btn_cancel), null)
+                                .show()
+                        } else {
+                            pickMusic { u, t, a -> onUpdate(current.copy(musicUrl = u, musicTitle = t, musicArtist = a)) }
+                        }
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun showAudiencePicker(
+        current: com.example.gochat.data.model.StatusComposerOptions,
+        onUpdate: (com.example.gochat.data.model.StatusComposerOptions) -> Unit
+    ) {
+        val types = arrayOf("My contacts", "My contacts except…", "Only share with…")
+        val checkedIndex = when (current.audienceType) {
+            "except" -> 1
+            "only" -> 2
+            else -> 0
+        }
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Status privacy")
+            .setSingleChoiceItems(types, checkedIndex) { d, which ->
+                d.dismiss()
+                when (which) {
+                    0 -> {
+                        tokenManager.statusAudienceType = "contacts"
+                        tokenManager.statusAudienceIds = emptyList()
+                        onUpdate(current.copy(audienceType = "contacts", audienceContactIds = emptyList()))
+                    }
+                    1 -> showContactMultiSelect("Hide status from", current.audienceContactIds) { ids ->
+                        tokenManager.statusAudienceType = "except"
+                        tokenManager.statusAudienceIds = ids
+                        onUpdate(current.copy(audienceType = "except", audienceContactIds = ids))
+                    }
+                    2 -> showContactMultiSelect("Only share with", current.audienceContactIds) { ids ->
+                        tokenManager.statusAudienceType = "only"
+                        tokenManager.statusAudienceIds = ids
+                        onUpdate(current.copy(audienceType = "only", audienceContactIds = ids))
+                    }
+                }
+            }
+            .setNegativeButton(getString(R.string.btn_cancel), null)
+            .show()
+    }
+
+    /** Multi-select over the user's 1:1 chat partners. Returns the chosen user ids. */
+    private fun showContactMultiSelect(title: String, preselected: List<String>, onDone: (List<String>) -> Unit) {
+        lifecycleScope.launch {
+            val pool = withContext(Dispatchers.IO) { loadContactPool() }
+            if (pool.isEmpty()) {
+                Toast.makeText(requireContext(), "No contacts available to choose from", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            val names = pool.map { it.second }.toTypedArray()
+            val checked = BooleanArray(pool.size) { preselected.contains(pool[it].first) }
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle(title)
+                .setMultiChoiceItems(names, checked) { _, i, isChecked -> checked[i] = isChecked }
+                .setPositiveButton("Done") { _, _ ->
+                    onDone(pool.filterIndexed { i, _ -> checked[i] }.map { it.first })
+                }
+                .setNegativeButton(getString(R.string.btn_cancel), null)
+                .show()
+        }
+    }
+
+    /** The audience/mention pool: distinct 1:1 chat partners (userId → display name). */
+    private suspend fun loadContactPool(): List<Pair<String, String>> {
+        val myId = tokenManager.userId.orEmpty()
+        return try {
+            chatRepository.getAllConversationsList()
+                .filter { !it.isGroup }
+                .mapNotNull { c ->
+                    val pid = c.memberIds.firstOrNull { it != myId && it.isNotBlank() } ?: return@mapNotNull null
+                    pid to c.title.ifBlank { "Contact" }
+                }
+                .distinctBy { it.first }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun pickMusic(onPicked: (url: String, title: String, artist: String) -> Unit) {
+        pendingMusicCallback = onPicked
+        try {
+            pickMusicLauncher.launch(arrayOf("audio/*"))
+        } catch (_: Exception) {
+            pendingMusicCallback = null
+            Toast.makeText(requireContext(), "No audio picker available", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun applyPickedMusic(uri: Uri, cb: (url: String, title: String, artist: String) -> Unit) {
+        lifecycleScope.launch {
+            val ctx = requireContext().applicationContext
+            val displayName = withContext(Dispatchers.IO) {
+                runCatching {
+                    ctx.contentResolver.query(uri, null, null, null, null)?.use { cur ->
+                        val idx = cur.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        if (idx >= 0 && cur.moveToFirst()) cur.getString(idx) else null
+                    }
+                }.getOrNull() ?: "Audio"
+            }
+            val bytes = withContext(Dispatchers.IO) {
+                runCatching { ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
+            }
+            if (bytes == null || bytes.isEmpty()) {
+                Toast.makeText(requireContext(), "Couldn't read that audio", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            Toast.makeText(requireContext(), "Uploading music…", Toast.LENGTH_SHORT).show()
+            val mime = ctx.contentResolver.getType(uri) ?: "audio/mpeg"
+            val url = viewModel.uploadStatusMusic(bytes, mime, displayName)
+            if (url.isNullOrBlank()) {
+                Toast.makeText(requireContext(), "Music upload failed", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            cb(url, displayName.substringBeforeLast('.').take(60), "")
+        }
+    }
+
     private fun showCreateTextStatusDialog() {
         val dialog = Dialog(requireContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -271,6 +454,15 @@ class StoriesFragment : Fragment() {
         dialogBinding.layoutReshareToggle.setOnClickListener {
             allowReshare = !allowReshare
             applyReshareToggleVisual(dialogBinding.ivReshareToggleIcon, dialogBinding.tvReshareToggleText, allowReshare)
+        }
+
+        var statusOptions = defaultComposerOptions()
+        dialogBinding.tvStatusOptionsText.text = statusOptionsSummary(statusOptions)
+        dialogBinding.layoutStatusOptions.setOnClickListener {
+            showStatusOptionsMenu(statusOptions) { updated ->
+                statusOptions = updated
+                dialogBinding.tvStatusOptionsText.text = statusOptionsSummary(statusOptions)
+            }
         }
 
         dialogBinding.btnCloseTextStatus.setOnClickListener {
@@ -293,7 +485,7 @@ class StoriesFragment : Fragment() {
             val chosenColor = bgColors[currentColorIndex]
             dialogBinding.fabPostStatus.isEnabled = false
 
-            viewModel.postTextStatus(text, chosenColor, allowReshare) { success, error ->
+            viewModel.postTextStatus(text, chosenColor, allowReshare, statusOptions) { success, error ->
                 dialog.dismiss()
                 Toast.makeText(
                     requireContext(),
@@ -363,6 +555,15 @@ class StoriesFragment : Fragment() {
             applyReshareToggleVisual(dialogBinding.ivMediaReshareIcon, dialogBinding.tvMediaReshareText, allowReshare)
         }
 
+        var statusOptions = defaultComposerOptions()
+        dialogBinding.tvMediaStatusOptionsText.text = statusOptionsSummary(statusOptions)
+        dialogBinding.layoutMediaStatusOptions.setOnClickListener {
+            showStatusOptionsMenu(statusOptions) { updated ->
+                statusOptions = updated
+                dialogBinding.tvMediaStatusOptionsText.text = statusOptionsSummary(statusOptions)
+            }
+        }
+
         dialogBinding.btnCloseMediaStatus.setOnClickListener {
             dialog.dismiss()
         }
@@ -377,7 +578,8 @@ class StoriesFragment : Fragment() {
                 localDataUri = compressed.dataUri,
                 caption = caption,
                 mediaType = "image",
-                allowReshare = allowReshare
+                allowReshare = allowReshare,
+                options = statusOptions
             ) { success, error ->
                 dialog.dismiss()
                 Toast.makeText(

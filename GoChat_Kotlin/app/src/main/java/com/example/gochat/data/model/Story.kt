@@ -59,8 +59,15 @@ data class StoryItem(
     @SerialName("is_reshare") val isReshare: Boolean = false,
     @SerialName("reshared_from_story_id") val resharedFromStoryId: String? = null,
     @SerialName("original_author_id") val originalAuthorId: String? = null,
-    @SerialName("original_author_name") val originalAuthorName: String? = null
+    @SerialName("original_author_name") val originalAuthorName: String? = null,
+    @SerialName("audience_type") val audienceType: String = "contacts",
+    @SerialName("mentioned_user_ids") val mentionedUserIds: List<String> = emptyList(),
+    @SerialName("music_url") val musicUrl: String = "",
+    @SerialName("music_title") val musicTitle: String = "",
+    @SerialName("music_artist") val musicArtist: String = "",
+    @SerialName("music_start_ms") val musicStartMs: Int = 0
 ) {
+    val hasMusic: Boolean get() = musicUrl.isNotBlank()
     val isProductStory: Boolean get() = caption.contains("🏷️") || caption.contains("#prod_")
     val extractedProductId: String? get() = if (caption.contains("#prod_")) {
         caption.substringAfter("#prod_").substringBefore("\n").substringBefore(" ").trim().takeIf { it.isNotBlank() }
@@ -100,6 +107,14 @@ data class StoryItem(
                 if (elem is JsonObject) StoryViewer.fromJson(elem) else null
             } ?: emptyList()
 
+            val audienceType = (json["audience_type"] ?: json["audienceType"])?.jsonPrimitive?.contentOrNull ?: "contacts"
+            val mentionedUserIds = (json["mentioned_user_ids"] ?: json["mentionedUserIds"])?.jsonArray
+                ?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList()
+            val musicUrl = (json["music_url"] ?: json["musicUrl"])?.jsonPrimitive?.contentOrNull.orEmpty()
+            val musicTitle = (json["music_title"] ?: json["musicTitle"])?.jsonPrimitive?.contentOrNull.orEmpty()
+            val musicArtist = (json["music_artist"] ?: json["musicArtist"])?.jsonPrimitive?.contentOrNull.orEmpty()
+            val musicStartMs = (json["music_start_ms"] ?: json["musicStartMs"])?.jsonPrimitive?.intOrNull ?: 0
+
             return StoryItem(
                 id = id,
                 mediaUrl = mediaUrl,
@@ -113,7 +128,13 @@ data class StoryItem(
                 isReshare = isReshare,
                 resharedFromStoryId = resharedFromStoryId,
                 originalAuthorId = originalAuthorId,
-                originalAuthorName = originalAuthorName
+                originalAuthorName = originalAuthorName,
+                audienceType = audienceType,
+                mentionedUserIds = mentionedUserIds,
+                musicUrl = musicUrl,
+                musicTitle = musicTitle,
+                musicArtist = musicArtist,
+                musicStartMs = musicStartMs
             )
         }
 
@@ -133,6 +154,22 @@ data class StoryItem(
         }
     }
 }
+
+/**
+ * Status composer options for privacy/audience (A), mentions (B) and music (C).
+ * - audienceType: "contacts" (all), "except" (all minus [audienceContactIds]),
+ *   "only" (only [audienceContactIds]).
+ */
+@Serializable
+data class StatusComposerOptions(
+    val audienceType: String = "contacts",
+    val audienceContactIds: List<String> = emptyList(),
+    val mentionedUserIds: List<String> = emptyList(),
+    val musicUrl: String = "",
+    val musicTitle: String = "",
+    val musicArtist: String = "",
+    val musicStartMs: Int = 0
+)
 
 @Serializable
 data class UserStories(

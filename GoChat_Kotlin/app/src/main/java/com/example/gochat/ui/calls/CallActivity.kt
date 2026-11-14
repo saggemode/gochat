@@ -883,6 +883,7 @@ class CallActivity : AppCompatActivity() {
         val wasAccepted = isCallAccepted
         // Not tied to lifecycleScope: the activity finishes right away and the
         // server must still hear about the hang-up.
+        val durationForLog = callDurationSeconds
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 callRepo.updateCallStatus(callId, finalStatus, callDurationSeconds)
@@ -891,6 +892,18 @@ class CallActivity : AppCompatActivity() {
                 } else {
                     callRepo.endCall(effectiveCallId)
                 }
+            } catch (_: Exception) {}
+            // Log the call into the 1:1 chat thread (both sides do this locally), so the
+            // conversation shows "you called". A no-answer/missed call also offers the
+            // peer a call-back / message prompt via the chat bubble.
+            try {
+                chatRepo.insertCallLogMessage(
+                    peerId = targetUserId,
+                    peerName = peerName,
+                    callType = callType,
+                    isOutgoing = isOutgoing,
+                    durationSeconds = durationForLog
+                )
             } catch (_: Exception) {}
         }
 

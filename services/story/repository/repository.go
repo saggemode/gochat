@@ -28,6 +28,18 @@ type Story struct {
 	OriginalAuthorID    *uuid.UUID
 	OriginalAuthorName  string
 	ViewerCount         int32
+
+	// A — audience / privacy
+	AudienceType       string      // "contacts" | "except" | "only"
+	AudienceContactIDs []uuid.UUID // write-only: the except/only list
+	// B — mentions
+	MentionUserIDs   []uuid.UUID // write-only: who to mention
+	MentionedUserIDs []string    // read: who was mentioned (for output)
+	// C — music
+	MusicURL     string
+	MusicTitle   string
+	MusicArtist  string
+	MusicStartMs int32
 }
 
 type StoryViewer struct {
@@ -64,22 +76,46 @@ func (r *StoryRepository) Create(ctx context.Context, s *Story) error {
 		s.ExpiresAt = s.CreatedAt.Add(24 * time.Hour)
 	}
 
+	if s.AudienceType == "" {
+		s.AudienceType = "contacts"
+	}
+
 	_, err := r.db.Exec(ctx, `
 		INSERT INTO stories (
 			id, user_id, media_url, media_type, content, background_color, font_style, expires_at, created_at,
-			allow_reshare, is_reshare, reshared_from_story_id, original_author_id, original_author_name
+			allow_reshare, is_reshare, reshared_from_story_id, original_author_id, original_author_name,
+			audience_type, music_url, music_title, music_artist, music_start_ms
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 	`, s.ID, s.UserID, s.MediaURL, s.MediaType, s.Content, s.BackgroundColor, s.FontStyle, s.ExpiresAt, s.CreatedAt,
-		s.AllowReshare, s.IsReshare, s.ResharedFromStoryID, s.OriginalAuthorID, s.OriginalAuthorName)
+		s.AllowReshare, s.IsReshare, s.ResharedFromStoryID, s.OriginalAuthorID, s.OriginalAuthorName,
+		s.AudienceType, s.MusicURL, s.MusicTitle, s.MusicArtist, s.MusicStartMs)
 	if err != nil {
-		// Fallback for older schema
+		// Fallback for older schema (no audience/music/reshare columns)
 		_, err = r.db.Exec(ctx, `
 			INSERT INTO stories (id, user_id, media_url, media_type, content, background_color, font_style, expires_at, created_at)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		`, s.ID, s.UserID, s.MediaURL, s.MediaType, s.Content, s.BackgroundColor, s.FontStyle, s.ExpiresAt, s.CreatedAt)
+		if err != nil {
+			return err
+		}
 	}
-	return err
+
+	// A — persist the except/only audience list (best-effort; table added in migration 004).
+	for _, cid := range s.AudienceContactIDs {
+		_, _ = r.db.Exec(ctx, `
+			INSERT INTO story_audience (story_id, contact_id) VALUES ($1, $2)
+			ON CONFLICT (story_id, contact_id) DO NOTHING
+		`, s.ID, cid)
+	}
+	// B — persist mentions.
+	for _, mid := range s.MentionUserIDs {
+		_, _ = r.db.Exec(ctx, `
+			INSERT INTO story_mentions (story_id, mentioned_user_id) VALUES ($1, $2)
+			ON CONFLICT (story_id, mentioned_user_id) DO NOTHING
+		`, s.ID, mid)
+	}
+	return nil
 }
 
 func (r *StoryRepository) GetByID(ctx context.Context, id uuid.UUID) (*Story, error) {
@@ -89,7 +125,10 @@ func (r *StoryRepository) GetByID(ctx context.Context, id uuid.UUID) (*Story, er
 		       s.media_url, s.media_type, s.content, s.background_color, s.font_style, s.expires_at, s.created_at,
 		       COALESCE(s.allow_reshare, true), COALESCE(s.is_reshare, false), s.reshared_from_story_id, s.original_author_id,
 		       COALESCE(s.original_author_name, ''),
-		       (SELECT COUNT(*) FROM story_views WHERE story_id = s.id)
+		       (SELECT COUNT(*) FROM story_views WHERE story_id = s.id),
+		       COALESCE(s.audience_type, 'contacts'), COALESCE(s.music_url, ''), COALESCE(s.music_title, ''),
+		       COALESCE(s.music_artist, ''), COALESCE(s.music_start_ms, 0),
+		       COALESCE(ARRAY(SELECT sm.mentioned_user_id::text FROM story_mentions sm WHERE sm.story_id = s.id), '{}')
 		FROM stories s
 		LEFT JOIN core.users u ON s.user_id = u.id
 		WHERE s.id = $1
@@ -99,6 +138,8 @@ func (r *StoryRepository) GetByID(ctx context.Context, id uuid.UUID) (*Story, er
 		&s.ExpiresAt, &s.CreatedAt,
 		&s.AllowReshare, &s.IsReshare, &s.ResharedFromStoryID, &s.OriginalAuthorID,
 		&s.OriginalAuthorName, &s.ViewerCount,
+		&s.AudienceType, &s.MusicURL, &s.MusicTitle, &s.MusicArtist, &s.MusicStartMs,
+		&s.MentionedUserIDs,
 	)
 	if err != nil {
 		err = r.db.QueryRow(ctx, `
@@ -136,21 +177,39 @@ func (r *StoryRepository) GetStoriesFeed(ctx context.Context, requesterID uuid.U
 	// Visibility: a viewer only sees stories from their own account, people they follow,
 	// stores they follow, and people they've had a two-way chat with (both sides have sent a
 	// message). Relies on all services sharing one database (social/business/chat schemas).
+	// Base eligibility (contact / following / store-follow / mutual chat) is combined with
+	// the per-status audience: 'contacts' = all eligible; 'except' = eligible minus the
+	// story_audience list; 'only' = ONLY the story_audience list (bypasses eligibility).
+	// Mentioned users always see the status regardless of audience.
 	const visibility = `
 		AND s.user_id NOT IN (SELECT blocked_id FROM core.user_blocks WHERE blocker_id = $1)
 		AND (
 		    s.user_id = $1
-		    OR s.user_id IN (SELECT contact_user_id FROM core.user_contacts WHERE owner_id = $1)
-		    OR s.user_id IN (SELECT following_id FROM social.user_followers WHERE follower_id = $1)
-		    OR s.user_id IN (SELECT store_id FROM business.store_followers WHERE user_id = $1)
-		    OR s.user_id IN (
-		        SELECT cm2.user_id
-		        FROM chat.conversation_members cm1
-		        JOIN chat.conversation_members cm2
-		          ON cm1.conversation_id = cm2.conversation_id AND cm2.user_id <> $1
-		        WHERE cm1.user_id = $1
-		          AND EXISTS (SELECT 1 FROM chat.messages m WHERE m.conversation_id = cm1.conversation_id AND m.sender_id = $1)
-		          AND EXISTS (SELECT 1 FROM chat.messages m WHERE m.conversation_id = cm1.conversation_id AND m.sender_id = cm2.user_id)
+		    OR EXISTS (SELECT 1 FROM story_mentions sm WHERE sm.story_id = s.id AND sm.mentioned_user_id = $1)
+		    OR (
+		        COALESCE(s.audience_type, 'contacts') = 'only'
+		        AND EXISTS (SELECT 1 FROM story_audience sa WHERE sa.story_id = s.id AND sa.contact_id = $1)
+		    )
+		    OR (
+		        COALESCE(s.audience_type, 'contacts') IN ('contacts', 'except')
+		        AND (
+		            s.user_id IN (SELECT contact_user_id FROM core.user_contacts WHERE owner_id = $1)
+		            OR s.user_id IN (SELECT following_id FROM social.user_followers WHERE follower_id = $1)
+		            OR s.user_id IN (SELECT store_id FROM business.store_followers WHERE user_id = $1)
+		            OR s.user_id IN (
+		                SELECT cm2.user_id
+		                FROM chat.conversation_members cm1
+		                JOIN chat.conversation_members cm2
+		                  ON cm1.conversation_id = cm2.conversation_id AND cm2.user_id <> $1
+		                WHERE cm1.user_id = $1
+		                  AND EXISTS (SELECT 1 FROM chat.messages m WHERE m.conversation_id = cm1.conversation_id AND m.sender_id = $1)
+		                  AND EXISTS (SELECT 1 FROM chat.messages m WHERE m.conversation_id = cm1.conversation_id AND m.sender_id = cm2.user_id)
+		            )
+		        )
+		        AND (
+		            COALESCE(s.audience_type, 'contacts') = 'contacts'
+		            OR NOT EXISTS (SELECT 1 FROM story_audience sa WHERE sa.story_id = s.id AND sa.contact_id = $1)
+		        )
 		    )
 		)
 	`
@@ -160,7 +219,10 @@ func (r *StoryRepository) GetStoriesFeed(ctx context.Context, requesterID uuid.U
 		       EXISTS(SELECT 1 FROM story_views WHERE story_id = s.id AND viewer_id = $1) as viewed,
 		       COALESCE(s.allow_reshare, true), COALESCE(s.is_reshare, false), s.reshared_from_story_id, s.original_author_id,
 		       COALESCE(s.original_author_name, ''),
-		       (SELECT COUNT(*) FROM story_views WHERE story_id = s.id) as viewer_count
+		       (SELECT COUNT(*) FROM story_views WHERE story_id = s.id) as viewer_count,
+		       COALESCE(s.audience_type, 'contacts'), COALESCE(s.music_url, ''), COALESCE(s.music_title, ''),
+		       COALESCE(s.music_artist, ''), COALESCE(s.music_start_ms, 0),
+		       COALESCE(ARRAY(SELECT sm.mentioned_user_id::text FROM story_mentions sm WHERE sm.story_id = s.id), '{}')
 		FROM stories s
 		LEFT JOIN core.users u ON s.user_id = u.id
 		WHERE s.expires_at > NOW()` + visibility + `
@@ -172,7 +234,10 @@ func (r *StoryRepository) GetStoriesFeed(ctx context.Context, requesterID uuid.U
 		       EXISTS(SELECT 1 FROM story_views WHERE story_id = s.id AND viewer_id = $1) as viewed,
 		       COALESCE(s.allow_reshare, true), COALESCE(s.is_reshare, false), s.reshared_from_story_id, s.original_author_id,
 		       COALESCE(s.original_author_name, ''),
-		       (SELECT COUNT(*) FROM story_views WHERE story_id = s.id) as viewer_count
+		       (SELECT COUNT(*) FROM story_views WHERE story_id = s.id) as viewer_count,
+		       COALESCE(s.audience_type, 'contacts'), COALESCE(s.music_url, ''), COALESCE(s.music_title, ''),
+		       COALESCE(s.music_artist, ''), COALESCE(s.music_start_ms, 0),
+		       COALESCE(ARRAY(SELECT sm.mentioned_user_id::text FROM story_mentions sm WHERE sm.story_id = s.id), '{}')
 		FROM stories s
 		WHERE s.expires_at > NOW()` + visibility + `
 		ORDER BY s.created_at DESC
@@ -198,6 +263,8 @@ func (r *StoryRepository) GetStoriesFeed(ctx context.Context, requesterID uuid.U
 			&s.ExpiresAt, &s.CreatedAt, &s.Viewed,
 			&s.AllowReshare, &s.IsReshare, &s.ResharedFromStoryID, &s.OriginalAuthorID,
 			&s.OriginalAuthorName, &s.ViewerCount,
+			&s.AudienceType, &s.MusicURL, &s.MusicTitle, &s.MusicArtist, &s.MusicStartMs,
+			&s.MentionedUserIDs,
 		)
 		if err != nil {
 			return nil, err
@@ -292,6 +359,15 @@ func (r *StoryRepository) ReactToStory(ctx context.Context, storyID, userID uuid
 		ON CONFLICT (story_id, user_id) DO UPDATE SET emoji = EXCLUDED.emoji, created_at = NOW()
 	`, storyID, userID, emoji)
 	return err
+}
+
+// IsMentioned reports whether userID was mentioned in the given story.
+func (r *StoryRepository) IsMentioned(ctx context.Context, storyID, userID uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS(SELECT 1 FROM story_mentions WHERE story_id = $1 AND mentioned_user_id = $2)
+	`, storyID, userID).Scan(&exists)
+	return exists, err
 }
 
 func (r *StoryRepository) DeleteExpiredStories(ctx context.Context) (int64, error) {

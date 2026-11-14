@@ -88,7 +88,8 @@ class StoryRepository @Inject constructor(
         caption: String = "",
         mediaType: String = "image",
         backgroundColor: String? = null,
-        allowReshare: Boolean = true
+        allowReshare: Boolean = true,
+        options: StatusComposerOptions = StatusComposerOptions()
     ): Result<Unit> {
         return try {
             val body = buildJsonObject {
@@ -98,6 +99,22 @@ class StoryRepository @Inject constructor(
                 put("media_type", mediaType)
                 put("allow_reshare", allowReshare)
                 backgroundColor?.let { put("background_color", it) }
+                // A — audience / privacy
+                put("audience_type", options.audienceType)
+                if (options.audienceContactIds.isNotEmpty()) {
+                    put("audience_contact_ids", buildJsonArray { options.audienceContactIds.forEach { add(it) } })
+                }
+                // B — mentions
+                if (options.mentionedUserIds.isNotEmpty()) {
+                    put("mentioned_user_ids", buildJsonArray { options.mentionedUserIds.forEach { add(it) } })
+                }
+                // C — music
+                if (options.musicUrl.isNotBlank()) {
+                    put("music_url", options.musicUrl)
+                    put("music_title", options.musicTitle)
+                    put("music_artist", options.musicArtist)
+                    put("music_start_ms", options.musicStartMs)
+                }
             }
             val response = api.postStory(body)
             if (response.isSuccessful) {

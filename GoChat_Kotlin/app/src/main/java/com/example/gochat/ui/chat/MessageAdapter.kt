@@ -1103,14 +1103,22 @@ class MessageAdapter(
         recyclerView = null
     }
 
+    /** Call bubble actions (missed/no-answer call → call back or message). */
+    var onCallBackClicked: ((peerId: String, callType: String) -> Unit)? = null
+    var onCallMessageClicked: (() -> Unit)? = null
+
     companion object {
         private const val VIEW_TYPE_ME = 1
         private const val VIEW_TYPE_OTHER = 2
         private const val VIEW_TYPE_SYSTEM = 3
+        private const val VIEW_TYPE_CALL = 4
     }
 
     override fun getItemViewType(position: Int): Int {
         val message = getItem(position)
+        if (message?.content?.startsWith("CALL:") == true) {
+            return VIEW_TYPE_CALL
+        }
         if (message?.type == MessageType.SYSTEM ||
             message?.content?.startsWith("📦 Order") == true ||
             message?.content?.startsWith("🛡️") == true ||
@@ -1123,6 +1131,10 @@ class MessageAdapter(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         val inflater = LayoutInflater.from(parent.context)
         return when (viewType) {
+            VIEW_TYPE_CALL -> {
+                val binding = com.example.gochat.databinding.ItemMessageCallBinding.inflate(inflater, parent, false)
+                MessageCallViewHolder(binding)
+            }
             VIEW_TYPE_SYSTEM -> {
                 val binding = ItemMessageSystemBinding.inflate(inflater, parent, false)
                 MessageSystemViewHolder(binding)
@@ -1141,6 +1153,7 @@ class MessageAdapter(
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val message = getItem(position) ?: return
         when (holder) {
+            is MessageCallViewHolder -> holder.bind(message)
             is MessageSystemViewHolder -> holder.bind(message)
             is MessageMeViewHolder -> holder.bind(message)
             is MessageOtherViewHolder -> holder.bind(message)
@@ -1245,6 +1258,62 @@ class MessageAdapter(
                     val intent = Intent(binding.root.context, com.example.gochat.ui.marketplace.OrdersActivity::class.java)
                     binding.root.context.startActivity(intent)
                 }
+            }
+        }
+    }
+
+    inner class MessageCallViewHolder(private val binding: com.example.gochat.databinding.ItemMessageCallBinding) :
+        RecyclerView.ViewHolder(binding.root) {
+
+        fun bind(message: Message) {
+            // content = CALL:{dir}:{type}:{status}:{durationSec}:{peerId}
+            val parts = message.content.removePrefix("CALL:").split(":")
+            val dir = parts.getOrNull(0) ?: "out"
+            val type = parts.getOrNull(1) ?: "voice"
+            val status = parts.getOrNull(2) ?: "answered"
+            val dur = parts.getOrNull(3)?.toIntOrNull() ?: 0
+            val peerId = parts.getOrNull(4).orEmpty()
+
+            val isVideo = type == "video"
+            val isMissed = status == "missed"
+            val noAnswer = status == "noanswer"
+            val emerald = 0xFF00A884.toInt()
+            val red = 0xFFE74C3C.toInt()
+
+            val iconRes = when {
+                isMissed -> R.drawable.ic_call_missed
+                isVideo -> R.drawable.ic_videocam
+                dir == "in" -> R.drawable.ic_call_incoming
+                else -> R.drawable.ic_call_outgoing
+            }
+            binding.ivCallIcon.setImageResource(iconRes)
+            binding.ivCallIcon.imageTintList = ColorStateList.valueOf(if (isMissed) red else emerald)
+
+            val typeLabel = if (isVideo) "video" else "voice"
+            binding.tvCallTitle.text = when {
+                isMissed -> "Missed $typeLabel call"
+                noAnswer -> "No answer"
+                dir == "in" -> "Incoming $typeLabel call"
+                else -> "Outgoing $typeLabel call"
+            }
+            binding.tvCallTitle.setTextColor(if (isMissed) red else 0xFFE0E6ED.toInt())
+
+            val time = formatTime(message.createdAt)
+            binding.tvCallSubtitle.text = if (dur > 0) {
+                String.format(Locale.getDefault(), "%d:%02d · %s", dur / 60, dur % 60, time)
+            } else {
+                time
+            }
+
+            // Only an unanswered call offers the call-back / message prompt.
+            if (isMissed || noAnswer) {
+                binding.layoutCallActions.visibility = android.view.View.VISIBLE
+                binding.btnCallBack.setOnClickListener { onCallBackClicked?.invoke(peerId, type) }
+                binding.btnMessageBack.setOnClickListener { onCallMessageClicked?.invoke() }
+            } else {
+                binding.layoutCallActions.visibility = android.view.View.GONE
+                binding.btnCallBack.setOnClickListener(null)
+                binding.btnMessageBack.setOnClickListener(null)
             }
         }
     }
