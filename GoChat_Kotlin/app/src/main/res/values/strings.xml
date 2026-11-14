@@ -685,6 +685,10 @@
     <string name="gcall_end">End</string>
     <string name="gcall_participants">%1$d in call</string>
     <string name="gcall_mic_required">Microphone permission is required</string>
+    <string name="gcall_share_screen">Share screen</string>
+    <string name="gcall_stop_sharing">Stop sharing</string>
+    <string name="gcall_screen_denied">Screen sharing was not allowed</string>
+    <string name="gcall_screen_unavailable">Screen sharing is unavailable on this device</string>
     <string name="gcall_default_title">Group call</string>
     <string name="action_report_contact">Report %1$s</string>
     <string name="action_report_and_block">Report and block</string>

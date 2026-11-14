@@ -1,6 +1,8 @@
 package com.example.gochat.core.webrtc
 
 import android.content.Context
+import android.content.Intent
+import android.media.projection.MediaProjection
 import org.webrtc.*
 import org.webrtc.audio.JavaAudioDeviceModule
 
@@ -41,6 +43,14 @@ class GroupCallClient(
     private var videoSource: VideoSource? = null
     private var localVideoTrack: VideoTrack? = null
     private var surfaceHelper: SurfaceTextureHelper? = null
+
+    // The publisher's single video sender. Null until the first video track is added
+    // (audio-only calls have none). Reused to swap camera↔screen via setTrack without
+    // renegotiation; adding it the FIRST time (audio→video) needs a re-offer.
+    private var videoSender: RtpSender? = null
+    /** True while the current video track is a screen capture rather than the camera. */
+    var isScreenSharing: Boolean = false
+        private set
 
     /** Called on the signaling thread when a remote participant's video arrives. */
     var onRemoteVideoTrack: ((VideoTrack) -> Unit)? = null
@@ -109,7 +119,7 @@ class GroupCallClient(
 
         if (video) {
             startCamera(context)?.let { track ->
-                pc.addTrack(track, listOf("group_stream"))
+                videoSender = pc.addTrack(track, listOf("group_stream"))
                 onLocalVideo(track)
             }
         }
@@ -125,6 +135,7 @@ class GroupCallClient(
 
     private fun startCamera(context: Context): VideoTrack? {
         return try {
+            stopCurrentVideoCapture() // dispose any prior capture (e.g. a screen share)
             val enumerator = if (Camera2Enumerator.isSupported(context)) Camera2Enumerator(context) else Camera1Enumerator(true)
             val device = enumerator.deviceNames.firstOrNull { enumerator.isFrontFacing(it) }
                 ?: enumerator.deviceNames.firstOrNull() ?: return null
@@ -138,6 +149,104 @@ class GroupCallClient(
             factory.createVideoTrack("group_video", source).also { localVideoTrack = it }
         } catch (e: Exception) {
             null
+        }
+    }
+
+    /** Stop + dispose whatever video capture (camera or screen) is currently running,
+     *  so a new one can be started without leaking the previous capturer/source. */
+    private fun stopCurrentVideoCapture() {
+        try { videoCapturer?.stopCapture() } catch (_: Exception) {}
+        try { videoCapturer?.dispose() } catch (_: Exception) {}
+        try { videoSource?.dispose() } catch (_: Exception) {}
+        try { surfaceHelper?.dispose() } catch (_: Exception) {}
+        videoCapturer = null
+        videoSource = null
+        surfaceHelper = null
+    }
+
+    /** Build a screen-capture video track from the MediaProjection permission result. */
+    private fun startScreenCapture(context: Context, permissionData: Intent): VideoTrack? {
+        return try {
+            stopCurrentVideoCapture()
+            val capturer = ScreenCapturerAndroid(permissionData, object : MediaProjection.Callback() {
+                override fun onStop() {}
+            })
+            videoCapturer = capturer
+            surfaceHelper = SurfaceTextureHelper.create("GroupScreenThread", eglBase.eglBaseContext)
+            val source = factory.createVideoSource(true) // isScreencast = true
+            videoSource = source
+            capturer.initialize(surfaceHelper, context, source.capturerObserver)
+            capturer.startCapture(1280, 720, 15)
+            factory.createVideoTrack("group_video", source).also { localVideoTrack = it }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /** (Re)create the publisher offer after a track change and hand it to [onOffer].
+     *  The SFU replies with sfu-pub-answer, applied via [setPublisherAnswer]. */
+    private fun renegotiatePublisher(onOffer: (String) -> Unit) {
+        val pc = publisherPc ?: return
+        pc.createOffer(object : SimpleSdpObserver() {
+            override fun onCreateSuccess(sdp: SessionDescription?) {
+                sdp ?: return
+                pc.setLocalDescription(SimpleSdpObserver(), sdp)
+                onOffer(sdp.description)
+            }
+        }, MediaConstraints())
+    }
+
+    /**
+     * Switch an audio call to video (or re-enable the camera after a screen share).
+     * Starts the camera and either adds the first video sender (→ renegotiate, via
+     * [onOffer]) or swaps the existing sender's track (no renegotiation). [onLocalVideo]
+     * provides the camera track for the self-preview tile.
+     */
+    fun enableCameraVideo(context: Context, onLocalVideo: (VideoTrack) -> Unit, onOffer: (String) -> Unit) {
+        val pc = publisherPc ?: return
+        val old = localVideoTrack
+        val track = startCamera(context) ?: return
+        isScreenSharing = false
+        onLocalVideo(track)
+        val sender = videoSender
+        if (sender == null) {
+            videoSender = pc.addTrack(track, listOf("group_stream")) // new m-line → renegotiate
+            renegotiatePublisher(onOffer)
+        } else {
+            sender.setTrack(track, true) // reuse existing video m-line; no renegotiation
+            try { old?.dispose() } catch (_: Exception) {}
+        }
+    }
+
+    /** Switch video→audio: stop sending camera/screen video, keep the audio call alive.
+     *  No renegotiation — the video m-line stays, it just carries no track. */
+    fun disableCameraVideo() {
+        stopCurrentVideoCapture()
+        try { videoSender?.setTrack(null, false) } catch (_: Exception) {}
+        try { localVideoTrack?.dispose() } catch (_: Exception) {}
+        localVideoTrack = null
+        isScreenSharing = false
+    }
+
+    /**
+     * Share the screen instead of the camera. [permissionData] is the result Intent from
+     * MediaProjectionManager.createScreenCaptureIntent() (a foreground service of type
+     * mediaProjection must already be running on Android 10+). Adds the first video
+     * sender (→ renegotiate) or swaps the existing one's track.
+     */
+    fun startScreenShare(context: Context, permissionData: Intent, onLocalVideo: (VideoTrack) -> Unit, onOffer: (String) -> Unit) {
+        val pc = publisherPc ?: return
+        val old = localVideoTrack
+        val track = startScreenCapture(context, permissionData) ?: return
+        isScreenSharing = true
+        onLocalVideo(track)
+        val sender = videoSender
+        if (sender == null) {
+            videoSender = pc.addTrack(track, listOf("group_stream"))
+            renegotiatePublisher(onOffer)
+        } else {
+            sender.setTrack(track, true)
+            try { old?.dispose() } catch (_: Exception) {}
         }
     }
 

@@ -13,6 +13,9 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Screen sharing in group calls (foreground service of type mediaProjection). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -188,6 +191,12 @@
             android:exported="false"
             android:launchMode="singleTop"
             android:theme="@style/Theme.GoChat" />
+
+        <!-- Foreground service for screen sharing in group calls (MediaProjection). -->
+        <service
+            android:name=".core.webrtc.ScreenShareService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
 
         <!-- Persists the per-app language chosen via AppCompatDelegate across restarts -->
         <service

@@ -15,6 +15,7 @@ import com.example.gochat.core.ui.applySystemBarInsets
 import androidx.lifecycle.lifecycleScope
 import com.example.gochat.core.webrtc.CallAudioController
 import com.example.gochat.core.webrtc.GroupCallClient
+import com.example.gochat.core.webrtc.ScreenShareService
 import com.example.gochat.data.repository.CallRepository
 import com.example.gochat.data.websocket.GoChatWebSocket
 import dagger.hilt.android.AndroidEntryPoint
@@ -53,17 +54,44 @@ class GroupCallActivity : AppCompatActivity() {
 
     private val callId: String by lazy { intent.getStringExtra(EXTRA_CALL_ID).orEmpty() }
     private val title: String by lazy { intent.getStringExtra(EXTRA_TITLE) ?: getString(R.string.gcall_default_title) }
-    private val isVideo: Boolean by lazy { intent.getBooleanExtra(EXTRA_VIDEO, false) }
+    // Mutable: the call can switch between audio and video mid-session.
+    private var isVideo: Boolean = false
 
     private var isMuted = false
-    private var isVideoOff = false
+    private var isScreenSharing = false
+    private var lastRemoteCount = 1
 
     private lateinit var tvTitle: TextView
     private lateinit var tvParticipants: TextView
     private lateinit var videoGrid: GridLayout
+    private lateinit var btnVideo: Button
+    private lateinit var btnScreen: Button
 
     private var localRenderer: SurfaceViewRenderer? = null
     private val remoteRenderers = mutableListOf<SurfaceViewRenderer>()
+
+    // Screen-capture permission result (MediaProjection). On grant, start the foreground
+    // service (required on Android 10+), then publish the screen as our video track.
+    private val screenCaptureLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val data = result.data
+        if (result.resultCode == android.app.Activity.RESULT_OK && data != null) {
+            ScreenShareService.start(this)
+            client?.startScreenShare(this, data, { t -> runOnUiThread { showLocalTile(t) } }) { sdp ->
+                lifecycleScope.launch { callRepo.sendSignaling(callId, "sfu", "sfu-pub-offer", sdp = sdp) }
+            }
+            isScreenSharing = true
+            isVideo = true
+            runOnUiThread {
+                btnScreen.text = getString(R.string.gcall_stop_sharing)
+                btnVideo.text = getString(R.string.gcall_camera_on)
+            }
+            resubscribe(lastRemoteCount)
+        } else {
+            android.widget.Toast.makeText(this, getString(R.string.gcall_screen_denied), android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
 
     private val permissionLauncher = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
@@ -80,6 +108,7 @@ class GroupCallActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (callId.isBlank()) { finish(); return }
+        isVideo = intent.getBooleanExtra(EXTRA_VIDEO, false)
         audioController = CallAudioController(this)
         val rootUi = buildUi()
         setContentView(rootUi)
@@ -138,17 +167,19 @@ class GroupCallActivity : AppCompatActivity() {
                     text = if (isMuted) getString(R.string.gcall_unmute) else getString(R.string.gcall_mute)
                 }
             })
-            if (isVideo) {
-                controls.addView(Button(this@GroupCallActivity).apply {
-                    text = getString(R.string.gcall_camera)
-                    setOnClickListener {
-                        isVideoOff = !isVideoOff
-                        client?.setVideoEnabled(!isVideoOff)
-                        localRenderer?.visibility = if (isVideoOff) android.view.View.GONE else android.view.View.VISIBLE
-                        text = if (isVideoOff) getString(R.string.gcall_camera_on) else getString(R.string.gcall_camera)
-                    }
-                })
+            // Video toggle: actually switches the call audio↔video (adds/removes the
+            // camera track and renegotiates), so it works even if the call started as audio.
+            btnVideo = Button(this@GroupCallActivity).apply {
+                text = if (isVideo) getString(R.string.gcall_camera) else getString(R.string.gcall_camera_on)
+                setOnClickListener { if (isVideo && !isScreenSharing) switchToAudio() else switchToVideo() }
             }
+            controls.addView(btnVideo)
+            // Screen share toggle.
+            btnScreen = Button(this@GroupCallActivity).apply {
+                text = getString(R.string.gcall_share_screen)
+                setOnClickListener { if (isScreenSharing) stopScreenShare() else requestScreenShare() }
+            }
+            controls.addView(btnScreen)
             controls.addView(Button(this@GroupCallActivity).apply {
                 text = getString(R.string.gcall_speaker)
                 setOnClickListener { audioController.setSpeaker(!audioController.isSpeakerOn) }
@@ -262,10 +293,57 @@ class GroupCallActivity : AppCompatActivity() {
 
     private fun resubscribe(remoteCount: Int) {
         val c = client ?: return
+        lastRemoteCount = remoteCount
         runOnUiThread { clearRemoteTiles() }
         c.createSubscriberOffer(remoteCount, isVideo) { sdp ->
             lifecycleScope.launch { callRepo.sendSignaling(callId, "sfu", "sfu-sub-offer", sdp = sdp) }
         }
+    }
+
+    // ── Switch audio ↔ video + screen share ─────────────────────────────────
+
+    /** Turn the camera on (switches an audio call to video, or returns from screen share). */
+    private fun switchToVideo() {
+        val c = client ?: return
+        c.enableCameraVideo(this, { t -> runOnUiThread { showLocalTile(t) } }) { sdp ->
+            lifecycleScope.launch { callRepo.sendSignaling(callId, "sfu", "sfu-pub-offer", sdp = sdp) }
+        }
+        isVideo = true
+        isScreenSharing = false
+        btnVideo.text = getString(R.string.gcall_camera)
+        btnScreen.text = getString(R.string.gcall_share_screen)
+        resubscribe(lastRemoteCount) // re-subscribe with video so we also receive others' video
+    }
+
+    /** Turn the camera/screen off — stay in the call as audio-only. */
+    private fun switchToAudio() {
+        client?.disableCameraVideo()
+        if (isScreenSharing) ScreenShareService.stop(this)
+        isVideo = false
+        isScreenSharing = false
+        runOnUiThread {
+            localRenderer?.let { try { videoGrid.removeView(it); it.release() } catch (_: Exception) {} }
+            localRenderer = null
+            relayoutGrid()
+        }
+        btnVideo.text = getString(R.string.gcall_camera_on)
+        btnScreen.text = getString(R.string.gcall_share_screen)
+    }
+
+    /** Ask the system for screen-capture permission; the result launcher publishes it. */
+    private fun requestScreenShare() {
+        val mpm = getSystemService(android.content.Context.MEDIA_PROJECTION_SERVICE) as? android.media.projection.MediaProjectionManager
+        if (mpm == null) {
+            android.widget.Toast.makeText(this, getString(R.string.gcall_screen_unavailable), android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+        screenCaptureLauncher.launch(mpm.createScreenCaptureIntent())
+    }
+
+    /** Stop sharing the screen and fall back to the camera. */
+    private fun stopScreenShare() {
+        ScreenShareService.stop(this)
+        switchToVideo() // swap the screen track back to the camera
     }
 
     private fun observeSignaling() {
@@ -311,6 +389,10 @@ class GroupCallActivity : AppCompatActivity() {
         try { client?.close() } catch (_: Exception) {}
         client = null
         try { audioController.stop() } catch (_: Exception) {}
+        if (isScreenSharing) {
+            try { ScreenShareService.stop(this) } catch (_: Exception) {}
+            isScreenSharing = false
+        }
     }
 
     override fun onDestroy() {

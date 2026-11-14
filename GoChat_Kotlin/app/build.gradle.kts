@@ -62,6 +62,9 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        // Generates com.example.gochat.BuildConfig (incl. DEBUG) — AGP 9 defaults this
+        // off. Used to gate HTTP logging to debug builds (NetworkModule).
+        buildConfig = true
     }
 
     lint {
