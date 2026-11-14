@@ -167,11 +167,11 @@ RETURNS TRIGGER AS $$
 BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER conversations_updated_at
+CREATE OR REPLACE TRIGGER conversations_updated_at
     BEFORE UPDATE ON chat.conversations
     FOR EACH ROW EXECUTE FUNCTION chat.update_updated_at();
 
-CREATE TRIGGER messages_updated_at
+CREATE OR REPLACE TRIGGER messages_updated_at
     BEFORE UPDATE ON chat.messages
     FOR EACH ROW EXECUTE FUNCTION chat.update_updated_at();
 
@@ -184,7 +184,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER messages_search_vector
+CREATE OR REPLACE TRIGGER messages_search_vector
     BEFORE INSERT OR UPDATE OF content ON chat.messages
     FOR EACH ROW EXECUTE FUNCTION chat.messages_search_vector_update();
 
@@ -199,7 +199,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER messages_thread_count
+CREATE OR REPLACE TRIGGER messages_thread_count
     AFTER INSERT ON chat.messages
     FOR EACH ROW EXECUTE FUNCTION chat.increment_thread_count();
 
@@ -212,6 +212,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER messages_update_conversation
+CREATE OR REPLACE TRIGGER messages_update_conversation
     AFTER INSERT ON chat.messages
     FOR EACH ROW EXECUTE FUNCTION chat.update_conversation_on_message();

@@ -36,7 +36,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS notification_preferences_updated_at ON business.notification_preferences;
-CREATE TRIGGER notification_preferences_updated_at
+CREATE OR REPLACE TRIGGER notification_preferences_updated_at
     BEFORE UPDATE ON business.notification_preferences
     FOR EACH ROW EXECUTE FUNCTION business.update_notification_preferences_updated_at();
 

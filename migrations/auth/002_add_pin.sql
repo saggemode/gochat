@@ -34,8 +34,15 @@ BEGIN
     END LOOP;
 END $$;
 
--- Add unique constraint on PIN
-ALTER TABLE core.users ADD CONSTRAINT core_users_pin_unique UNIQUE (pin);
+-- Add unique constraint on PIN. Postgres has no "ADD CONSTRAINT IF NOT EXISTS",
+-- so guard it — otherwise a re-run (AutoMigrate runs every file each boot) errors
+-- "constraint already exists" and aborts the rest of this file (incl. the index below).
+DO $$ BEGIN
+    ALTER TABLE core.users ADD CONSTRAINT core_users_pin_unique UNIQUE (pin);
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+    WHEN duplicate_table THEN NULL;
+END $$;
 
 -- Create index for快速 PIN lookups
 CREATE INDEX IF NOT EXISTS idx_core_users_pin ON core.users(pin);

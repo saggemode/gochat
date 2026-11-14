@@ -90,7 +90,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS refunds_updated_at ON business.refunds;
-CREATE TRIGGER refunds_updated_at
+CREATE OR REPLACE TRIGGER refunds_updated_at
     BEFORE UPDATE ON business.refunds
     FOR EACH ROW EXECUTE FUNCTION business.update_refunds_updated_at();
 
@@ -103,7 +103,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS order_modifications_updated_at ON business.order_modifications;
-CREATE TRIGGER order_modifications_updated_at
+CREATE OR REPLACE TRIGGER order_modifications_updated_at
     BEFORE UPDATE ON business.order_modifications
     FOR EACH ROW EXECUTE FUNCTION business.update_order_modifications_updated_at();
 

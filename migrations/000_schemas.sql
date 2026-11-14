@@ -97,6 +97,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER users_updated_at
+CREATE OR REPLACE TRIGGER users_updated_at
     BEFORE UPDATE ON core.users
     FOR EACH ROW EXECUTE FUNCTION core.update_updated_at();
