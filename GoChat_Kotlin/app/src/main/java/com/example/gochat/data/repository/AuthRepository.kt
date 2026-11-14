@@ -542,7 +542,9 @@ class AuthRepository @Inject constructor(
         readReceipts: Boolean? = null,
         online: String? = null,
         lastSeen: String? = null,
-        allowStoryReshare: Boolean? = null
+        allowStoryReshare: Boolean? = null,
+        about: String? = null,
+        groups: String? = null
     ): Result<Unit> {
         return try {
             val body = buildJsonObject {
@@ -552,6 +554,8 @@ class AuthRepository @Inject constructor(
                 online?.let { put("online_privacy", it) }
                 lastSeen?.let { put("last_seen_privacy", it) }
                 allowStoryReshare?.let { put("allow_story_reshare", it) }
+                about?.let { put("about_privacy", it) }
+                groups?.let { put("groups_privacy", it) }
             }
             val response = api.updatePrivacySettings(body)
             if (response.isSuccessful) {

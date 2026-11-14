@@ -256,6 +256,31 @@ func (r *ConversationRepository) IsMember(ctx context.Context, convID, userID uu
 	return exists, err
 }
 
+// CanBeAddedToGroupBy enforces the target's "who can add me to groups" privacy:
+// 'everyone' → always; 'nobody' → never; 'contacts' → only if the target has the
+// adder saved as a contact. Reads from the shared core schema. Fails open on error
+// (so a transient DB issue doesn't block legitimate group adds).
+func (r *ConversationRepository) CanBeAddedToGroupBy(ctx context.Context, targetID, adderID uuid.UUID) (bool, error) {
+	var pref string
+	if err := r.db.QueryRow(ctx, `SELECT COALESCE(groups_privacy, 'everyone') FROM core.users WHERE id = $1`, targetID).Scan(&pref); err != nil {
+		return true, nil // fail open
+	}
+	switch pref {
+	case "nobody":
+		return false, nil
+	case "contacts":
+		var isContact bool
+		if err := r.db.QueryRow(ctx, `
+			SELECT EXISTS(SELECT 1 FROM core.user_contacts WHERE owner_id = $1 AND contact_user_id = $2)
+		`, targetID, adderID).Scan(&isContact); err != nil {
+			return true, nil // fail open
+		}
+		return isContact, nil
+	default:
+		return true, nil
+	}
+}
+
 func (r *ConversationRepository) GetMemberInfo(ctx context.Context, convID, userID uuid.UUID) (role string, isBot bool, err error) {
 	err = r.db.QueryRow(ctx, `
 		SELECT role, is_bot FROM conversation_members

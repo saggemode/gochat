@@ -872,6 +872,8 @@ func (s *AuthServer) UpdatePrivacySettings(ctx context.Context, req *authpb.Upda
 		req.Settings.OnlinePrivacy,
 		req.Settings.LastSeenPrivacy,
 		req.Settings.AllowStoryReshare,
+		req.Settings.AboutPrivacy,
+		req.Settings.GroupsPrivacy,
 	)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update privacy settings: %v", err)
@@ -899,6 +901,8 @@ func (s *AuthServer) GetPrivacySettings(ctx context.Context, req *authpb.GetPriv
 			OnlinePrivacy:       settings.OnlinePrivacy,
 			LastSeenPrivacy:     settings.LastSeenPrivacy,
 			AllowStoryReshare:   settings.AllowStoryReshare,
+			AboutPrivacy:        settings.AboutPrivacy,
+			GroupsPrivacy:       settings.GroupsPrivacy,
 		},
 	}, nil
 }

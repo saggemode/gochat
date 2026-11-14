@@ -260,6 +260,76 @@ class TokenManager private constructor(context: Context) {
         get() = prefs.getString("status_audience_ids", "")?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
         set(value) = prefs.edit().putString("status_audience_ids", value.filter { it.isNotBlank() }.joinToString(",")).apply()
 
+    // ── Notification preferences ────────────────────────────────────────────
+    /** Custom notification-tone URI (null/blank = system default). */
+    var notificationToneUri: String?
+        get() = prefs.getString("notif_tone_uri", null)
+        set(value) = prefs.edit().putString("notif_tone_uri", value ?: "").apply()
+
+    /** Show message content in the notification/lock screen (off = "New message"). */
+    var notificationPreviewEnabled: Boolean
+        get() = prefs.getBoolean("notif_preview_enabled", true)
+        set(value) = prefs.edit().putBoolean("notif_preview_enabled", value).apply()
+
+    /** Show an unread count badge on the app icon / notification. */
+    var notificationBadgeEnabled: Boolean
+        get() = prefs.getBoolean("notif_badge_enabled", true)
+        set(value) = prefs.edit().putBoolean("notif_badge_enabled", value).apply()
+
+    /** Notify on reactions to my messages. */
+    var reactionNotificationsEnabled: Boolean
+        get() = prefs.getBoolean("notif_reactions_enabled", true)
+        set(value) = prefs.edit().putBoolean("notif_reactions_enabled", value).apply()
+
+    /** Quiet hours (DND window): silences non-priority notifications. */
+    var quietHoursEnabled: Boolean
+        get() = prefs.getBoolean("notif_quiet_enabled", false)
+        set(value) = prefs.edit().putBoolean("notif_quiet_enabled", value).apply()
+
+    /** Quiet-hours start/end as minutes-from-midnight (default 22:00 → 07:00). */
+    var quietHoursStartMinutes: Int
+        get() = prefs.getInt("notif_quiet_start", 22 * 60)
+        set(value) = prefs.edit().putInt("notif_quiet_start", value).apply()
+
+    var quietHoursEndMinutes: Int
+        get() = prefs.getInt("notif_quiet_end", 7 * 60)
+        set(value) = prefs.edit().putInt("notif_quiet_end", value).apply()
+
+    /** Conversations flagged "priority" — they break through mute and quiet hours. */
+    var priorityConversationIds: Set<String>
+        get() = prefs.getString("notif_priority_convs", "")?.split(",")?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
+        set(value) = prefs.edit().putString("notif_priority_convs", value.filter { it.isNotBlank() }.joinToString(",")).apply()
+
+    fun isPriorityConversation(conversationId: String): Boolean =
+        conversationId.isNotBlank() && priorityConversationIds.contains(conversationId)
+
+    fun setPriorityConversation(conversationId: String, priority: Boolean) {
+        if (conversationId.isBlank()) return
+        val current = priorityConversationIds.toMutableSet()
+        if (priority) current.add(conversationId) else current.remove(conversationId)
+        priorityConversationIds = current
+    }
+
+    /** Silence calls from people who aren't in your contacts (still logged as missed). */
+    var silenceUnknownCallersEnabled: Boolean
+        get() = prefs.getBoolean("silence_unknown_callers", false)
+        set(value) = prefs.edit().putBoolean("silence_unknown_callers", value).apply()
+
+    /** Be notified when a contact's security code changes (active once E2EE is on). */
+    var securityNotificationsEnabled: Boolean
+        get() = prefs.getBoolean("security_notifications_enabled", true)
+        set(value) = prefs.edit().putBoolean("security_notifications_enabled", value).apply()
+
+    /** True when the current local time falls inside the quiet-hours window. */
+    fun isWithinQuietHours(): Boolean {
+        if (!quietHoursEnabled) return false
+        val cal = java.util.Calendar.getInstance()
+        val now = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE)
+        val start = quietHoursStartMinutes
+        val end = quietHoursEndMinutes
+        return if (start <= end) now in start until end else now >= start || now < end // window wraps midnight
+    }
+
     var userCountryCode: String
         get() {
             val phone = userPhone.orEmpty()

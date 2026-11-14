@@ -59,6 +59,8 @@ class PrivacySettingsActivity : AppCompatActivity() {
                 binding.tvLastSeenValue.text = json["last_seen_privacy"]?.jsonPrimitive?.contentOrNull?.replaceFirstChar { it.uppercase() } ?: everyone
                 binding.tvProfilePhotoValue.text = json["profile_photo_privacy"]?.jsonPrimitive?.contentOrNull?.replaceFirstChar { it.uppercase() } ?: everyone
                 binding.tvStatusValue.text = json["status_privacy"]?.jsonPrimitive?.contentOrNull?.replaceFirstChar { it.uppercase() } ?: everyone
+                binding.tvAboutValue.text = json["about_privacy"]?.jsonPrimitive?.contentOrNull?.replaceFirstChar { it.uppercase() } ?: everyone
+                binding.tvGroupsValue.text = json["groups_privacy"]?.jsonPrimitive?.contentOrNull?.replaceFirstChar { it.uppercase() } ?: everyone
                 binding.switchReadReceipts.isChecked = json["read_receipts_enabled"]?.jsonPrimitive?.booleanOrNull ?: true
                 val allowReshare = json["allow_story_reshare"]?.jsonPrimitive?.booleanOrNull ?: true
                 binding.switchAllowReshare.isChecked = allowReshare
@@ -77,9 +79,14 @@ class PrivacySettingsActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
+        binding.btnPrivacyCheckup.setOnClickListener {
+            startActivity(android.content.Intent(this, PrivacyCheckupActivity::class.java))
+        }
         binding.btnLastSeen.setOnClickListener { showPrivacyDialog("last_seen_privacy", "Last Seen & Online Status") }
         binding.btnProfilePhoto.setOnClickListener { showPrivacyDialog("profile_photo_privacy", "Profile Picture Visibility") }
         binding.btnStatus.setOnClickListener { showPrivacyDialog("status_privacy", "Status Visibility") }
+        binding.btnAbout.setOnClickListener { showPrivacyDialog("about_privacy", "About Visibility") }
+        binding.btnGroups.setOnClickListener { showPrivacyDialog("groups_privacy", "Who can add me to groups") }
 
         binding.switchReadReceipts.setOnCheckedChangeListener { _, isChecked ->
             lifecycleScope.launch {
@@ -133,6 +140,8 @@ class PrivacySettingsActivity : AppCompatActivity() {
                         "last_seen_privacy" -> authRepo.updatePrivacySettings(lastSeen = selectedValue, online = selectedValue)
                         "profile_photo_privacy" -> authRepo.updatePrivacySettings(profilePhoto = selectedValue)
                         "status_privacy" -> authRepo.updatePrivacySettings(status = selectedValue)
+                        "about_privacy" -> authRepo.updatePrivacySettings(about = selectedValue)
+                        "groups_privacy" -> authRepo.updatePrivacySettings(groups = selectedValue)
                         else -> Result.failure(Exception("Invalid key"))
                     }
                     if (result.isSuccess) {

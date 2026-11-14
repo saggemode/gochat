@@ -26,7 +26,9 @@ ADD COLUMN IF NOT EXISTS profile_photo_privacy TEXT DEFAULT 'everyone',
 ADD COLUMN IF NOT EXISTS status_privacy TEXT DEFAULT 'everyone',
 ADD COLUMN IF NOT EXISTS read_receipts_enabled BOOLEAN DEFAULT true,
 ADD COLUMN IF NOT EXISTS online_privacy TEXT DEFAULT 'everyone',
-ADD COLUMN IF NOT EXISTS last_seen_privacy TEXT DEFAULT 'everyone';
+ADD COLUMN IF NOT EXISTS last_seen_privacy TEXT DEFAULT 'everyone',
+ADD COLUMN IF NOT EXISTS about_privacy TEXT DEFAULT 'everyone',
+ADD COLUMN IF NOT EXISTS groups_privacy TEXT DEFAULT 'everyone';
 
 -- Active Sessions / Devices Table
 CREATE TABLE IF NOT EXISTS user_sessions (

@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:attr/colorBackground"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/gochat_accent"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="8dp">
+
+        <ImageView
+            android:id="@+id/btnBackCheckup"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:contentDescription="Back"
+            android:focusable="true"
+            android:padding="10dp"
+            android:src="@drawable/ic_close"
+            app:tint="@color/white" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="Privacy checkup"
+            android:textColor="@color/white"
+            android:textSize="19sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingVertical="8dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="16dp"
+                android:text="Review the settings that control who can contact you and see your info."
+                android:textColor="?android:attr/textColorSecondary"
+                android:textSize="14sp" />
+
+            <TextView style="@style/NotifSectionHeader" android:text="Account protection" />
+
+            <!-- App lock -->
+            <LinearLayout style="@style/NotifRow">
+                <LinearLayout style="@style/NotifRowTextCol">
+                    <TextView style="@style/NotifRowTitle" android:text="App lock" />
+                    <TextView style="@style/NotifRowSubtitle" android:text="Require fingerprint/biometrics to open GoChat" />
+                </LinearLayout>
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchCheckupAppLock"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <!-- Security notifications -->
+            <LinearLayout style="@style/NotifRow">
+                <LinearLayout style="@style/NotifRowTextCol">
+                    <TextView style="@style/NotifRowTitle" android:text="Security notifications" />
+                    <TextView style="@style/NotifRowSubtitle" android:text="Alert me when a contact's security code changes" />
+                </LinearLayout>
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchCheckupSecurity"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <View style="@style/NotifDivider" />
+
+            <TextView style="@style/NotifSectionHeader" android:text="Who can reach you" />
+
+            <!-- Silence unknown callers -->
+            <LinearLayout style="@style/NotifRow">
+                <LinearLayout style="@style/NotifRowTextCol">
+                    <TextView style="@style/NotifRowTitle" android:text="Silence unknown callers" />
+                    <TextView style="@style/NotifRowSubtitle" android:text="Calls from non-contacts won't ring (still logged as missed)" />
+                </LinearLayout>
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchCheckupSilence"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/rowCheckupGroups" style="@style/NotifRow">
+                <LinearLayout style="@style/NotifRowTextCol">
+                    <TextView style="@style/NotifRowTitle" android:text="Who can add me to groups" />
+                    <TextView android:id="@+id/tvCheckupGroups" style="@style/NotifRowSubtitle" android:text="Everyone" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <View style="@style/NotifDivider" />
+
+            <TextView style="@style/NotifSectionHeader" android:text="Your information" />
+
+            <LinearLayout android:id="@+id/rowCheckupVisibility" style="@style/NotifRow">
+                <LinearLayout style="@style/NotifRowTextCol">
+                    <TextView style="@style/NotifRowTitle" android:text="Who can see my info" />
+                    <TextView style="@style/NotifRowSubtitle" android:text="Last seen, profile photo, about, status" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/rowCheckupNotifications" style="@style/NotifRow">
+                <LinearLayout style="@style/NotifRowTextCol">
+                    <TextView style="@style/NotifRowTitle" android:text="Notifications" />
+                    <TextView style="@style/NotifRowSubtitle" android:text="Tones, previews, quiet hours" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/rowCheckupDevices" style="@style/NotifRow">
+                <LinearLayout style="@style/NotifRowTextCol">
+                    <TextView style="@style/NotifRowTitle" android:text="Linked devices" />
+                    <TextView style="@style/NotifRowSubtitle" android:text="Review where you're logged in" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

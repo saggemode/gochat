@@ -153,6 +153,18 @@
             android:exported="false"
             android:theme="@style/Theme.GoChat" />
 
+        <!-- Notification Settings Activity -->
+        <activity
+            android:name=".ui.settings.NotificationSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+
+        <!-- Privacy Checkup Activity -->
+        <activity
+            android:name=".ui.settings.PrivacyCheckupActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+
         <!-- Security Verification Activity -->
         <activity
             android:name=".ui.security.SecurityVerificationActivity"

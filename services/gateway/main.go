@@ -1043,6 +1043,14 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 					continue
 				}
 
+				// Who (if anyone) was @mentioned in this message — they break through mute.
+				mentionedSet := make(map[string]bool)
+				for _, m := range strings.Split(payload["mentioned_user_ids"], ",") {
+					if m != "" {
+						mentionedSet[m] = true
+					}
+				}
+
 				// Fetch conversation details to get member IDs
 				resp, err := chatClient.GetConversation(ctx, &chatpb.GetConversationRequest{
 					ConversationId: convIDStr,
@@ -1128,19 +1136,27 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 						// Use the preview the chat service provided (e.g. order details)
 						// when present; otherwise a generic message (text may be E2EE).
 						pushBody := payload["push_body"]
-						go func(recipient, convID, msgID, senderID, preview string) {
+						isMention := mentionedSet[memberID]
+						go func(recipient, convID, msgID, senderID, preview string, mention bool) {
 							defer safego.Recover(log, "push-new-message")
 							pushCtx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 							defer cancel()
+							pushType := "new_message"
+							if mention {
+								pushType = "mention" // client breaks through group mute
+							}
 							data := map[string]string{
-								"type":            "new_message",
-								"event_type":      "new_message",
+								"type":            pushType,
+								"event_type":      pushType,
 								"conversation_id": convID,
 								"message_id":      msgID,
 								"sender_id":       senderID,
 							}
 							pushTitle := "GoChat"
 							body := "You received a new message"
+							if mention {
+								body = "mentioned you"
+							}
 							if preview != "" {
 								pushTitle = "New order"
 								body = preview
@@ -1149,7 +1165,23 @@ func startPushNotificationWorker(ctx context.Context, redisClient *redis.Client,
 								log.Debug("push notification send failed",
 									zap.String("recipient_id", recipient), zap.Error(err))
 							}
-						}(memberID, convIDStr, msgIDStr, actorIDStr, pushBody)
+						}(memberID, convIDStr, msgIDStr, actorIDStr, pushBody, isMention)
+					} else if eventType == "reaction_added" && memberID == payload["target_user_id"] {
+						// The message author is offline — push a reaction notification.
+						go func(recipient, convID, msgID, reactorID, emoji string) {
+							defer safego.Recover(log, "push-reaction")
+							pushCtx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+							defer cancel()
+							data := map[string]string{
+								"type":            "reaction",
+								"event_type":      "reaction",
+								"conversation_id": convID,
+								"message_id":      msgID,
+								"sender_id":       reactorID,
+								"body":            strings.TrimSpace(emoji + " reacted to your message"),
+							}
+							_ = fcm.SendToUser(pushCtx, recipient, "GoChat", data["body"], data)
+						}(memberID, convIDStr, msgIDStr, actorIDStr, payload["emoji"])
 					}
 				}
 			}

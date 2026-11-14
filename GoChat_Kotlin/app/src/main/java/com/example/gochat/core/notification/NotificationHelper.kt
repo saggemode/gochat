@@ -69,11 +69,29 @@ object NotificationHelper {
         }
     }
 
-    fun createNotificationChannels(context: Context) {
+    /**
+     * Re-creates the message & group channels with a user-chosen tone. A channel's sound
+     * is immutable once created, so we delete and recreate them. Call from the settings
+     * screen after the user picks a tone (null = restore the system default).
+     */
+    fun applyCustomTone(context: Context, toneUri: String?) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        try {
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            nm.deleteNotificationChannel(CHANNEL_MESSAGES)
+            nm.deleteNotificationChannel(CHANNEL_GROUPS)
+            val sound = if (!toneUri.isNullOrBlank()) android.net.Uri.parse(toneUri) else null
+            createNotificationChannels(context, sound)
+        } catch (e: Exception) {
+            Log.e("NotificationHelper", "Failed to apply custom tone", e)
+        }
+    }
+
+    fun createNotificationChannels(context: Context, messageSoundUri: android.net.Uri? = null) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-            val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            val soundUri = messageSoundUri ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
             val audioAttributes = AudioAttributes.Builder()
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .setUsage(AudioAttributes.USAGE_NOTIFICATION)
@@ -190,10 +208,12 @@ object NotificationHelper {
         body: String,
         senderAvatar: String = "",
         isGroup: Boolean = false,
-        isMuted: Boolean = false
+        isMuted: Boolean = false,
+        preview: Boolean = true,
+        badgeNumber: Int = 0
     ) {
-        val bitmap = if (senderAvatar.isNotBlank()) loadCircularBitmap(context, senderAvatar) else null
-        showChatNotification(context, conversationId, title, body, senderAvatar, isGroup, isMuted, bitmap)
+        val bitmap = if (senderAvatar.isNotBlank() && preview) loadCircularBitmap(context, senderAvatar) else null
+        showChatNotification(context, conversationId, title, body, senderAvatar, isGroup, isMuted, bitmap, preview, badgeNumber)
     }
 
     fun showChatNotification(
@@ -204,18 +224,22 @@ object NotificationHelper {
         senderAvatar: String = "",
         isGroup: Boolean = false,
         isMuted: Boolean = false,
-        avatarBitmap: Bitmap? = null
+        avatarBitmap: Bitmap? = null,
+        preview: Boolean = true,
+        badgeNumber: Int = 0
     ) {
         createNotificationChannels(context)
 
         val channelId = if (isGroup) CHANNEL_GROUPS else CHANNEL_MESSAGES
         val notificationId = getNotificationIdForConversation(conversationId)
-        val displayTitle = if (title.isBlank() || title.equals("User", ignoreCase = true) || title.equals("Chat", ignoreCase = true)) {
+        val rawTitle = if (title.isBlank() || title.equals("User", ignoreCase = true) || title.equals("Chat", ignoreCase = true)) {
             "GoChat Contact"
         } else {
             title
         }
-        val displayBody = body.ifBlank { "New message" }
+        // When previews are off, hide the sender and content entirely.
+        val displayTitle = if (preview) rawTitle else "New message"
+        val displayBody = if (preview) body.ifBlank { "New message" } else "You have a new message"
 
         // 1. PendingIntent for notification tap with parent back stack to MainActivity
         val tapIntent = Intent(context, ChatRoomActivity::class.java).apply {
@@ -319,11 +343,15 @@ object NotificationHelper {
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setAutoCancel(true)
             .setContentIntent(tapPendingIntent)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setVisibility(if (preview) NotificationCompat.VISIBILITY_PUBLIC else NotificationCompat.VISIBILITY_PRIVATE)
             .addAction(replyAction)
             .addAction(markReadAction)
 
-        if (avatarBitmap != null) {
+        if (badgeNumber > 0) {
+            builder.setNumber(badgeNumber)
+        }
+
+        if (avatarBitmap != null && preview) {
             builder.setLargeIcon(avatarBitmap)
         }
 

@@ -1089,6 +1089,8 @@ type PrivacySettings struct {
 	OnlinePrivacy       string `json:"online_privacy"`
 	LastSeenPrivacy     string `json:"last_seen_privacy"`
 	AllowStoryReshare   bool   `json:"allow_story_reshare"`
+	AboutPrivacy        string `json:"about_privacy"`
+	GroupsPrivacy       string `json:"groups_privacy"`
 }
 
 // ── Session Management Methods ──────────────────────────────────────────────
@@ -1312,7 +1314,7 @@ func (r *UserRepository) VerifyAndResetPin(ctx context.Context, identifier, reco
 
 // ── Granular Privacy Settings Methods ───────────────────────────────────────
 
-func (r *UserRepository) UpdatePrivacySettings(ctx context.Context, userID uuid.UUID, profilePhoto, statusPrivacy string, readReceipts bool, onlinePrivacy, lastSeenPrivacy string, allowStoryReshare bool) error {
+func (r *UserRepository) UpdatePrivacySettings(ctx context.Context, userID uuid.UUID, profilePhoto, statusPrivacy string, readReceipts bool, onlinePrivacy, lastSeenPrivacy string, allowStoryReshare bool, aboutPrivacy, groupsPrivacy string) error {
 	_, err := r.db.Exec(ctx, `
 		UPDATE users
 		SET profile_photo_privacy = $2,
@@ -1320,9 +1322,11 @@ func (r *UserRepository) UpdatePrivacySettings(ctx context.Context, userID uuid.
 		    read_receipts_enabled = $4,
 		    online_privacy = $5,
 		    last_seen_privacy = $6,
-		    allow_story_reshare = $7
+		    allow_story_reshare = $7,
+		    about_privacy = $8,
+		    groups_privacy = $9
 		WHERE id = $1
-	`, userID, profilePhoto, statusPrivacy, readReceipts, onlinePrivacy, lastSeenPrivacy, allowStoryReshare)
+	`, userID, profilePhoto, statusPrivacy, readReceipts, onlinePrivacy, lastSeenPrivacy, allowStoryReshare, aboutPrivacy, groupsPrivacy)
 	return err
 }
 
@@ -1334,11 +1338,23 @@ func (r *UserRepository) GetPrivacySettings(ctx context.Context, userID uuid.UUI
 		       COALESCE(read_receipts_enabled, true),
 		       COALESCE(online_privacy, 'everyone'),
 		       COALESCE(last_seen_privacy, 'everyone'),
-		       COALESCE(allow_story_reshare, true)
+		       COALESCE(allow_story_reshare, true),
+		       COALESCE(about_privacy, 'everyone'),
+		       COALESCE(groups_privacy, 'everyone')
 		FROM users WHERE id = $1
-	`, userID).Scan(&ps.ProfilePhotoPrivacy, &ps.StatusPrivacy, &ps.ReadReceiptsEnabled, &ps.OnlinePrivacy, &ps.LastSeenPrivacy, &ps.AllowStoryReshare)
+	`, userID).Scan(&ps.ProfilePhotoPrivacy, &ps.StatusPrivacy, &ps.ReadReceiptsEnabled, &ps.OnlinePrivacy, &ps.LastSeenPrivacy, &ps.AllowStoryReshare, &ps.AboutPrivacy, &ps.GroupsPrivacy)
 	if err != nil {
 		return nil, err
 	}
 	return ps, nil
+}
+
+// GetGroupsPrivacy returns just the "who can add me to groups" setting for userID.
+func (r *UserRepository) GetGroupsPrivacy(ctx context.Context, userID uuid.UUID) (string, error) {
+	var v string
+	err := r.db.QueryRow(ctx, `SELECT COALESCE(groups_privacy, 'everyone') FROM users WHERE id = $1`, userID).Scan(&v)
+	if err != nil {
+		return "everyone", err
+	}
+	return v, nil
 }

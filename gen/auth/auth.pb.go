@@ -161,6 +161,8 @@ type PrivacySettings struct {
 	OnlinePrivacy       string                 `protobuf:"bytes,4,opt,name=online_privacy,json=onlinePrivacy,proto3" json:"online_privacy,omitempty"`                // "everyone", "contacts", "nobody"
 	LastSeenPrivacy     string                 `protobuf:"bytes,5,opt,name=last_seen_privacy,json=lastSeenPrivacy,proto3" json:"last_seen_privacy,omitempty"`        // "everyone", "contacts", "nobody"
 	AllowStoryReshare   bool                   `protobuf:"varint,6,opt,name=allow_story_reshare,json=allowStoryReshare,proto3" json:"allow_story_reshare,omitempty"` // may others reshare my status (default true)
+	AboutPrivacy        string                 `protobuf:"bytes,7,opt,name=about_privacy,json=aboutPrivacy,proto3" json:"about_privacy,omitempty"`                   // "everyone", "contacts", "nobody"
+	GroupsPrivacy       string                 `protobuf:"bytes,8,opt,name=groups_privacy,json=groupsPrivacy,proto3" json:"groups_privacy,omitempty"`                // who can add me to groups: "everyone", "contacts", "nobody"
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -235,6 +237,20 @@ func (x *PrivacySettings) GetAllowStoryReshare() bool {
 		return x.AllowStoryReshare
 	}
 	return false
+}
+
+func (x *PrivacySettings) GetAboutPrivacy() string {
+	if x != nil {
+		return x.AboutPrivacy
+	}
+	return ""
+}
+
+func (x *PrivacySettings) GetGroupsPrivacy() string {
+	if x != nil {
+		return x.GroupsPrivacy
+	}
+	return ""
 }
 
 type UpdatePrivacySettingsRequest struct {
@@ -3480,14 +3496,16 @@ const file_proto_auth_proto_rawDesc = "" +
 	"\x0ephone_verified\x18\n" +
 	" \x01(\bR\rphoneVerified\x12\x10\n" +
 	"\x03pin\x18\v \x01(\tR\x03pin\x12!\n" +
-	"\fcountry_code\x18\f \x01(\tR\vcountryCode\"\xa3\x02\n" +
+	"\fcountry_code\x18\f \x01(\tR\vcountryCode\"\xef\x02\n" +
 	"\x0fPrivacySettings\x122\n" +
 	"\x15profile_photo_privacy\x18\x01 \x01(\tR\x13profilePhotoPrivacy\x12%\n" +
 	"\x0estatus_privacy\x18\x02 \x01(\tR\rstatusPrivacy\x122\n" +
 	"\x15read_receipts_enabled\x18\x03 \x01(\bR\x13readReceiptsEnabled\x12%\n" +
 	"\x0eonline_privacy\x18\x04 \x01(\tR\ronlinePrivacy\x12*\n" +
 	"\x11last_seen_privacy\x18\x05 \x01(\tR\x0flastSeenPrivacy\x12.\n" +
-	"\x13allow_story_reshare\x18\x06 \x01(\bR\x11allowStoryReshare\"j\n" +
+	"\x13allow_story_reshare\x18\x06 \x01(\bR\x11allowStoryReshare\x12#\n" +
+	"\rabout_privacy\x18\a \x01(\tR\faboutPrivacy\x12%\n" +
+	"\x0egroups_privacy\x18\b \x01(\tR\rgroupsPrivacy\"j\n" +
 	"\x1cUpdatePrivacySettingsRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x121\n" +
 	"\bsettings\x18\x02 \x01(\v2\x15.auth.PrivacySettingsR\bsettings\"9\n" +

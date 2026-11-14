@@ -204,6 +204,11 @@ func (s *ChatServer) AddMember(ctx context.Context, req *chatpb.AddMemberRequest
 		return nil, status.Error(codes.PermissionDenied, "only a member can add participants")
 	}
 
+	// Respect the target's "who can add me to groups" privacy setting.
+	if allowed, _ := s.convRepo.CanBeAddedToGroupBy(ctx, newMemberID, requesterID); !allowed {
+		return nil, status.Error(codes.PermissionDenied, "this user's privacy settings don't allow you to add them to groups")
+	}
+
 	if err := s.convRepo.AddMember(ctx, convID, newMemberID); err != nil {
 		return nil, status.Error(codes.Internal, "failed to add member")
 	}
@@ -323,8 +328,27 @@ func (s *ChatServer) SendMessage(ctx context.Context, req *chatpb.SendMessageReq
 	}
 
 	// Publish to Redis for fan-out. Include an order preview (orders are not E2EE)
-	// so the offline FCM push can show order details instead of a generic message.
-	s.publishEventWithPreview(ctx, "new_message", saved.ID.String(), convID.String(), senderID.String(), orderPushPreview(saved.Content))
+	// so the offline FCM push can show order details, and the mentioned user ids so
+	// the gateway can send a mention push that breaks through group mute.
+	{
+		fields := map[string]string{
+			"event":    "new_message",
+			"msg_id":   saved.ID.String(),
+			"conv_id":  convID.String(),
+			"actor_id": senderID.String(),
+		}
+		if preview := orderPushPreview(saved.Content); preview != "" {
+			fields["push_body"] = preview
+		}
+		if len(saved.MentionedUserIDs) > 0 {
+			ids := make([]string, 0, len(saved.MentionedUserIDs))
+			for _, u := range saved.MentionedUserIDs {
+				ids = append(ids, u.String())
+			}
+			fields["mentioned_user_ids"] = strings.Join(ids, ",")
+		}
+		s.publishRaw(ctx, convID.String(), fields)
+	}
 
 	return &chatpb.SendMessageResponse{Message: msgToProto(saved)}, nil
 }
@@ -760,7 +784,14 @@ func (s *ChatServer) AddReaction(ctx context.Context, req *chatpb.AddReactionReq
 
 	msg, _ := s.msgRepo.GetByID(ctx, msgID)
 	if msg != nil {
-		s.publishEvent(ctx, "reaction_added", msgID.String(), msg.ConversationID.String(), userID.String())
+		s.publishRaw(ctx, msg.ConversationID.String(), map[string]string{
+			"event":          "reaction_added",
+			"msg_id":         msgID.String(),
+			"conv_id":        msg.ConversationID.String(),
+			"actor_id":       userID.String(),
+			"target_user_id": msg.SenderID.String(),
+			"emoji":          req.Emoji,
+		})
 	}
 
 	if rxn == nil {
@@ -1058,6 +1089,22 @@ func (s *ChatServer) publishEvent(ctx context.Context, eventType, msgID, convID,
 	payload := `{"event":"` + eventType + `","msg_id":"` + msgID +
 		`","conv_id":"` + convID + `","actor_id":"` + actorID + `"}`
 	if err := s.redis.Publish(ctx, channel, payload).Err(); err != nil {
+		s.log.Warn("redis publish failed", zap.Error(err), zap.String("channel", channel))
+	}
+}
+
+// publishRaw publishes an arbitrary field map to the conversation's Redis channel.
+// Used for events that carry extra fields (mentions, reactions) beyond the standard set.
+func (s *ChatServer) publishRaw(ctx context.Context, convID string, m map[string]string) {
+	if s.redis == nil {
+		return
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return
+	}
+	channel := "chat:" + convID
+	if err := s.redis.Publish(ctx, channel, string(b)).Err(); err != nil {
 		s.log.Warn("redis publish failed", zap.Error(err), zap.String("channel", channel))
 	}
 }

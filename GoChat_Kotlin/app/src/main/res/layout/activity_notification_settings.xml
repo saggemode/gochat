@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:attr/colorBackground"
+    android:orientation="vertical">
+
+    <!-- Toolbar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/gochat_accent"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="8dp">
+
+        <ImageView
+            android:id="@+id/btnBackNotifSettings"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:contentDescription="Back"
+            android:focusable="true"
+            android:padding="10dp"
+            android:src="@drawable/ic_close"
+            app:tint="@color/white" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="Notifications"
+            android:textColor="@color/white"
+            android:textSize="19sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingVertical="8dp">
+
+            <TextView style="@style/NotifSectionHeader" android:text="Message notifications" />
+
+            <!-- Custom tone -->
+            <LinearLayout
+                android:id="@+id/rowTone"
+                style="@style/NotifRow">
+
+                <LinearLayout style="@style/NotifRowTextCol">
+                    <TextView style="@style/NotifRowTitle" android:text="Notification tone" />
+                    <TextView android:id="@+id/tvToneValue" style="@style/NotifRowSubtitle" android:text="Default" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Preview -->
+            <LinearLayout style="@style/NotifRow">
+                <LinearLayout style="@style/NotifRowTextCol">
+                    <TextView style="@style/NotifRowTitle" android:text="Show preview" />
+                    <TextView style="@style/NotifRowSubtitle" android:text="Show message text in notifications" />
+                </LinearLayout>
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchPreview"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <!-- Badge -->
+            <LinearLayout style="@style/NotifRow">
+                <LinearLayout style="@style/NotifRowTextCol">
+                    <TextView style="@style/NotifRowTitle" android:text="Notification badge" />
+                    <TextView style="@style/NotifRowSubtitle" android:text="Show unread count on the app icon" />
+                </LinearLayout>
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <!-- Reactions -->
+            <LinearLayout style="@style/NotifRow">
+                <LinearLayout style="@style/NotifRowTextCol">
+                    <TextView style="@style/NotifRowTitle" android:text="Reaction notifications" />
+                    <TextView style="@style/NotifRowSubtitle" android:text="Notify when someone reacts to your messages" />
+                </LinearLayout>
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchReactions"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <View style="@style/NotifDivider" />
+
+            <TextView style="@style/NotifSectionHeader" android:text="Quiet hours" />
+
+            <!-- Quiet enabled -->
+            <LinearLayout style="@style/NotifRow">
+                <LinearLayout style="@style/NotifRowTextCol">
+                    <TextView style="@style/NotifRowTitle" android:text="Quiet hours" />
+                    <TextView style="@style/NotifRowSubtitle" android:text="Silence non-priority chats during a window" />
+                </LinearLayout>
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchQuiet"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/rowQuietStart"
+                style="@style/NotifRow">
+                <LinearLayout style="@style/NotifRowTextCol">
+                    <TextView style="@style/NotifRowTitle" android:text="Start" />
+                    <TextView android:id="@+id/tvQuietStart" style="@style/NotifRowSubtitle" android:text="22:00" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/rowQuietEnd"
+                style="@style/NotifRow">
+                <LinearLayout style="@style/NotifRowTextCol">
+                    <TextView style="@style/NotifRowTitle" android:text="End" />
+                    <TextView android:id="@+id/tvQuietEnd" style="@style/NotifRowSubtitle" android:text="07:00" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="16dp"
+                android:text="Priority chats break through mute and quiet hours. Open a chat → menu → Mark as priority."
+                android:textColor="?android:attr/textColorSecondary"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

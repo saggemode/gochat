@@ -211,7 +211,7 @@ class SettingsFragment : Fragment() {
 
             // Notifications
             tileNotifications.setOnClickListener {
-                showNotificationSettingsDialog()
+                startActivity(Intent(requireContext(), NotificationSettingsActivity::class.java))
             }
 
             // Battery & Background Wakeup

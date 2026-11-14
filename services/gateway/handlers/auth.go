@@ -944,6 +944,8 @@ func (h *AuthHandler) UpdatePrivacySettings(c *gin.Context) {
 		OnlinePrivacy       *string `json:"online_privacy"`
 		LastSeenPrivacy     *string `json:"last_seen_privacy"`
 		AllowStoryReshare   *bool   `json:"allow_story_reshare"`
+		AboutPrivacy        *string `json:"about_privacy"`
+		GroupsPrivacy       *string `json:"groups_privacy"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -978,6 +980,12 @@ func (h *AuthHandler) UpdatePrivacySettings(c *gin.Context) {
 	}
 	if req.AllowStoryReshare != nil {
 		merged.AllowStoryReshare = *req.AllowStoryReshare
+	}
+	if req.AboutPrivacy != nil {
+		merged.AboutPrivacy = *req.AboutPrivacy
+	}
+	if req.GroupsPrivacy != nil {
+		merged.GroupsPrivacy = *req.GroupsPrivacy
 	}
 
 	resp, err := h.client.UpdatePrivacySettings(c.Request.Context(), &authpb.UpdatePrivacySettingsRequest{

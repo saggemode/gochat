@@ -2816,6 +2816,18 @@ class ChatRoomActivity : AppCompatActivity() {
             }
         }
 
+        val isPriorityNow = tokenManager.isPriorityConversation(convId)
+        menuItems.add(if (isPriorityNow) "Remove priority" else "Mark as priority")
+        actions.add {
+            val nowPriority = !tokenManager.isPriorityConversation(convId)
+            tokenManager.setPriorityConversation(convId, nowPriority)
+            Toast.makeText(
+                this,
+                if (nowPriority) "Marked as priority — breaks through mute & quiet hours" else "Priority removed",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+
         menuItems.add(getString(R.string.option_clear_chat))
         actions.add {
             ClearChatHelper.showClearChatDialog(

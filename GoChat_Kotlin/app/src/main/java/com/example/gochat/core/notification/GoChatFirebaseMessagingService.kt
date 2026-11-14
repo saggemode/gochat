@@ -165,6 +165,18 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
                         isGroup = false
                     )
 
+                    // Silence unknown callers: if enabled and the caller isn't someone we
+                    // have a 1:1 chat with, log a missed call but don't ring or notify.
+                    val isKnownCaller = if (!tokenManager.silenceUnknownCallersEnabled) {
+                        true
+                    } else {
+                        try {
+                            chatRepository.getAllConversationsList().any { !it.isGroup && it.memberIds.contains(callerId) }
+                        } catch (_: Exception) {
+                            true // fail open — never silently drop a call on error
+                        }
+                    }
+
                     // Persist incoming call record in local Room DB
                     val record = com.example.gochat.data.model.CallRecord(
                         id = callId,
@@ -172,11 +184,16 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
                         peerName = resolvedCallerName,
                         peerAvatar = callerAvatar,
                         type = if (callType == "video") com.example.gochat.data.model.CallType.VIDEO else com.example.gochat.data.model.CallType.AUDIO,
-                        status = com.example.gochat.data.model.CallStatus.INCOMING,
+                        status = if (isKnownCaller) com.example.gochat.data.model.CallStatus.INCOMING else com.example.gochat.data.model.CallStatus.MISSED,
                         durationSeconds = 0,
                         timestamp = System.currentTimeMillis()
                     )
                     callRepository.recordCall(record)
+
+                    if (!isKnownCaller) {
+                        Log.d(TAG, "Silenced unknown caller $callerId (logged as missed)")
+                        return@launch
+                    }
 
                     // Acknowledge ringing back to caller immediately so caller shows "Ringing..."
                     try {
@@ -314,6 +331,58 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
         val rawType = data["message_type"] ?: data["type_int"]
         val msgTypeInt = rawType?.toIntOrNull() ?: if (isOrderPush) 9 else 0
 
+        // Reaction to one of my messages → lightweight notification (opt-out in settings).
+        if (eventType == "reaction") {
+            if (!tokenManager.reactionNotificationsEnabled) return
+            val isPriority = tokenManager.isPriorityConversation(conversationId)
+            val quiet = tokenManager.isWithinQuietHours() && !isPriority
+            val preview = tokenManager.notificationPreviewEnabled
+            serviceScope.launch {
+                val resolved = chatRepository.resolveSenderTitle(conversationId, senderId, title, isGroup)
+                NotificationHelper.showChatNotificationAsync(
+                    context = applicationContext,
+                    conversationId = conversationId.ifBlank { "reaction_$senderId" },
+                    title = resolved,
+                    body = body.ifBlank { "reacted to your message" },
+                    senderAvatar = senderAvatar,
+                    isGroup = isGroup,
+                    isMuted = quiet,
+                    preview = preview
+                )
+            }
+            return
+        }
+
+        // Group @mention → always notify, breaking through mute (but not quiet hours,
+        // unless the chat is marked priority).
+        if (eventType == "mention") {
+            val isPriority = tokenManager.isPriorityConversation(conversationId)
+            val quiet = tokenManager.isWithinQuietHours() && !isPriority
+            val preview = tokenManager.notificationPreviewEnabled
+            serviceScope.launch {
+                val resolved = chatRepository.resolveSenderTitle(conversationId, senderId, title, isGroup)
+                if (conversationId.isNotEmpty()) {
+                    try {
+                        chatRepository.ingestIncomingPushMessage(messageId, conversationId, senderId, resolved, body, mediaUrl, msgTypeInt)
+                    } catch (_: Exception) {}
+                    if (ChatRepository.activeConversationIdStatic == conversationId) return@launch
+                }
+                val badge = if (tokenManager.notificationBadgeEnabled) (chatRepository.getConversationById(conversationId)?.unreadCount ?: 0) else 0
+                NotificationHelper.showChatNotificationAsync(
+                    context = applicationContext,
+                    conversationId = conversationId,
+                    title = "$resolved mentioned you",
+                    body = body,
+                    senderAvatar = senderAvatar,
+                    isGroup = isGroup,
+                    isMuted = quiet,
+                    preview = preview,
+                    badgeNumber = badge
+                )
+            }
+            return
+        }
+
         val messageWakeLock = powerManager?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "GoChat:FCMMessageWakeLock")?.apply {
             try { acquire(15000L) } catch (_: Exception) {}
         }
@@ -352,9 +421,13 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
                     return@launch
                 }
 
-                // 3. Mute check
+                // 3. Mute / quiet-hours / priority
                 val conv = if (conversationId.isNotEmpty()) chatRepository.getConversationById(conversationId) else null
-                val isMuted = conv?.isMuted ?: false
+                val isPriority = tokenManager.isPriorityConversation(conversationId)
+                val quiet = tokenManager.isWithinQuietHours() && !isPriority
+                val silent = (conv?.isMuted ?: false) || quiet
+                val preview = tokenManager.notificationPreviewEnabled
+                val badge = if (tokenManager.notificationBadgeEnabled) (conv?.unreadCount ?: 0) else 0
 
                 // 4. Show rich notification with actual peer name / contact name
                 NotificationHelper.showChatNotificationAsync(
@@ -364,7 +437,9 @@ class GoChatFirebaseMessagingService : FirebaseMessagingService() {
                     body = body,
                     senderAvatar = senderAvatar,
                     isGroup = isGroup,
-                    isMuted = isMuted
+                    isMuted = silent,
+                    preview = preview,
+                    badgeNumber = badge
                 )
             } finally {
                 try {
