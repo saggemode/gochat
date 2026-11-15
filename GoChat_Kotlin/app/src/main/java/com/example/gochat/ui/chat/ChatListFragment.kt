@@ -244,6 +244,7 @@ class ChatListFragment : Fragment() {
             val options = arrayOf(
                 "New group",
                 "New broadcast",
+                "Archived chats",
                 "Starred messages",
                 "Settings"
             )
@@ -252,8 +253,9 @@ class ChatListFragment : Fragment() {
                     when (which) {
                         0 -> com.example.gochat.ui.contacts.SelectContactActivity.start(requireContext())
                         1 -> startActivity(Intent(requireContext(), com.example.gochat.ui.chat.NewBroadcastActivity::class.java))
-                        2 -> startActivity(Intent(requireContext(), StarredMessagesActivity::class.java))
-                        3 -> (activity as? com.example.gochat.MainActivity)?.navigateToTab(com.example.gochat.MainActivity.TAG_SETTINGS)
+                        2 -> showArchivedChatsDialog()
+                        3 -> startActivity(Intent(requireContext(), StarredMessagesActivity::class.java))
+                        4 -> (activity as? com.example.gochat.MainActivity)?.navigateToTab(com.example.gochat.MainActivity.TAG_SETTINGS)
                     }
                 }
                 .show()
@@ -534,7 +536,8 @@ class ChatListFragment : Fragment() {
             lockOption,
             if (conversation.isMuted) "Unmute notifications" else getString(R.string.option_mute_notifications),
             getString(R.string.option_clear_chat),
-            getString(R.string.option_delete_conversation)
+            getString(R.string.option_delete_conversation),
+            if (conversation.isArchived) "Unarchive chat" else "Archive chat"
         )
         AlertDialog.Builder(requireContext())
             .setTitle(conversation.title)
@@ -600,9 +603,43 @@ class ChatListFragment : Fragment() {
                             .setNegativeButton(getString(R.string.btn_cancel), null)
                             .show()
                     }
+                    6 -> {
+                        viewLifecycleOwner.lifecycleScope.launch {
+                            viewModel.repository.setConversationArchived(conversation.id, !conversation.isArchived)
+                            Toast.makeText(
+                                requireContext(),
+                                if (conversation.isArchived) "Chat unarchived" else "Chat archived",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            conversationAdapter.refresh()
+                        }
+                    }
                 }
             }
             .show()
+    }
+
+    private fun showArchivedChatsDialog() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val archived = viewModel.repository.getArchivedConversationsList()
+            if (archived.isEmpty()) {
+                Toast.makeText(requireContext(), "No archived chats", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            val titles = archived.map { it.title.ifBlank { "Chat" } }.toTypedArray()
+            AlertDialog.Builder(requireContext())
+                .setTitle("Archived chats")
+                .setItems(titles) { _, which ->
+                    val conv = archived[which]
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        viewModel.repository.setConversationArchived(conv.id, false)
+                        conversationAdapter.refresh()
+                        openChatRoom(conv)
+                    }
+                }
+                .setNegativeButton(getString(R.string.btn_close), null)
+                .show()
+        }
     }
 
     private fun openChatRoom(conversation: Conversation, targetMessageId: String? = null) {

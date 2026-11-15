@@ -218,6 +218,22 @@ class ChatRepository @Inject constructor(
         }
     }
 
+    /** Archive or unarchive a conversation (hides it from the main list). Local-only. */
+    suspend fun setConversationArchived(convId: String, archived: Boolean): Result<Unit> {
+        return try {
+            dao.setConversationArchived(convId, archived)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getArchivedConversationsList(): List<Conversation> = try {
+        dao.getArchivedConversationsList()
+    } catch (e: Exception) {
+        emptyList()
+    }
+
     suspend fun setConversationMuted(convId: String, isMuted: Boolean): Result<Unit> {
         return try {
             dao.updateConversationMuted(convId, isMuted)

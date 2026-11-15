@@ -13,11 +13,17 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ChatDao {
     // ── Conversations ──────────────────────────────────────────
-    @Query("SELECT * FROM conversations ORDER BY isPinned DESC, updatedAt DESC")
+    @Query("SELECT * FROM conversations WHERE isArchived = 0 ORDER BY isPinned DESC, updatedAt DESC")
     fun getAllConversations(): Flow<List<Conversation>>
 
-    @Query("SELECT * FROM conversations ORDER BY isPinned DESC, updatedAt DESC")
+    @Query("SELECT * FROM conversations WHERE isArchived = 0 ORDER BY isPinned DESC, updatedAt DESC")
     fun getAllConversationsPaged(): PagingSource<Int, Conversation>
+
+    @Query("SELECT * FROM conversations WHERE isArchived = 1 ORDER BY updatedAt DESC")
+    suspend fun getArchivedConversationsList(): List<Conversation>
+
+    @Query("UPDATE conversations SET isArchived = :archived WHERE id = :convId")
+    suspend fun setConversationArchived(convId: String, archived: Boolean)
 
     @Query("SELECT * FROM conversations WHERE id = :id LIMIT 1")
     suspend fun getConversationById(id: String): Conversation?

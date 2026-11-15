@@ -207,6 +207,24 @@
             tools:text="🇳🇬  This person may be messaging from Nigeria"
             tools:visibility="visible" />
 
+        <!-- Live-location banner (tap to open the latest coordinates in Maps) -->
+        <TextView
+            android:id="@+id/tvLiveLocationBanner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#1A00A884"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp"
+            android:text="📍 Live location — tap to view"
+            android:textColor="@color/gochat_emerald_light"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
         <!-- In-Chat Search Bar Overlay -->
         <LinearLayout
             android:id="@+id/layoutInChatSearch"

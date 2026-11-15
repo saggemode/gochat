@@ -323,6 +323,13 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     }
 
+    private val liveLocationPermLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) startLiveLocationSharing()
+        else Toast.makeText(this, "Location permission is required for live location", Toast.LENGTH_SHORT).show()
+    }
+
     private val requestVideoNotePermissions = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
@@ -1133,6 +1140,7 @@ class ChatRoomActivity : AppCompatActivity() {
     private fun startVoiceRecording() {
         val started = audioRecorderManager.startRecording()
         if (started) {
+            viewModel.sendRecordingEvent(true) // tell the peer "recording audio…"
             binding.layoutNormalInput.visibility = View.GONE
             binding.layoutVoiceRecording.visibility = View.VISIBLE
             binding.btnCancelVoiceRecording.visibility = View.VISIBLE
@@ -1161,6 +1169,7 @@ class ChatRoomActivity : AppCompatActivity() {
         recordingHandler.removeCallbacks(recordingTimerRunnable)
         recordingDotPulse?.cancel()
         recordingDotPulse = null
+        viewModel.sendRecordingEvent(false)
         val result = audioRecorderManager.stopRecording()
 
         binding.layoutVoiceRecording.visibility = View.GONE
@@ -1185,6 +1194,7 @@ class ChatRoomActivity : AppCompatActivity() {
         recordingHandler.removeCallbacks(recordingTimerRunnable)
         recordingDotPulse?.cancel()
         recordingDotPulse = null
+        viewModel.sendRecordingEvent(false)
         audioRecorderManager.cancelRecording()
 
         binding.layoutVoiceRecording.visibility = View.GONE
@@ -1240,7 +1250,13 @@ class ChatRoomActivity : AppCompatActivity() {
 
         sheetBinding.btnPickLocation.setOnClickListener {
             sheet.dismiss()
-            startLocationPicker()
+            AlertDialog.Builder(this)
+                .setTitle("Share location")
+                .setItems(arrayOf("Send current location", "Share live location (15 min)")) { _, which ->
+                    if (which == 0) startLocationPicker() else requestLiveLocation()
+                }
+                .setNegativeButton(getString(R.string.btn_cancel), null)
+                .show()
         }
 
         sheetBinding.btnPickContact.setOnClickListener {
@@ -1257,6 +1273,11 @@ class ChatRoomActivity : AppCompatActivity() {
         sheetBinding.btnPickEvent.setOnClickListener {
             sheet.dismiss()
             showCreateEventDialog()
+        }
+
+        sheetBinding.btnPickSticker.setOnClickListener {
+            sheet.dismiss()
+            showStickerPicker()
         }
 
         sheetBinding.btnPickGif.setOnClickListener {
@@ -1560,6 +1581,54 @@ class ChatRoomActivity : AppCompatActivity() {
 
     private fun startLocationPicker() {
         locationPickerLauncher.launch(Intent(this, LocationPickerActivity::class.java))
+    }
+
+    private fun requestLiveLocation() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            liveLocationPermLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        } else {
+            startLiveLocationSharing()
+        }
+    }
+
+    private fun startLiveLocationSharing() {
+        val convId = viewModel.conversationId.value
+        if (convId.isBlank()) return
+        com.example.gochat.core.location.LiveLocationService.start(this, convId)
+        viewModel.sendTextMessage("📍 Live location — sharing for 15 minutes")
+        Toast.makeText(this, "Sharing live location for 15 minutes", Toast.LENGTH_SHORT).show()
+    }
+
+    /** Emoji-sticker picker: tap an emoji to send it as a sticker. */
+    private fun showStickerPicker() {
+        val stickers = listOf(
+            "😀", "😂", "😍", "🥰", "😎", "😭", "😡", "👍", "👎", "🙏", "🔥", "🎉",
+            "❤️", "💯", "😅", "🤔", "😴", "🥳", "😱", "👏", "🙌", "💪", "✌️", "🤝",
+            "😜", "🤩", "😇", "🤗", "🥺", "😤", "🫶", "🤯"
+        )
+        val sheet = com.google.android.material.bottomsheet.BottomSheetDialog(this)
+        val grid = android.widget.GridLayout(this).apply {
+            columnCount = 6
+            val p = (12 * resources.displayMetrics.density).toInt()
+            setPadding(p, p, p, p)
+        }
+        stickers.forEach { emoji ->
+            val tv = android.widget.TextView(this).apply {
+                text = emoji
+                textSize = 30f
+                gravity = android.view.Gravity.CENTER
+                val pad = (10 * resources.displayMetrics.density).toInt()
+                setPadding(pad, pad, pad, pad)
+                isClickable = true
+                setOnClickListener {
+                    viewModel.sendStickerMessage(emoji)
+                    sheet.dismiss()
+                }
+            }
+            grid.addView(tv)
+        }
+        sheet.setContentView(android.widget.ScrollView(this).apply { addView(grid) })
+        sheet.show()
     }
 
     /** Create a group event: title → date → time → sent as an event message (RSVP via reactions). */
@@ -2231,9 +2300,10 @@ class ChatRoomActivity : AppCompatActivity() {
                         viewModel.isOtherUserTyping,
                         viewModel.isPartnerOnline,
                         viewModel.partnerLastSeen,
-                        viewModel.isDeviceOnline
-                    ) { isTyping, isOnline, lastSeen, isDeviceOnline ->
-                        renderPresence(isTyping, isOnline, lastSeen, isDeviceOnline)
+                        viewModel.isDeviceOnline,
+                        viewModel.otherUserRecording
+                    ) { isTyping, isOnline, lastSeen, isDeviceOnline, isRecording ->
+                        renderPresence(isTyping, isOnline, lastSeen, isDeviceOnline, isRecording)
                     }.collect {}
                 }
 
@@ -2250,6 +2320,23 @@ class ChatRoomActivity : AppCompatActivity() {
                             binding.tvCountryBanner.visibility = View.VISIBLE
                         } else {
                             binding.tvCountryBanner.visibility = View.GONE
+                        }
+                    }
+                }
+
+                launch {
+                    viewModel.liveLocation.collect { live ->
+                        if (live != null) {
+                            binding.tvLiveLocationBanner.visibility = View.VISIBLE
+                            binding.tvLiveLocationBanner.setOnClickListener {
+                                try {
+                                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("geo:${live.lat},${live.lng}?q=${live.lat},${live.lng}(Live location)")))
+                                } catch (_: Exception) {
+                                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://maps.google.com/maps?q=${live.lat},${live.lng}")))
+                                }
+                            }
+                        } else {
+                            binding.tvLiveLocationBanner.visibility = View.GONE
                         }
                     }
                 }
@@ -3042,12 +3129,19 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     }
 
-    private fun renderPresence(isTyping: Boolean, isOnline: Boolean, lastSeen: Long?, isDeviceOnline: Boolean) {
+    private fun renderPresence(isTyping: Boolean, isOnline: Boolean, lastSeen: Long?, isDeviceOnline: Boolean, isRecording: Boolean = false) {
         val isGroup = intent.getBooleanExtra(EXTRA_IS_GROUP, false)
         if (!isDeviceOnline) {
             binding.tvChatSubtitle.text = getString(R.string.waiting_for_network)
             binding.tvChatSubtitle.visibility = View.VISIBLE
             binding.viewHeaderOnlineDot.visibility = View.GONE
+            return
+        }
+        if (isRecording) {
+            stopTypingAnimation()
+            binding.tvChatSubtitle.text = "recording audio…"
+            binding.tvChatSubtitle.visibility = View.VISIBLE
+            binding.viewHeaderOnlineDot.visibility = View.VISIBLE
             return
         }
         if (isTyping) {

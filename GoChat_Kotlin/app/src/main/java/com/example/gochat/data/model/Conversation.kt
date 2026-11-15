@@ -44,7 +44,9 @@ data class Conversation(
     @SerialName("disappearing_messages_duration") val disappearingMessagesDuration: Int = 0,
     @SerialName("cleared_at") val clearedAt: Long? = null,
     @SerialName("draft_text") val draftText: String? = null,
-    @SerialName("updated_at") val updatedAt: Long = System.currentTimeMillis()
+    @SerialName("updated_at") val updatedAt: Long = System.currentTimeMillis(),
+    @androidx.room.ColumnInfo(defaultValue = "0")
+    @SerialName("is_archived") val isArchived: Boolean = false
 ) {
     val isGroup: Boolean get() = type == ConversationType.GROUP
     val isDirect: Boolean get() = type == ConversationType.DIRECT

@@ -155,6 +155,14 @@ class ChatRoomViewModel @Inject constructor(
     private val _isOtherUserTyping = MutableStateFlow(false)
     val isOtherUserTyping: StateFlow<Boolean> = _isOtherUserTyping.asStateFlow()
 
+    // True when the other party is recording a voice note ("recording audio…").
+    private val _otherUserRecording = MutableStateFlow(false)
+    val otherUserRecording: StateFlow<Boolean> = _otherUserRecording.asStateFlow()
+
+    // Latest live-location the other party is sharing (null = not sharing).
+    private val _liveLocation = MutableStateFlow<LiveLocationShare?>(null)
+    val liveLocation: StateFlow<LiveLocationShare?> = _liveLocation.asStateFlow()
+
     // Who is currently typing (null = nobody). Carries the avatar so group chats can show it.
     private val _typingParticipant = MutableStateFlow<TypingParticipant?>(null)
     val typingParticipant: StateFlow<TypingParticipant?> = _typingParticipant.asStateFlow()
@@ -1341,6 +1349,20 @@ class ChatRoomViewModel @Inject constructor(
         }
     }
 
+    /** Sends an emoji sticker as a message. */
+    fun sendStickerMessage(emoji: String) {
+        val convId = _conversationId.value
+        if (convId.isEmpty()) return
+        viewModelScope.launch {
+            chatRepository.sendMessage(
+                conversationId = convId,
+                content = emoji,
+                type = 0,
+                disappearingDurationSeconds = _disappearingDuration.value
+            )
+        }
+    }
+
     /** Sends a group event as a scheduled-event message; members RSVP via reactions. */
     fun sendEventMessage(title: String, eventTimeMillis: Long, location: String = "") {
         val convId = _conversationId.value
@@ -1446,7 +1468,7 @@ class ChatRoomViewModel @Inject constructor(
         viewModelScope.launch { chatRepository.retryFailedMessage(messageId) }
     }
 
-    fun sendTypingEvent(isTyping: Boolean) {
+    fun sendTypingEvent(isTyping: Boolean, action: String = "typing") {
         val convId = _conversationId.value
         if (convId.isEmpty()) return
 
@@ -1455,10 +1477,14 @@ class ChatRoomViewModel @Inject constructor(
             put("event_type", "typing")
             put("conversation_id", convId)
             put("is_typing", isTyping)
+            put("action", action)
             tokenManager.userId?.let { put("sender_id", it) }
         }
         webSocket.send(payload)
     }
+
+    /** Broadcasts that we're recording a voice note (shows "recording audio…" on the peer). */
+    fun sendRecordingEvent(isRecording: Boolean) = sendTypingEvent(isRecording, action = "recording")
 
     fun sendReadReceipt(convId: String) {
         val payload = buildJsonObject {
@@ -1724,13 +1750,27 @@ class ChatRoomViewModel @Inject constructor(
                     _toastEvent.tryEmit("📸 $name took a screenshot!")
                 }
             }
+            type == "live_location" -> {
+                val senderId = (event["sender_id"] ?: event["user_id"])?.jsonPrimitive?.contentOrNull.orEmpty()
+                if (senderId.isNotEmpty() && senderId == (tokenManager.userId ?: "")) return
+                val lat = event["lat"]?.jsonPrimitive?.content?.toDoubleOrNull()
+                val lng = event["lng"]?.jsonPrimitive?.content?.toDoubleOrNull()
+                if (lat != null && lng != null) {
+                    _liveLocation.value = LiveLocationShare(senderId, lat, lng)
+                }
+            }
+            type == "live_location_stop" -> {
+                _liveLocation.value = null
+            }
             type == "typing" -> {
                 val isTyping = event["is_typing"]?.jsonPrimitive?.booleanOrNull ?: false
                 val senderId = (event["sender_id"] ?: event["user_id"])?.jsonPrimitive?.contentOrNull.orEmpty()
                 val currentUserId = tokenManager.userId ?: ""
                 // Ignore our own typing echo.
                 if (senderId.isNotEmpty() && senderId == currentUserId) return
+                val typingAction = event["action"]?.jsonPrimitive?.contentOrNull ?: "typing"
                 _isOtherUserTyping.value = isTyping
+                _otherUserRecording.value = isTyping && typingAction == "recording"
                 if (senderId.isNotEmpty() && currentPartnerId.isNullOrEmpty()) {
                     currentPartnerId = senderId
                 }
@@ -1751,10 +1791,12 @@ class ChatRoomViewModel @Inject constructor(
                     typingClearJob = viewModelScope.launch {
                         delay(6000)
                         _isOtherUserTyping.value = false
+                        _otherUserRecording.value = false
                         _typingParticipant.value = null
                     }
                 } else {
                     typingClearJob?.cancel()
+                    _otherUserRecording.value = false
                     _typingParticipant.value = null
                 }
             }
@@ -1897,4 +1939,10 @@ data class TypingParticipant(
     val id: String,
     val name: String,
     val avatarUrl: String
+)
+
+data class LiveLocationShare(
+    val senderId: String,
+    val lat: Double,
+    val lng: Double
 )
