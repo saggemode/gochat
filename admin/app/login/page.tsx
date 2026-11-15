@@ -86,7 +86,7 @@ export default function LoginPage() {
               {loading ? <Loader2 className="animate-spin" /> : null}
               Sign in
             </Button>
-            {process.env.NEXT_PUBLIC_USE_MOCKS !== "false" ? (
+            {process.env.NEXT_PUBLIC_USE_MOCKS === "true" ? (
               <p className="text-muted-foreground pt-1 text-center text-xs">
                 Mock auth — any email &amp; password works for now.
               </p>

@@ -52,7 +52,10 @@ function persist(session: AdminSession) {
   }
 }
 
-const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS !== "false"
+// Real-by-default, mocks opt-in — consistent with lib/resources.ts and
+// lib/use-realtime.ts, so an unconfigured deployment doesn't end up with real
+// data but mock auth. Set NEXT_PUBLIC_USE_MOCKS=true for offline UI work.
+const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === "true"
 
 type LoginResponse = {
   access_token?: string
