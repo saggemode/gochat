@@ -162,6 +162,7 @@ class GroupInfoActivity : AppCompatActivity() {
                         clipboard.setPrimaryClip(clip)
                         Toast.makeText(this, getString(R.string.toast_link_copied), Toast.LENGTH_SHORT).show()
                     }
+                    .setNeutralButton("Show QR") { _, _ -> showGroupQr(link) }
                     .setNegativeButton(getString(R.string.btn_close), null)
                     .show()
             }
@@ -173,6 +174,23 @@ class GroupInfoActivity : AppCompatActivity() {
                 putExtra(BotManagementActivity.EXTRA_CONVERSATION_ID, convId)
             }
             startActivity(intent)
+        }
+
+        // Group permissions (admin-only)
+        binding.btnGroupPermissions.setOnClickListener {
+            showGroupPermissionsDialog()
+        }
+
+        // Group events
+        binding.btnGroupEvents.setOnClickListener {
+            startActivity(Intent(this, GroupEventsActivity::class.java).apply {
+                putExtra(GroupEventsActivity.EXTRA_CONVERSATION_ID, convId)
+            })
+        }
+
+        // Report group
+        binding.btnReportGroup.setOnClickListener {
+            showReportGroupDialog()
         }
 
         // Starred messages button
@@ -319,6 +337,7 @@ class GroupInfoActivity : AppCompatActivity() {
                 binding.btnAddMember.visibility = adminVisibility
                 binding.btnInviteLink.visibility = adminVisibility
                 binding.btnManageBot.visibility = adminVisibility
+                binding.btnGroupPermissions.visibility = adminVisibility
 
                 // Disable click listeners for non-admins on editable rows
                 binding.layoutGroupName.isClickable = isAdminOrOwner
@@ -343,6 +362,61 @@ class GroupInfoActivity : AppCompatActivity() {
                 binding.tvMemberCount.text = getString(R.string.member_count_format, memberList.size)
                 memberAdapter.submitList(memberList)
             }
+        }
+    }
+
+    private fun showGroupPermissionsDialog() {
+        val meta = viewModel.metadata.value
+        val checked = booleanArrayOf(
+            meta?.announcementsOnly ?: false,
+            meta?.adminsOnlyEditInfo ?: true
+        )
+        val items = arrayOf("Only admins can send messages", "Only admins can edit group info")
+        AlertDialog.Builder(this)
+            .setTitle("Group permissions")
+            .setMultiChoiceItems(items, checked) { _, which, isChecked -> checked[which] = isChecked }
+            .setPositiveButton("Save") { _, _ ->
+                viewModel.setGroupPermissions(
+                    convId = convId,
+                    announcementsOnly = checked[0],
+                    adminsOnlyEditInfo = checked[1]
+                ) { ok ->
+                    Toast.makeText(this, if (ok) "Permissions updated" else "Failed to update permissions", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton(getString(R.string.btn_cancel), null)
+            .show()
+    }
+
+    private fun showReportGroupDialog() {
+        val reasons = arrayOf("Spam", "Harassment or bullying", "Inappropriate content", "Scam or fraud", "Other")
+        AlertDialog.Builder(this)
+            .setTitle("Report group")
+            .setItems(reasons) { _, which ->
+                viewModel.reportGroup(convId, reasons[which]) { ok ->
+                    Toast.makeText(this, if (ok) "Report submitted" else "Failed to submit report", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton(getString(R.string.btn_cancel), null)
+            .show()
+    }
+
+    private fun showGroupQr(link: String) {
+        try {
+            val bitmap = com.journeyapps.barcodescanner.BarcodeEncoder()
+                .encodeBitmap(link, com.google.zxing.BarcodeFormat.QR_CODE, 600, 600)
+            val imageView = android.widget.ImageView(this).apply {
+                setImageBitmap(bitmap)
+                val pad = (16 * resources.displayMetrics.density).toInt()
+                setPadding(pad, pad, pad, pad)
+            }
+            AlertDialog.Builder(this)
+                .setTitle("Scan to join group")
+                .setView(imageView)
+                .setPositiveButton(getString(R.string.btn_close), null)
+                .show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Couldn't generate QR code", Toast.LENGTH_SHORT).show()
         }
     }
 

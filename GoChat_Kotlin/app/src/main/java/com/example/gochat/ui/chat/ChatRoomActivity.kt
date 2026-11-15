@@ -314,6 +314,15 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     }
 
+    // Contact sharing: pick a phone contact and send it as a contact card.
+    private val contactPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            result.data?.data?.let { uri -> sendPickedContact(uri) }
+        }
+    }
+
     private val requestVideoNotePermissions = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
@@ -1234,6 +1243,22 @@ class ChatRoomActivity : AppCompatActivity() {
             startLocationPicker()
         }
 
+        sheetBinding.btnPickContact.setOnClickListener {
+            sheet.dismiss()
+            try {
+                contactPickerLauncher.launch(
+                    Intent(Intent.ACTION_PICK, android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI)
+                )
+            } catch (_: Exception) {
+                Toast.makeText(this, "No contacts app available", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        sheetBinding.btnPickEvent.setOnClickListener {
+            sheet.dismiss()
+            showCreateEventDialog()
+        }
+
         sheetBinding.btnPickGif.setOnClickListener {
             sheet.dismiss()
             showGifPicker()
@@ -1535,6 +1560,66 @@ class ChatRoomActivity : AppCompatActivity() {
 
     private fun startLocationPicker() {
         locationPickerLauncher.launch(Intent(this, LocationPickerActivity::class.java))
+    }
+
+    /** Create a group event: title → date → time → sent as an event message (RSVP via reactions). */
+    private fun showCreateEventDialog() {
+        val input = android.widget.EditText(this).apply {
+            hint = "Event title"
+            isSingleLine = true
+            val pad = (20 * resources.displayMetrics.density).toInt()
+            setPadding(pad, pad, pad, pad)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("New event")
+            .setView(input)
+            .setPositiveButton("Next") { _, _ ->
+                val title = input.text?.toString()?.trim().orEmpty()
+                if (title.isBlank()) {
+                    Toast.makeText(this, "Enter an event title", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                pickEventDateTime(title)
+            }
+            .setNegativeButton(getString(R.string.btn_cancel), null)
+            .show()
+    }
+
+    private fun pickEventDateTime(title: String) {
+        val now = java.util.Calendar.getInstance()
+        android.app.DatePickerDialog(this, { _, year, month, day ->
+            android.app.TimePickerDialog(this, { _, hour, minute ->
+                val cal = java.util.Calendar.getInstance().apply { set(year, month, day, hour, minute, 0) }
+                viewModel.sendEventMessage(title, cal.timeInMillis)
+                Toast.makeText(this, "Event shared", Toast.LENGTH_SHORT).show()
+            }, now.get(java.util.Calendar.HOUR_OF_DAY), now.get(java.util.Calendar.MINUTE), false).show()
+        }, now.get(java.util.Calendar.YEAR), now.get(java.util.Calendar.MONTH), now.get(java.util.Calendar.DAY_OF_MONTH)).show()
+    }
+
+    /** Reads the picked phone contact and sends it as a shareable contact card. */
+    private fun sendPickedContact(uri: Uri) {
+        try {
+            contentResolver.query(
+                uri,
+                arrayOf(
+                    android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                    android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
+                ),
+                null, null, null
+            )?.use { c ->
+                if (c.moveToFirst()) {
+                    val name = c.getString(0)?.ifBlank { "Contact" } ?: "Contact"
+                    val number = c.getString(1).orEmpty().trim()
+                    if (number.isBlank()) {
+                        Toast.makeText(this, "That contact has no phone number", Toast.LENGTH_SHORT).show()
+                        return
+                    }
+                    viewModel.sendContactMessage(name, number)
+                }
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Couldn't read that contact", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun showGifPicker() {

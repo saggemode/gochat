@@ -265,6 +265,76 @@ func (h *GroupHandler) UpdateGroupMetadata(c *gin.Context) {
 	c.JSON(http.StatusOK, resp.Metadata)
 }
 
+func (h *GroupHandler) CreateGroupEvent(c *gin.Context) {
+	convID := c.Param("id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	var req struct {
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		Location    string `json:"location"`
+		EventTime   int64  `json:"event_time"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json payload"})
+		return
+	}
+	resp, err := h.client.CreateGroupEvent(c.Request.Context(), &grouppb.CreateGroupEventRequest{
+		ConversationId: convID,
+		RequesterId:    userID,
+		Title:          req.Title,
+		Description:    req.Description,
+		Location:       req.Location,
+		EventTime:      req.EventTime,
+	})
+	if err != nil {
+		h.handleGrpcError(c, err, "failed to create group event")
+		return
+	}
+	c.JSON(http.StatusCreated, resp)
+}
+
+func (h *GroupHandler) ListGroupEvents(c *gin.Context) {
+	convID := c.Param("id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	resp, err := h.client.ListGroupEvents(c.Request.Context(), &grouppb.ListGroupEventsRequest{
+		ConversationId: convID,
+		RequesterId:    userID,
+	})
+	if err != nil {
+		h.handleGrpcError(c, err, "failed to list group events")
+		return
+	}
+	c.JSON(http.StatusOK, resp.Events)
+}
+
+func (h *GroupHandler) RsvpGroupEvent(c *gin.Context) {
+	eventID := c.Param("event_id")
+	userID := getUserID(c)
+	if userID == "" {
+		return
+	}
+	var req struct {
+		Response string `json:"response"`
+	}
+	_ = c.ShouldBindJSON(&req)
+	resp, err := h.client.RsvpGroupEvent(c.Request.Context(), &grouppb.RsvpGroupEventRequest{
+		EventId:  eventID,
+		UserId:   userID,
+		Response: req.Response,
+	})
+	if err != nil {
+		h.handleGrpcError(c, err, "failed to RSVP to event")
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 func (h *GroupHandler) GetGroupMetadata(c *gin.Context) {
 	convID := c.Param("id")
 	userID := getUserID(c)

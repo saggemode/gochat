@@ -270,6 +270,11 @@ func (s *ChatServer) SendMessage(ctx context.Context, req *chatpb.SendMessageReq
 		return nil, status.Error(codes.PermissionDenied, "you are not a member of this conversation")
 	}
 
+	// Announcements-only groups: only admins/owner may post.
+	if blocked, _ := s.convRepo.IsAnnouncementRestricted(ctx, convID, senderID); blocked {
+		return nil, status.Error(codes.PermissionDenied, "only admins can send messages in this group")
+	}
+
 	// ── Bot Moderation ──────────────────────────────────────────────────────────
 	// If it's a group conversation, perform bot moderation checks
 	conv, _ := s.convRepo.GetByID(ctx, convID)

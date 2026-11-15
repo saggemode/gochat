@@ -251,6 +251,24 @@ interface GoChatApiService {
         @Path("id") convId: String
     ): Response<JsonObject>
 
+    @GET("api/v1/groups/{id}/events")
+    suspend fun listGroupEvents(
+        @Path("id") convId: String
+    ): Response<List<GroupEvent>>
+
+    @POST("api/v1/groups/{id}/events")
+    suspend fun createGroupEvent(
+        @Path("id") convId: String,
+        @Body body: JsonObject
+    ): Response<GroupEvent>
+
+    @POST("api/v1/groups/{id}/events/{eventId}/rsvp")
+    suspend fun rsvpGroupEvent(
+        @Path("id") convId: String,
+        @Path("eventId") eventId: String,
+        @Body body: JsonObject
+    ): Response<GroupEvent>
+
     @POST("api/v1/groups/join")
     suspend fun joinByInviteCode(
         @Body body: JsonObject

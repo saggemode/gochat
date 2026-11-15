@@ -1341,6 +1341,37 @@ class ChatRoomViewModel @Inject constructor(
         }
     }
 
+    /** Sends a group event as a scheduled-event message; members RSVP via reactions. */
+    fun sendEventMessage(title: String, eventTimeMillis: Long, location: String = "") {
+        val convId = _conversationId.value
+        if (convId.isEmpty()) return
+        val whenStr = java.text.SimpleDateFormat("EEE, d MMM yyyy 'at' h:mm a", java.util.Locale.getDefault())
+            .format(java.util.Date(eventTimeMillis))
+        val loc = if (location.isNotBlank()) "\n📍 $location" else ""
+        viewModelScope.launch {
+            chatRepository.sendMessage(
+                conversationId = convId,
+                content = "📅 Event: $title\n🕒 $whenStr$loc\n\nReact 👍 to RSVP",
+                type = 0,
+                disappearingDurationSeconds = _disappearingDuration.value
+            )
+        }
+    }
+
+    /** Sends a shared contact as a card (rendered from the "👤 … / 📞 …" content). */
+    fun sendContactMessage(name: String, phone: String) {
+        val convId = _conversationId.value
+        if (convId.isEmpty()) return
+        viewModelScope.launch {
+            chatRepository.sendMessage(
+                conversationId = convId,
+                content = "👤 $name\n📞 $phone",
+                type = 0,
+                disappearingDurationSeconds = _disappearingDuration.value
+            )
+        }
+    }
+
     fun sendImageMessage(
         bytes: ByteArray,
         dataUriFallback: String,

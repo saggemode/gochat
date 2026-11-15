@@ -35,6 +35,49 @@ service GroupService {
   rpc AddBotToGroup(AddBotToGroupRequest) returns (AddBotToGroupResponse);
   rpc GetAuditLogs(GetAuditLogsRequest) returns (GetAuditLogsResponse);
   rpc LogAuditAction(LogAuditActionRequest) returns (LogAuditActionResponse);
+
+  // Group Events
+  rpc CreateGroupEvent(CreateGroupEventRequest) returns (GroupEvent);
+  rpc ListGroupEvents(ListGroupEventsRequest) returns (ListGroupEventsResponse);
+  rpc RsvpGroupEvent(RsvpGroupEventRequest) returns (GroupEvent);
+}
+
+message GroupEvent {
+  string id = 1;
+  string conversation_id = 2;
+  string title = 3;
+  string description = 4;
+  string location = 5;
+  int64 event_time = 6;
+  string created_by = 7;
+  int64 created_at = 8;
+  int32 going_count = 9;
+  int32 maybe_count = 10;
+  string my_response = 11; // "going" | "maybe" | "not_going" | ""
+}
+
+message CreateGroupEventRequest {
+  string conversation_id = 1;
+  string requester_id = 2;
+  string title = 3;
+  string description = 4;
+  string location = 5;
+  int64 event_time = 6;
+}
+
+message ListGroupEventsRequest {
+  string conversation_id = 1;
+  string requester_id = 2;
+}
+
+message ListGroupEventsResponse {
+  repeated GroupEvent events = 1;
+}
+
+message RsvpGroupEventRequest {
+  string event_id = 1;
+  string user_id = 2;
+  string response = 3; // going | maybe | not_going
 }
 
 message GroupMetadata {

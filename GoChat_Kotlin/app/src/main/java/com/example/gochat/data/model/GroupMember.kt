@@ -30,3 +30,18 @@ data class GroupMetadata(
 data class GroupMembersResponse(
     val members: List<GroupMember> = emptyList()
 )
+
+@Serializable
+data class GroupEvent(
+    val id: String = "",
+    @SerialName("conversation_id") val conversationId: String = "",
+    val title: String = "",
+    val description: String = "",
+    val location: String = "",
+    @SerialName("event_time") val eventTime: Long = 0,
+    @SerialName("created_by") val createdBy: String = "",
+    @SerialName("created_at") val createdAt: Long = 0,
+    @SerialName("going_count") val goingCount: Int = 0,
+    @SerialName("maybe_count") val maybeCount: Int = 0,
+    @SerialName("my_response") val myResponse: String = ""
+)

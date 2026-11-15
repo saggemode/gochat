@@ -81,6 +81,88 @@ func New(db *pgxpool.Pool) *GroupRepository {
 	return &GroupRepository{db: db}
 }
 
+// ── Group Events ──────────────────────────────────────────────────────────────
+
+type GroupEvent struct {
+	ID             uuid.UUID
+	ConversationID uuid.UUID
+	Title          string
+	Description    string
+	Location       string
+	EventTime      time.Time
+	CreatedBy      uuid.UUID
+	CreatedAt      time.Time
+	GoingCount     int32
+	MaybeCount     int32
+	MyResponse     string
+}
+
+func (r *GroupRepository) CreateEvent(ctx context.Context, e *GroupEvent) error {
+	if e.ID == uuid.Nil {
+		e.ID = uuid.New()
+	}
+	return r.db.QueryRow(ctx, `
+		INSERT INTO grp.group_events (id, conversation_id, title, description, location, event_time, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING created_at
+	`, e.ID, e.ConversationID, e.Title, e.Description, e.Location, e.EventTime, e.CreatedBy).Scan(&e.CreatedAt)
+}
+
+const eventSelect = `
+		SELECT e.id, e.conversation_id, e.title, e.description, e.location, e.event_time, e.created_by, e.created_at,
+		       (SELECT COUNT(*) FROM grp.group_event_rsvps WHERE event_id = e.id AND response = 'going'),
+		       (SELECT COUNT(*) FROM grp.group_event_rsvps WHERE event_id = e.id AND response = 'maybe'),
+		       COALESCE((SELECT response FROM grp.group_event_rsvps WHERE event_id = e.id AND user_id = $2), '')
+		FROM grp.group_events e `
+
+func scanEvent(row pgx.Row) (*GroupEvent, error) {
+	ev := &GroupEvent{}
+	err := row.Scan(&ev.ID, &ev.ConversationID, &ev.Title, &ev.Description, &ev.Location, &ev.EventTime,
+		&ev.CreatedBy, &ev.CreatedAt, &ev.GoingCount, &ev.MaybeCount, &ev.MyResponse)
+	if err != nil {
+		return nil, err
+	}
+	return ev, nil
+}
+
+func (r *GroupRepository) ListEvents(ctx context.Context, convID, viewerID uuid.UUID) ([]*GroupEvent, error) {
+	rows, err := r.db.Query(ctx, eventSelect+`WHERE e.conversation_id = $1 ORDER BY e.event_time ASC`, convID, viewerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*GroupEvent
+	for rows.Next() {
+		ev, err := scanEvent(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, ev)
+	}
+	return out, nil
+}
+
+func (r *GroupRepository) GetEvent(ctx context.Context, eventID, viewerID uuid.UUID) (*GroupEvent, error) {
+	return scanEvent(r.db.QueryRow(ctx, eventSelect+`WHERE e.id = $1`, eventID, viewerID))
+}
+
+// Rsvp upserts a response (empty/"none" removes it). Returns the event's conversation id.
+func (r *GroupRepository) Rsvp(ctx context.Context, eventID, userID uuid.UUID, response string) (uuid.UUID, error) {
+	var convID uuid.UUID
+	if err := r.db.QueryRow(ctx, `SELECT conversation_id FROM grp.group_events WHERE id = $1`, eventID).Scan(&convID); err != nil {
+		return uuid.Nil, err
+	}
+	if response == "" || response == "none" {
+		_, err := r.db.Exec(ctx, `DELETE FROM grp.group_event_rsvps WHERE event_id = $1 AND user_id = $2`, eventID, userID)
+		return convID, err
+	}
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO grp.group_event_rsvps (event_id, user_id, response) VALUES ($1, $2, $3)
+		ON CONFLICT (event_id, user_id) DO UPDATE SET response = EXCLUDED.response
+	`, eventID, userID, response)
+	return convID, err
+}
+
 func (r *GroupRepository) GetMetadata(ctx context.Context, convID uuid.UUID) (*GroupMetadata, error) {
 	m := &GroupMetadata{}
 	err := r.db.QueryRow(ctx, `

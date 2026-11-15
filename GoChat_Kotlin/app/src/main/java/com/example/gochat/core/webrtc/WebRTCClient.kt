@@ -299,6 +299,13 @@ class WebRTCClient(
         return targetDevice?.let { enumerator.createCapturer(it, null) }
     }
 
+    /** Flips between front and back cameras during a video call. No-op if not capturing. */
+    fun switchCamera() {
+        (videoCapturer as? org.webrtc.CameraVideoCapturer)?.switchCamera(null)
+    }
+
+    fun hasCameraCapture(): Boolean = videoCapturer is org.webrtc.CameraVideoCapturer
+
     fun createVideoTrack(videoSource: VideoSource): VideoTrack {
         return peerConnectionFactory.createVideoTrack("video_track", videoSource)
     }

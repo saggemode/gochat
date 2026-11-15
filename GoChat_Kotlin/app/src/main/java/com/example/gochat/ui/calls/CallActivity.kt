@@ -59,6 +59,7 @@ class CallActivity : AppCompatActivity() {
 
         private const val MENU_SEND_MESSAGE = 1
         private const val MENU_NOISE_CANCELLATION = 2
+        private const val MENU_SWITCH_CAMERA = 3
         private val COLOR_CONTROL_IDLE = Color.parseColor("#1F2C33")
     }
 
@@ -195,10 +196,33 @@ class CallActivity : AppCompatActivity() {
             return
         }
         if (!newIsOutgoing) {
-            lifecycleScope.launch(Dispatchers.IO) {
-                callRepo.rejectCall(newCallId, isBusy = true)
-            }
+            showCallWaitingPrompt(newCallId, intent)
         }
+    }
+
+    /**
+     * Call waiting: a second call arrived while this one is active. Offer to end the
+     * current call and answer the new one, or decline it as busy.
+     */
+    private fun showCallWaitingPrompt(newCallId: String, newIntent: Intent) {
+        if (isCallEnded) return
+        val waitingName = newIntent.getStringExtra(EXTRA_PEER_NAME).orEmpty().ifBlank { "Someone" }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Incoming call")
+            .setMessage("$waitingName is calling. End your current call and answer?")
+            .setCancelable(true)
+            .setPositiveButton("End & Accept") { _, _ ->
+                endCall()
+                startActivity(Intent(this, CallActivity::class.java).apply {
+                    putExtras(newIntent)
+                    putExtra(EXTRA_AUTO_ACCEPT, true)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                })
+            }
+            .setNegativeButton("Decline") { _, _ ->
+                lifecycleScope.launch(Dispatchers.IO) { callRepo.rejectCall(newCallId, isBusy = true) }
+            }
+            .show()
     }
 
     /**
@@ -371,7 +395,13 @@ class CallActivity : AppCompatActivity() {
 
         binding.btnSpeaker.setOnClickListener {
             if (!isMediaReady) return@setOnClickListener
-            audioController.setSpeaker(!audioController.isSpeakerOn)
+            val newRoute = audioController.cycleRoute()
+            val label = when (newRoute) {
+                CallAudioController.AudioRoute.SPEAKER -> "Speaker"
+                CallAudioController.AudioRoute.BLUETOOTH -> "Bluetooth"
+                else -> "Earpiece"
+            }
+            Toast.makeText(this, label, Toast.LENGTH_SHORT).show()
             renderControlStates()
         }
 
@@ -410,7 +440,7 @@ class CallActivity : AppCompatActivity() {
     }
 
     private fun renderControlStates() {
-        setControlActive(binding.btnSpeaker, isMediaReady && audioController.isSpeakerOn)
+        setControlActive(binding.btnSpeaker, isMediaReady && audioController.route != CallAudioController.AudioRoute.EARPIECE)
 
         binding.btnMute.setImageResource(if (isAudioMuted) R.drawable.ic_mic_off else R.drawable.ic_mic)
         setControlActive(binding.btnMute, isAudioMuted)
@@ -456,7 +486,10 @@ class CallActivity : AppCompatActivity() {
     private fun showMoreMenu() {
         val popup = PopupMenu(this, binding.btnMore)
         popup.menu.add(0, MENU_SEND_MESSAGE, 0, "Send message")
-        popup.menu.add(0, MENU_NOISE_CANCELLATION, 1, "Noise cancellation").apply {
+        if (isMediaReady && rtcClient.hasCameraCapture()) {
+            popup.menu.add(0, MENU_SWITCH_CAMERA, 1, "Switch camera")
+        }
+        popup.menu.add(0, MENU_NOISE_CANCELLATION, 2, "Noise cancellation").apply {
             isCheckable = true
             isChecked = !isMediaReady || rtcClient.noiseSuppressionEnabled
         }
@@ -464,6 +497,10 @@ class CallActivity : AppCompatActivity() {
             when (item.itemId) {
                 MENU_SEND_MESSAGE -> {
                     openChatWithPeer()
+                    true
+                }
+                MENU_SWITCH_CAMERA -> {
+                    if (isMediaReady) rtcClient.switchCamera()
                     true
                 }
                 MENU_NOISE_CANCELLATION -> {

@@ -49,6 +49,12 @@ class GroupCallActivity : AppCompatActivity() {
     @Inject lateinit var callRepo: CallRepository
     @Inject lateinit var webSocket: GoChatWebSocket
 
+    @Inject lateinit var tokenManager: com.example.gochat.data.api.TokenManager
+    @Inject lateinit var chatRepository: com.example.gochat.data.repository.ChatRepository
+
+    // Latest participant ids from the SFU, for the participant-management dialog.
+    private val participantIds = java.util.Collections.synchronizedList(mutableListOf<String>())
+
     private lateinit var audioController: CallAudioController
     private var client: GroupCallClient? = null
 
@@ -364,12 +370,76 @@ class GroupCallActivity : AppCompatActivity() {
                     "sfu-participants" -> {
                         val ids = event["participants"]?.jsonPrimitive?.contentOrNull.orEmpty()
                             .split(",").filter { it.isNotBlank() }
-                        runOnUiThread { tvParticipants.text = getString(R.string.gcall_participants, ids.size) }
+                        synchronized(participantIds) {
+                            participantIds.clear()
+                            participantIds.addAll(ids)
+                        }
+                        runOnUiThread {
+                            tvParticipants.text = getString(R.string.gcall_participants, ids.size)
+                            tvParticipants.setOnClickListener { showParticipantsDialog() }
+                        }
                         resubscribe((ids.size - 1).coerceAtLeast(1))
+                    }
+                    // A host asked us to mute — honor it.
+                    "mute-request" -> runOnUiThread {
+                        if (!isMuted) {
+                            isMuted = true
+                            client?.setMicrophoneEnabled(false)
+                        }
+                        android.widget.Toast.makeText(this@GroupCallActivity, "You were muted by a host", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    // A host removed us from the call.
+                    "call-removed" -> runOnUiThread {
+                        android.widget.Toast.makeText(this@GroupCallActivity, "You were removed from the call", android.widget.Toast.LENGTH_SHORT).show()
+                        endCall()
                     }
                 }
             }
         }
+    }
+
+    /** Host participant management: pick a participant to mute or remove. */
+    private fun showParticipantsDialog() {
+        val myId = tokenManager.userId.orEmpty()
+        val others = synchronized(participantIds) {
+            participantIds.filter { it != myId && it.isNotBlank() && it != "sfu" }.distinct()
+        }
+        if (others.isEmpty()) {
+            android.widget.Toast.makeText(this, "No other participants", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+        lifecycleScope.launch {
+            val labels = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                others.map { id ->
+                    try {
+                        chatRepository.resolveSenderTitle("", id, "", false).ifBlank { "Participant" }
+                    } catch (_: Exception) {
+                        "Participant"
+                    }
+                }.toTypedArray()
+            }
+            androidx.appcompat.app.AlertDialog.Builder(this@GroupCallActivity)
+                .setTitle("Participants (${others.size})")
+                .setItems(labels) { _, which -> showParticipantActions(others[which], labels[which]) }
+                .setNegativeButton(getString(R.string.btn_cancel), null)
+                .show()
+        }
+    }
+
+    private fun showParticipantActions(participantId: String, name: String) {
+        val actions = arrayOf("Ask to mute", "Remove from call")
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(name)
+            .setItems(actions) { _, which ->
+                val type = if (which == 0) "mute-request" else "call-removed"
+                lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    try { callRepo.sendSignaling(callId, participantId, type) } catch (_: Exception) {}
+                }
+                val msg = if (which == 0) "Asked $name to mute" else "Removed $name"
+                android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(getString(R.string.btn_cancel), null)
+            .show()
     }
 
     private fun endCall() {

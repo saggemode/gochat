@@ -243,6 +243,7 @@ class ChatListFragment : Fragment() {
         binding.btnMoreOptions.setOnClickListener {
             val options = arrayOf(
                 "New group",
+                "New broadcast",
                 "Starred messages",
                 "Settings"
             )
@@ -250,8 +251,9 @@ class ChatListFragment : Fragment() {
                 .setItems(options) { _, which ->
                     when (which) {
                         0 -> com.example.gochat.ui.contacts.SelectContactActivity.start(requireContext())
-                        1 -> startActivity(Intent(requireContext(), StarredMessagesActivity::class.java))
-                        2 -> (activity as? com.example.gochat.MainActivity)?.navigateToTab(com.example.gochat.MainActivity.TAG_SETTINGS)
+                        1 -> startActivity(Intent(requireContext(), com.example.gochat.ui.chat.NewBroadcastActivity::class.java))
+                        2 -> startActivity(Intent(requireContext(), StarredMessagesActivity::class.java))
+                        3 -> (activity as? com.example.gochat.MainActivity)?.navigateToTab(com.example.gochat.MainActivity.TAG_SETTINGS)
                     }
                 }
                 .show()

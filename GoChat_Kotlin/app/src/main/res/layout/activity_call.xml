@@ -56,6 +56,20 @@
             android:textColor="@color/gochat_text_secondary"
             android:textSize="16sp"
             tools:text="Calling..." />
+
+        <TextView
+            android:id="@+id/tvCallEncryption"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:drawablePadding="4dp"
+            android:gravity="center_vertical"
+            android:text="End-to-end encrypted"
+            android:textColor="@color/gochat_text_secondary"
+            android:textSize="12sp"
+            app:drawableStartCompat="@drawable/ic_lock"
+            app:drawableTint="@color/gochat_text_secondary" />
     </LinearLayout>
 
     <!-- Controls Overlay -->

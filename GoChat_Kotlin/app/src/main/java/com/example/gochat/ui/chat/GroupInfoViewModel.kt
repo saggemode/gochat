@@ -145,6 +145,34 @@ class GroupInfoViewModel @Inject constructor(
         }
     }
 
+    /** Updates admin permission flags (announcements-only, admins-only-edit-info). */
+    fun setGroupPermissions(
+        convId: String,
+        announcementsOnly: Boolean? = null,
+        adminsOnlyEditInfo: Boolean? = null,
+        onResult: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch {
+            groupRepo.updateGroupMetadata(
+                convId = convId,
+                announcementsOnly = announcementsOnly,
+                adminsOnlyEditInfo = adminsOnlyEditInfo
+            ).onSuccess {
+                _metadata.value = it
+                onResult(true)
+            }.onFailure {
+                onResult(false)
+            }
+        }
+    }
+
+    fun reportGroup(convId: String, reason: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val res = chatRepository.reportContent("group", convId, reason)
+            onResult(res.isSuccess)
+        }
+    }
+
     fun generateInviteLink(convId: String, onResult: (String) -> Unit) {
         viewModelScope.launch {
             groupRepo.generateInviteLink(convId).onSuccess {

@@ -661,6 +661,9 @@ func main() {
 		authRequired.POST("/groups/:id/approvals/:req_id", groupHandler.ResolvePendingApproval)
 		authRequired.POST("/groups/:id/members/:user_id/promote", groupHandler.PromoteMember)
 		authRequired.POST("/groups/:id/members/:user_id/demote", groupHandler.DemoteMember)
+		authRequired.GET("/groups/:id/events", groupHandler.ListGroupEvents)
+		authRequired.POST("/groups/:id/events", groupHandler.CreateGroupEvent)
+		authRequired.POST("/groups/:id/events/:event_id/rsvp", groupHandler.RsvpGroupEvent)
 
 		// Communities
 		authRequired.POST("/communities", groupHandler.CreateCommunity)

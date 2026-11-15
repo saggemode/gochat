@@ -256,6 +256,22 @@ func (r *ConversationRepository) IsMember(ctx context.Context, convID, userID uu
 	return exists, err
 }
 
+// IsAnnouncementRestricted reports whether senderID is blocked from posting because
+// the group is "announcements only" and the sender is not an admin/owner. Reads from
+// the shared grp schema. Fails OPEN on error so a DB hiccup never blocks messaging.
+func (r *ConversationRepository) IsAnnouncementRestricted(ctx context.Context, convID, senderID uuid.UUID) (bool, error) {
+	var announcementsOnly bool
+	err := r.db.QueryRow(ctx, `SELECT COALESCE(announcements_only, false) FROM grp.group_metadata WHERE conversation_id = $1`, convID).Scan(&announcementsOnly)
+	if err != nil || !announcementsOnly {
+		return false, nil // no metadata row, or not restricted
+	}
+	var role string
+	if err := r.db.QueryRow(ctx, `SELECT COALESCE(role, 'member') FROM conversation_members WHERE conversation_id = $1 AND user_id = $2`, convID, senderID).Scan(&role); err != nil {
+		return false, nil // fail open
+	}
+	return role != "admin" && role != "owner", nil
+}
+
 // CanBeAddedToGroupBy enforces the target's "who can add me to groups" privacy:
 // 'everyone' → always; 'nobody' → never; 'contacts' → only if the target has the
 // adder saved as a contact. Reads from the shared core schema. Fails open on error

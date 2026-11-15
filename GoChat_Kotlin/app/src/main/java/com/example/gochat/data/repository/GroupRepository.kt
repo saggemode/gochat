@@ -3,6 +3,7 @@ package com.example.gochat.data.repository
 
 
 import com.example.gochat.data.api.GoChatApiService
+import com.example.gochat.data.model.GroupEvent
 import com.example.gochat.data.model.GroupMember
 import com.example.gochat.data.model.GroupMetadata
 import kotlinx.serialization.json.*
@@ -23,6 +24,50 @@ class GroupRepository @Inject constructor(
             } else {
                 Result.failure(Exception("Failed to fetch group members"))
             }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // ── Group events ──────────────────────────────────────────────────────────
+    suspend fun listGroupEvents(convId: String): Result<List<GroupEvent>> {
+        return try {
+            val response = api.listGroupEvents(convId)
+            if (response.isSuccessful) Result.success(response.body() ?: emptyList())
+            else Result.failure(Exception("Failed to load events"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun createGroupEvent(
+        convId: String,
+        title: String,
+        eventTimeMillis: Long,
+        location: String = "",
+        description: String = ""
+    ): Result<GroupEvent> {
+        return try {
+            val body = buildJsonObject {
+                put("title", title)
+                put("event_time", eventTimeMillis / 1000) // server stores Unix seconds
+                if (location.isNotBlank()) put("location", location)
+                if (description.isNotBlank()) put("description", description)
+            }
+            val response = api.createGroupEvent(convId, body)
+            if (response.isSuccessful && response.body() != null) Result.success(response.body()!!)
+            else Result.failure(Exception("Failed to create event"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun rsvpGroupEvent(convId: String, eventId: String, response: String): Result<GroupEvent> {
+        return try {
+            val body = buildJsonObject { put("response", response) }
+            val resp = api.rsvpGroupEvent(convId, eventId, body)
+            if (resp.isSuccessful && resp.body() != null) Result.success(resp.body()!!)
+            else Result.failure(Exception("Failed to RSVP"))
         } catch (e: Exception) {
             Result.failure(e)
         }

@@ -165,6 +165,18 @@
             android:exported="false"
             android:theme="@style/Theme.GoChat" />
 
+        <!-- New Broadcast Activity -->
+        <activity
+            android:name=".ui.chat.NewBroadcastActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+
+        <!-- Group Events Activity -->
+        <activity
+            android:name=".ui.chat.GroupEventsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+
         <!-- Security Verification Activity -->
         <activity
             android:name=".ui.security.SecurityVerificationActivity"

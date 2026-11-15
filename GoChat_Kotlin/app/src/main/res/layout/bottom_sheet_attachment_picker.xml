@@ -218,6 +218,43 @@
                 android:textSize="13sp" />
         </LinearLayout>
 
+        <!-- Contact Option -->
+        <LinearLayout
+            android:id="@+id/btnPickContact"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <FrameLayout
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:background="@drawable/bg_circle_pulse"
+                android:backgroundTint="#D9007AFF">
+
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="Contact"
+                    android:src="@drawable/ic_account"
+                    app:tint="@color/white" />
+            </FrameLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Contact"
+                android:textColor="@color/gochat_text_primary"
+                android:textSize="13sp" />
+        </LinearLayout>
+
         <!-- GIF Option -->
         <LinearLayout
             android:id="@+id/btnPickGif"
@@ -450,6 +487,54 @@
                 android:textSize="13sp" />
         </LinearLayout>
 
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal">
+
+        <!-- Event Option -->
+        <LinearLayout
+            android:id="@+id/btnPickEvent"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <FrameLayout
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:background="@drawable/bg_circle_pulse"
+                android:backgroundTint="#D9E67E22">
+
+                <ImageView
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="Event"
+                    android:src="@drawable/ic_timer"
+                    app:tint="@color/white" />
+            </FrameLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Event"
+                android:textColor="@color/gochat_text_primary"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+        <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+        <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
     </LinearLayout>
 
 </LinearLayout>

@@ -43,6 +43,9 @@ const (
 	GroupService_AddBotToGroup_FullMethodName            = "/group.GroupService/AddBotToGroup"
 	GroupService_GetAuditLogs_FullMethodName             = "/group.GroupService/GetAuditLogs"
 	GroupService_LogAuditAction_FullMethodName           = "/group.GroupService/LogAuditAction"
+	GroupService_CreateGroupEvent_FullMethodName         = "/group.GroupService/CreateGroupEvent"
+	GroupService_ListGroupEvents_FullMethodName          = "/group.GroupService/ListGroupEvents"
+	GroupService_RsvpGroupEvent_FullMethodName           = "/group.GroupService/RsvpGroupEvent"
 )
 
 // GroupServiceClient is the client API for GroupService service.
@@ -76,6 +79,10 @@ type GroupServiceClient interface {
 	AddBotToGroup(ctx context.Context, in *AddBotToGroupRequest, opts ...grpc.CallOption) (*AddBotToGroupResponse, error)
 	GetAuditLogs(ctx context.Context, in *GetAuditLogsRequest, opts ...grpc.CallOption) (*GetAuditLogsResponse, error)
 	LogAuditAction(ctx context.Context, in *LogAuditActionRequest, opts ...grpc.CallOption) (*LogAuditActionResponse, error)
+	// Group Events
+	CreateGroupEvent(ctx context.Context, in *CreateGroupEventRequest, opts ...grpc.CallOption) (*GroupEvent, error)
+	ListGroupEvents(ctx context.Context, in *ListGroupEventsRequest, opts ...grpc.CallOption) (*ListGroupEventsResponse, error)
+	RsvpGroupEvent(ctx context.Context, in *RsvpGroupEventRequest, opts ...grpc.CallOption) (*GroupEvent, error)
 }
 
 type groupServiceClient struct {
@@ -326,6 +333,36 @@ func (c *groupServiceClient) LogAuditAction(ctx context.Context, in *LogAuditAct
 	return out, nil
 }
 
+func (c *groupServiceClient) CreateGroupEvent(ctx context.Context, in *CreateGroupEventRequest, opts ...grpc.CallOption) (*GroupEvent, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GroupEvent)
+	err := c.cc.Invoke(ctx, GroupService_CreateGroupEvent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupServiceClient) ListGroupEvents(ctx context.Context, in *ListGroupEventsRequest, opts ...grpc.CallOption) (*ListGroupEventsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListGroupEventsResponse)
+	err := c.cc.Invoke(ctx, GroupService_ListGroupEvents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupServiceClient) RsvpGroupEvent(ctx context.Context, in *RsvpGroupEventRequest, opts ...grpc.CallOption) (*GroupEvent, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GroupEvent)
+	err := c.cc.Invoke(ctx, GroupService_RsvpGroupEvent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GroupServiceServer is the server API for GroupService service.
 // All implementations must embed UnimplementedGroupServiceServer
 // for forward compatibility.
@@ -357,6 +394,10 @@ type GroupServiceServer interface {
 	AddBotToGroup(context.Context, *AddBotToGroupRequest) (*AddBotToGroupResponse, error)
 	GetAuditLogs(context.Context, *GetAuditLogsRequest) (*GetAuditLogsResponse, error)
 	LogAuditAction(context.Context, *LogAuditActionRequest) (*LogAuditActionResponse, error)
+	// Group Events
+	CreateGroupEvent(context.Context, *CreateGroupEventRequest) (*GroupEvent, error)
+	ListGroupEvents(context.Context, *ListGroupEventsRequest) (*ListGroupEventsResponse, error)
+	RsvpGroupEvent(context.Context, *RsvpGroupEventRequest) (*GroupEvent, error)
 	mustEmbedUnimplementedGroupServiceServer()
 }
 
@@ -438,6 +479,15 @@ func (UnimplementedGroupServiceServer) GetAuditLogs(context.Context, *GetAuditLo
 }
 func (UnimplementedGroupServiceServer) LogAuditAction(context.Context, *LogAuditActionRequest) (*LogAuditActionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method LogAuditAction not implemented")
+}
+func (UnimplementedGroupServiceServer) CreateGroupEvent(context.Context, *CreateGroupEventRequest) (*GroupEvent, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateGroupEvent not implemented")
+}
+func (UnimplementedGroupServiceServer) ListGroupEvents(context.Context, *ListGroupEventsRequest) (*ListGroupEventsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListGroupEvents not implemented")
+}
+func (UnimplementedGroupServiceServer) RsvpGroupEvent(context.Context, *RsvpGroupEventRequest) (*GroupEvent, error) {
+	return nil, status.Error(codes.Unimplemented, "method RsvpGroupEvent not implemented")
 }
 func (UnimplementedGroupServiceServer) mustEmbedUnimplementedGroupServiceServer() {}
 func (UnimplementedGroupServiceServer) testEmbeddedByValue()                      {}
@@ -892,6 +942,60 @@ func _GroupService_LogAuditAction_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GroupService_CreateGroupEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateGroupEventRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupServiceServer).CreateGroupEvent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupService_CreateGroupEvent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupServiceServer).CreateGroupEvent(ctx, req.(*CreateGroupEventRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GroupService_ListGroupEvents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListGroupEventsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupServiceServer).ListGroupEvents(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupService_ListGroupEvents_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupServiceServer).ListGroupEvents(ctx, req.(*ListGroupEventsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GroupService_RsvpGroupEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RsvpGroupEventRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupServiceServer).RsvpGroupEvent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupService_RsvpGroupEvent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupServiceServer).RsvpGroupEvent(ctx, req.(*RsvpGroupEventRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // GroupService_ServiceDesc is the grpc.ServiceDesc for GroupService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -994,6 +1098,18 @@ var GroupService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "LogAuditAction",
 			Handler:    _GroupService_LogAuditAction_Handler,
+		},
+		{
+			MethodName: "CreateGroupEvent",
+			Handler:    _GroupService_CreateGroupEvent_Handler,
+		},
+		{
+			MethodName: "ListGroupEvents",
+			Handler:    _GroupService_ListGroupEvents_Handler,
+		},
+		{
+			MethodName: "RsvpGroupEvent",
+			Handler:    _GroupService_RsvpGroupEvent_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

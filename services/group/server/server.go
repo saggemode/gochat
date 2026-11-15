@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -29,6 +30,98 @@ func New(repo *repository.GroupRepository, chatClient *chat.Client, log *zap.Log
 		chat: chatClient,
 		log:  log,
 	}
+}
+
+// ── Group Events ──────────────────────────────────────────────────────────────
+
+func mapEvent(e *repository.GroupEvent) *grouppb.GroupEvent {
+	return &grouppb.GroupEvent{
+		Id:             e.ID.String(),
+		ConversationId: e.ConversationID.String(),
+		Title:          e.Title,
+		Description:    e.Description,
+		Location:       e.Location,
+		EventTime:      e.EventTime.Unix(),
+		CreatedBy:      e.CreatedBy.String(),
+		CreatedAt:      e.CreatedAt.Unix(),
+		GoingCount:     e.GoingCount,
+		MaybeCount:     e.MaybeCount,
+		MyResponse:     e.MyResponse,
+	}
+}
+
+func (s *GroupServer) CreateGroupEvent(ctx context.Context, req *grouppb.CreateGroupEventRequest) (*grouppb.GroupEvent, error) {
+	convID, err := uuid.Parse(req.ConversationId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid conversation_id")
+	}
+	reqID, err := uuid.Parse(req.RequesterId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid requester_id")
+	}
+	if strings.TrimSpace(req.Title) == "" {
+		return nil, status.Error(codes.InvalidArgument, "title required")
+	}
+	role, err := s.repo.GetUserRole(ctx, convID, reqID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "check role: %v", err)
+	}
+	if role == "" {
+		return nil, status.Error(codes.PermissionDenied, "not a member of this group")
+	}
+	ev := &repository.GroupEvent{
+		ConversationID: convID,
+		Title:          strings.TrimSpace(req.Title),
+		Description:    req.Description,
+		Location:       req.Location,
+		EventTime:      time.Unix(req.EventTime, 0),
+		CreatedBy:      reqID,
+	}
+	if err := s.repo.CreateEvent(ctx, ev); err != nil {
+		return nil, status.Errorf(codes.Internal, "create event: %v", err)
+	}
+	// The creator is automatically marked "going".
+	_, _ = s.repo.Rsvp(ctx, ev.ID, reqID, "going")
+	if full, err := s.repo.GetEvent(ctx, ev.ID, reqID); err == nil {
+		return mapEvent(full), nil
+	}
+	return mapEvent(ev), nil
+}
+
+func (s *GroupServer) ListGroupEvents(ctx context.Context, req *grouppb.ListGroupEventsRequest) (*grouppb.ListGroupEventsResponse, error) {
+	convID, err := uuid.Parse(req.ConversationId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid conversation_id")
+	}
+	reqID, _ := uuid.Parse(req.RequesterId)
+	events, err := s.repo.ListEvents(ctx, convID, reqID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list events: %v", err)
+	}
+	out := make([]*grouppb.GroupEvent, len(events))
+	for i, e := range events {
+		out[i] = mapEvent(e)
+	}
+	return &grouppb.ListGroupEventsResponse{Events: out}, nil
+}
+
+func (s *GroupServer) RsvpGroupEvent(ctx context.Context, req *grouppb.RsvpGroupEventRequest) (*grouppb.GroupEvent, error) {
+	eventID, err := uuid.Parse(req.EventId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid event_id")
+	}
+	userID, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user_id")
+	}
+	if _, err := s.repo.Rsvp(ctx, eventID, userID, req.Response); err != nil {
+		return nil, status.Errorf(codes.Internal, "rsvp: %v", err)
+	}
+	full, err := s.repo.GetEvent(ctx, eventID, userID)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "event not found")
+	}
+	return mapEvent(full), nil
 }
 
 func (s *GroupServer) UpdateGroupMetadata(ctx context.Context, req *grouppb.UpdateGroupMetadataRequest) (*grouppb.UpdateGroupMetadataResponse, error) {
