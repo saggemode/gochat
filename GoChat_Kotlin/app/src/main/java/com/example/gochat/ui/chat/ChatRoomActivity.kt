@@ -713,6 +713,8 @@ class ChatRoomActivity : AppCompatActivity() {
             Toast.makeText(this, "Cannot place call: recipient user not found", Toast.LENGTH_SHORT).show()
             return
         }
+        val peerName = intent.getStringExtra(EXTRA_CONVERSATION_TITLE) ?: "Chat"
+        val peerAvatar = intent.getStringExtra(EXTRA_CONVERSATION_AVATAR).orEmpty()
         lifecycleScope.launch {
             val result = callRepository.startCall(targetId, type)
             if (result.isFailure) {
@@ -728,8 +730,8 @@ class ChatRoomActivity : AppCompatActivity() {
             startActivity(Intent(this@ChatRoomActivity, CallActivity::class.java).apply {
                 putExtra(CallActivity.EXTRA_CALL_ID, effectiveCallId)
                 putExtra(CallActivity.EXTRA_TARGET_USER_ID, targetId)
-                putExtra(CallActivity.EXTRA_PEER_NAME, title)
-                putExtra(CallActivity.EXTRA_PEER_AVATAR, avatarUrl)
+                putExtra(CallActivity.EXTRA_PEER_NAME, peerName)
+                putExtra(CallActivity.EXTRA_PEER_AVATAR, peerAvatar)
                 putExtra(CallActivity.EXTRA_IS_OUTGOING, true)
                 putExtra(CallActivity.EXTRA_CALL_TYPE, type)
             })
