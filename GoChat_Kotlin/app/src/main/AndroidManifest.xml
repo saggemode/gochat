@@ -188,6 +188,22 @@
             android:exported="false"
             android:theme="@style/Theme.GoChat" />
 
+        <!-- Moments -->
+        <activity
+            android:name=".ui.moments.MomentsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+
+        <!-- Mini-apps -->
+        <activity
+            android:name=".ui.miniapps.MiniAppsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+        <activity
+            android:name=".ui.miniapps.MiniAppHostActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+
         <!-- Security Verification Activity -->
         <activity
             android:name=".ui.security.SecurityVerificationActivity"

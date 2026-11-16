@@ -294,6 +294,26 @@ interface GoChatApiService {
     @DELETE("api/v1/channels/{id}")
     suspend fun deleteChannel(@Path("id") id: String): Response<JsonObject>
 
+    // ── Moments (social feed) ─────────────────────────────────────────────────
+    @GET("api/v1/social/moments/feed")
+    suspend fun getMomentsFeed(): Response<MomentsFeedResponse>
+
+    @POST("api/v1/social/moments")
+    suspend fun createMoment(@Body body: JsonObject): Response<JsonObject>
+
+    @POST("api/v1/social/moments/{id}/like")
+    suspend fun likeMoment(@Path("id") id: String): Response<JsonObject>
+
+    @POST("api/v1/social/moments/{id}/comment")
+    suspend fun commentMoment(@Path("id") id: String, @Body body: JsonObject): Response<JsonObject>
+
+    // ── Mini-apps ─────────────────────────────────────────────────────────────
+    @GET("api/v1/miniapps")
+    suspend fun listMiniApps(@Query("category") category: String? = null): Response<MiniAppsResponse>
+
+    @POST("api/v1/miniapps/{id}/launch")
+    suspend fun launchMiniApp(@Path("id") id: String, @Body body: JsonObject): Response<MiniAppLaunch>
+
     @POST("api/v1/groups/join")
     suspend fun joinByInviteCode(
         @Body body: JsonObject
