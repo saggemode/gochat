@@ -45,16 +45,10 @@ CREATE TABLE IF NOT EXISTS social.moment_comments (
 );
 
 -- ── Nearby Users (opt-in) ───────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS social.nearby_users (
-    user_id    UUID PRIMARY KEY REFERENCES core.users(id) ON DELETE CASCADE,
-    latitude   DOUBLE PRECISION NOT NULL,
-    longitude  DOUBLE PRECISION NOT NULL,
-    location   GEOGRAPHY(Point, 4326) NOT NULL,
-    is_visible BOOLEAN DEFAULT TRUE,
-    radius_km  INT DEFAULT 5,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX IF NOT EXISTS idx_nearby_users_location ON social.nearby_users USING gist(location);
+-- MOVED to 003_nearby_postgis.sql. It needs the PostGIS extension (GEOGRAPHY +
+-- gist index); keeping it here meant a DB without PostGIS failed this whole file
+-- as one batch and left moments/likes/comments uncreated → 500s on the feed.
+-- Isolating the PostGIS-dependent table keeps the rest of the social schema safe.
 
 -- ── Verification Badges ─────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS social.user_badges (
