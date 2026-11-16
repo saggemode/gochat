@@ -128,6 +128,10 @@ func (s *ChatServer) GetConversations(ctx context.Context, req *chatpb.GetConver
 
 	convs, total, err := s.convRepo.ListForUser(ctx, uid, page, pageSize)
 	if err != nil {
+		// Log the underlying cause — it used to be swallowed, which made the
+		// intermittent "failed to list conversations" 500s impossible to diagnose.
+		s.log.Error("ListConversations: repository query failed",
+			zap.String("user_id", uid.String()), zap.Error(err))
 		return nil, status.Error(codes.Internal, "failed to list conversations")
 	}
 

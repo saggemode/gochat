@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -211,14 +212,29 @@ func (r *ConversationRepository) GetByID(ctx context.Context, id uuid.UUID) (*Co
 func (r *ConversationRepository) ListForUser(ctx context.Context, userID uuid.UUID, page, pageSize int) ([]*Conversation, int, error) {
 	offset := (page - 1) * pageSize
 
-	rows, err := r.db.Query(ctx, `
+	const listQuery = `
 		SELECT c.id, c.type, c.name, c.avatar_url, c.created_by, c.created_at, c.updated_at
 		FROM conversations c
 		INNER JOIN conversation_members cm ON cm.conversation_id = c.id
 		WHERE cm.user_id = $1
 		ORDER BY c.updated_at DESC
 		LIMIT $2 OFFSET $3
-	`, userID, pageSize, offset)
+	`
+	// Retry once on a stale pooled connection. Under a shared pooler a connection
+	// can die while idle; the first query after boot/idle then fails before the
+	// request is even sent. pgconn.SafeToRetry reports exactly that case, where
+	// re-running this read-only query on a fresh connection is safe.
+	var rows pgx.Rows
+	var err error
+	for attempt := 0; attempt < 2; attempt++ {
+		rows, err = r.db.Query(ctx, listQuery, userID, pageSize, offset)
+		if err == nil {
+			break
+		}
+		if !pgconn.SafeToRetry(err) {
+			return nil, 0, err
+		}
+	}
 	if err != nil {
 		return nil, 0, err
 	}

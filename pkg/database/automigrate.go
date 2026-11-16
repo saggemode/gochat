@@ -108,6 +108,7 @@ func AutoMigrate(ctx context.Context, pool *pgxpool.Pool, serviceName string, lo
 
 	// 5. Execute all migration SQL files
 	appliedCount := 0
+	var failedFiles []string
 	for _, file := range sqlFiles {
 		sqlBytes, err := os.ReadFile(file)
 		if err != nil {
@@ -130,6 +131,7 @@ func AutoMigrate(ctx context.Context, pool *pgxpool.Pool, serviceName string, lo
 				zap.String("service", serviceName),
 				zap.String("file", filepath.Base(file)),
 				zap.Error(err))
+			failedFiles = append(failedFiles, filepath.Base(file))
 		} else {
 			appliedCount++
 		}
@@ -153,6 +155,22 @@ func AutoMigrate(ctx context.Context, pool *pgxpool.Pool, serviceName string, lo
 			END LOOP;
 		END $$;
 	`)
+
+	// Surface failures loudly and accurately. The old code always logged
+	// "finished successfully" even when files failed, which hid missing-table
+	// bugs (a failed file's tables silently don't exist → "relation does not
+	// exist" 500s at runtime). Report the failed files at ERROR so they're
+	// obvious in the boot logs; booting continues so a non-critical migration
+	// failure doesn't take the whole service down.
+	if len(failedFiles) > 0 {
+		log.Error("⚠️  boot-time auto-migration completed WITH FAILURES — tables from the failed files may be missing (expect 'relation does not exist' 500s)",
+			zap.String("service", serviceName),
+			zap.Strings("failed_files", failedFiles),
+			zap.Int("applied", appliedCount),
+			zap.Int("total_files", len(sqlFiles)),
+			zap.String("source_dir", foundBaseDir))
+		return nil
+	}
 
 	log.Info("✅ Permanent boot-time database auto-migration finished successfully!",
 		zap.String("service", serviceName),
