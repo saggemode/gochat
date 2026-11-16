@@ -247,6 +247,7 @@ class ChatListFragment : Fragment() {
                 "Channels",
                 "Moments",
                 "Mini-apps",
+                "Wallet",
                 "Archived chats",
                 "Starred messages",
                 "Settings"
@@ -259,9 +260,10 @@ class ChatListFragment : Fragment() {
                         2 -> startActivity(Intent(requireContext(), com.example.gochat.ui.channels.ChannelsActivity::class.java))
                         3 -> startActivity(Intent(requireContext(), com.example.gochat.ui.moments.MomentsActivity::class.java))
                         4 -> startActivity(Intent(requireContext(), com.example.gochat.ui.miniapps.MiniAppsActivity::class.java))
-                        5 -> showArchivedChatsDialog()
-                        6 -> startActivity(Intent(requireContext(), StarredMessagesActivity::class.java))
-                        7 -> (activity as? com.example.gochat.MainActivity)?.navigateToTab(com.example.gochat.MainActivity.TAG_SETTINGS)
+                        5 -> startActivity(Intent(requireContext(), com.example.gochat.ui.wallet.WalletActivity::class.java))
+                        6 -> showArchivedChatsDialog()
+                        7 -> startActivity(Intent(requireContext(), StarredMessagesActivity::class.java))
+                        8 -> (activity as? com.example.gochat.MainActivity)?.navigateToTab(com.example.gochat.MainActivity.TAG_SETTINGS)
                     }
                 }
                 .show()

@@ -614,6 +614,25 @@ interface GoChatApiService {
         @Path("id") orderId: String
     ): Response<JsonObject>
 
+    // ── Wallet + Red packets (hóngbāo) ────────────────────────────
+    @GET("api/v1/wallet")
+    suspend fun getWallet(): Response<JsonObject>
+
+    @POST("api/v1/wallet/topup/init")
+    suspend fun walletTopUpInit(@Body body: JsonObject): Response<JsonObject>
+
+    @GET("api/v1/wallet/topup/verify/{reference}")
+    suspend fun walletTopUpVerify(@Path("reference") reference: String): Response<JsonObject>
+
+    @POST("api/v1/redpackets")
+    suspend fun createRedPacket(@Body body: JsonObject): Response<JsonObject>
+
+    @GET("api/v1/redpackets/{id}")
+    suspend fun getRedPacket(@Path("id") id: String): Response<JsonObject>
+
+    @POST("api/v1/redpackets/{id}/claim")
+    suspend fun claimRedPacket(@Path("id") id: String): Response<JsonObject>
+
     @GET(ApiConstants.BUSINESS_PROFILE)
     suspend fun getBusinessProfile(): Response<JsonObject>
 

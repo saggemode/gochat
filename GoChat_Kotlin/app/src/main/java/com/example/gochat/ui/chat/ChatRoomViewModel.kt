@@ -1363,6 +1363,31 @@ class ChatRoomViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Announces a red packet (hóngbāo) in the chat. The money was already debited
+     * from the sender's wallet when the packet was created; this just posts a
+     * tappable card (JSON content) so recipients can open and claim it.
+     */
+    fun sendRedPacketMessage(packetId: String, greeting: String, count: Int) {
+        val convId = _conversationId.value
+        if (convId.isEmpty()) return
+        val content = buildJsonObject {
+            put("red_packet", buildJsonObject {
+                put("id", packetId)
+                put("message", greeting)
+                put("count", count)
+            })
+        }.toString()
+        viewModelScope.launch {
+            chatRepository.sendMessage(
+                conversationId = convId,
+                content = content,
+                type = 0,
+                disappearingDurationSeconds = _disappearingDuration.value
+            )
+        }
+    }
+
     /** Sends a group event as a scheduled-event message; members RSVP via reactions. */
     fun sendEventMessage(title: String, eventTimeMillis: Long, location: String = "") {
         val convId = _conversationId.value

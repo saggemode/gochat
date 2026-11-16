@@ -21,6 +21,8 @@ import android.util.Base64
 import android.view.View
 import android.view.Window
 import android.view.animation.CycleInterpolator
+import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -131,6 +133,7 @@ class ChatRoomActivity : AppCompatActivity() {
     @Inject lateinit var tokenManager: com.example.gochat.data.api.TokenManager
     @Inject lateinit var marketplaceRepository: MarketplaceRepository
     @Inject lateinit var callRepository: CallRepository
+    @Inject lateinit var walletRepository: com.example.gochat.data.repository.WalletRepository
     private lateinit var messageAdapter: MessageAdapter
     private lateinit var mentionAdapter: GroupMemberAdapter
     private lateinit var commandAdapter: BotCommandAdapter
@@ -865,6 +868,11 @@ class ChatRoomActivity : AppCompatActivity() {
                 val sheet = PollVotersBottomSheet(pollData, currentUid)
                 sheet.show(supportFragmentManager, PollVotersBottomSheet.TAG)
             }
+            onRedPacketClicked = { _, packetId ->
+                startActivity(Intent(this@ChatRoomActivity, com.example.gochat.ui.wallet.RedPacketDetailActivity::class.java).apply {
+                    putExtra(com.example.gochat.ui.wallet.RedPacketDetailActivity.EXTRA_PACKET_ID, packetId)
+                })
+            }
         }
         messageAdapter.currentUserId = tokenManager.userId ?: ""
 
@@ -1314,7 +1322,90 @@ class ChatRoomActivity : AppCompatActivity() {
             showCreatePollBottomSheet()
         }
 
+        sheetBinding.btnPickRedPacket.setOnClickListener {
+            sheet.dismiss()
+            showCreateRedPacketDialog()
+        }
+
         sheet.show()
+    }
+
+    /**
+     * Collects an amount, number of packets, and a greeting, then creates the red
+     * packet (which debits the sender's wallet) and posts it to the chat. If the
+     * wallet lacks funds, offers to open the Wallet to top up.
+     */
+    private fun showCreateRedPacketDialog() {
+        val convId = viewModel.conversationId.value
+        if (convId.isEmpty()) return
+
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val pad = (20 * resources.displayMetrics.density).toInt()
+            setPadding(pad, pad / 2, pad, 0)
+        }
+        val amountInput = EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+            hint = "Total amount"
+        }
+        val countInput = EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            hint = "Number of packets"
+            setText("1")
+        }
+        val messageInput = EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+            hint = "Greeting (optional)"
+        }
+        container.addView(amountInput)
+        container.addView(countInput)
+        container.addView(messageInput)
+
+        AlertDialog.Builder(this)
+            .setTitle("🧧 Send a red packet")
+            .setView(container)
+            .setPositiveButton("Send") { _, _ ->
+                val major = amountInput.text.toString().trim().toDoubleOrNull()
+                val count = countInput.text.toString().trim().toIntOrNull() ?: 1
+                if (major == null || major <= 0) {
+                    Toast.makeText(this, "Enter a valid amount", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                if (count < 1) {
+                    Toast.makeText(this, "At least one packet", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                val minor = Math.round(major * 100)
+                val greeting = messageInput.text.toString().trim().ifBlank { "Best wishes!" }
+                createRedPacket(convId, minor, count, greeting)
+            }
+            .setNegativeButton(getString(R.string.btn_cancel), null)
+            .show()
+    }
+
+    private fun createRedPacket(convId: String, amountMinor: Long, count: Int, greeting: String) {
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                walletRepository.createRedPacket(convId, amountMinor, count, greeting)
+            }
+            result.onSuccess { created ->
+                viewModel.sendRedPacketMessage(created.id, created.message, created.count)
+            }.onFailure { err ->
+                val msg = err.message.orEmpty()
+                if (msg.contains("insufficient", ignoreCase = true)) {
+                    AlertDialog.Builder(this@ChatRoomActivity)
+                        .setTitle("Not enough balance")
+                        .setMessage("Top up your wallet to send this red packet.")
+                        .setPositiveButton("Open Wallet") { _, _ ->
+                            startActivity(Intent(this@ChatRoomActivity, com.example.gochat.ui.wallet.WalletActivity::class.java))
+                        }
+                        .setNegativeButton(getString(R.string.btn_cancel), null)
+                        .show()
+                } else {
+                    Toast.makeText(this@ChatRoomActivity, msg.ifBlank { "Could not create red packet" }, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
     }
 
     private fun showCatalogPicker() {

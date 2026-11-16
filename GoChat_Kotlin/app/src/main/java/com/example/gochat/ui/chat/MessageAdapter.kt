@@ -155,6 +155,8 @@ class MessageAdapter(
     var onCounterOfferClicked: ((message: Message, offer: CustomOfferData) -> Unit)? = null
     var onVotePollClicked: ((message: Message, optionId: String) -> Unit)? = null
     var onViewPollResultsClicked: ((pollData: PollData) -> Unit)? = null
+    /** Invoked when a red-packet (hóngbāo) card is tapped, to open/claim it. */
+    var onRedPacketClicked: ((message: Message, packetId: String) -> Unit)? = null
     var currentUserId: String = ""
     var onQuotedMessageClicked: ((replyToId: String) -> Unit)? = null
     var onEditHistoryClicked: ((message: Message) -> Unit)? = null
@@ -781,6 +783,44 @@ class MessageAdapter(
             layoutCatalogCard.visibility = View.GONE
             tvMessageContent.visibility = View.VISIBLE
             tvMessageContent.text = "🛍️ Product Catalog"
+        }
+    }
+
+    /**
+     * Binds a red-packet (hóngbāo) card. The message content is JSON like
+     * {"red_packet":{"id":"…","message":"…","count":N}}. Tapping opens the claim
+     * screen; the card itself doesn't know claim state (that's fetched on open).
+     */
+    private fun bindRedPacketCard(
+        message: Message,
+        layoutRedPacketCard: View,
+        tvRedPacketMessage: TextView,
+        tvRedPacketStatus: TextView,
+        tvMessageContent: TextView
+    ) {
+        val isRedPacket = message.content.contains("\"red_packet\"") && !message.isDeleted
+        if (!isRedPacket) {
+            layoutRedPacketCard.visibility = View.GONE
+            return
+        }
+        try {
+            val rootObj = Json.decodeFromString<JsonObject>(message.content)
+            val rp = rootObj["red_packet"]?.jsonObject ?: rootObj
+            val packetId = rp["id"]?.jsonPrimitive?.contentOrNull.orEmpty()
+            val greeting = rp["message"]?.jsonPrimitive?.contentOrNull ?: "Best wishes!"
+            if (packetId.isBlank()) {
+                layoutRedPacketCard.visibility = View.GONE
+                return
+            }
+            layoutRedPacketCard.visibility = View.VISIBLE
+            tvRedPacketMessage.text = greeting
+            tvRedPacketStatus.text = "Tap to open"
+            layoutRedPacketCard.setOnClickListener { onRedPacketClicked?.invoke(message, packetId) }
+            // A red-packet message carries no separate text body.
+            tvMessageContent.visibility = View.GONE
+            tvMessageContent.text = ""
+        } catch (_: Exception) {
+            layoutRedPacketCard.visibility = View.GONE
         }
     }
 
@@ -1580,6 +1620,15 @@ class MessageAdapter(
                     tvMessageContent = tvMessageContent
                 )
 
+                // Red Packet (hóngbāo) Card
+                bindRedPacketCard(
+                    message = message,
+                    layoutRedPacketCard = layoutRedPacketCard,
+                    tvRedPacketMessage = tvRedPacketMessage,
+                    tvRedPacketStatus = tvRedPacketStatus,
+                    tvMessageContent = tvMessageContent
+                )
+
                 // Hide the text label if it's purely a media label
                 val isOnlyMediaLabel = message.content.isBlank() ||
                     message.content.contains("Photo", ignoreCase = true) ||
@@ -2119,6 +2168,15 @@ class MessageAdapter(
                     message = message,
                     layoutPollCard = layoutPollCard,
                     pollBinding = includePoll,
+                    tvMessageContent = tvMessageContent
+                )
+
+                // Red Packet (hóngbāo) Card
+                bindRedPacketCard(
+                    message = message,
+                    layoutRedPacketCard = layoutRedPacketCard,
+                    tvRedPacketMessage = tvRedPacketMessage,
+                    tvRedPacketStatus = tvRedPacketStatus,
                     tvMessageContent = tvMessageContent
                 )
 

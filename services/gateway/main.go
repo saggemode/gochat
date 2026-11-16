@@ -361,6 +361,10 @@ func main() {
 	adminMailer := notifier.New(cfg, log)
 	adminHandler := handlers.NewAdminHandler(adminDB, authClient, businessClient, authzClient, adminMailer, redisClient, adminServiceConns, log)
 
+	// Wallet + red packets reuse the shared admin DB pool. When adminDB is nil
+	// (no PostgresDSN configured) the wallet endpoints return 503.
+	walletHandler := handlers.NewWalletHandler(adminDB, log)
+
 	// ── Root Status & Health Endpoints ──────────────────────────────────────
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -804,6 +808,15 @@ func main() {
 		authRequired.GET("/payments/paystack/payout-account", businessHandler.GetMyPayoutAccount)
 		authRequired.GET("/business/payouts/ledger", businessHandler.GetPayoutLedger)
 		authRequired.POST("/payments/paystack/refund/:id", businessHandler.RefundOrder)
+
+		// Wallet + red packets (hóngbāo). Real money enters only via top-up;
+		// red packets themselves are pure wallet-ledger transfers.
+		authRequired.GET("/wallet", walletHandler.GetWallet)
+		authRequired.POST("/wallet/topup/init", walletHandler.TopUpInit)
+		authRequired.GET("/wallet/topup/verify/:reference", walletHandler.TopUpVerify)
+		authRequired.POST("/redpackets", walletHandler.CreateRedPacket)
+		authRequired.GET("/redpackets/:id", walletHandler.GetRedPacket)
+		authRequired.POST("/redpackets/:id/claim", walletHandler.ClaimRedPacket)
 		authRequired.GET("/business/orders", businessHandler.ListSellerOrders)
 		authRequired.PUT("/business/orders/:id/status", businessHandler.UpdateOrderStatus)
 		authRequired.PUT("/business/orders/:id/tracking", businessHandler.UpdateOrderTracking)

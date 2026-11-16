@@ -204,6 +204,16 @@
             android:exported="false"
             android:theme="@style/Theme.GoChat" />
 
+        <!-- Wallet + Red packets -->
+        <activity
+            android:name=".ui.wallet.WalletActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+        <activity
+            android:name=".ui.wallet.RedPacketDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GoChat" />
+
         <!-- Security Verification Activity -->
         <activity
             android:name=".ui.security.SecurityVerificationActivity"
