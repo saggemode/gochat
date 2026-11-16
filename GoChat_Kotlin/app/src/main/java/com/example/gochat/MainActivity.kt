@@ -31,6 +31,7 @@ import com.example.gochat.ui.chat.ChatListViewModel
 import com.example.gochat.ui.settings.SettingsFragment
 import com.example.gochat.ui.stories.StoriesFragment
 import com.example.gochat.ui.marketplace.MarketplaceFragment
+import com.example.gochat.ui.moments.MomentsFragment
 import com.example.gochat.core.crypto.EncryptionManager
 import com.example.gochat.ui.marketplace.ProductDetailsActivity
 import com.example.gochat.ui.marketplace.StorefrontActivity
@@ -59,6 +60,7 @@ class MainActivity : AppCompatActivity() {
         const val TAG_STATUS = "tab_status"
         const val TAG_MARKETPLACE = "tab_marketplace"
         const val TAG_CALLS = "tab_calls"
+        const val TAG_MOMENTS = "tab_moments"
         const val TAG_SETTINGS = "tab_settings"
     }
 
@@ -222,8 +224,8 @@ class MainActivity : AppCompatActivity() {
                     switchTab(TAG_CALLS)
                     true
                 }
-                R.id.nav_settings -> {
-                    switchTab(TAG_SETTINGS)
+                R.id.nav_moments -> {
+                    switchTab(TAG_MOMENTS)
                     true
                 }
                 else -> false
@@ -252,6 +254,7 @@ class MainActivity : AppCompatActivity() {
                 TAG_STATUS -> StoriesFragment()
                 TAG_MARKETPLACE -> MarketplaceFragment()
                 TAG_CALLS -> CallsFragment()
+                TAG_MOMENTS -> MomentsFragment()
                 TAG_SETTINGS -> SettingsFragment()
                 else -> ChatListFragment()
             }
@@ -312,7 +315,11 @@ class MainActivity : AppCompatActivity() {
             TAG_CHATS -> binding.bottomNav.selectedItemId = R.id.nav_chats
             TAG_STATUS -> binding.bottomNav.selectedItemId = R.id.nav_status
             TAG_CALLS -> binding.bottomNav.selectedItemId = R.id.nav_calls
-            TAG_SETTINGS -> binding.bottomNav.selectedItemId = R.id.nav_settings
+            TAG_MOMENTS -> binding.bottomNav.selectedItemId = R.id.nav_moments
+            // Settings is no longer a bottom-nav tab (replaced by Moments); it's
+            // still reachable from the chat-list overflow menu, so switch to it
+            // directly without touching the bottom nav selection.
+            TAG_SETTINGS -> switchTab(TAG_SETTINGS)
             else -> switchTab(tag)
         }
     }

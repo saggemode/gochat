@@ -44,6 +44,9 @@ class ChatListFragment : Fragment() {
     private lateinit var messageSearchAdapter: MessageSearchResultAdapter
     private lateinit var storyCarouselAdapter: StoryCarouselAdapter
 
+    @javax.inject.Inject
+    lateinit var walletRepository: com.example.gochat.data.repository.WalletRepository
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -143,6 +146,28 @@ class ChatListFragment : Fragment() {
         super.onResume()
         viewModel.connectWebSocket(force = false)
         checkBatteryOptimizationCardVisibility()
+        refreshWalletBalance()
+    }
+
+    /**
+     * Loads the wallet balance into the top-bar chip. Tapping it opens the Wallet.
+     * Stays hidden if the wallet isn't available (e.g. not configured) so the
+     * toolbar isn't cluttered with an error state.
+     */
+    private fun refreshWalletBalance() {
+        val chip = _binding?.tvWalletBalance ?: return
+        chip.setOnClickListener {
+            startActivity(Intent(requireContext(), com.example.gochat.ui.wallet.WalletActivity::class.java))
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            val wallet = walletRepository.getWallet().getOrNull()
+            val b = _binding ?: return@launch
+            if (wallet != null) {
+                b.tvWalletBalance.text = "🧧 " +
+                    com.example.gochat.ui.wallet.WalletActivity.formatMinor(wallet.balance, wallet.currency)
+                b.tvWalletBalance.visibility = View.VISIBLE
+            }
+        }
     }
 
     private fun setupSearch() {

@@ -21,7 +21,7 @@
         android:title="Calls" />
 
     <item
-        android:id="@+id/nav_settings"
-        android:icon="@drawable/ic_tab_settings"
-        android:title="Settings" />
+        android:id="@+id/nav_moments"
+        android:icon="@drawable/ic_tab_moments"
+        android:title="Moments" />
 </menu>
