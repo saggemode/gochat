@@ -15,6 +15,7 @@ require (
 	github.com/prometheus/client_golang v1.24.1
 	github.com/redis/go-redis/v9 v9.5.1
 	github.com/robfig/cron/v3 v3.0.1
+	github.com/vgarvardt/pgx-google-uuid/v5 v5.6.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.54.0
 	google.golang.org/grpc v1.82.1

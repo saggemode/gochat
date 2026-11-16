@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	pgxuuid "github.com/vgarvardt/pgx-google-uuid/v5"
 	"go.uber.org/zap"
 )
 
@@ -48,6 +49,13 @@ func NewPostgres(ctx context.Context, dsn string, log *zap.Logger) (*pgxpool.Poo
 	cfg.ConnConfig.RuntimeParams["search_path"] = searchPath
 
 	cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		// Register the google/uuid type so uuid.UUID — and crucially []uuid.UUID
+		// passed to "= ANY($1)" — encode correctly. Without this, a single
+		// uuid.UUID still works via database/sql Valuer, but a []uuid.UUID array
+		// param fails with "cannot find encode plan (OID 0)", silently breaking
+		// every batch-by-ids query (user enrichment, delivery/read receipts, …).
+		pgxuuid.Register(conn.TypeMap())
+
 		_, err := conn.Exec(ctx, "SET search_path TO "+searchPath+";")
 		return err
 	}
