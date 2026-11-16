@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io"
+	"math"
 	"math/big"
 	"net/http"
 	"os"
@@ -127,14 +128,10 @@ func (h *WalletHandler) TopUpInit(c *gin.Context) {
 	if userID == "" {
 		return
 	}
-	if paystackSecret() == "" {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "payments are not configured"})
-		return
-	}
-
 	var req struct {
-		Amount int64  `json:"amount"` // minor units (kobo/cents)
-		Email  string `json:"email"`
+		Amount   int64  `json:"amount"`   // minor units (kobo/cents)
+		Email    string `json:"email"`
+		Provider string `json:"provider"` // "paystack" (default) or "flutterwave"
 	}
 	if err := c.ShouldBindJSON(&req); err != nil || req.Amount <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "a positive amount is required"})
@@ -161,7 +158,6 @@ func (h *WalletHandler) TopUpInit(c *gin.Context) {
 		}
 	}
 
-	reference := "wallet_" + randHex(16)
 	currency := "NGN"
 
 	// Same callback the marketplace checkout WebView watches for, so the client
@@ -170,6 +166,19 @@ func (h *WalletHandler) TopUpInit(c *gin.Context) {
 	if callbackURL == "" {
 		callbackURL = "https://gochat.app/paystack/callback"
 	}
+
+	// Flutterwave is an alternative money-in provider with the same safety model
+	// (credit only the provider-verified amount; idempotent via the ledger ref).
+	if strings.EqualFold(req.Provider, "flutterwave") {
+		h.initFlutterwaveTopUp(c, userID, req.Amount, email, currency, callbackURL)
+		return
+	}
+
+	if paystackSecret() == "" {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "payments are not configured"})
+		return
+	}
+	reference := "wallet_" + randHex(16)
 	paystackBody := map[string]any{
 		"email":        email,
 		"amount":       req.Amount,
@@ -225,13 +234,18 @@ func (h *WalletHandler) TopUpVerify(c *gin.Context) {
 	if userID == "" {
 		return
 	}
-	if paystackSecret() == "" {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "payments are not configured"})
+	reference := c.Param("reference")
+	// Flutterwave top-ups use a distinct reference prefix.
+	if strings.HasPrefix(reference, "walletflw_") {
+		h.verifyFlutterwaveTopUp(c, userID, reference)
 		return
 	}
-	reference := c.Param("reference")
 	if !strings.HasPrefix(reference, "wallet_") {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid top-up reference"})
+		return
+	}
+	if paystackSecret() == "" {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "payments are not configured"})
 		return
 	}
 
@@ -616,4 +630,116 @@ func randHex(n int) string {
 		return hex.EncodeToString([]byte(time.Now().String()))
 	}
 	return hex.EncodeToString(b)
+}
+
+// ── Flutterwave (second money-in provider) ──────────────────────────────────
+//
+// Same safety model as the Paystack path: the hosted checkout returns the user
+// to the callback URL, the client then calls verify, and we credit ONLY the
+// amount Flutterwave reports as paid. The unique ledger index on the reference
+// (kind='topup') makes a repeated verify a no-op. Flutterwave amounts are in
+// MAJOR units (naira), unlike Paystack's subunit (kobo) — converted here.
+
+const flutterwaveBaseURL = "https://api.flutterwave.com/v3"
+
+func flutterwaveSecret() string { return os.Getenv("FLUTTERWAVE_SECRET_KEY") }
+
+// initFlutterwaveTopUp starts a Flutterwave hosted-payment checkout and returns
+// the same shape as the Paystack path (authorization_url + reference), so the
+// Android checkout screen is provider-agnostic.
+func (h *WalletHandler) initFlutterwaveTopUp(c *gin.Context, userID string, amountMinor int64, email, currency, callbackURL string) {
+	if flutterwaveSecret() == "" {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "flutterwave is not configured"})
+		return
+	}
+	reference := "walletflw_" + randHex(16)
+	body := map[string]any{
+		"tx_ref":         reference,
+		"amount":         float64(amountMinor) / 100.0, // Flutterwave uses major units
+		"currency":       currency,
+		"redirect_url":   callbackURL,
+		"customer":       map[string]any{"email": email},
+		"meta":           map[string]any{"purpose": "wallet_topup", "user_id": userID},
+		"customizations": map[string]any{"title": "GoChat Wallet top-up"},
+	}
+	payload, _ := json.Marshal(body)
+	httpReq, _ := http.NewRequestWithContext(c.Request.Context(), http.MethodPost,
+		flutterwaveBaseURL+"/payments", bytes.NewReader(payload))
+	httpReq.Header.Set("Authorization", "Bearer "+flutterwaveSecret())
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := paystackHTTP.Do(httpReq)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "payment provider unreachable"})
+		return
+	}
+	defer resp.Body.Close()
+	respBody, _ := io.ReadAll(resp.Body)
+
+	var fw struct {
+		Status string `json:"status"`
+		Data   struct {
+			Link string `json:"link"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(respBody, &fw); err != nil || fw.Status != "success" || fw.Data.Link == "" {
+		h.log.Warn("flutterwave top-up initialize rejected", zap.String("body", string(respBody)))
+		c.JSON(http.StatusBadGateway, gin.H{"error": "could not start top-up"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"authorization_url": fw.Data.Link,
+		"reference":         reference,
+		"amount":            amountMinor,
+		"currency":          currency,
+		"provider":          "flutterwave",
+	})
+}
+
+// verifyFlutterwaveTopUp confirms a Flutterwave top-up and credits the wallet
+// with the verified amount. Idempotent via the ledger reference.
+func (h *WalletHandler) verifyFlutterwaveTopUp(c *gin.Context, userID, reference string) {
+	if flutterwaveSecret() == "" {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "flutterwave is not configured"})
+		return
+	}
+	httpReq, _ := http.NewRequestWithContext(c.Request.Context(), http.MethodGet,
+		flutterwaveBaseURL+"/transactions/verify_by_reference?tx_ref="+reference, nil)
+	httpReq.Header.Set("Authorization", "Bearer "+flutterwaveSecret())
+
+	resp, err := paystackHTTP.Do(httpReq)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "payment provider unreachable"})
+		return
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+
+	var fw struct {
+		Status string `json:"status"`
+		Data   struct {
+			Status   string  `json:"status"`
+			Amount   float64 `json:"amount"` // major units, as actually charged
+			Currency string  `json:"currency"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &fw); err != nil || fw.Status != "success" {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "could not verify top-up"})
+		return
+	}
+	if fw.Data.Status != "successful" || fw.Data.Amount <= 0 {
+		c.JSON(http.StatusOK, gin.H{"paid": false, "status": fw.Data.Status})
+		return
+	}
+
+	amountMinor := int64(math.Round(fw.Data.Amount * 100))
+	balance, err := h.creditWallet(c.Request.Context(), userID, amountMinor, "topup", reference)
+	if err != nil {
+		h.log.Error("credit wallet after flutterwave top-up failed", zap.Error(err), zap.String("reference", reference))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not credit wallet"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"paid": true, "balance": balance, "credited": amountMinor})
 }

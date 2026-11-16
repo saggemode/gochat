@@ -107,15 +107,26 @@ class WalletActivity : AppCompatActivity() {
                     return@setPositiveButton
                 }
                 val minor = Math.round(major * 100)
-                startTopUp(minor, prefillEmail)
+                chooseProviderThenTopUp(minor, prefillEmail)
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
-    private fun startTopUp(amountMinor: Long, email: String?) {
+    /** Lets the user pick which licensed provider to pay through. */
+    private fun chooseProviderThenTopUp(amountMinor: Long, email: String?) {
+        val labels = arrayOf("Paystack — Card, Bank, USSD", "Flutterwave")
+        val providers = arrayOf("paystack", "flutterwave")
+        AlertDialog.Builder(this)
+            .setTitle("Pay with")
+            .setItems(labels) { _, which -> startTopUp(amountMinor, email, providers[which]) }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun startTopUp(amountMinor: Long, email: String?, provider: String) {
         lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) { walletRepository.topUpInit(amountMinor, email) }
+            val result = withContext(Dispatchers.IO) { walletRepository.topUpInit(amountMinor, email, provider) }
             result.onSuccess { init ->
                 pendingReference = init.reference
                 val intent = Intent(this@WalletActivity, PaystackPaymentActivity::class.java).apply {
@@ -126,7 +137,7 @@ class WalletActivity : AppCompatActivity() {
             }.onFailure { err ->
                 val msg = err.message.orEmpty()
                 if (msg.contains("email", ignoreCase = true)) {
-                    promptEmailThenTopUp(amountMinor)
+                    promptEmailThenTopUp(amountMinor, provider)
                 } else {
                     Toast.makeText(this@WalletActivity, msg.ifBlank { "Could not start top-up" }, Toast.LENGTH_LONG).show()
                 }
@@ -134,8 +145,8 @@ class WalletActivity : AppCompatActivity() {
         }
     }
 
-    /** Phone-signup users may have no email on file; Paystack needs one. */
-    private fun promptEmailThenTopUp(amountMinor: Long) {
+    /** Phone-signup users may have no email on file; providers need one. */
+    private fun promptEmailThenTopUp(amountMinor: Long, provider: String) {
         val input = EditText(this).apply {
             inputType = InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
             hint = "you@example.com"
@@ -150,7 +161,7 @@ class WalletActivity : AppCompatActivity() {
                     Toast.makeText(this, "Enter a valid email", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
-                startTopUp(amountMinor, email)
+                startTopUp(amountMinor, email, provider)
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()

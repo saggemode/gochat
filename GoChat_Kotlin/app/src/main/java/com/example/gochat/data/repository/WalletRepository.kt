@@ -43,10 +43,11 @@ class WalletRepository @Inject constructor(
         Result.failure(e)
     }
 
-    suspend fun topUpInit(amountMinor: Long, email: String?): Result<TopUpInit> = try {
+    suspend fun topUpInit(amountMinor: Long, email: String?, provider: String? = null): Result<TopUpInit> = try {
         val resp = api.walletTopUpInit(buildJsonObject {
             put("amount", amountMinor)
             if (!email.isNullOrBlank()) put("email", email)
+            if (!provider.isNullOrBlank()) put("provider", provider)
         })
         val body = resp.body()
         if (resp.isSuccessful && body != null) {
