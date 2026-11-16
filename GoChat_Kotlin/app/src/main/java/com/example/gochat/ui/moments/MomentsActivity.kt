@@ -24,6 +24,9 @@ class MomentsActivity : AppCompatActivity() {
     @Inject
     lateinit var momentsRepository: MomentsRepository
 
+    @Inject
+    lateinit var walletRepository: com.example.gochat.data.repository.WalletRepository
+
     private lateinit var binding: ActivityMomentsBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,7 +37,22 @@ class MomentsActivity : AppCompatActivity() {
         binding.btnBackMoments.setOnClickListener { finish() }
         binding.btnNewMoment.setOnClickListener { showCreateDialog() }
         binding.swipeMoments.setOnRefreshListener { load() }
+        binding.tvWalletBalanceMoments.setOnClickListener {
+            startActivity(android.content.Intent(this, com.example.gochat.ui.wallet.WalletActivity::class.java))
+        }
         load()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        lifecycleScope.launch {
+            val wallet = withContext(Dispatchers.IO) { walletRepository.getWallet().getOrNull() }
+            if (wallet != null) {
+                binding.tvWalletBalanceMoments.text = "🧧 " +
+                    com.example.gochat.ui.wallet.WalletActivity.formatMinor(wallet.balance, wallet.currency)
+                binding.tvWalletBalanceMoments.visibility = View.VISIBLE
+            }
+        }
     }
 
     private fun load() {

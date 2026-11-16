@@ -30,6 +30,9 @@ class MomentsFragment : Fragment() {
     @Inject
     lateinit var momentsRepository: MomentsRepository
 
+    @Inject
+    lateinit var walletRepository: com.example.gochat.data.repository.WalletRepository
+
     private var _binding: ActivityMomentsBinding? = null
     private val binding get() = _binding!!
 
@@ -44,7 +47,29 @@ class MomentsFragment : Fragment() {
         binding.btnBackMoments.visibility = View.GONE
         binding.btnNewMoment.setOnClickListener { showCreateDialog() }
         binding.swipeMoments.setOnRefreshListener { load() }
+        binding.tvWalletBalanceMoments.setOnClickListener {
+            startActivity(android.content.Intent(requireContext(), com.example.gochat.ui.wallet.WalletActivity::class.java))
+        }
         load()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshWalletBalance()
+    }
+
+    /** Loads the wallet balance into the top-bar chip; hidden if unavailable. */
+    private fun refreshWalletBalance() {
+        _binding ?: return
+        lifecycleScope.launch {
+            val wallet = walletRepository.getWallet().getOrNull()
+            val b = _binding ?: return@launch
+            if (wallet != null) {
+                b.tvWalletBalanceMoments.text = "🧧 " +
+                    com.example.gochat.ui.wallet.WalletActivity.formatMinor(wallet.balance, wallet.currency)
+                b.tvWalletBalanceMoments.visibility = View.VISIBLE
+            }
+        }
     }
 
     private fun load() {

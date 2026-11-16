@@ -61,6 +61,9 @@ class MarketplaceFragment : Fragment() {
     private lateinit var followedStoreAdapter: FollowedStoreAdapter
     private lateinit var followedProductAdapter: ProductAdapter
 
+    @javax.inject.Inject
+    lateinit var walletRepository: com.example.gochat.data.repository.WalletRepository
+
     private var selectedStoreLogoUri: Uri? = null
 
     private var onProductImagesPicked: ((List<Uri>) -> Unit)? = null
@@ -136,6 +139,24 @@ class MarketplaceFragment : Fragment() {
         when (binding.tabLayoutMain.selectedTabPosition) {
             1 -> viewModel.loadFollowedStores()
             2 -> viewModel.loadMyStore()
+        }
+        refreshWalletBalance()
+    }
+
+    /** Loads the wallet balance into the top-bar chip; hidden if unavailable. */
+    private fun refreshWalletBalance() {
+        val b0 = _binding ?: return
+        b0.tvWalletBalanceMarket.setOnClickListener {
+            startActivity(android.content.Intent(requireContext(), com.example.gochat.ui.wallet.WalletActivity::class.java))
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            val wallet = walletRepository.getWallet().getOrNull()
+            val b = _binding ?: return@launch
+            if (wallet != null) {
+                b.tvWalletBalanceMarket.text = "🧧 " +
+                    com.example.gochat.ui.wallet.WalletActivity.formatMinor(wallet.balance, wallet.currency)
+                b.tvWalletBalanceMarket.visibility = View.VISIBLE
+            }
         }
     }
 
