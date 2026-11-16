@@ -269,6 +269,31 @@ interface GoChatApiService {
         @Body body: JsonObject
     ): Response<GroupEvent>
 
+    // ── Channels ──────────────────────────────────────────────────────────────
+    @GET("api/v1/channels")
+    suspend fun listChannels(@Query("subscribed") subscribed: String? = null): Response<List<Channel>>
+
+    @POST("api/v1/channels")
+    suspend fun createChannel(@Body body: JsonObject): Response<Channel>
+
+    @GET("api/v1/channels/{id}")
+    suspend fun getChannel(@Path("id") id: String): Response<Channel>
+
+    @POST("api/v1/channels/{id}/subscribe")
+    suspend fun subscribeChannel(@Path("id") id: String): Response<JsonObject>
+
+    @POST("api/v1/channels/{id}/unsubscribe")
+    suspend fun unsubscribeChannel(@Path("id") id: String): Response<JsonObject>
+
+    @GET("api/v1/channels/{id}/messages")
+    suspend fun getChannelMessages(@Path("id") id: String, @Query("limit") limit: Int = 30): Response<List<ChannelMessage>>
+
+    @POST("api/v1/channels/{id}/messages")
+    suspend fun publishChannelMessage(@Path("id") id: String, @Body body: JsonObject): Response<ChannelMessage>
+
+    @DELETE("api/v1/channels/{id}")
+    suspend fun deleteChannel(@Path("id") id: String): Response<JsonObject>
+
     @POST("api/v1/groups/join")
     suspend fun joinByInviteCode(
         @Body body: JsonObject
