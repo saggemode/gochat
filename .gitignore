@@ -94,3 +94,6 @@ k8s/secrets.yaml
 *.pem
 *.key
 *.p12
+
+# Kotlin compiler session/error artifacts (build cruft)
+.kotlin/
